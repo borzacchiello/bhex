@@ -107,6 +107,9 @@ static int gen_token(const char* s, const char* one_char_tokens, char** o_token,
         }
     }
 
+    if (len == 0)
+        return PARSER_ERR_UNEXPECTED_EMPTY_STRING;
+
     *o_token = bhex_malloc(len + 1);
     strncpy(*o_token, s + begin_off, len);
     (*o_token)[len] = 0;
