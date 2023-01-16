@@ -1,0 +1,12 @@
+#ifndef BYTE_TO_STR_H
+#define BYTE_TO_STR_H
+
+#include <stdint.h>
+#include <stdlib.h>
+
+char  nibble_to_hex_char(uint8_t b);
+char* bytes_to_hex(uint8_t* bytes, size_t size);
+int   is_printable_ascii(char c);
+char  get_printable_ascii_or_dot(char c);
+
+#endif
