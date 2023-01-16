@@ -39,7 +39,7 @@ int main(int argc, char const* argv[])
 
     linenoiseHistorySetMaxLen(32);
     while (1) {
-        sprintf(prompt, "[0x%07llX] $ ", fb->off);
+        snprintf(prompt, sizeof(prompt), "[0x%07llX] $ ", fb->off);
         char* inp = linenoise(prompt);
         if (!inp)
             break;
