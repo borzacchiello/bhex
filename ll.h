@@ -24,7 +24,7 @@ LLNode* ll_pop(LL* ll);
 LLNode* ll_getref(LL* ll, uint32_t i);
 
 void ll_invert(LL* ll);
-void ll_foreach(LL* ll, void (*f)(uintptr_t));
+void ll_foreach(LL* ll, func_on_el_t f);
 
 void ll_print(LL* ll, func_on_el_t print_el);
 

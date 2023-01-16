@@ -90,7 +90,7 @@ void ll_invert(LL* ll)
     ll->head = prev;
 }
 
-void ll_foreach(LL* ll, void (*f)(uintptr_t))
+void ll_foreach(LL* ll, func_on_el_t f)
 {
     LLNode* curr = ll->head;
     while (curr) {
