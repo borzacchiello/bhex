@@ -42,7 +42,9 @@ char* bhex_getline()
     char*   line      = NULL;
     size_t  line_size = 0;
     ssize_t r         = getline(&line, &line_size, stdin);
-    if (r < 0)
+    if (r < 0) {
+        bhex_free(line);
         return NULL;
+    }
     return line;
 }

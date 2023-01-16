@@ -1,5 +1,6 @@
 #include <stdio.h>
 
+#include "linenoise/linenoise.h"
 #include "parser.h"
 #include "alloc.h"
 #include "cmd/cmd.h"
@@ -23,6 +24,8 @@ static void usage(const char* prog)
 
 int main(int argc, char const* argv[])
 {
+    static char prompt[256];
+
     print_banner();
 
     if (argc < 2)
@@ -34,11 +37,13 @@ int main(int argc, char const* argv[])
 
     CmdContext* cc = cmdctx_init();
 
+    linenoiseHistorySetMaxLen(32);
     while (1) {
-        printf("[0x%07llX] $ ", fb->off);
-        char* inp = bhex_getline();
+        sprintf(prompt, "[0x%07llX] $ ", fb->off);
+        char* inp = linenoise(prompt);
         if (!inp)
             break;
+        linenoiseHistoryAdd(inp);
 
         ParsedCommand* pc;
         int            r = parse(inp, &pc);

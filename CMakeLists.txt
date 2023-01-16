@@ -7,6 +7,8 @@ option(ASAN "Compile with asan (only for debug builds)" OFF)
 set(CMAKE_C_STANDARD 99)
 
 set(src
+    linenoise/linenoise.c
+
     cmd/cmd.c
     cmd/hash/md5.c
     cmd/util/byte_to_str.c
