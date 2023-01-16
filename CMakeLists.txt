@@ -11,10 +11,12 @@ set(src
 
     cmd/cmd.c
     cmd/hash/md5.c
+    cmd/templates/template.c
     cmd/util/byte_to_str.c
     cmd/util/byte_to_num.c
     cmd/util/endian.c
     cmd/util/str.c
+    cmd/cmd_template.c
     cmd/cmd_info.c
     cmd/cmd_write.c
     cmd/cmd_print.c

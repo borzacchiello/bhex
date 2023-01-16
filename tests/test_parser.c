@@ -6,17 +6,17 @@
 #include "../ll.h"
 
 int  tokenize(const char* str, LL* o_result);
-void destroy_token(uintptr_t tptr);
+void destroy_token(uptr_t tptr);
 
-__attribute__((unused)) static void print_token(uintptr_t token)
+__attribute__((unused)) static void print_token(uptr_t token)
 {
     printf("<%s>", (char*)token);
 }
 
 static int check_eq(LL* ll, const char** arr, size_t size)
 {
-    LLNode*  curr = ll->head;
-    uint32_t i    = 0;
+    LLNode* curr = ll->head;
+    u32_t   i    = 0;
     while (curr) {
         if (i >= size)
             return 0;

@@ -13,12 +13,12 @@ static void infocmd_help(void* obj)
 
 static char* calc_md5(FileBuffer* fb)
 {
-    uint64_t orig_off = fb->off;
+    u64_t orig_off = fb->off;
 
     MD5_CTX ctx;
     MD5Init(&ctx);
 
-    uint64_t curr_off = 0;
+    u64_t curr_off = 0;
     while (curr_off + fb_block_size < fb->size) {
         fb_seek(fb, curr_off);
         MD5Update(&ctx, fb_read(fb, fb_block_size), fb_block_size);
@@ -30,7 +30,7 @@ static char* calc_md5(FileBuffer* fb)
         MD5Update(&ctx, fb_read(fb, fb->size - curr_off), fb->size - curr_off);
     }
 
-    uint8_t digest[16];
+    u8_t digest[16];
     MD5Final(digest, &ctx);
     fb_seek(fb, orig_off);
 

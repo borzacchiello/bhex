@@ -24,7 +24,7 @@ void ll_clear(LL* ll, func_on_el_t destroy_el)
     ll->size = 0;
 }
 
-void ll_add(LL* ll, uintptr_t data)
+void ll_add(LL* ll, uptr_t data)
 {
     LLNode* node = bhex_malloc(sizeof(LLNode));
     node->next   = ll->head;
@@ -34,7 +34,7 @@ void ll_add(LL* ll, uintptr_t data)
     ll->size++;
 }
 
-void ll_add_tail(LL* ll, uintptr_t data)
+void ll_add_tail(LL* ll, uptr_t data)
 {
     LLNode* node = bhex_malloc(sizeof(LLNode));
     node->next   = NULL;
@@ -64,7 +64,7 @@ LLNode* ll_pop(LL* ll)
     return r;
 }
 
-LLNode* ll_getref(LL* ll, uint32_t i)
+LLNode* ll_getref(LL* ll, u32_t i)
 {
     LLNode* curr = ll->head;
     while (i != 0) {

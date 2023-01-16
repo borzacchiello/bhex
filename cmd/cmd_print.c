@@ -19,9 +19,9 @@
 #define min(x, y) ((x) < (y) ? (x) : (y))
 
 typedef struct PrintCmdArgs {
-    int      width;
-    int      endianess;
-    uint64_t n_els;
+    int   width;
+    int   endianess;
+    u64_t n_els;
 } PrintCmdArgs;
 
 static void printcmd_dispose(void* obj) { return; }
@@ -102,7 +102,7 @@ int printcmd_parse_args(ParsedCommand* pc, PrintCmdArgs* o_args)
     return COMMAND_OK;
 }
 
-static void print_hex(const uint8_t* bytes, size_t size)
+static void print_hex(const u8_t* bytes, size_t size)
 {
     static int block_size = 16;
     size_t     off        = 0;
@@ -111,7 +111,7 @@ static void print_hex(const uint8_t* bytes, size_t size)
            "       00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F\n"
            "       -----------------------------------------------\n");
     while (off < size) {
-        printf(" %04llx: ", (uint64_t)off);
+        printf(" %04llx: ", (u64_t)off);
         int i;
         for (i = 0; i < block_size; ++i) {
             if (off + i >= size) {
@@ -125,7 +125,7 @@ static void print_hex(const uint8_t* bytes, size_t size)
         for (i = 0; i < block_size; ++i) {
             if (off + i >= size)
                 break;
-            printf("%c", get_printable_ascii_or_dot((uint8_t)bytes[off + i]));
+            printf("%c", get_printable_ascii_or_dot((u8_t)bytes[off + i]));
         }
         printf("\n");
         off += block_size;
@@ -133,7 +133,7 @@ static void print_hex(const uint8_t* bytes, size_t size)
     printf("\n");
 }
 
-static void print_words(const uint8_t* bytes, size_t size, int little_endian)
+static void print_words(const u8_t* bytes, size_t size, int little_endian)
 {
     static int block_size = 16;
     size_t     off        = 0;
@@ -142,13 +142,13 @@ static void print_words(const uint8_t* bytes, size_t size, int little_endian)
            "       00    02    04    06    08    0A    0C    0E   \n"
            "       -----------------------------------------------\n");
     while (off < size) {
-        printf(" %04llx: ", (uint64_t)off);
+        printf(" %04llx: ", (u64_t)off);
         int i;
         for (i = 0; i < block_size; i += 2) {
             if (off + i + 1 >= size)
                 break;
-            uint16_t w = little_endian ? read_at_le16(bytes + off, i)
-                                       : read_at_be16(bytes + off, i);
+            u16_t w = little_endian ? read_at_le16(bytes + off, i)
+                                    : read_at_be16(bytes + off, i);
             printf("%04Xh ", w);
         }
         printf("\n");
@@ -157,7 +157,7 @@ static void print_words(const uint8_t* bytes, size_t size, int little_endian)
     printf("\n");
 }
 
-static void print_dwords(const uint8_t* bytes, size_t size, int little_endian)
+static void print_dwords(const u8_t* bytes, size_t size, int little_endian)
 {
     static int block_size = 16;
     size_t     off        = 0;
@@ -166,13 +166,13 @@ static void print_dwords(const uint8_t* bytes, size_t size, int little_endian)
            "       00        04        08        0C       \n"
            "       ---------------------------------------\n");
     while (off < size) {
-        printf(" %04llx: ", (uint64_t)off);
+        printf(" %04llx: ", (u64_t)off);
         int i;
         for (i = 0; i < block_size; i += 4) {
             if (off + i + 3 >= size)
                 break;
-            uint32_t dw = little_endian ? read_at_le32(bytes + off, i)
-                                        : read_at_be32(bytes + off, i);
+            u32_t dw = little_endian ? read_at_le32(bytes + off, i)
+                                     : read_at_be32(bytes + off, i);
             printf("%08Xh ", dw);
         }
         printf("\n");
@@ -181,7 +181,7 @@ static void print_dwords(const uint8_t* bytes, size_t size, int little_endian)
     printf("\n");
 }
 
-static void print_qwords(const uint8_t* bytes, size_t size, int little_endian)
+static void print_qwords(const u8_t* bytes, size_t size, int little_endian)
 {
     static int block_size = 16;
     size_t     off        = 0;
@@ -190,13 +190,13 @@ static void print_qwords(const uint8_t* bytes, size_t size, int little_endian)
            "       00                08               \n"
            "       -----------------------------------\n");
     while (off < size) {
-        printf(" %04llx: ", (uint64_t)off);
+        printf(" %04llx: ", (u64_t)off);
         int i;
         for (i = 0; i < block_size; i += 8) {
             if (off + i + 7 >= size)
                 break;
-            uint64_t dw = little_endian ? read_at_le64(bytes + off, i)
-                                        : read_at_be64(bytes + off, i);
+            u64_t dw = little_endian ? read_at_le64(bytes + off, i)
+                                     : read_at_be64(bytes + off, i);
             printf("%016llXh ", dw);
         }
         printf("\n");
@@ -212,8 +212,8 @@ static int printcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     if (r != COMMAND_OK)
         return r;
 
-    size_t         size  = min(args.n_els * args.width, fb->size - fb->off);
-    const uint8_t* bytes = fb_read(fb, size);
+    size_t      size  = min(args.n_els * args.width, fb->size - fb->off);
+    const u8_t* bytes = fb_read(fb, size);
 
     switch (args.width) {
         case WIDTH_UNSET:

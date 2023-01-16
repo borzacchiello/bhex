@@ -47,10 +47,10 @@
 #define PUT_64BIT_LE(cp, value)                                                \
     do {                                                                       \
         write_le32(cp, value[0]);                                              \
-        write_at_le32(cp, value[1], sizeof(uint32_t));                         \
+        write_at_le32(cp, value[1], sizeof(u32_t));                            \
     } while (0)
 
-static uint8_t PADDING[MD5_BLOCK_LENGTH] = {
+static u8_t PADDING[MD5_BLOCK_LENGTH] = {
     0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0,    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0,    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -72,10 +72,9 @@ static uint8_t PADDING[MD5_BLOCK_LENGTH] = {
  * reflect the addition of 16 longwords of new data.  MD5Update blocks
  * the data and converts bytes into longwords for this routine.
  */
-static void MD5Transform(uint32_t      state[4],
-                         const uint8_t block[MD5_BLOCK_LENGTH])
+static void MD5Transform(u32_t state[4], const u8_t block[MD5_BLOCK_LENGTH])
 {
-    uint32_t a, b, c, d, in[MD5_BLOCK_LENGTH / 4];
+    u32_t a, b, c, d, in[MD5_BLOCK_LENGTH / 4];
 
     for (a = 0; a < MD5_BLOCK_LENGTH / 4; a++) {
         in[a] = read_at_le32(block, a * 4);
@@ -187,12 +186,12 @@ void MD5Update(MD5_CTX* ctx, const unsigned char* input, size_t len)
     need = MD5_BLOCK_LENGTH - have;
 
     /* Update bitcount */
-    /*	ctx->count += (uint64_t)len << 3;*/
-    if ((ctx->count[0] += ((uint32_t)len << 3)) < (uint32_t)len) {
+    /*	ctx->count += (u64_t)len << 3;*/
+    if ((ctx->count[0] += ((u32_t)len << 3)) < (u32_t)len) {
         /* Overflowed ctx->count[0] */
         ctx->count[1]++;
     }
-    ctx->count[1] += ((uint32_t)len >> 29);
+    ctx->count[1] += ((u32_t)len >> 29);
 
     if (len >= need) {
         if (have != 0) {
@@ -223,9 +222,9 @@ void MD5Update(MD5_CTX* ctx, const unsigned char* input, size_t len)
  */
 void MD5Final(unsigned char digest[MD5_DIGEST_LENGTH], MD5_CTX* ctx)
 {
-    uint8_t count[8];
-    size_t  padlen;
-    int     i;
+    u8_t   count[8];
+    size_t padlen;
+    int    i;
 
     /* Convert count to 8 bytes in little endian order. */
     PUT_64BIT_LE(count, ctx->count);

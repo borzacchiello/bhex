@@ -9,7 +9,7 @@
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define max(x, y) ((x) > (y) ? (x) : (y))
 
-int fb_seek(FileBuffer* fb, uint64_t off)
+int fb_seek(FileBuffer* fb, u64_t off)
 {
     if (off >= fb->size)
         return 1;
@@ -62,14 +62,14 @@ FileBuffer* filebuffer_create(const char* path)
     return fb;
 }
 
-static void delete_modification(uintptr_t o)
+static void delete_modification(uptr_t o)
 {
     Modification* mod = (Modification*)o;
     bhex_free(mod->data);
     bhex_free(mod);
 }
 
-int fb_add_modification(FileBuffer* fb, uint8_t* data, size_t size)
+int fb_add_modification(FileBuffer* fb, u8_t* data, size_t size)
 {
     if (fb->readonly)
         warning("the file was opened in read-only mode, thus you cannot commit "
@@ -83,7 +83,7 @@ int fb_add_modification(FileBuffer* fb, uint8_t* data, size_t size)
     mod->off          = fb->off;
     mod->size         = size;
 
-    ll_add(&fb->modifications, (uintptr_t)mod);
+    ll_add(&fb->modifications, (uptr_t)mod);
     return 1;
 }
 
@@ -98,14 +98,13 @@ int fb_remove_last_modification(FileBuffer* fb)
     return 1;
 }
 
-static int overlaps(uint64_t startA, uint64_t endA, uint64_t startB,
-                    uint64_t endB)
+static int overlaps(u64_t startA, u64_t endA, u64_t startB, u64_t endB)
 {
     // Check if [startA, endA) overlaps with [startB, endB)
     return startA <= endB && endA > startB;
 }
 
-static void apply_modifications(FileBuffer* fb, uint8_t* data, size_t size)
+static void apply_modifications(FileBuffer* fb, u8_t* data, size_t size)
 {
     ll_invert(&fb->modifications);
 
@@ -114,9 +113,9 @@ static void apply_modifications(FileBuffer* fb, uint8_t* data, size_t size)
         Modification* mod = (Modification*)curr->data;
         if (overlaps(mod->off, mod->off + mod->size, fb->off, fb->off + size)) {
             // The modification overlaps
-            uint64_t start = max(mod->off, fb->off);
-            uint64_t end   = min(mod->off + mod->size, fb->off + size);
-            uint64_t off;
+            u64_t start = max(mod->off, fb->off);
+            u64_t end   = min(mod->off + mod->size, fb->off + size);
+            u64_t off;
             for (off = start; off < end; ++off) {
                 data[off - fb->off] = mod->data[off - mod->off];
             }
@@ -134,7 +133,7 @@ void fb_commit_modifications(FileBuffer* fb)
         return;
     }
 
-    uint64_t origin_off = fb->off;
+    u64_t origin_off = fb->off;
 
     ll_invert(&fb->modifications);
 
@@ -152,7 +151,7 @@ void fb_commit_modifications(FileBuffer* fb)
     fb_seek(fb, origin_off);
 }
 
-const uint8_t* fb_read(FileBuffer* fb, size_t size)
+const u8_t* fb_read(FileBuffer* fb, size_t size)
 {
     if (size + fb->off > fb->size)
         // Not enough data

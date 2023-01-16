@@ -5,7 +5,7 @@
 #include "../log.h"
 
 typedef struct SeekArg {
-    uint64_t off;
+    u64_t off;
 } SeekArg;
 
 static int parse_seek_arg(ParsedCommand* pc, SeekArg* o_arg)
@@ -20,7 +20,7 @@ static int parse_seek_arg(ParsedCommand* pc, SeekArg* o_arg)
         return COMMAND_UNSUPPORTED_ARG;
 
     const char* p = (const char*)node->data;
-    uint64_t    off;
+    u64_t       off;
     if (!str_to_uint64(p, &off))
         return COMMAND_INVALID_ARG;
 

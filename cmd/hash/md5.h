@@ -10,11 +10,11 @@
 #define HASH_MD5_BLOCK_LENGTH 0x40
 
 #include <string.h>
-#include <stdint.h>
+#include "../../defs.h"
 
 /*  The below was retrieved from
  *  http://www.openbsd.org/cgi-bin/cvsweb/~checkout~/src/sys/crypto/md5.h?rev=1.1
- *  With the following changes: uint64_t => uint32_t[2]
+ *  With the following changes: u64_t => u32_t[2]
  *  Commented out #include <sys/cdefs.h>
  *  Commented out the __BEGIN and __END _DECLS, and the __attributes.
  */
@@ -35,13 +35,13 @@
 #define MD5_DIGEST_LENGTH 16
 
 typedef struct MD5Context {
-    uint32_t state[4];                 /* state */
-    uint32_t count[2];                 /* number of bits, mod 2^64 */
-    uint8_t  buffer[MD5_BLOCK_LENGTH]; /* input buffer */
+    u32_t state[4];                 /* state */
+    u32_t count[2];                 /* number of bits, mod 2^64 */
+    u8_t  buffer[MD5_BLOCK_LENGTH]; /* input buffer */
 } MD5_CTX;
 
 void MD5Init(MD5_CTX*);
-void MD5Update(MD5_CTX*, const uint8_t*, size_t);
-void MD5Final(uint8_t[MD5_DIGEST_LENGTH], MD5_CTX*);
+void MD5Update(MD5_CTX*, const u8_t*, size_t);
+void MD5Final(u8_t[MD5_DIGEST_LENGTH], MD5_CTX*);
 
 #endif /* HASH_MD5_H */

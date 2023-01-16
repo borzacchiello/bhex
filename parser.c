@@ -46,11 +46,11 @@ static int is_token(char c, const char* one_char_tokens)
 }
 
 // The API is public to access it in the "test" binary
-void destroy_token(uintptr_t tptr) { bhex_free((void*)tptr); }
+void destroy_token(uptr_t tptr) { bhex_free((void*)tptr); }
 
-static uint32_t skip_spaces(const char* s)
+static u32_t skip_spaces(const char* s)
 {
-    uint32_t    off  = 0;
+    u32_t       off  = 0;
     const char* curr = s;
 
     while (*curr && is_token(*curr, space_tokens)) {
@@ -62,7 +62,7 @@ static uint32_t skip_spaces(const char* s)
 }
 
 static int gen_token(const char* s, const char* one_char_tokens, char** o_token,
-                     uint32_t* o_off)
+                     u32_t* o_off)
 {
     *o_token = NULL;
     *o_off   = 0;
@@ -72,9 +72,9 @@ static int gen_token(const char* s, const char* one_char_tokens, char** o_token,
     if (is_token(*s, space_tokens))
         return PARSER_ERR_UNEXPECTED_SPACE;
 
-    uint32_t    begin_off = 0;
-    uint32_t    end_off   = 0;
-    uint32_t    len       = 0;
+    u32_t       begin_off = 0;
+    u32_t       end_off   = 0;
+    u32_t       len       = 0;
     const char* curr      = s;
 
     if (is_token(*curr, one_char_tokens)) {
@@ -130,9 +130,9 @@ int tokenize(const char* str, LL* o_result)
 
     curr += skip_spaces(curr);
     while (*curr) {
-        char*    token;
-        uint32_t off;
-        int      r = gen_token(curr, one_char_tokens, &token, &off);
+        char* token;
+        u32_t off;
+        int   r = gen_token(curr, one_char_tokens, &token, &off);
         if (r != PARSER_OK) {
             ll_clear(o_result, destroy_token);
             return r;
@@ -141,14 +141,14 @@ int tokenize(const char* str, LL* o_result)
             break;
 
         curr += off;
-        uint32_t n_spaces = skip_spaces(curr);
+        u32_t n_spaces = skip_spaces(curr);
         if (n_spaces > 0)
             // when we get the first space (ignoring the trailing initial
             // spaces), we disallow the "/" token for command parameters
             one_char_tokens = phase2_tokens;
 
         curr += n_spaces;
-        ll_add(o_result, (uintptr_t)token);
+        ll_add(o_result, (uptr_t)token);
     }
 
     ll_invert(o_result);
@@ -161,8 +161,10 @@ int parse(const char* str, ParsedCommand** o_cmd)
 
     LL  tokens = ll_create();
     int r      = tokenize(str, &tokens);
-    if (r != PARSER_OK)
+    if (r != PARSER_OK) {
+        ll_clear(&tokens, destroy_token);
         return r;
+    }
     if (tokens.size == 0)
         return PARSER_ERR_NO_TOKENS;
 
@@ -231,6 +233,7 @@ int parse(const char* str, ParsedCommand** o_cmd)
         ll_clear(&tokens, destroy_token);
     }
     if (err != PARSER_OK) {
+        ll_clear(&tokens, destroy_token);
         parsed_command_destroy(pc);
         return err;
     }

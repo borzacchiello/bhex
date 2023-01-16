@@ -9,6 +9,7 @@
 #include "cmd_write.h"
 #include "cmd_undo.h"
 #include "cmd_commit.h"
+#include "cmd_template.h"
 
 const char* cmdctx_err_to_string(int err)
 {
@@ -38,16 +39,17 @@ CmdContext* cmdctx_init()
     CmdContext* cc = bhex_malloc(sizeof(CmdContext));
     cc->commands   = ll_create();
 
-    ll_add(&cc->commands, (uintptr_t)commitcmd_create());
-    ll_add(&cc->commands, (uintptr_t)undocmd_create());
-    ll_add(&cc->commands, (uintptr_t)writecmd_create());
-    ll_add(&cc->commands, (uintptr_t)printcmd_create());
-    ll_add(&cc->commands, (uintptr_t)seekcmd_create());
-    ll_add(&cc->commands, (uintptr_t)infocmd_create());
+    ll_add(&cc->commands, (uptr_t)commitcmd_create());
+    ll_add(&cc->commands, (uptr_t)undocmd_create());
+    ll_add(&cc->commands, (uptr_t)writecmd_create());
+    ll_add(&cc->commands, (uptr_t)printcmd_create());
+    ll_add(&cc->commands, (uptr_t)seekcmd_create());
+    ll_add(&cc->commands, (uptr_t)templatecmd_create());
+    ll_add(&cc->commands, (uptr_t)infocmd_create());
     return cc;
 }
 
-static void cmd_dispose(uintptr_t o)
+static void cmd_dispose(uptr_t o)
 {
     Cmd* cmd = (Cmd*)o;
     cmd->dispose(cmd->obj);

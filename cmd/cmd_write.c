@@ -21,8 +21,8 @@
 #define ENDIANESS_BIG    2
 
 typedef struct WriteArg {
-    uint8_t* data;
-    size_t   size;
+    u8_t*  data;
+    size_t size;
 } WriteArg;
 
 static void writecmd_help(void* obj)
@@ -124,12 +124,12 @@ static int parse_write_arg(ParsedCommand* pc, WriteArg* o_arg)
             o_arg->data = bhex_malloc(1);
             o_arg->size = 1;
             if (unsign) {
-                uint8_t b;
+                u8_t b;
                 if (!str_to_uint8(data_str, &b))
                     return COMMAND_INVALID_ARG;
                 write8(o_arg->data, b);
             } else {
-                int8_t b;
+                s8_t b;
                 if (!str_to_int8(data_str, &b))
                     return COMMAND_INVALID_ARG;
                 write8(o_arg->data, b);
@@ -139,7 +139,7 @@ static int parse_write_arg(ParsedCommand* pc, WriteArg* o_arg)
             o_arg->data = bhex_malloc(2);
             o_arg->size = 2;
             if (unsign) {
-                uint16_t w;
+                u16_t w;
                 if (!str_to_uint16(data_str, &w))
                     return COMMAND_INVALID_ARG;
                 if (endiness == ENDIANESS_LITTLE)
@@ -147,7 +147,7 @@ static int parse_write_arg(ParsedCommand* pc, WriteArg* o_arg)
                 else
                     write_be16(o_arg->data, w);
             } else {
-                int16_t w;
+                s16_t w;
                 if (!str_to_int16(data_str, &w))
                     return COMMAND_INVALID_ARG;
                 if (endiness == ENDIANESS_LITTLE)
@@ -160,7 +160,7 @@ static int parse_write_arg(ParsedCommand* pc, WriteArg* o_arg)
             o_arg->data = bhex_malloc(4);
             o_arg->size = 4;
             if (unsign) {
-                uint32_t d;
+                u32_t d;
                 if (!str_to_uint32(data_str, &d))
                     return COMMAND_INVALID_ARG;
                 if (endiness == ENDIANESS_LITTLE)
@@ -168,7 +168,7 @@ static int parse_write_arg(ParsedCommand* pc, WriteArg* o_arg)
                 else
                     write_be32(o_arg->data, d);
             } else {
-                int32_t d;
+                s32_t d;
                 if (!str_to_int32(data_str, &d))
                     return COMMAND_INVALID_ARG;
                 if (endiness == ENDIANESS_LITTLE)
@@ -181,7 +181,7 @@ static int parse_write_arg(ParsedCommand* pc, WriteArg* o_arg)
             o_arg->data = bhex_malloc(8);
             o_arg->size = 8;
             if (unsign) {
-                uint64_t q;
+                u64_t q;
                 if (!str_to_uint64(data_str, &q))
                     return COMMAND_INVALID_ARG;
                 if (endiness == ENDIANESS_LITTLE)
@@ -189,7 +189,7 @@ static int parse_write_arg(ParsedCommand* pc, WriteArg* o_arg)
                 else
                     write_be64(o_arg->data, q);
             } else {
-                int64_t q;
+                s64_t q;
                 if (!str_to_int64(data_str, &q))
                     return COMMAND_INVALID_ARG;
                 if (endiness == ENDIANESS_LITTLE)

@@ -1,14 +1,14 @@
 #include "byte_to_str.h"
 #include "../../alloc.h"
 
-char nibble_to_hex_char(uint8_t b)
+char nibble_to_hex_char(u8_t b)
 {
     if ((b & 0xf) < 10)
         return '0' + (b & 0xf);
     return 'A' + ((b & 0xf) - 10);
 }
 
-char* bytes_to_hex(uint8_t* bytes, size_t size)
+char* bytes_to_hex(const u8_t* bytes, size_t size)
 {
     char* res     = bhex_malloc(size * 2 + 1);
     res[size * 2] = 0;

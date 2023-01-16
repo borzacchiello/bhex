@@ -5,10 +5,10 @@
 #include "../ll.h"
 #include "../alloc.h"
 
-static int check_eq(LL* ll, uintptr_t* arr, size_t size)
+static int check_eq(LL* ll, uptr_t* arr, size_t size)
 {
-    LLNode*  curr = ll->head;
-    uint32_t i    = 0;
+    LLNode* curr = ll->head;
+    u32_t   i    = 0;
     while (curr) {
         if (i >= size)
             return 0;
@@ -27,8 +27,8 @@ static int test_add()
     ll_add(&ll, 1);
     ll_add(&ll, 2);
 
-    uintptr_t exp[] = {2, 1, 0};
-    int r = check_eq(&ll, (uintptr_t*)&exp, sizeof(exp) / sizeof(uintptr_t));
+    uptr_t exp[] = {2, 1, 0};
+    int    r     = check_eq(&ll, (uptr_t*)&exp, sizeof(exp) / sizeof(uptr_t));
 
     ll_clear(&ll, NULL);
     return r;
@@ -41,8 +41,8 @@ static int test_add_tail()
     ll_add_tail(&ll, 1);
     ll_add_tail(&ll, 2);
 
-    uintptr_t exp[] = {0, 1, 2};
-    int r = check_eq(&ll, (uintptr_t*)&exp, sizeof(exp) / sizeof(uintptr_t));
+    uptr_t exp[] = {0, 1, 2};
+    int    r     = check_eq(&ll, (uptr_t*)&exp, sizeof(exp) / sizeof(uptr_t));
 
     ll_clear(&ll, NULL);
     return r;
@@ -137,8 +137,8 @@ static int test_invert()
     ll_add(&ll, 2);
     ll_invert(&ll);
 
-    uintptr_t exp[] = {0, 1, 2};
-    int r = check_eq(&ll, (uintptr_t*)&exp, sizeof(exp) / sizeof(uintptr_t));
+    uptr_t exp[] = {0, 1, 2};
+    int    r     = check_eq(&ll, (uptr_t*)&exp, sizeof(exp) / sizeof(uptr_t));
 
     ll_clear(&ll, NULL);
     return r;
