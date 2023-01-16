@@ -43,6 +43,8 @@ FileBuffer* filebuffer_create(const char* path)
     }
     if (f == NULL) {
         warning("cannot open the file");
+        bhex_free(fb->path);
+        bhex_free(fb);
         return NULL;
     }
     fb->file = f;
