@@ -111,6 +111,9 @@ Available templates:
 
 seek: change current offset
   s <off>
+
+  off: can be either a number or the character '-'.
+       In the latter case seek to the offset before the last seek.
 ```
 
 ### Print
