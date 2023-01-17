@@ -90,8 +90,10 @@ search: search a string or a sequence of bytes in the file
 
 template: parse a struct template at current offset
 
-  t[/l] <template_name>
-     l: list available templates
+  t[/l/{le,be}] <template_name>
+     l:  list available templates
+     le: interpret numbers as little-endian (default)
+     be: interpret numbers as big-endian
 
   template_name: the name of the template to use
 

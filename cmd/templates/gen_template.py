@@ -10,6 +10,7 @@ template_c = """
 
 #include "template.h"
 #include "../util/byte_to_str.h"
+#include "../util/endian.h"
 
 {struct_defs}
 
@@ -25,7 +26,7 @@ template_h = """
 typedef struct Template {{
     const char* name;
     size_t (*get_size)();
-    void (*pretty_print)(const u8_t*, size_t);
+    void (*pretty_print)(const u8_t*, size_t, int);
 }} Template;
 
 extern Template templates[{num_templates}];
@@ -47,7 +48,7 @@ static size_t sizeof_{struct_name}()
     return sizeof({struct_name});
 }}
 
-static void prettyprint_{struct_name}(const u8_t* data, size_t size)
+static void prettyprint_{struct_name}(const u8_t* data, size_t size, int le)
 {{
     if (size < sizeof_{struct_name}())
         return;
@@ -60,19 +61,45 @@ static void prettyprint_{struct_name}(const u8_t* data, size_t size)
 }}
 """
 
-print_el_template_1 = """    printf("  %16s: {el_format}\\n", "{el_name}", s->{el_name});
+print_el_num_template = """    {{
+        {el_type} v = le 
+            ? {read_le}(&s->{el_name})
+            : {read_be}(&s->{el_name});
+        printf("  %16s: {el_format}\\n", "{el_name}", v);
+    }}
 """
 
-print_el_template_2 = """    printf("  %16s: {el_format_1} [{el_format_2}]\\n", "{el_name}", s->{el_name}, s->{el_name});
+print_el_num_with_hex_template = """    {{
+        {el_type} v = le 
+            ? {read_le}(&s->{el_name})
+            : {read_be}(&s->{el_name});
+        printf("  %16s: {el_format_1} [{el_format_2}]\\n", "{el_name}", v, v);
+    }}
 """
 
-print_el_template_array = \
+print_el_str_template = """    printf("  %16s: %s\\n", "{el_name}", s->{el_name});"""
+
+print_el_array_template = \
 """    hexstr = bytes_to_hex(s->{el_name}, sizeof(s->{el_name}));
     printf("  %16s: %s\\n", "{el_name}", hexstr);
     free(hexstr);
 """
 
-def get_format_from_type(t):
+def get_read_functions_from_type_name(tname):
+    if tname in {"uint8_t", "int8_t", "unsigned char", "char"}:
+        return "read8", "read8"
+    if tname in {"uint16_t", "int16_t", "unsigned short", "short"}:
+        return "read_le16", "read_be16"
+    if tname in {"uint32_t", "int32_t", "unsigned", "unsigned int", "int"}:
+        return "read_le32", "read_be32"
+    if tname in {"uint64_t", "int64_t", "unsigned long", "long", "unsigned long long", "long long"}:
+        return "read_le64", "read_be64"
+    return None, None
+
+def is_ambiguous_type(t):
+    return t in {"unsigned long", "long", "void*", "uintptr_t"}
+
+def get_code_from_type(t, name):
     if len(t.declarators) != 0:
         # an array
         assert len(t.declarators) == 1
@@ -80,32 +107,78 @@ def get_format_from_type(t):
 
         # number of elements
         _ = t.declarators[0][0]
-        return "%s", None, True
+        return print_el_array_template.format(el_name=name)
 
     spec = t.type_spec
     if spec.startswith("const"):
         spec = " ".join(spec.split(" ")[1:])
 
-    if t.type_spec in {"u8_t", "u16_t", "u32_t", "unsigned", "unsigned int"}:
-        return "%-12u", "0x%x", False
-    elif t.type_spec in {"u64_t", "unsigned long", "unsigned long long"}:
-        return "%-12llu", "0x%llx", False
-    elif t.type_spec in {"s8_t", "s16_t", "s32_t", "int"}:
-        return "%-12d", "0x%x", False
-    elif t.type_spec in {"s64_t", "long", "long long"}:
-        return "%-12lld", "%llx", False
+    if is_ambiguous_type(spec):
+        print(
+            "WARNING: you are using an ambiguous type that has different meanings on\n" +
+            "         32-bit and 64-bit machines. Consider using uint32_t/int32_t or\n" +
+            "         uint64_t/int64_t")
+
+    readle, readbe = get_read_functions_from_type_name(spec)
+    if t.type_spec in {"uint8_t", "uint16_t", "uint32_t", "unsigned", "unsigned int", "unsigned short", "unsigned char"}:
+        if readle is None or readbe is None:
+            return None
+        return print_el_num_with_hex_template.format(
+            read_le=readle,
+            read_be=readbe,
+            el_type=t.type_spec,
+            el_format_1="%-12u",
+            el_format_2="0x%x",
+            el_name=name)
+    elif t.type_spec in {"uint64_t", "unsigned long", "unsigned long long"}:
+        if readle is None or readbe is None:
+            return None
+        return print_el_num_with_hex_template.format(
+            read_le=readle,
+            read_be=readbe,
+            el_type=t.type_spec,
+            el_format_1="%-12llu",
+            el_format_2="0x%llx",
+            el_name=name)
+    elif t.type_spec in {"int8_t", "int16_t", "int32_t", "char", "short", "int"}:
+        if readle is None or readbe is None:
+            return None
+        return print_el_num_with_hex_template.format(
+            read_le=readle,
+            read_be=readbe,
+            el_type=t.type_spec,
+            el_format_1="%-12d",
+            el_format_2="0x%x",
+            el_name=name)
+    elif t.type_spec in {"int64_t", "long", "long long"}:
+        if readle is None or readbe is None:
+            return None
+        return print_el_num_with_hex_template.format(
+            read_le=readle,
+            read_be=readbe,
+            el_type=t.type_spec,
+            el_format_1="%-12lld",
+            el_format_2="0x%llx",
+            el_name=name)
     elif t.type_spec in {"char*"}:
-        return "%s", None, False
-    elif t.type_spec in {"uptr_t", "void*"}:
-        return "%p", None, False
-    return None, None
+        return print_el_str_template.format(el_name=name)
+    elif t.type_spec in {"uintptr_t", "void*"}:
+        if readle is None or readbe is None:
+            return None
+        return print_el_num_with_hex_template.format(
+            read_le=readle,
+            read_be=readbe,
+            el_type=t.type_spec,
+            el_format="%p",
+            el_name=name)
+    return None
 
 def parse_structs(sources):
     functions_code = []
     template_array_code = []
 
     for source_file in sources:
-        parser = CParser(source_file)
+        parser = CParser(["../../defs.h", source_file])
         structs = parser.defs["structs"]
 
         for struct_name in structs:
@@ -113,22 +186,11 @@ def parse_structs(sources):
             els_str = ""
             for member_name, t, _ in struct.members:
                 t = parser.eval_type(t)
-                format1, format2, array = get_format_from_type(t)
-                if format is None:
-                    print("WARNING: unable to get format for", t)
+                code = get_code_from_type(t, member_name)
+                if code is None:
+                    print("WARNING: unable to process type", t)
                     continue
-                if array:
-                    els_str += print_el_template_array.format(
-                        el_name = member_name)
-                elif format2 is None:
-                    els_str += print_el_template_1.format(
-                        el_name = member_name,
-                        el_format = format1)
-                else:
-                    els_str += print_el_template_2.format(
-                        el_name = member_name,
-                        el_format_1 = format1,
-                        el_format_2 = format2)
+                els_str += code
 
             c_code = struct_template.format(
                 struct_file = source_file,
