@@ -6,22 +6,38 @@
 #include "../alloc.h"
 #include "../log.h"
 
+#define OFF_ABSOLUTE 0
+#define OFF_SUM      1
+#define OFF_SUB      2
+
+#define min(x, y) ((x) < (y) ? (x) : (y))
+
 typedef struct SeekState {
     u64_t prev_off;
 } SeekState;
 
 typedef struct SeekArg {
+    int   off_mode;
     u64_t off;
 } SeekArg;
 
 static int parse_seek_arg(SeekState* state, ParsedCommand* pc, SeekArg* o_arg)
 {
-    LLNode* node;
-    node = pc->cmd_modifiers.head;
-    if (node != NULL)
+    int off_mode = OFF_ABSOLUTE;
+    if (pc->cmd_modifiers.size > 1)
         return COMMAND_UNSUPPORTED_MOD;
 
-    node = pc->args.head;
+    if (pc->cmd_modifiers.size == 1) {
+        char* mod = (char*)pc->cmd_modifiers.head->data;
+        if (strcmp(mod, "+") == 0)
+            off_mode = OFF_SUM;
+        else if (strcmp(mod, "-") == 0)
+            off_mode = OFF_SUB;
+        else
+            return COMMAND_UNSUPPORTED_MOD;
+    }
+
+    LLNode* node = pc->args.head;
     if (pc->args.size != 1)
         return COMMAND_UNSUPPORTED_ARG;
 
@@ -35,7 +51,8 @@ static int parse_seek_arg(SeekState* state, ParsedCommand* pc, SeekArg* o_arg)
     if (!str_to_uint64(p, &off))
         return COMMAND_INVALID_ARG;
 
-    o_arg->off = off;
+    o_arg->off      = off;
+    o_arg->off_mode = off_mode;
     return COMMAND_OK;
 }
 
@@ -49,7 +66,10 @@ static void seekcmd_help(void* obj)
 {
     printf(
         "\nseek: change current offset\n"
-        "  s <off>\n"
+        "  s[/{+,-}] <off>\n"
+        "    +: sum 'off' to current offset (wrap if greater than filesize)\n"
+        "    -: subtract 'off' to current offset (wrap if greater than "
+        "filesize)\n"
         "\n"
         "  off: can be either a number or the character '-'.\n"
         "       In the latter case seek to the offset before the last seek.\n"
@@ -64,6 +84,15 @@ static int seekcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     int     r = parse_seek_arg(state, pc, &a);
     if (r != COMMAND_OK)
         return r;
+
+    if (a.off_mode == OFF_SUM)
+        a.off = (a.off + fb->off) % fb->size;
+    else if (a.off_mode == OFF_SUB) {
+        if (a.off > fb->off)
+            a.off = fb->size - min(fb->size, a.off);
+        else
+            a.off = (fb->off - a.off) % fb->size;
+    }
 
     if (a.off >= fb->size) {
         warning("trying to seek (%llu) after the size of the file (%llu)\n",

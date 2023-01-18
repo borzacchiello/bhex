@@ -127,7 +127,9 @@ Available templates:
 [0x0000000] $ s?
 
 seek: change current offset
-  s <off>
+  s[/{+,-}] <off>
+    +: sum 'off' to current offset (wrap if greater than filesize)
+    -: subtract 'off' to current offset (wrap if greater than filesize)
 
   off: can be either a number or the character '-'.
        In the latter case seek to the offset before the last seek.
