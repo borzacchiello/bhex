@@ -16,13 +16,14 @@ Supported features:
 - print file content in various format;
 - write data overwriting the content of the file;
 - undo writes until _committed_;
-- search strings or binary data;
+- enumerate (ascii) strings;
+- search strings or binary data.
 
 Just run `bhex <file>` to start the shell.
 
 # Compilation
 
-The project can be compiled using cmake. It has no runtime dependencies a part from libc, so it should be quite strightforward:
+The project can be compiled using cmake. It has no runtime dependencies (apart from libc), so it should be quite strightforward:
 
 ```
 $ mkdir build
