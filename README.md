@@ -153,7 +153,8 @@ print: display the data at current offset in various formats
      -:  seek backwards after printing
 
   nelements: the number of elements to display
-  (default: enough to display 256 bytes)```
+  (default: enough to display 256 bytes)
+```
 
 ### Write
 
