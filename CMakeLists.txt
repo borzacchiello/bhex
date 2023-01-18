@@ -18,6 +18,7 @@ set(src
     cmd/util/str.c
     cmd/cmd_template.c
     cmd/cmd_search.c
+    cmd/cmd_strings.c
     cmd/cmd_info.c
     cmd/cmd_write.c
     cmd/cmd_print.c

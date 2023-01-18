@@ -53,6 +53,7 @@ Available commands:
     help [h]
     info [i]
     search [src]
+    strings [str]
     template [t]
     seek [s]
     print [p]
@@ -81,6 +82,19 @@ search: search a string or a sequence of bytes in the file
      s: data is a string (default)
 
   data: either a string or an hex string
+```
+
+### Strings
+
+```
+[0x0000000] $ str?
+
+enumerate the strings in the file (i.e., sequences of printable ascii characters)
+
+  str[/n] <num>
+     n: look for null-terminated strings
+
+  num: minimum length (default: 3)
 ```
 
 ### Template

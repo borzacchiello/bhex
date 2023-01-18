@@ -11,6 +11,7 @@
 #include "cmd_commit.h"
 #include "cmd_template.h"
 #include "cmd_search.h"
+#include "cmd_strings.h"
 
 const char* cmdctx_err_to_string(int err)
 {
@@ -46,6 +47,7 @@ CmdContext* cmdctx_init()
     ll_add(&cc->commands, (uptr_t)printcmd_create());
     ll_add(&cc->commands, (uptr_t)seekcmd_create());
     ll_add(&cc->commands, (uptr_t)templatecmd_create());
+    ll_add(&cc->commands, (uptr_t)stringscmd_create());
     ll_add(&cc->commands, (uptr_t)searchcmd_create());
     ll_add(&cc->commands, (uptr_t)infocmd_create());
     return cc;
