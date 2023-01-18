@@ -13,21 +13,26 @@
 #define DATA_TYPE_STRING 1
 #define DATA_TYPE_HEX    2
 
+#define SEEK_TO_MATCH_UNSET 0
+#define SEEK_TO_MATCH_SET   1
+
 static void searchcmd_dispose(void* obj) { return; }
 
 static void searchcmd_help(void* obj)
 {
     printf("\nsearch: search a string or a sequence of bytes in the file\n"
            "\n"
-           "  s[/{x, s}] <data>\n"
-           "     x: data is an hex string\n"
-           "     s: data is a string (default)\n"
+           "  s[/{x, s}/sk] <data>\n"
+           "     x:  data is an hex string\n"
+           "     s:  data is a string (default)\n"
+           "     sk: seek to first match\n"
            "\n"
            "  data: either a string or an hex string\n"
            "\n");
 }
 
-static void search(FileBuffer* fb, const uint8_t* data, size_t size)
+static void search(FileBuffer* fb, const uint8_t* data, size_t size,
+                   int seek_to_match)
 {
     u64_t orig_off = fb->off;
     fb_seek(fb, 0);
@@ -62,8 +67,11 @@ static void search(FileBuffer* fb, const uint8_t* data, size_t size)
             if (!eq)
                 break;
         }
-        if (eq)
+        if (eq) {
             printf(" >> Match @ 0x%07llX\n", begin_addr);
+            if (seek_to_match)
+                orig_off = begin_addr;
+        }
 
         addr += 1;
         buf_off += 1;
@@ -75,8 +83,9 @@ static void search(FileBuffer* fb, const uint8_t* data, size_t size)
 
 static int searchcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 {
-    int     data_type = DATA_TYPE_UNSET;
-    LLNode* curr      = pc->cmd_modifiers.head;
+    int     data_type     = DATA_TYPE_UNSET;
+    int     seek_to_match = SEEK_TO_MATCH_UNSET;
+    LLNode* curr          = pc->cmd_modifiers.head;
     while (curr) {
         if (strcmp((char*)curr->data, "s") == 0) {
             if (data_type != DATA_TYPE_UNSET)
@@ -86,6 +95,10 @@ static int searchcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
             if (data_type != DATA_TYPE_UNSET)
                 return COMMAND_INVALID_MODE;
             data_type = DATA_TYPE_HEX;
+        } else if (strcmp((char*)curr->data, "sk") == 0) {
+            if (seek_to_match != SEEK_TO_MATCH_UNSET)
+                return COMMAND_INVALID_MODE;
+            seek_to_match = SEEK_TO_MATCH_SET;
         }
         curr = curr->next;
     }
@@ -110,7 +123,7 @@ static int searchcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
             break;
     }
 
-    search(fb, data, data_size);
+    search(fb, data, data_size, seek_to_match == SEEK_TO_MATCH_SET);
     bhex_free(data);
     return COMMAND_OK;
 }
