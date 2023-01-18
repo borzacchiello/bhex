@@ -137,17 +137,18 @@ seek: change current offset
 
 print: display the data at current offset in various formats
 
-  p[/{x,w,d,q}/{le,be}] <nelements>
+  p[/{x,w,d,q}/{le,be}/{+,-}] <nelements>
      x:  hex output (default)
      w:  words
      d:  dwords
      q:  qwords
      le: little-endian (default)
      be: big-endian
+     +:  seek forward after printing
+     -:  seek backwards after printing
 
   nelements: the number of elements to display
-  (default: enough to display 256 bytes)
-```
+  (default: enough to display 256 bytes)```
 
 ### Write
 

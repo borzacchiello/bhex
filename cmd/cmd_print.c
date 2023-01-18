@@ -16,11 +16,16 @@
 #define ENDIANESS_LITTLE 1
 #define ENDIANESS_BIG    2
 
+#define SEEK_UNSET    0
+#define SEEK_FORWARD  1
+#define SEEK_BACKWARD 2
+
 #define min(x, y) ((x) < (y) ? (x) : (y))
 
 typedef struct PrintCmdArgs {
     int   width;
     int   endianess;
+    int   seek;
     u64_t n_els;
 } PrintCmdArgs;
 
@@ -30,13 +35,15 @@ static void printcmd_help(void* obj)
 {
     printf("\nprint: display the data at current offset in various formats\n"
            "\n"
-           "  p[/{x,w,d,q}/{le,be}] <nelements>\n"
+           "  p[/{x,w,d,q}/{le,be}/{+,-}] <nelements>\n"
            "     x:  hex output (default)\n"
            "     w:  words\n"
            "     d:  dwords\n"
            "     q:  qwords\n"
            "     le: little-endian (default)\n"
            "     be: big-endian\n"
+           "     +:  seek forward after printing\n"
+           "     -:  seek backwards after printing\n"
            "\n"
            "  nelements: the number of elements to display\n"
            "  (default: enough to display %d bytes)\n\n",
@@ -47,6 +54,7 @@ int printcmd_parse_args(ParsedCommand* pc, PrintCmdArgs* o_args)
 {
     o_args->width     = WIDTH_UNSET;
     o_args->endianess = ENDIANESS_UNSET;
+    o_args->seek      = SEEK_UNSET;
     o_args->n_els     = 0;
 
     LLNode* curr = pc->cmd_modifiers.head;
@@ -75,6 +83,14 @@ int printcmd_parse_args(ParsedCommand* pc, PrintCmdArgs* o_args)
             if (o_args->endianess != ENDIANESS_UNSET)
                 return COMMAND_INVALID_MODE;
             o_args->endianess = ENDIANESS_BIG;
+        } else if (strcmp((char*)curr->data, "+") == 0) {
+            if (o_args->seek != SEEK_UNSET)
+                return COMMAND_INVALID_MODE;
+            o_args->seek = SEEK_FORWARD;
+        } else if (strcmp((char*)curr->data, "-") == 0) {
+            if (o_args->seek != SEEK_UNSET)
+                return COMMAND_INVALID_MODE;
+            o_args->seek = SEEK_BACKWARD;
         } else {
             return COMMAND_UNSUPPORTED_MOD;
         }
@@ -230,6 +246,10 @@ static int printcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
             print_qwords(bytes, size, args.endianess == ENDIANESS_LITTLE);
             break;
     }
+    if (args.seek == SEEK_FORWARD && fb->off + size < fb->size)
+        fb_seek(fb, fb->off + size);
+    else if (args.seek == SEEK_BACKWARD && size <= fb->off)
+        fb_seek(fb, fb->off - size);
 
     return COMMAND_OK;
 }
