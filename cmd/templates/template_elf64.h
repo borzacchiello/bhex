@@ -1,7 +1,11 @@
 #ifndef TEMPLATE_ELF64_H
 #define TEMPLATE_ELF64_H
 
+#ifdef CPARSER
+#define __attribute__(x)
+#else
 #include "../../defs.h"
+#endif
 
 #define EI_NIDENT 16
 

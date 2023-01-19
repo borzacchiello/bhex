@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 import glob
+import os
 
 from pyclibrary import CParser
 
@@ -53,9 +54,9 @@ static void prettyprint_{struct_name}(const u8_t* data, size_t size, int le)
     if (size < sizeof_{struct_name}())
         return;
 
-    char* hexstr;
+    __attribute__((unused)) char* hexstr;
     const {struct_name}* s = (const {struct_name}*)data;
-    printf("{struct_name}:\\n");
+    printf("{struct_name}: (%lu)\\n", sizeof({struct_name}));
 
 {struct_el_code}
 }}
@@ -65,7 +66,7 @@ print_el_num_template = """    {{
         {el_type} v = le 
             ? {read_le}(&s->{el_name})
             : {read_be}(&s->{el_name});
-        printf("  %16s: {el_format}\\n", "{el_name}", v);
+        printf("  %{alignNum}s: {el_format}\\n", "{el_name}", v);
     }}
 """
 
@@ -73,15 +74,15 @@ print_el_num_with_hex_template = """    {{
         {el_type} v = le 
             ? {read_le}(&s->{el_name})
             : {read_be}(&s->{el_name});
-        printf("  %16s: {el_format_1} [{el_format_2}]\\n", "{el_name}", v, v);
+        printf("  %{alignNum}s: {el_format_1} [{el_format_2}]\\n", "{el_name}", v, v);
     }}
 """
 
-print_el_str_template = """    printf("  %16s: %s\\n", "{el_name}", s->{el_name});"""
+print_el_str_template = """    printf("  %{alignNum}s: %s\\n", "{el_name}", s->{el_name});"""
 
 print_el_array_template = \
-"""    hexstr = bytes_to_hex(s->{el_name}, sizeof(s->{el_name}));
-    printf("  %16s: %s\\n", "{el_name}", hexstr);
+"""    hexstr = bytes_to_hex((u8_t*)s->{el_name}, sizeof(s->{el_name}));
+    printf("  %{alignNum}s: %s\\n", "{el_name}", hexstr);
     free(hexstr);
 """
 
@@ -99,7 +100,7 @@ def get_read_functions_from_type_name(tname):
 def is_ambiguous_type(t):
     return t in {"unsigned long", "long", "void*", "uintptr_t"}
 
-def get_code_from_type(t, name):
+def get_code_from_type(t, name, alignNum):
     if len(t.declarators) != 0:
         # an array
         assert len(t.declarators) == 1
@@ -107,7 +108,7 @@ def get_code_from_type(t, name):
 
         # number of elements
         _ = t.declarators[0][0]
-        return print_el_array_template.format(el_name=name)
+        return print_el_array_template.format(alignNum=alignNum, el_name=name)
 
     spec = t.type_spec
     if spec.startswith("const"):
@@ -124,6 +125,7 @@ def get_code_from_type(t, name):
         if readle is None or readbe is None:
             return None
         return print_el_num_with_hex_template.format(
+            alignNum=alignNum,
             read_le=readle,
             read_be=readbe,
             el_type=t.type_spec,
@@ -134,6 +136,7 @@ def get_code_from_type(t, name):
         if readle is None or readbe is None:
             return None
         return print_el_num_with_hex_template.format(
+            alignNum=alignNum,
             read_le=readle,
             read_be=readbe,
             el_type=t.type_spec,
@@ -144,6 +147,7 @@ def get_code_from_type(t, name):
         if readle is None or readbe is None:
             return None
         return print_el_num_with_hex_template.format(
+            alignNum=alignNum,
             read_le=readle,
             read_be=readbe,
             el_type=t.type_spec,
@@ -154,6 +158,7 @@ def get_code_from_type(t, name):
         if readle is None or readbe is None:
             return None
         return print_el_num_with_hex_template.format(
+            alignNum=alignNum,
             read_le=readle,
             read_be=readbe,
             el_type=t.type_spec,
@@ -161,11 +166,14 @@ def get_code_from_type(t, name):
             el_format_2="0x%llx",
             el_name=name)
     elif t.type_spec in {"char*"}:
-        return print_el_str_template.format(el_name=name)
+        return print_el_str_template.format(
+            alignNum=alignNum,
+            el_name=name)
     elif t.type_spec in {"uintptr_t", "void*"}:
         if readle is None or readbe is None:
             return None
         return print_el_num_with_hex_template.format(
+            alignNum=alignNum,
             read_le=readle,
             read_be=readbe,
             el_type=t.type_spec,
@@ -177,16 +185,21 @@ def parse_structs(sources):
     functions_code = []
     template_array_code = []
 
-    for source_file in sources:
-        parser = CParser(["../../defs.h", source_file])
+    for source_file in sorted(sources):
+        os.system("gcc -DCPARSER=on -E %s > /tmp/src.c" % source_file)
+        parser = CParser(
+            ["../../defs.h", "/tmp/src.c"],
+            replace={"__attribute__((__packed__))": " "})
         structs = parser.defs["structs"]
 
         for struct_name in structs:
             struct = structs[struct_name]
             els_str = ""
+            max_len_name = \
+                max([len(x[0]) for x in struct.members])
             for member_name, t, _ in struct.members:
                 t = parser.eval_type(t)
-                code = get_code_from_type(t, member_name)
+                code = get_code_from_type(t, member_name, max_len_name)
                 if code is None:
                     print("WARNING: unable to process type", t)
                     continue
@@ -230,3 +243,6 @@ if __name__=="__main__":
 
     with open("template.h", "w") as fout:
         fout.write(h_code)
+
+    os.system("clang-format -i template.c")
+    os.system("clang-format -i template.h")
