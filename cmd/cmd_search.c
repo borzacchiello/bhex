@@ -69,8 +69,10 @@ static void search(FileBuffer* fb, const uint8_t* data, size_t size,
         }
         if (eq) {
             printf(" >> Match @ 0x%07llX\n", begin_addr);
-            if (seek_to_match)
-                orig_off = begin_addr;
+            if (seek_to_match) {
+                seek_to_match = 0;
+                orig_off      = begin_addr;
+            }
         }
 
         addr += 1;

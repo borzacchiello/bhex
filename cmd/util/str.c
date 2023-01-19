@@ -10,6 +10,12 @@
 int escape_char_to_byte(char c, u8_t* o_byte)
 {
     switch (c) {
+        case '0':
+            *o_byte = 0;
+            return ESCAPE_OK;
+        case 'r':
+            *o_byte = '\r';
+            return ESCAPE_OK;
         case 't':
             *o_byte = '\t';
             return ESCAPE_OK;
