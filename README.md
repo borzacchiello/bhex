@@ -88,16 +88,14 @@ search: search a string or a sequence of bytes in the file
 ### Strings
 
 ```
-[0x0000000] $ src?
+[0x0000000] $ str?
 
-search: search a string or a sequence of bytes in the file
+enumerate the strings in the file (i.e., sequences of printable ascii characters)
 
-  s[/{x, s}/sk] <data>
-     x:  data is an hex string
-     s:  data is a string (default)
-     sk: seek to first match
+  str[/n] <num>
+     n: look for null-terminated strings
 
-  data: either a string or an hex string
+  num: minimum length (default: 3)
 ```
 
 ### Template
