@@ -101,7 +101,8 @@ static int searchcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
             if (seek_to_match != SEEK_TO_MATCH_UNSET)
                 return COMMAND_INVALID_MODE;
             seek_to_match = SEEK_TO_MATCH_SET;
-        }
+        } else
+            return COMMAND_INVALID_MODE;
         curr = curr->next;
     }
 

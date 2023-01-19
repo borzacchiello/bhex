@@ -54,11 +54,8 @@ int main(int argc, char const* argv[])
         }
 
         r = cmdctx_run(cc, pc, fb);
-        if (r != COMMAND_OK) {
+        if (r != COMMAND_OK)
             printf("  !Err: %s\n", cmdctx_err_to_string(r));
-            bhex_free(inp);
-            continue;
-        }
 
         parsed_command_destroy(pc);
         bhex_free(inp);
