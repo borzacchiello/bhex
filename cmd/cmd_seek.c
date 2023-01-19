@@ -43,6 +43,8 @@ static int parse_seek_arg(SeekState* state, ParsedCommand* pc, SeekArg* o_arg)
 
     const char* p = (const char*)node->data;
     if (strcmp(p, "-") == 0) {
+        if (off_mode != OFF_ABSOLUTE)
+            return COMMAND_INVALID_MODE;
         o_arg->off = state->prev_off;
         return COMMAND_OK;
     }
