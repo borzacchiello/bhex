@@ -20,6 +20,9 @@
 #define SEEK_FORWARD  1
 #define SEEK_BACKWARD 2
 
+// must be lower than fb_block_size
+#define DEFAULT_PRINT_LEN 256
+
 #define min(x, y) ((x) < (y) ? (x) : (y))
 
 typedef struct PrintCmdArgs {
@@ -106,7 +109,7 @@ int printcmd_parse_args(ParsedCommand* pc, PrintCmdArgs* o_args)
         return COMMAND_INVALID_ARG;
 
     if (o_args->n_els == 0)
-        o_args->n_els = fb_block_size / o_args->width;
+        o_args->n_els = DEFAULT_PRINT_LEN / o_args->width;
 
     LLNode* arg = ll_getref(&pc->args, 0);
     if (!arg)

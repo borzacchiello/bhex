@@ -6,7 +6,7 @@
 
 #include "ll.h"
 
-#define fb_block_size 256
+#define fb_block_size 2046
 
 typedef struct Modification {
     u64_t  off;
@@ -23,10 +23,8 @@ typedef struct FileBuffer {
 
     LL modifications;
 
-    u8_t*  big_read;
-    size_t big_read_capacity;
-
     u8_t block[fb_block_size];
+    s8_t block_dirty;
 } FileBuffer;
 
 FileBuffer* filebuffer_create(const char* path);

@@ -82,7 +82,7 @@ static int seekcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 {
     SeekState* state = (SeekState*)obj;
 
-    SeekArg a;
+    SeekArg a = {0};
     int     r = parse_seek_arg(state, pc, &a);
     if (r != COMMAND_OK)
         return r;
