@@ -6,12 +6,17 @@
 #include "alloc.h"
 #include "log.h"
 
+#define MOD_TYPE_OVERWRITE 1
+#define MOD_TYPE_INSERT    2
+
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define max(x, y) ((x) > (y) ? (x) : (y))
 
+static u8_t tmp_block[fb_block_size];
+
 int fb_seek(FileBuffer* fb, u64_t off)
 {
-    if (off >= fb->size)
+    if (off > fb->size)
         return 1;
 
     fb->off         = off;
@@ -62,7 +67,7 @@ static void delete_modification(uptr_t o)
     bhex_free(mod);
 }
 
-int fb_add_modification(FileBuffer* fb, u8_t* data, size_t size)
+int fb_write(FileBuffer* fb, u8_t* data, size_t size)
 {
     if (fb->readonly)
         warning("the file was opened in read-only mode, thus you cannot commit "
@@ -72,8 +77,10 @@ int fb_add_modification(FileBuffer* fb, u8_t* data, size_t size)
         return 0;
 
     Modification* mod = bhex_malloc(sizeof(Modification));
+    mod->type         = MOD_TYPE_OVERWRITE;
     mod->data         = data;
     mod->off          = fb->off;
+    mod->end          = fb->off + size;
     mod->size         = size;
 
     ll_add(&fb->modifications, (uptr_t)mod);
@@ -81,11 +88,37 @@ int fb_add_modification(FileBuffer* fb, u8_t* data, size_t size)
     return 1;
 }
 
-int fb_remove_last_modification(FileBuffer* fb)
+int fb_insert(FileBuffer* fb, u8_t* data, size_t size)
+{
+    if (fb->readonly)
+        warning("the file was opened in read-only mode, thus you cannot commit "
+                "this modification");
+
+    Modification* mod = bhex_malloc(sizeof(Modification));
+    mod->type         = MOD_TYPE_INSERT;
+    mod->data         = data;
+    mod->off          = fb->off;
+    mod->end          = fb->off + fb->size + mod->size;
+    mod->size         = size;
+
+    ll_add(&fb->modifications, (uptr_t)mod);
+    fb->size += size;
+    fb->block_dirty = 1;
+    return 1;
+}
+
+int fb_undo_last(FileBuffer* fb)
 {
     LLNode* n = ll_pop(&fb->modifications);
     if (!n)
         return 0;
+
+    Modification* mod = (Modification*)n->data;
+    if (mod->type == MOD_TYPE_INSERT) {
+        fb->size -= mod->size;
+        if (fb->off >= fb->size)
+            fb_seek(fb, 0);
+    }
 
     delete_modification(n->data);
     bhex_free(n);
@@ -93,7 +126,54 @@ int fb_remove_last_modification(FileBuffer* fb)
     return 1;
 }
 
-void fb_commit_modifications(FileBuffer* fb)
+static void commit_write(FileBuffer* fb, Modification* mod)
+{
+    if (mod->type != MOD_TYPE_OVERWRITE)
+        panic("commit_write(): invalid type %d\n", mod->type);
+
+    if (fseek(fb->file, mod->off, SEEK_SET) < 0)
+        panic("commit_write(): fseek failed");
+    if (fwrite(mod->data, 1, mod->size, fb->file) != mod->size)
+        panic("commit_write(): fwrite failed");
+}
+
+static void commit_insert(FileBuffer* fb, Modification* mod)
+{
+    if (mod->type != MOD_TYPE_INSERT)
+        panic("commit_insert(): invalid type %d\n", mod->type);
+
+    if (fseek(fb->file, 0, SEEK_END) < 0)
+        panic("commit_insert(): fseek failed");
+    if (fwrite(mod->data, 1, mod->size, fb->file) != mod->size)
+        panic("commit_insert(): fwrite failed");
+    size_t fsize = ftell(fb->file);
+
+    s64_t off  = max((s64_t)mod->off, (s64_t)fsize - fb_block_size - mod->size);
+    s64_t size = min(fb_block_size, fsize - off - mod->size);
+    while (1) {
+        if (fseek(fb->file, off, SEEK_SET) < 0)
+            panic("commit_insert(): fseek failed [off: %llu]", off);
+        if (fread(tmp_block, 1, size, fb->file) != size)
+            panic("commit_insert(): fread failed");
+        if (fseek(fb->file, off + mod->size, SEEK_SET) < 0)
+            panic("commit_insert(): fseek failed [off: %llu]", off + mod->size);
+        if (fwrite(tmp_block, 1, size, fb->file) != size)
+            panic("commit_insert(): fwrite failed");
+
+        s64_t n_off = max((s64_t)mod->off, off - fb_block_size);
+        if (off == n_off)
+            break;
+        size = off - n_off;
+        off  = n_off;
+    }
+
+    if (fseek(fb->file, mod->off, SEEK_SET) < 0)
+        panic("commit_insert(): fseek failed [off: %llu]", mod->off);
+    if (fwrite(mod->data, 1, mod->size, fb->file) != mod->size)
+        panic("commit_insert(): fwrite failed");
+}
+
+void fb_commit(FileBuffer* fb)
 {
     if (fb->readonly) {
         warning("cannot commit, the file was opened in read-only mode");
@@ -107,10 +187,17 @@ void fb_commit_modifications(FileBuffer* fb)
     LLNode* curr = fb->modifications.head;
     while (curr) {
         Modification* mod = (Modification*)curr->data;
-        if (fseek(fb->file, mod->off, SEEK_SET) < 0)
-            panic("fseek failed");
-        if (fwrite(mod->data, 1, mod->size, fb->file) != mod->size)
-            panic("fwrite failed");
+        switch (mod->type) {
+            case MOD_TYPE_OVERWRITE:
+                commit_write(fb, mod);
+                break;
+            case MOD_TYPE_INSERT:
+                commit_insert(fb, mod);
+                break;
+            default:
+                warning("Unknown modification type: %d\n", mod->type);
+                break;
+        }
         curr = curr->next;
     }
     ll_clear(&fb->modifications, delete_modification);
@@ -124,56 +211,96 @@ static int overlaps(u64_t startA, u64_t endA, u64_t startB, u64_t endB)
     return startA <= endB && endA > startB;
 }
 
-static void fb_read_internal(FileBuffer* fb)
+static void fb_read_internal(FileBuffer* fb, u64_t addr, u64_t fsize, u64_t idx,
+                             int nmod)
 {
-    static u8_t  tmp_block[fb_block_size];
-    static s8_t  block_map[fb_block_size];
-    static u32_t block_map_nset;
+    static s8_t block_map[fb_block_size];
 
-    memset(block_map, 0, sizeof(block_map));
-    block_map_nset = 0;
+    if (idx == 0)
+        memset(block_map, 0, sizeof(block_map));
 
-    u64_t  seek_off = fb->off;
-    size_t size     = min(fb_block_size, fb->size - seek_off);
+    size_t size = min(fb_block_size - idx, fsize - addr);
 
+    int     n    = 0;
     LLNode* curr = fb->modifications.head;
+    while (curr && n < nmod) {
+        curr = curr->next;
+        n += 1;
+    }
+    if (n != nmod) {
+        warning("fb_read_internal(): invalid value of nmod");
+        return;
+    }
+
     while (curr) {
         Modification* mod = (Modification*)curr->data;
-        if (overlaps(mod->off, mod->off + mod->size, seek_off,
-                     seek_off + size)) {
+        if (overlaps(mod->off, mod->end, addr, addr + size)) {
             // The modification overlaps
-            u64_t start = max(mod->off, seek_off);
-            u64_t end   = min(mod->off + mod->size, seek_off + size);
+            u64_t start = max(mod->off, addr);
+            u64_t end   = min(mod->end, addr + size);
             u64_t off;
             for (off = start; off < end; ++off) {
-                if (block_map[off - seek_off])
+                if (block_map[off - addr + idx])
                     continue;
-                fb->block[off - seek_off] = mod->data[off - mod->off];
-                block_map[off - seek_off] = 1;
-                block_map_nset += 1;
+
+                if (mod->type == MOD_TYPE_OVERWRITE) {
+                    // Modify the block according to the modification
+                    fb->block[off - addr + idx] = mod->data[off - mod->off];
+                    block_map[off - addr + idx] = 1;
+                } else if (mod->type == MOD_TYPE_INSERT) {
+                    if (off < mod->off + mod->size) {
+                        // Get the data from the insertion
+                        fb->block[off - addr + idx] = mod->data[off - mod->off];
+                        block_map[off - addr + idx] = 1;
+                        size -= 1;
+                    } else {
+                        // To get the data past the insertion, read starting
+                        // from the *next* modification with a shift equal to
+                        // the size of the insertion
+                        u64_t n_addr = off - mod->size;
+                        u64_t n_size = fsize - mod->size;
+                        u64_t n_idx  = off - addr + idx;
+                        fb_read_internal(fb, n_addr, n_size, n_idx, n + 1);
+
+                        size = n_idx;
+                        if (size > mod->size)
+                            size -= mod->size;
+                        else
+                            size = 0;
+                        break;
+                    }
+                }
             }
         }
-        if (block_map_nset == fb_block_size)
+        if (size == 0)
             break;
 
         curr = curr->next;
+        n += 1;
     }
 
-    if (block_map_nset == fb_block_size)
+    u64_t i;
+    int   should_read = 0;
+    for (i = 0; i < size; ++i) {
+        if (!block_map[i + idx]) {
+            should_read = 1;
+            break;
+        }
+    }
+    if (!should_read)
         return;
 
     // We have to read the file
-    if (fseek(fb->file, seek_off, SEEK_SET) < 0)
+    if (fseek(fb->file, addr, SEEK_SET) < 0)
         panic("fseek failed");
-    if (fread(tmp_block, 1, fb_block_size, fb->file) !=
-        min(fb_block_size, fb->size - seek_off)) {
-        panic("unable to read bytes in fb_read_internal, off=%llu", seek_off);
+    if (fread(tmp_block, 1, size, fb->file) != size) {
+        panic("unable to read bytes in fb_read_internal, off=0x%llx", addr);
     }
-    u64_t i;
-    for (i = 0; i < fb_block_size; ++i) {
-        if (block_map[i])
+    for (i = 0; i < size; ++i) {
+        if (block_map[i + idx])
             continue;
-        fb->block[i] = tmp_block[i];
+        fb->block[i + idx] = tmp_block[i];
+        block_map[i + idx] = 1;
     }
 }
 
@@ -182,7 +309,7 @@ const u8_t* fb_read(FileBuffer* fb, size_t size)
     if (size > fb_block_size) {
         // FIXME: this case could be useful, maybe implement it using a dynamic
         //        buffer
-        warning("You cannot read more than %lu bytes", size);
+        warning("You cannot read more than %lu bytes", fb_block_size);
         return NULL;
     }
     if (size + fb->off > fb->size) {
@@ -191,7 +318,7 @@ const u8_t* fb_read(FileBuffer* fb, size_t size)
     }
 
     if (fb->block_dirty)
-        fb_read_internal(fb);
+        fb_read_internal(fb, fb->off, fb->size, 0, 0);
     fb->block_dirty = 0;
     return (const u8_t*)fb->block;
 }

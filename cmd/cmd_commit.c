@@ -16,7 +16,7 @@ static int commitcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     if (pc->cmd_modifiers.size != 0)
         return COMMAND_UNSUPPORTED_MOD;
 
-    fb_commit_modifications(fb);
+    fb_commit(fb);
     return COMMAND_OK;
 }
 

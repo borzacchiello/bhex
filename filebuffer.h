@@ -6,10 +6,12 @@
 
 #include "ll.h"
 
-#define fb_block_size 2046
+#define fb_block_size 2048
 
 typedef struct Modification {
+    s8_t   type;
     u64_t  off;
+    u64_t  end;
     u8_t*  data;
     size_t size;
 } Modification;
@@ -19,7 +21,7 @@ typedef struct FileBuffer {
     FILE* file;
     u64_t off;
     u64_t size;
-    int   readonly;
+    s8_t  readonly;
 
     LL modifications;
 
@@ -31,9 +33,10 @@ FileBuffer* filebuffer_create(const char* path);
 void        filebuffer_destroy(FileBuffer* fb);
 
 int  fb_seek(FileBuffer* fb, u64_t off);
-int  fb_add_modification(FileBuffer* fb, u8_t* data, size_t size);
-int  fb_remove_last_modification(FileBuffer* fb);
-void fb_commit_modifications(FileBuffer* fb);
+int  fb_write(FileBuffer* fb, u8_t* data, size_t size);
+int  fb_insert(FileBuffer* fb, u8_t* data, size_t size);
+int  fb_undo_last(FileBuffer* fb);
+void fb_commit(FileBuffer* fb);
 
 // Calling this API two times will invalidate the old buffer
 const u8_t* fb_read(FileBuffer* fb, size_t size);

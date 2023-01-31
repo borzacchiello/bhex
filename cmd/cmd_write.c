@@ -23,13 +23,14 @@
 typedef struct WriteArg {
     u8_t*  data;
     size_t size;
+    int    insert;
 } WriteArg;
 
 static void writecmd_help(void* obj)
 {
     printf("\nwrite: write data at current offset\n"
            "\n"
-           "  w[{s,x,b,w,d,q}/{le,be}/u] <data>\n"
+           "  w[{s,x,b,w,d,q}/{le,be}/u/i] <data>\n"
            "     s:   string input (default)\n"
            "     x:   hex input\n"
            "     b:   byte\n"
@@ -39,6 +40,7 @@ static void writecmd_help(void* obj)
            "     le:  little-endian (default)\n"
            "     be:  big-endian\n"
            "     u:   unsigned\n"
+           "     i:   insert\n"
            "\n"
            "  data: the data to write. The format depends on the type of \n"
            "        write. Here there are some examples:\n"
@@ -53,6 +55,7 @@ static int parse_write_arg(ParsedCommand* pc, WriteArg* o_arg)
     int input_type = INPUT_TYPE_UNSET;
     int endiness   = ENDIANESS_UNSET;
     int unsign     = 0;
+    int insert     = 0;
 
     LLNode* curr = pc->cmd_modifiers.head;
     while (curr) {
@@ -92,6 +95,10 @@ static int parse_write_arg(ParsedCommand* pc, WriteArg* o_arg)
             if (unsign)
                 return COMMAND_INVALID_MODE;
             unsign = 1;
+        } else if (strcmp((char*)curr->data, "i") == 0) {
+            if (insert)
+                return COMMAND_INVALID_MODE;
+            insert = 1;
         } else {
             return COMMAND_UNSUPPORTED_MOD;
         }
@@ -199,6 +206,8 @@ static int parse_write_arg(ParsedCommand* pc, WriteArg* o_arg)
             }
             break;
     }
+
+    o_arg->insert = insert;
     return COMMAND_OK;
 }
 
@@ -211,9 +220,13 @@ static int writecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     if (r != COMMAND_OK)
         return r;
 
-    if (!fb_add_modification(fb, arg.data, arg.size)) {
-        warning("unable to write: the data exceeds the size of the file");
-        return COMMAND_INVALID_ARG;
+    if (arg.insert) {
+        fb_insert(fb, arg.data, arg.size);
+    } else {
+        if (!fb_write(fb, arg.data, arg.size)) {
+            warning("unable to write: the data exceeds the size of the file");
+            return COMMAND_INVALID_ARG;
+        }
     }
     return COMMAND_OK;
 }

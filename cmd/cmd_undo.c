@@ -14,7 +14,7 @@ static int undocmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     if (pc->cmd_modifiers.size != 0)
         return COMMAND_UNSUPPORTED_MOD;
 
-    if (!fb_remove_last_modification(fb))
+    if (!fb_undo_last(fb))
         warning("nothing to remove");
     return COMMAND_OK;
 }

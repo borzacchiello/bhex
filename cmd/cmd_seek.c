@@ -70,8 +70,7 @@ static void seekcmd_help(void* obj)
         "\nseek: change current offset\n"
         "  s[/{+,-}] <off>\n"
         "    +: sum 'off' to current offset (wrap if greater than filesize)\n"
-        "    -: subtract 'off' to current offset (wrap if greater than "
-        "filesize)\n"
+        "    -: subtract 'off' to current offset (wrap if lower than zero)\n"
         "\n"
         "  off: can be either a number or the character '-'.\n"
         "       In the latter case seek to the offset before the last seek.\n"
@@ -88,15 +87,15 @@ static int seekcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
         return r;
 
     if (a.off_mode == OFF_SUM)
-        a.off = (a.off + fb->off) % fb->size;
+        a.off = (a.off + fb->off) % (fb->size + 1);
     else if (a.off_mode == OFF_SUB) {
         if (a.off > fb->off)
-            a.off = fb->size - min(fb->size, a.off);
+            a.off = fb->size + 1 - min(fb->size, a.off);
         else
-            a.off = (fb->off - a.off) % fb->size;
+            a.off = (fb->off - a.off) % (fb->size + 1);
     }
 
-    if (a.off >= fb->size) {
+    if (a.off > fb->size) {
         warning("trying to seek (%llu) after the size of the file (%llu)\n",
                 a.off, fb->size);
         return COMMAND_INVALID_ARG;

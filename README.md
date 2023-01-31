@@ -15,6 +15,7 @@ Minimalistic and lightweight shell-based hex editor that runs everywhere (or at 
 Supported features:
 - print file content in various format;
 - write data overwriting the content of the file;
+- insert data into the file;
 - undo writes until _committed_;
 - enumerate (ascii) strings;
 - search strings or binary data.
@@ -36,7 +37,7 @@ $ make
 
 Every command has the following structure:
 ```
-$ command_name\mod1\mod2\mod3\... arg1 arg2 ...
+$ command_name/mod1/mod2/mod3/... arg1 arg2 ...
 ```
 
 where the _modifiers_ (e.g. mod1) are optional parameters of the command.
@@ -127,7 +128,7 @@ Available templates:
 seek: change current offset
   s[/{+,-}] <off>
     +: sum 'off' to current offset (wrap if greater than filesize)
-    -: subtract 'off' to current offset (wrap if greater than filesize)
+    -: subtract 'off' to current offset (wrap if lower than zero)
 
   off: can be either a number or the character '-'.
        In the latter case seek to the offset before the last seek.
@@ -161,7 +162,7 @@ print: display the data at current offset in various formats
 
 write: write data at current offset
 
-  w[{s,x,b,w,d,q}/{le,be}/u] <data>
+  w[{s,x,b,w,d,q}/{le,be}/u/i] <data>
      s:   string input (default)
      x:   hex input
      b:   byte
@@ -171,8 +172,9 @@ write: write data at current offset
      le:  little-endian (default)
      be:  big-endian
      u:   unsigned
+     i:   insert
 
-  data: the data to write. The format depends on the type of
+  data: the data to write. The format depends on the type of 
         write. Here there are some examples:
             w/x "00 01 02 03"
             w/s "a string"

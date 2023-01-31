@@ -233,6 +233,8 @@ static int printcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 
     size_t      size  = min(args.n_els * args.width, fb->size - fb->off);
     const u8_t* bytes = fb_read(fb, size);
+    if (!bytes)
+        return COMMAND_INVALID_ARG;
 
     switch (args.width) {
         case WIDTH_UNSET:
