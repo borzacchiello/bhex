@@ -57,6 +57,8 @@ static int parse_write_arg(ParsedCommand* pc, WriteArg* o_arg)
     int unsign     = 0;
     int insert     = 0;
 
+    o_arg->data = NULL;
+
     LLNode* curr = pc->cmd_modifiers.head;
     while (curr) {
         if (strcmp((char*)curr->data, "s") == 0) {
@@ -217,14 +219,17 @@ static int writecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 {
     WriteArg arg;
     int      r = parse_write_arg(pc, &arg);
-    if (r != COMMAND_OK)
+    if (r != COMMAND_OK) {
+        bhex_free(arg.data);
         return r;
+    }
 
     if (arg.insert) {
         fb_insert(fb, arg.data, arg.size);
     } else {
         if (!fb_write(fb, arg.data, arg.size)) {
             warning("unable to write: the data exceeds the size of the file");
+            bhex_free(arg.data);
             return COMMAND_INVALID_ARG;
         }
     }
