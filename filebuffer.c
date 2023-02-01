@@ -343,12 +343,9 @@ static void fb_read_internal(FileBuffer* fb, u64_t addr, u64_t fsize, u64_t idx,
                         u64_t n_size = fsize - mod->size;
                         u64_t n_idx  = off - addr + idx;
                         fb_read_internal(fb, n_addr, n_size, n_idx, n + 1);
-
-                        size = n_idx;
-                        if (size > mod->size)
-                            size -= mod->size;
-                        else
-                            size = 0;
+                        u64_t i;
+                        for (i = n_idx; i < size; ++i)
+                            block_map[i] = 1;
                         break;
                     }
                 } else if (mod->type == MOD_TYPE_DELETE) {
@@ -358,12 +355,9 @@ static void fb_read_internal(FileBuffer* fb, u64_t addr, u64_t fsize, u64_t idx,
                     u64_t n_size = fsize - mod->size;
                     u64_t n_idx  = off - addr + idx;
                     fb_read_internal(fb, n_addr, n_size, n_idx, n + 1);
-
-                    size = n_idx;
-                    if (size > mod->size)
-                        size -= mod->size;
-                    else
-                        size = 0;
+                    u64_t i;
+                    for (i = n_idx; i < size; ++i)
+                        block_map[i] = 1;
                     break;
                 }
             }
@@ -378,6 +372,8 @@ static void fb_read_internal(FileBuffer* fb, u64_t addr, u64_t fsize, u64_t idx,
     u64_t i;
     int   should_read = 0;
     for (i = 0; i < size; ++i) {
+        if (i + idx >= fb->size)
+            break;
         if (!block_map[i + idx]) {
             should_read = 1;
             break;
