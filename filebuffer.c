@@ -105,8 +105,8 @@ int fb_insert(FileBuffer* fb, u8_t* data, size_t size)
     mod->type         = MOD_TYPE_INSERT;
     mod->data         = data;
     mod->off          = fb->off;
-    mod->end          = fb->off + fb->size + mod->size;
     mod->size         = size;
+    mod->end          = fb->off + fb->size + mod->size;
 
     ll_add(&fb->modifications, (uptr_t)mod);
     fb->size += size;
@@ -192,9 +192,12 @@ static void commit_insert(FileBuffer* fb, Modification* mod)
         panic("commit_insert(): fwrite failed");
     size_t fsize = ftell(fb->file);
 
-    s64_t off  = max((s64_t)mod->off, (s64_t)fsize - fb_block_size - mod->size);
+    s64_t off =
+        max((s64_t)mod->off, (s64_t)(fsize - fb_block_size - mod->size));
     s64_t size = min(fb_block_size, fsize - off - mod->size);
     while (1) {
+        if (size == 0)
+            break;
         if (fseek(fb->file, off, SEEK_SET) < 0)
             panic("commit_insert(): fseek failed [off: %llu]", off);
         if (fread(tmp_block, 1, size, fb->file) != size)
@@ -380,14 +383,15 @@ static void fb_read_internal(FileBuffer* fb, u64_t addr, u64_t fsize, u64_t idx,
             break;
         }
     }
-    if (!should_read)
+    if (size == 0 || !should_read)
         return;
 
     // We have to read the file
     if (fseek(fb->file, addr, SEEK_SET) < 0)
         panic("fseek failed @ 0x%llx", addr);
     if (fread(tmp_block, 1, size, fb->file) != size) {
-        panic("unable to read bytes in fb_read_internal, off=0x%llx", addr);
+        panic("unable to read bytes in fb_read_internal, off=0x%llx, size=%ld",
+              addr, size);
     }
     for (i = 0; i < size; ++i) {
         if (block_map[i + idx])
