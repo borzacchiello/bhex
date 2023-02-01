@@ -21,6 +21,7 @@ set(src
     cmd/cmd_strings.c
     cmd/cmd_info.c
     cmd/cmd_write.c
+    cmd/cmd_delete.c
     cmd/cmd_print.c
     cmd/cmd_seek.c
     cmd/cmd_undo.c

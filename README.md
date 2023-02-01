@@ -60,6 +60,7 @@ Available commands:
     seek [s]
     print [p]
     write [w]
+    delete [d]
     undo [u]
     commit [c]
 ```
@@ -179,6 +180,16 @@ write: write data at current offset
             w/x "00 01 02 03"
             w/s "a string"
             w/q/be 0x1234
+```
+
+### Delete
+
+```
+[0x0000000] $ d?
+
+delete: delete bytes at current offset
+
+  d <len>
 ```
 
 ### Undo

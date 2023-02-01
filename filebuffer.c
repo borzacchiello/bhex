@@ -1,4 +1,5 @@
 #include <string.h>
+#include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
 
@@ -8,6 +9,7 @@
 
 #define MOD_TYPE_OVERWRITE 1
 #define MOD_TYPE_INSERT    2
+#define MOD_TYPE_DELETE    3
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define max(x, y) ((x) > (y) ? (x) : (y))
@@ -94,6 +96,11 @@ int fb_insert(FileBuffer* fb, u8_t* data, size_t size)
         warning("the file was opened in read-only mode, thus you cannot commit "
                 "this modification");
 
+    if (size > fb_block_size) {
+        warning("cannot insert more than %lu bytes", fb_block_size);
+        return 0;
+    }
+
     Modification* mod = bhex_malloc(sizeof(Modification));
     mod->type         = MOD_TYPE_INSERT;
     mod->data         = data;
@@ -103,6 +110,41 @@ int fb_insert(FileBuffer* fb, u8_t* data, size_t size)
 
     ll_add(&fb->modifications, (uptr_t)mod);
     fb->size += size;
+    fb->block_dirty = 1;
+    return 1;
+}
+
+int fb_delete(FileBuffer* fb, size_t size)
+{
+    if (fb->readonly)
+        warning("the file was opened in read-only mode, thus you cannot commit "
+                "this modification");
+
+    if (fb->size - fb->off < size) {
+        warning("not enough data to delete");
+        return 0;
+    }
+
+    while (size > fb_block_size) {
+        Modification* mod = bhex_malloc(sizeof(Modification));
+        mod->type         = MOD_TYPE_DELETE;
+        mod->data         = NULL;
+        mod->off          = fb->off;
+        mod->end          = fb->off + fb->size - fb_block_size;
+        mod->size         = fb_block_size;
+        ll_add(&fb->modifications, (uptr_t)mod);
+
+        size -= fb_block_size;
+    }
+    Modification* mod = bhex_malloc(sizeof(Modification));
+    mod->type         = MOD_TYPE_DELETE;
+    mod->data         = NULL;
+    mod->off          = fb->off;
+    mod->end          = fb->off + fb->size - size;
+    mod->size         = size;
+    ll_add(&fb->modifications, (uptr_t)mod);
+
+    fb->size -= size;
     fb->block_dirty = 1;
     return 1;
 }
@@ -118,6 +160,8 @@ int fb_undo_last(FileBuffer* fb)
         fb->size -= mod->size;
         if (fb->off >= fb->size)
             fb_seek(fb, 0);
+    } else if (mod->type == MOD_TYPE_DELETE) {
+        fb->size += mod->size;
     }
 
     delete_modification(n->data);
@@ -173,6 +217,38 @@ static void commit_insert(FileBuffer* fb, Modification* mod)
         panic("commit_insert(): fwrite failed");
 }
 
+static void commit_delete(FileBuffer* fb, Modification* mod)
+{
+    if (mod->type != MOD_TYPE_DELETE)
+        panic("commit_delete(): invalid type %d\n", mod->type);
+
+    if (fseek(fb->file, 0, SEEK_END) < 0)
+        panic("commit_delete(): fseek failed");
+    size_t fsize = ftell(fb->file);
+
+    s64_t off  = mod->off + mod->size;
+    s64_t size = min(fb_block_size, fsize - off);
+    while (1) {
+        if (fseek(fb->file, off, SEEK_SET) < 0)
+            panic("commit_delete(): fseek failed [off: %llu]", off);
+        if (fread(tmp_block, 1, size, fb->file) != size)
+            panic("commit_delete(): fread failed");
+        if (fseek(fb->file, off - mod->size, SEEK_SET) < 0)
+            panic("commit_delete(): fseek failed [off: %llu]", off - mod->size);
+        if (fwrite(tmp_block, 1, size, fb->file) != size)
+            panic("commit_delete(): fwrite failed");
+
+        s64_t n_off = off + size;
+        if (n_off >= fsize)
+            break;
+        off  = n_off;
+        size = min(fb_block_size, fsize - off);
+    }
+
+    if (ftruncate(fileno(fb->file), fsize - mod->size) < 0)
+        panic("commit_delete(): ftruncate failed");
+}
+
 void fb_commit(FileBuffer* fb)
 {
     if (fb->readonly) {
@@ -193,6 +269,9 @@ void fb_commit(FileBuffer* fb)
                 break;
             case MOD_TYPE_INSERT:
                 commit_insert(fb, mod);
+                break;
+            case MOD_TYPE_DELETE:
+                commit_delete(fb, mod);
                 break;
             default:
                 warning("Unknown modification type: %d\n", mod->type);
@@ -269,6 +348,20 @@ static void fb_read_internal(FileBuffer* fb, u64_t addr, u64_t fsize, u64_t idx,
                             size = 0;
                         break;
                     }
+                } else if (mod->type == MOD_TYPE_DELETE) {
+                    // Get the data by reading with a shift equal to the number
+                    // of bytes deleted
+                    u64_t n_addr = off + mod->size;
+                    u64_t n_size = fsize - mod->size;
+                    u64_t n_idx  = off - addr + idx;
+                    fb_read_internal(fb, n_addr, n_size, n_idx, n + 1);
+
+                    size = n_idx;
+                    if (size > mod->size)
+                        size -= mod->size;
+                    else
+                        size = 0;
+                    break;
                 }
             }
         }
@@ -292,7 +385,7 @@ static void fb_read_internal(FileBuffer* fb, u64_t addr, u64_t fsize, u64_t idx,
 
     // We have to read the file
     if (fseek(fb->file, addr, SEEK_SET) < 0)
-        panic("fseek failed");
+        panic("fseek failed @ 0x%llx", addr);
     if (fread(tmp_block, 1, size, fb->file) != size) {
         panic("unable to read bytes in fb_read_internal, off=0x%llx", addr);
     }

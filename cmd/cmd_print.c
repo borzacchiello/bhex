@@ -50,7 +50,7 @@ static void printcmd_help(void* obj)
            "\n"
            "  nelements: the number of elements to display\n"
            "  (default: enough to display %d bytes)\n\n",
-           fb_block_size);
+           DEFAULT_PRINT_LEN);
 }
 
 int printcmd_parse_args(ParsedCommand* pc, PrintCmdArgs* o_args)

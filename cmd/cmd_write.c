@@ -225,10 +225,12 @@ static int writecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     }
 
     if (arg.insert) {
-        fb_insert(fb, arg.data, arg.size);
+        if (!fb_insert(fb, arg.data, arg.size)) {
+            bhex_free(arg.data);
+            return COMMAND_INVALID_ARG;
+        }
     } else {
         if (!fb_write(fb, arg.data, arg.size)) {
-            warning("unable to write: the data exceeds the size of the file");
             bhex_free(arg.data);
             return COMMAND_INVALID_ARG;
         }

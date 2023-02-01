@@ -35,6 +35,7 @@ void        filebuffer_destroy(FileBuffer* fb);
 int  fb_seek(FileBuffer* fb, u64_t off);
 int  fb_write(FileBuffer* fb, u8_t* data, size_t size);
 int  fb_insert(FileBuffer* fb, u8_t* data, size_t size);
+int  fb_delete(FileBuffer* fb, size_t size);
 int  fb_undo_last(FileBuffer* fb);
 void fb_commit(FileBuffer* fb);
 

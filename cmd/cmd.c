@@ -7,6 +7,7 @@
 #include "cmd_print.h"
 #include "cmd_seek.h"
 #include "cmd_write.h"
+#include "cmd_delete.h"
 #include "cmd_undo.h"
 #include "cmd_commit.h"
 #include "cmd_template.h"
@@ -43,6 +44,7 @@ CmdContext* cmdctx_init()
 
     ll_add(&cc->commands, (uptr_t)commitcmd_create());
     ll_add(&cc->commands, (uptr_t)undocmd_create());
+    ll_add(&cc->commands, (uptr_t)deletecmd_create());
     ll_add(&cc->commands, (uptr_t)writecmd_create());
     ll_add(&cc->commands, (uptr_t)printcmd_create());
     ll_add(&cc->commands, (uptr_t)seekcmd_create());
