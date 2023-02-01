@@ -23,7 +23,7 @@ static void stringscmd_help(void* obj)
            "\n");
 }
 
-static int is_printable_ascii(uint8_t v) { return v >= 0x21 && v <= 0x7e; }
+static int is_printable_ascii(uint8_t v) { return v >= 0x20 && v <= 0x7e; }
 
 static void print_strings(FileBuffer* fb, size_t min_length,
                           int null_terminated)
