@@ -106,7 +106,7 @@ int fb_insert(FileBuffer* fb, u8_t* data, size_t size)
     mod->data         = data;
     mod->off          = fb->off;
     mod->size         = size;
-    mod->end          = fb->off + fb->size + mod->size;
+    mod->end          = fb->size + mod->size;
 
     ll_add(&fb->modifications, (uptr_t)mod);
     fb->size += size;
@@ -130,17 +130,18 @@ int fb_delete(FileBuffer* fb, size_t size)
         mod->type         = MOD_TYPE_DELETE;
         mod->data         = NULL;
         mod->off          = fb->off;
-        mod->end          = fb->off + fb->size - fb_block_size;
+        mod->end          = fb->size;
         mod->size         = fb_block_size;
         ll_add(&fb->modifications, (uptr_t)mod);
 
+        fb->size -= fb_block_size;
         size -= fb_block_size;
     }
     Modification* mod = bhex_malloc(sizeof(Modification));
     mod->type         = MOD_TYPE_DELETE;
     mod->data         = NULL;
     mod->off          = fb->off;
-    mod->end          = fb->off + fb->size - size;
+    mod->end          = fb->size;
     mod->size         = size;
     ll_add(&fb->modifications, (uptr_t)mod);
 
@@ -352,7 +353,7 @@ static void fb_read_internal(FileBuffer* fb, u64_t addr, u64_t fsize, u64_t idx,
                     // Get the data by reading with a shift equal to the number
                     // of bytes deleted
                     u64_t n_addr = off + mod->size;
-                    u64_t n_size = fsize - mod->size;
+                    u64_t n_size = fsize + mod->size;
                     u64_t n_idx  = off - addr + idx;
                     fb_read_internal(fb, n_addr, n_size, n_idx, n + 1);
                     u64_t i;
