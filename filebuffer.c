@@ -1,3 +1,4 @@
+#include <sys/stat.h>
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -15,6 +16,53 @@
 #define max(x, y) ((x) > (y) ? (x) : (y))
 
 static u8_t tmp_block[fb_block_size];
+
+static int was_file_modified(const char* path, time_t prev_time,
+                             time_t* new_time)
+{
+    struct stat file_stat;
+    int         err = stat(path, &file_stat);
+    if (err != 0)
+        panic("unable to stat file %s", path);
+
+    *new_time = file_stat.st_mtime;
+    return file_stat.st_mtime != prev_time;
+}
+
+static int fb_reload(FileBuffer* fb)
+{
+    fb_undo_all(fb);
+
+    if (fseek(fb->file, 0, SEEK_END) < 0) {
+        warning("fb_reload(): fseek failed");
+        return 0;
+    }
+
+    long filelen = ftell(fb->file);
+    if (filelen < 0) {
+        warning("fb_reload(): ftell failed");
+        return 0;
+    }
+    fb->size = filelen;
+
+    was_file_modified(fb->path, 0, &fb->mod_time);
+    return 1;
+}
+
+static void fb_modified_check(FileBuffer* fb)
+{
+    // This function checks whether the file was modified.
+    // If so it reloads it deleting all the modifications
+
+    time_t new_time;
+    if (was_file_modified(fb->path, fb->mod_time, &new_time)) {
+        warning("the file was modified outside bhex, reloading it loosing all "
+                "the uncommitted modifications (sorry)");
+        if (!fb_reload(fb))
+            panic("unable to reload the file");
+        fb->mod_time = new_time;
+    }
+}
 
 int fb_seek(FileBuffer* fb, u64_t off)
 {
@@ -59,6 +107,7 @@ FileBuffer* filebuffer_create(const char* path)
 
     if (fb_seek(fb, 0) != 0)
         panic("fseek failed");
+    was_file_modified(fb->path, 0, &fb->mod_time);
     return fb;
 }
 
@@ -71,6 +120,7 @@ static void delete_modification(uptr_t o)
 
 int fb_write(FileBuffer* fb, u8_t* data, size_t size)
 {
+    fb_modified_check(fb);
     if (fb->readonly)
         warning("the file was opened in read-only mode, thus you cannot commit "
                 "this modification");
@@ -92,6 +142,7 @@ int fb_write(FileBuffer* fb, u8_t* data, size_t size)
 
 int fb_insert(FileBuffer* fb, u8_t* data, size_t size)
 {
+    fb_modified_check(fb);
     if (fb->readonly)
         warning("the file was opened in read-only mode, thus you cannot commit "
                 "this modification");
@@ -116,6 +167,7 @@ int fb_insert(FileBuffer* fb, u8_t* data, size_t size)
 
 int fb_delete(FileBuffer* fb, size_t size)
 {
+    fb_modified_check(fb);
     if (fb->readonly)
         warning("the file was opened in read-only mode, thus you cannot commit "
                 "this modification");
@@ -171,27 +223,46 @@ int fb_undo_last(FileBuffer* fb)
     return 1;
 }
 
-static void commit_write(FileBuffer* fb, Modification* mod)
+void fb_undo_all(FileBuffer* fb)
+{
+    while (fb_undo_last(fb))
+        ;
+}
+
+static int commit_write(FileBuffer* fb, Modification* mod)
 {
     if (mod->type != MOD_TYPE_OVERWRITE)
         panic("commit_write(): invalid type %d\n", mod->type);
 
-    if (fseek(fb->file, mod->off, SEEK_SET) < 0)
-        panic("commit_write(): fseek failed");
-    if (fwrite(mod->data, 1, mod->size, fb->file) != mod->size)
-        panic("commit_write(): fwrite failed");
+    if (fseek(fb->file, mod->off, SEEK_SET) < 0) {
+        warning("commit_write(): fseek failed");
+        return 0;
+    }
+    if (fwrite(mod->data, 1, mod->size, fb->file) != mod->size) {
+        warning("commit_write(): fwrite failed");
+        return 0;
+    }
+    return 1;
 }
 
-static void commit_insert(FileBuffer* fb, Modification* mod)
+static int commit_insert(FileBuffer* fb, Modification* mod)
 {
     if (mod->type != MOD_TYPE_INSERT)
         panic("commit_insert(): invalid type %d\n", mod->type);
 
-    if (fseek(fb->file, 0, SEEK_END) < 0)
-        panic("commit_insert(): fseek failed");
-    if (fwrite(mod->data, 1, mod->size, fb->file) != mod->size)
-        panic("commit_insert(): fwrite failed");
-    size_t fsize = ftell(fb->file);
+    if (fseek(fb->file, 0, SEEK_END) < 0) {
+        warning("commit_insert(): fseek failed");
+        return 0;
+    }
+    if (fwrite(mod->data, 1, mod->size, fb->file) != mod->size) {
+        warning("commit_insert(): fwrite failed");
+        return 0;
+    }
+    ssize_t fsize = ftell(fb->file);
+    if (fsize < 0) {
+        warning("commit_insert(): ftell failed");
+        return 0;
+    }
 
     s64_t off =
         max((s64_t)mod->off, (s64_t)(fsize - fb_block_size - mod->size));
@@ -199,14 +270,23 @@ static void commit_insert(FileBuffer* fb, Modification* mod)
     while (1) {
         if (size == 0)
             break;
-        if (fseek(fb->file, off, SEEK_SET) < 0)
-            panic("commit_insert(): fseek failed [off: %llu]", off);
-        if (fread(tmp_block, 1, size, fb->file) != size)
-            panic("commit_insert(): fread failed");
-        if (fseek(fb->file, off + mod->size, SEEK_SET) < 0)
-            panic("commit_insert(): fseek failed [off: %llu]", off + mod->size);
-        if (fwrite(tmp_block, 1, size, fb->file) != size)
-            panic("commit_insert(): fwrite failed");
+        if (fseek(fb->file, off, SEEK_SET) < 0) {
+            warning("commit_insert(): fseek failed [off: %llu]", off);
+            return 0;
+        }
+        if (fread(tmp_block, 1, size, fb->file) != size) {
+            warning("commit_insert(): fread failed");
+            return 0;
+        }
+        if (fseek(fb->file, off + mod->size, SEEK_SET) < 0) {
+            warning("commit_insert(): fseek failed [off: %llu]",
+                    off + mod->size);
+            return 0;
+        }
+        if (fwrite(tmp_block, 1, size, fb->file) != size) {
+            warning("commit_insert(): fwrite failed");
+            return 0;
+        }
 
         s64_t n_off = max((s64_t)mod->off, off - fb_block_size);
         if (off == n_off)
@@ -215,32 +295,53 @@ static void commit_insert(FileBuffer* fb, Modification* mod)
         off  = n_off;
     }
 
-    if (fseek(fb->file, mod->off, SEEK_SET) < 0)
-        panic("commit_insert(): fseek failed [off: %llu]", mod->off);
-    if (fwrite(mod->data, 1, mod->size, fb->file) != mod->size)
-        panic("commit_insert(): fwrite failed");
+    if (fseek(fb->file, mod->off, SEEK_SET) < 0) {
+        warning("commit_insert(): fseek failed [off: %llu]", mod->off);
+        return 0;
+    }
+    if (fwrite(mod->data, 1, mod->size, fb->file) != mod->size) {
+        warning("commit_insert(): fwrite failed");
+        return 0;
+    }
+
+    return 1;
 }
 
-static void commit_delete(FileBuffer* fb, Modification* mod)
+static int commit_delete(FileBuffer* fb, Modification* mod)
 {
     if (mod->type != MOD_TYPE_DELETE)
         panic("commit_delete(): invalid type %d\n", mod->type);
 
-    if (fseek(fb->file, 0, SEEK_END) < 0)
-        panic("commit_delete(): fseek failed");
-    size_t fsize = ftell(fb->file);
+    if (fseek(fb->file, 0, SEEK_END) < 0) {
+        warning("commit_delete(): fseek failed");
+        return 0;
+    }
+    ssize_t fsize = ftell(fb->file);
+    if (fsize < 0) {
+        warning("commit_delete(): ftell failed");
+        return 0;
+    }
 
     s64_t off  = mod->off + mod->size;
     s64_t size = min(fb_block_size, fsize - off);
     while (1) {
-        if (fseek(fb->file, off, SEEK_SET) < 0)
-            panic("commit_delete(): fseek failed [off: %llu]", off);
-        if (fread(tmp_block, 1, size, fb->file) != size)
-            panic("commit_delete(): fread failed");
-        if (fseek(fb->file, off - mod->size, SEEK_SET) < 0)
-            panic("commit_delete(): fseek failed [off: %llu]", off - mod->size);
-        if (fwrite(tmp_block, 1, size, fb->file) != size)
-            panic("commit_delete(): fwrite failed");
+        if (fseek(fb->file, off, SEEK_SET) < 0) {
+            warning("commit_delete(): fseek failed [off: %llu]", off);
+            return 0;
+        }
+        if (fread(tmp_block, 1, size, fb->file) != size) {
+            warning("commit_delete(): fread failed");
+            return 0;
+        }
+        if (fseek(fb->file, off - mod->size, SEEK_SET) < 0) {
+            warning("commit_delete(): fseek failed [off: %llu]",
+                    off - mod->size);
+            return 0;
+        }
+        if (fwrite(tmp_block, 1, size, fb->file) != size) {
+            warning("commit_delete(): fwrite failed");
+            return 0;
+        }
 
         s64_t n_off = off + size;
         if (n_off >= fsize)
@@ -249,12 +350,16 @@ static void commit_delete(FileBuffer* fb, Modification* mod)
         size = min(fb_block_size, fsize - off);
     }
 
-    if (ftruncate(fileno(fb->file), fsize - mod->size) < 0)
-        panic("commit_delete(): ftruncate failed");
+    if (ftruncate(fileno(fb->file), fsize - mod->size) < 0) {
+        warning("commit_delete(): ftruncate failed");
+        return 0;
+    }
+    return 1;
 }
 
 void fb_commit(FileBuffer* fb)
 {
+    fb_modified_check(fb);
     if (fb->readonly) {
         warning("cannot commit, the file was opened in read-only mode");
         return;
@@ -264,28 +369,41 @@ void fb_commit(FileBuffer* fb)
 
     ll_invert(&fb->modifications);
 
+    int     r;
     LLNode* curr = fb->modifications.head;
     while (curr) {
         Modification* mod = (Modification*)curr->data;
         switch (mod->type) {
             case MOD_TYPE_OVERWRITE:
-                commit_write(fb, mod);
+                r = commit_write(fb, mod);
                 break;
             case MOD_TYPE_INSERT:
-                commit_insert(fb, mod);
+                r = commit_insert(fb, mod);
                 break;
             case MOD_TYPE_DELETE:
-                commit_delete(fb, mod);
+                r = commit_delete(fb, mod);
                 break;
             default:
-                warning("Unknown modification type: %d\n", mod->type);
+                panic("unknown modification type: %d\n", mod->type);
                 break;
         }
+        if (!r)
+            break;
         curr = curr->next;
     }
+    if (!r) {
+        warning("something went wrong while committing the file. Probably the "
+                "output file is broken. I'll try to reload it");
+        if (!fb_reload(fb))
+            panic("unable to reload the file");
+        return;
+    }
+
     ll_clear(&fb->modifications, delete_modification);
 
+    fflush(fb->file);
     fb_seek(fb, origin_off);
+    was_file_modified(fb->path, 0, &fb->mod_time);
 }
 
 static int overlaps(u64_t startA, u64_t endA, u64_t startB, u64_t endB)
@@ -294,8 +412,8 @@ static int overlaps(u64_t startA, u64_t endA, u64_t startB, u64_t endB)
     return startA <= endB && endA > startB;
 }
 
-static void fb_read_internal(FileBuffer* fb, u64_t addr, u64_t fsize, u64_t idx,
-                             int nmod)
+static int fb_read_internal(FileBuffer* fb, u64_t addr, u64_t fsize, u64_t idx,
+                            int nmod)
 {
     static s8_t block_map[fb_block_size];
 
@@ -310,10 +428,8 @@ static void fb_read_internal(FileBuffer* fb, u64_t addr, u64_t fsize, u64_t idx,
         curr = curr->next;
         n += 1;
     }
-    if (n != nmod) {
-        warning("fb_read_internal(): invalid value of nmod");
-        return;
-    }
+    if (n != nmod)
+        panic("fb_read_internal(): invalid value of nmod");
 
     while (curr) {
         Modification* mod = (Modification*)curr->data;
@@ -381,14 +497,18 @@ static void fb_read_internal(FileBuffer* fb, u64_t addr, u64_t fsize, u64_t idx,
         }
     }
     if (size == 0 || !should_read)
-        return;
+        return 1;
 
     // We have to read the file
-    if (fseek(fb->file, addr, SEEK_SET) < 0)
-        panic("fseek failed @ 0x%llx", addr);
+    if (fseek(fb->file, addr, SEEK_SET) < 0) {
+        warning("fseek failed @ 0x%llx", addr);
+        return 0;
+    }
     if (fread(tmp_block, 1, size, fb->file) != size) {
-        panic("unable to read bytes in fb_read_internal, off=0x%llx, size=%ld",
-              addr, size);
+        warning(
+            "unable to read bytes in fb_read_internal, off=0x%llx, size=%ld",
+            addr, size);
+        return 0;
     }
     for (i = 0; i < size; ++i) {
         if (block_map[i + idx])
@@ -396,10 +516,12 @@ static void fb_read_internal(FileBuffer* fb, u64_t addr, u64_t fsize, u64_t idx,
         fb->block[i + idx] = tmp_block[i];
         block_map[i + idx] = 1;
     }
+    return 1;
 }
 
 const u8_t* fb_read(FileBuffer* fb, size_t size)
 {
+    fb_modified_check(fb);
     if (size > fb_block_size) {
         // FIXME: this case could be useful, maybe implement it using a dynamic
         //        buffer
@@ -411,8 +533,14 @@ const u8_t* fb_read(FileBuffer* fb, size_t size)
         return NULL;
     }
 
-    if (fb->block_dirty)
-        fb_read_internal(fb, fb->off, fb->size, 0, 0);
+    if (fb->block_dirty) {
+        if (!fb_read_internal(fb, fb->off, fb->size, 0, 0)) {
+            warning(
+                "something went wrong while reading the file. Reloading it");
+            if (!fb_reload(fb))
+                panic("unable to reload the file");
+        }
+    }
     fb->block_dirty = 0;
     return (const u8_t*)fb->block;
 }
