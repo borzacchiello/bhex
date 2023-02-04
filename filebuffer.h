@@ -37,7 +37,7 @@ typedef struct FileBuffer {
     s8_t block_dirty;
 } FileBuffer;
 
-FileBuffer* filebuffer_create(const char* path);
+FileBuffer* filebuffer_create(const char* path, int readonly);
 void        filebuffer_destroy(FileBuffer* fb);
 
 int  fb_seek(FileBuffer* fb, u64_t off);

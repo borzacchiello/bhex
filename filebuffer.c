@@ -74,20 +74,25 @@ int fb_seek(FileBuffer* fb, u64_t off)
     return 0;
 }
 
-FileBuffer* filebuffer_create(const char* path)
+FileBuffer* filebuffer_create(const char* path, int readonly)
 {
     FileBuffer* fb    = bhex_malloc(sizeof(FileBuffer));
     fb->path          = bhex_strdup(path);
-    fb->readonly      = 0;
+    fb->readonly      = readonly;
     fb->modifications = ll_create();
     fb->block_dirty   = 1;
 
-    // Try to open the file in "read/write" mode
-    FILE* f = fopen(path, "rb+");
-    if (f == NULL && (errno == EACCES || errno == EROFS)) {
-        warning("cannot open with write permission, opening in read-only mode");
-        fb->readonly = 1;
-        f            = fopen(path, "rb");
+    FILE* f = NULL;
+    if (!readonly) {
+        FILE* f = fopen(path, "rb+");
+        if (f == NULL && (errno == EACCES || errno == EROFS)) {
+            warning(
+                "cannot open with write permission, opening in read-only mode");
+            fb->readonly = 1;
+            f            = fopen(path, "rb");
+        }
+    } else {
+        f = fopen(path, "rb");
     }
     if (f == NULL) {
         warning("cannot open the file");
