@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.19)
 
-project(borzNES)
+project(bhex C)
 
 option(ASAN "Compile with asan (only for debug builds)" OFF)
 
