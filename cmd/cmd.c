@@ -66,6 +66,7 @@ void cmdctx_destroy(CmdContext* cmd)
 {
     ll_foreach(&cmd->commands, cmd_dispose);
     ll_clear(&cmd->commands, NULL);
+    bhex_free(cmd);
 }
 
 static int cmd_help(CmdContext* cc, ParsedCommand* pc)
