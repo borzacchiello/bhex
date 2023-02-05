@@ -84,7 +84,7 @@ FileBuffer* filebuffer_create(const char* path, int readonly)
 
     FILE* f = NULL;
     if (!readonly) {
-        FILE* f = fopen(path, "rb+");
+        f = fopen(path, "rb+");
         if (f == NULL && (errno == EACCES || errno == EROFS)) {
             warning(
                 "cannot open with write permission, opening in read-only mode");
