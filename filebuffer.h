@@ -2,9 +2,10 @@
 #define FILEBUFFER_H
 
 /*
-    It is a wrapper of FILE* that allows to undo modifications.
-    It adopts a best-effort approach to handle external modifications,
-    tring to minimize the damage if another application is modifing the same file.
+   It is a wrapper of FILE* that allows to undo modifications.
+   It adopts a best-effort approach to handle external modifications,
+   tring to minimize the damage if another application is modifing the same
+   file.
 */
 
 #include <stdio.h>
@@ -17,6 +18,7 @@
 
 typedef struct Modification {
     s8_t   type;
+    u32_t  chain_n;
     u64_t  off;
     u64_t  end;
     u8_t*  data;

@@ -135,6 +135,7 @@ int fb_write(FileBuffer* fb, u8_t* data, size_t size)
 
     Modification* mod = bhex_malloc(sizeof(Modification));
     mod->type         = MOD_TYPE_OVERWRITE;
+    mod->chain_n      = 0;
     mod->data         = data;
     mod->off          = fb->off;
     mod->end          = fb->off + size;
@@ -159,6 +160,7 @@ int fb_insert(FileBuffer* fb, u8_t* data, size_t size)
 
     Modification* mod = bhex_malloc(sizeof(Modification));
     mod->type         = MOD_TYPE_INSERT;
+    mod->chain_n      = 0;
     mod->data         = data;
     mod->off          = fb->off;
     mod->size         = size;
@@ -182,9 +184,11 @@ int fb_delete(FileBuffer* fb, size_t size)
         return 0;
     }
 
+    u32_t num_blocks = 0;
     while (size > fb_block_size) {
         Modification* mod = bhex_malloc(sizeof(Modification));
         mod->type         = MOD_TYPE_DELETE;
+        mod->chain_n      = 0;
         mod->data         = NULL;
         mod->off          = fb->off;
         mod->end          = fb->size;
@@ -193,9 +197,11 @@ int fb_delete(FileBuffer* fb, size_t size)
 
         fb->size -= fb_block_size;
         size -= fb_block_size;
+        num_blocks += 1;
     }
     Modification* mod = bhex_malloc(sizeof(Modification));
     mod->type         = MOD_TYPE_DELETE;
+    mod->chain_n      = num_blocks;
     mod->data         = NULL;
     mod->off          = fb->off;
     mod->end          = fb->size;
@@ -221,6 +227,10 @@ int fb_undo_last(FileBuffer* fb)
     } else if (mod->type == MOD_TYPE_DELETE) {
         fb->size += mod->size;
     }
+
+    while (mod->chain_n-- > 0)
+        // This is the case for a "splitted" delete
+        fb_undo_last(fb);
 
     delete_modification(n->data);
     bhex_free(n);
