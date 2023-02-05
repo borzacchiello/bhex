@@ -1,15 +1,19 @@
-#include <stdio.h>
+#include <string.h>
 #include <getopt.h>
+#include <stdio.h>
+#include <errno.h>
 
 #include "linenoise/linenoise.h"
 #include "parser.h"
 #include "alloc.h"
+#include "log.h"
 #include "cmd/cmd.h"
 
-const char* const   short_options  = "hw";
+const char* const   short_options  = "hwb";
 const struct option long_options[] = {
     {"help", 0, NULL, 'h'},
     {"write", 0, NULL, 'w'},
+    {"backup", 0, NULL, 'b'},
     {NULL, 0, NULL, 0},
 };
 
@@ -27,9 +31,41 @@ static void print_banner()
 static void usage(const char* prog, int exit_code)
 {
     printf("Usage:  %s [ options ] inputfile\n", prog);
-    printf("  -h  --help   Display this usage information.\n"
-           "  -w  --write  Open the file in write mode.\n");
+    printf("  -h  --help    Display this usage information.\n"
+           "  -w  --write   Open the file in write mode.\n"
+           "  -b  --backup  Backup original file in \"filename.bk\".\n");
     exit(exit_code);
+}
+
+static int copy_file(const char* src, const char* dst)
+{
+    int result = 0;
+    errno      = 0;
+
+    FILE* src_f = fopen(src, "rb");
+    if (src_f == NULL)
+        goto ret;
+    FILE* dst_f = fopen(dst, "wb");
+    if (dst_f == NULL)
+        goto ret_close_src;
+
+    result = 1;
+    while (1) {
+        int ch = fgetc(src_f);
+        if (ch == EOF)
+            break;
+        if (fputc(ch, dst_f) == EOF) {
+            result = 0;
+            goto ret_close_dst_src;
+        }
+    }
+
+ret_close_dst_src:
+    fclose(dst_f);
+ret_close_src:
+    fclose(src_f);
+ret:
+    return result;
 }
 
 static void mainloop(FileBuffer* fb, CmdContext* cc)
@@ -66,7 +102,7 @@ int main(int argc, char* argv[])
 
     const char* progname   = argv[0];
     const char* path       = NULL;
-    int         write_mode = 0;
+    int         write_mode = 0, backup = 0;
     int         c;
     while (optind < argc) {
         if ((c = getopt_long(argc, argv, short_options, long_options, NULL)) !=
@@ -74,6 +110,9 @@ int main(int argc, char* argv[])
             switch (c) {
                 case 'w':
                     write_mode = 1;
+                    break;
+                case 'b':
+                    backup = 1;
                     break;
                 case 'h':
                     usage(progname, 0);
@@ -88,13 +127,25 @@ int main(int argc, char* argv[])
         }
     }
     if (path == NULL) {
-        printf("Missing input file\n\n");
+        printf("missing input file\n\n");
         usage(progname, 1);
     }
 
     FileBuffer* fb = filebuffer_create(path, !write_mode);
     if (!fb)
         return 1;
+
+    if (backup) {
+        size_t backupname_len = strlen(fb->path) + 3 + 1;
+        char*  backupname     = bhex_malloc(backupname_len);
+        if (snprintf(backupname, backupname_len, "%s.bk", fb->path) < 0)
+            panic("snprintf failed");
+        backupname[backupname_len - 1] = 0;
+
+        if (!copy_file(fb->path, backupname))
+            warning("unable to create the backup file: %s\n", strerror(errno));
+        bhex_free(backupname);
+    }
 
     CmdContext* cc = cmdctx_init();
 
