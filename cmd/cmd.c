@@ -64,8 +64,7 @@ static void cmd_dispose(uptr_t o)
 
 void cmdctx_destroy(CmdContext* cmd)
 {
-    ll_foreach(&cmd->commands, cmd_dispose);
-    ll_clear(&cmd->commands, NULL);
+    ll_clear(&cmd->commands, cmd_dispose);
     bhex_free(cmd);
 }
 
