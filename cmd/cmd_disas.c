@@ -1,10 +1,10 @@
 #include "cmd_disas.h"
 
 #include "util/byte_to_num.h"
+#include "capstone/capstone.h"
 #include "../alloc.h"
 #include "../log.h"
 
-#include <capstone/capstone.h>
 #include <string.h>
 #include <dlfcn.h>
 
@@ -193,11 +193,26 @@ Cmd* disascmd_create()
     cmd->help    = disascmd_help;
     cmd->exec    = disascmd_exec;
 
+    // load capstone dynamically
     void* capstone_handle = dlopen("libcapstone.so", RTLD_NOW);
     if (!capstone_handle) {
         // capstone not found, "disas" command won't work
         return cmd;
     }
+
+    // check version
+    unsigned int (*cs_version)(int* major, int* minor) =
+        dlsym(capstone_handle, "cs_version");
+    int major_v, minor_v;
+    if (!cs_version(&major_v, &minor_v))
+        panic("unable to get capstone version");
+    if (major_v != CS_API_MAJOR || minor_v != CS_API_MINOR) {
+        warning(
+            "unable to load capstone, wrong version. Got %d.%d, expexted %d.%d",
+            major_v, minor_v, CS_API_MAJOR, CS_API_MINOR);
+        return cmd;
+    }
+
     ctx->capstone_handle = capstone_handle;
     ctx->cs_open         = dlsym(capstone_handle, "cs_open");
     ctx->cs_close        = dlsym(capstone_handle, "cs_close");
