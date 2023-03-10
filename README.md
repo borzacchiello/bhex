@@ -10,7 +10,7 @@
 
 ```
 
-Minimalistic and lightweight shell-based hex editor that runs everywhere (or at least on most *nix systems).
+Minimalistic and lightweight shell-based hex editor that runs on most *nix systems.
 
 Supported features:
 - print file content in various format;
@@ -119,6 +119,9 @@ template: parse a struct template at current offset
 Available templates:
     Elf32_Ehdr
     Elf64_Ehdr
+    IMAGE_DOS_HEADER
+    IMAGE_NT_HEADERS64
+    IMAGE_NT_HEADERS32
 ```
 
 ### Seek
