@@ -10,15 +10,17 @@
 
 ```
 
-Minimalistic and lightweight shell-based hex editor that runs on most *nix systems.
+Minimalistic and lightweight shell-based hex editor.
+
+It is designed to have a low memory footprint independently from the size of the opened file. This makes the program usable on *very low-end* devices.
 
 Supported features:
-- print file content in various format;
-- write data overwriting the content of the file;
-- insert data into the file;
-- undo writes until _committed_;
-- enumerate (ascii) strings;
-- search strings or binary data.
+- print file content in various format
+- write/overwrite data into the file
+- undo writes until _committed_
+- enumerate (ascii) strings
+- search strings or binary data
+- disassemble code
 
 Just run `bhex <file>` to start the shell.
 
@@ -32,6 +34,8 @@ $ cd build
 $ cmake ..
 $ make
 ```
+
+To enable the disassembler plugin, you need to install libcapstone (or put libcapstone.so in `pwd`).
 
 # Command Format
 
@@ -59,6 +63,7 @@ Available commands:
     template [t]
     seek [s]
     print [p]
+    disas [ds]
     write [w]
     delete [d]
     undo [u]
@@ -136,6 +141,20 @@ seek: change current offset
 
   off: can be either a number or the character '-'.
        In the latter case seek to the offset before the last seek.
+```
+
+### Disassemble
+
+```
+[0x0000000] $ ds?
+
+disas: disassemble code at current offset
+
+  ds[/l] <arch> [<nbytes>]
+     l:  list supported architectures
+
+  arch:   the architecture to use
+  nbytes: the number of bytes to disassemble, default value: 128
 ```
 
 ### Print
