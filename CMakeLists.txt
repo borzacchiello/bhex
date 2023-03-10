@@ -23,6 +23,7 @@ set(src
     cmd/cmd_write.c
     cmd/cmd_delete.c
     cmd/cmd_print.c
+    cmd/cmd_disas.c
     cmd/cmd_seek.c
     cmd/cmd_undo.c
     cmd/cmd_commit.c

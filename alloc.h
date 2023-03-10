@@ -4,6 +4,7 @@
 #include <stdlib.h>
 
 void* bhex_malloc(size_t n);
+void* bhex_calloc(size_t n);
 void* bhex_realloc(void* buf, size_t n);
 void  bhex_free(void* buf);
 

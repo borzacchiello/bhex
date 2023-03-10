@@ -14,6 +14,13 @@ void* bhex_malloc(size_t n)
     return r;
 }
 
+void* bhex_calloc(size_t n)
+{
+    void* r = bhex_malloc(n);
+    memset(r, 0, n);
+    return r;
+}
+
 void* bhex_realloc(void* b, size_t size)
 {
     // check for weird usage of the API...
