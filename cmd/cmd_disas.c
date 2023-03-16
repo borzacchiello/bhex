@@ -8,6 +8,12 @@
 #include <string.h>
 #include <dlfcn.h>
 
+#ifdef __APPLE__
+#define LIBCASTONE "libcapstone.dylib"
+#else
+#define LIBCASTONE "libcapstone.so"
+#endif
+
 #define min(x, y) ((x) < (y) ? (x) : (y))
 
 #define DEFAULT_DISAS_NBYTES 128
@@ -194,7 +200,7 @@ Cmd* disascmd_create()
     cmd->exec    = disascmd_exec;
 
     // load capstone dynamically
-    void* capstone_handle = dlopen("libcapstone.so", RTLD_NOW);
+    void* capstone_handle = dlopen(LIBCASTONE, RTLD_NOW);
     if (!capstone_handle) {
         // capstone not found, "disas" command won't work
         return cmd;
