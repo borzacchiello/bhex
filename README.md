@@ -31,11 +31,11 @@ The project can be compiled using cmake. It has no runtime dependencies (apart f
 ```
 $ mkdir build
 $ cd build
-$ cmake ..
+$ cmake -DDISABLE_CAPSTONE=on ..
 $ make
 ```
 
-To enable the disassembler plugin, you need to install libcapstone (or put libcapstone.so in `pwd`).
+To enable the disassembler command, use "-DDISABLE_CAPSTONE=off".
 
 # Command Format
 
