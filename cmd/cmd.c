@@ -47,7 +47,9 @@ CmdContext* cmdctx_init()
     ll_add(&cc->commands, (uptr_t)undocmd_create());
     ll_add(&cc->commands, (uptr_t)deletecmd_create());
     ll_add(&cc->commands, (uptr_t)writecmd_create());
+#ifndef DISABLE_CAPSTONE
     ll_add(&cc->commands, (uptr_t)disascmd_create());
+#endif
     ll_add(&cc->commands, (uptr_t)printcmd_create());
     ll_add(&cc->commands, (uptr_t)seekcmd_create());
     ll_add(&cc->commands, (uptr_t)templatecmd_create());

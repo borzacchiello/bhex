@@ -1,18 +1,13 @@
+#ifndef DISABLE_CAPSTONE
+
 #include "cmd_disas.h"
 
 #include "util/byte_to_num.h"
-#include "capstone/capstone.h"
 #include "../alloc.h"
 #include "../log.h"
 
+#include <capstone/capstone.h>
 #include <string.h>
-#include <dlfcn.h>
-
-#ifdef __APPLE__
-#define LIBCASTONE "libcapstone.dylib"
-#else
-#define LIBCASTONE "libcapstone.so"
-#endif
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 
@@ -28,16 +23,6 @@
 #define MIPS64_ARCH      7
 #define MIPSEL32_ARCH    8
 #define MIPSEL64_ARCH    9
-
-typedef struct {
-    void* capstone_handle;
-
-    cs_err (*cs_open)(cs_arch arch, cs_mode mode, csh* handle);
-    size_t (*cs_disasm)(csh handle, const uint8_t* code, size_t code_size,
-                        uint64_t address, size_t count, cs_insn** insn);
-    void (*cs_free)(cs_insn* insn, size_t count);
-    cs_err (*cs_close)(csh* handle);
-} DisasContext;
 
 typedef struct {
     cs_arch arch;
@@ -83,14 +68,7 @@ static void disascmd_help(void* obj)
            DEFAULT_DISAS_NBYTES);
 }
 
-static void disascmd_dispose(void* obj)
-{
-    DisasContext* ctx = (DisasContext*)obj;
-
-    if (ctx->capstone_handle)
-        dlclose(ctx->capstone_handle);
-    free(ctx);
-}
+static void disascmd_dispose(void* obj) {}
 
 static int parse_arch(const char* a, int* out_arch)
 {
@@ -104,21 +82,20 @@ static int parse_arch(const char* a, int* out_arch)
     return 0;
 }
 
-static void do_disas(DisasContext* ctx, int arch, u64_t addr, const u8_t* code,
-                     size_t code_size)
+static void do_disas(int arch, u64_t addr, const u8_t* code, size_t code_size)
 {
     csh      handle;
     cs_insn* insn;
     size_t   count;
 
-    if (ctx->cs_open(map_arch[arch].arch, map_arch[arch].mode, &handle) !=
+    if (cs_open(map_arch[arch].arch, map_arch[arch].mode, &handle) !=
         CS_ERR_OK) {
         warning("unable to disassemble with given arch, maybe it is not "
                 "included in your capstone version");
         return;
     }
 
-    count = ctx->cs_disasm(handle, code, code_size - 1, addr, 0, &insn);
+    count = cs_disasm(handle, code, code_size - 1, addr, 0, &insn);
     if (count > 0) {
         size_t j;
         for (j = 0; j < count; j++) {
@@ -126,21 +103,15 @@ static void do_disas(DisasContext* ctx, int arch, u64_t addr, const u8_t* code,
                    insn[j].mnemonic, insn[j].op_str);
         }
 
-        ctx->cs_free(insn, count);
+        cs_free(insn, count);
     } else
         printf("invalid\n");
 
-    ctx->cs_close(&handle);
+    cs_close(&handle);
 }
 
 static int disascmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 {
-    DisasContext* ctx = (DisasContext*)obj;
-    if (!ctx->capstone_handle) {
-        warning("unable to find libcapstone, you cannot use the command");
-        return COMMAND_OK;
-    }
-
     if (pc->cmd_modifiers.size > 1)
         return COMMAND_UNSUPPORTED_MOD;
 
@@ -182,47 +153,21 @@ static int disascmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     bytes = fb_read(fb, size);
     if (!bytes)
         return COMMAND_INVALID_ARG;
-    do_disas(ctx, arch, fb->off, bytes, size);
+    do_disas(arch, fb->off, bytes, size);
     return COMMAND_OK;
 }
 
 Cmd* disascmd_create()
 {
-    Cmd*          cmd = bhex_malloc(sizeof(Cmd));
-    DisasContext* ctx = bhex_calloc(sizeof(DisasContext));
-
-    cmd->obj   = ctx;
+    Cmd* cmd   = bhex_malloc(sizeof(Cmd));
+    cmd->obj   = NULL;
     cmd->name  = "disas";
     cmd->alias = "ds";
 
     cmd->dispose = disascmd_dispose;
     cmd->help    = disascmd_help;
     cmd->exec    = disascmd_exec;
-
-    // load capstone dynamically
-    void* capstone_handle = dlopen(LIBCASTONE, RTLD_NOW);
-    if (!capstone_handle) {
-        // capstone not found, "disas" command won't work
-        return cmd;
-    }
-
-    // check version
-    unsigned int (*cs_version)(int* major, int* minor) =
-        dlsym(capstone_handle, "cs_version");
-    int major_v, minor_v;
-    if (!cs_version(&major_v, &minor_v))
-        panic("unable to get capstone version");
-    if (major_v != CS_API_MAJOR || minor_v != CS_API_MINOR) {
-        warning(
-            "unable to load capstone, wrong version. Got %d.%d, expexted %d.%d",
-            major_v, minor_v, CS_API_MAJOR, CS_API_MINOR);
-        return cmd;
-    }
-
-    ctx->capstone_handle = capstone_handle;
-    ctx->cs_open         = dlsym(capstone_handle, "cs_open");
-    ctx->cs_close        = dlsym(capstone_handle, "cs_close");
-    ctx->cs_disasm       = dlsym(capstone_handle, "cs_disasm");
-    ctx->cs_free         = dlsym(capstone_handle, "cs_free");
     return cmd;
 }
+
+#endif

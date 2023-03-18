@@ -3,8 +3,29 @@ cmake_minimum_required(VERSION 3.19)
 project(bhex C)
 
 option(ASAN "Compile with asan (only for debug builds)" OFF)
+option(DISABLE_CAPSTONE "Disable Capstone (disas command)" OFF)
 
 set(CMAKE_C_STANDARD 99)
+
+if (NOT DISABLE_CAPSTONE)
+    set(BUILD_SHARED_LIBS OFF)
+    set(CAPSTONE_X86_ATT_DISABLE ON)
+    set(CAPSTONE_BUILD_DIET ON)
+    set(CAPSTONE_PPC_SUPPORT OFF)
+    set(CAPSTONE_SPARC_SUPPORT OFF)
+    set(CAPSTONE_SYSZ_SUPPORT OFF)
+    set(CAPSTONE_XCORE_SUPPORT OFF)
+    set(CAPSTONE_M68K_SUPPORT OFF)
+    set(CAPSTONE_TMS320C64X_SUPPORT OFF)
+    set(CAPSTONE_EVM_SUPPORT OFF)
+    set(CAPSTONE_WASM_SUPPORT OFF)
+    set(CAPSTONE_BPF_SUPPORT OFF)
+    set(CAPSTONE_RISCV_SUPPORT OFF)
+    set(CAPSTONE_OSXKERNEL_SUPPORT OFF)
+    add_subdirectory(capstone)
+else()
+    add_compile_definitions(DISABLE_CAPSTONE)
+endif()
 
 set(src
     linenoise/linenoise.c
@@ -60,3 +81,7 @@ add_executable(test_parser
 # Main executable
 add_executable(bhex
     ${src})
+
+if (NOT DISABLE_CAPSTONE)
+    target_link_libraries(bhex LINK_PUBLIC capstone)
+endif()
