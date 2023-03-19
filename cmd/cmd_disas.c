@@ -3,6 +3,7 @@
 #include "cmd_disas.h"
 
 #include "util/byte_to_num.h"
+#include "util/byte_to_str.h"
 #include "../alloc.h"
 #include "../log.h"
 
@@ -82,6 +83,33 @@ static int parse_arch(const char* a, int* out_arch)
     return 0;
 }
 
+static const char* bytes_str(const cs_insn* insn, size_t max_size)
+{
+    static char disas[16 * 3 + 1];
+
+    if (max_size >= sizeof(disas) || max_size < 3)
+        panic("invalid max_size");
+
+    size_t i;
+    for (i = 0; i < insn->size * 2; i += 3) {
+        if (i + 3 > max_size - 3 && insn->size * 2 > max_size) {
+            disas[i]     = '.';
+            disas[i + 1] = '.';
+            disas[i + 2] = '.';
+            i += 3;
+            break;
+        }
+        disas[i + 2] = ' ';
+        disas[i + 1] = nibble_to_hex_char(insn->bytes[i >> 1] & 0xF);
+        disas[i]     = nibble_to_hex_char((insn->bytes[i >> 1] >> 4) & 0xF);
+    }
+    for (; i < max_size; ++i)
+        disas[i] = ' ';
+    disas[max_size] = 0;
+
+    return disas;
+}
+
 static void do_disas(int arch, u64_t addr, const u8_t* code, size_t code_size)
 {
     csh      handle;
@@ -99,8 +127,8 @@ static void do_disas(int arch, u64_t addr, const u8_t* code, size_t code_size)
     if (count > 0) {
         size_t j;
         for (j = 0; j < count; j++) {
-            printf("0x%llx:\t%s\t\t%s\n", (u64_t)insn[j].address,
-                   insn[j].mnemonic, insn[j].op_str);
+            printf("0x%llx: %s %s\t\t%s\n", (u64_t)insn[j].address,
+                   bytes_str(&insn[j], 20), insn[j].mnemonic, insn[j].op_str);
         }
 
         cs_free(insn, count);
