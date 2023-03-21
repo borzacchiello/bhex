@@ -9,7 +9,7 @@
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define max(x, y) ((x) > (y) ? (x) : (y))
 
-#define N_BLOCKS 256
+#define N_BLOCKS 1024
 
 #define is_within_block(block_n, block_off, block_size)                        \
     ((((block_n) < N_BLOCKS - 1) && ((block_off) < (block_size))) ||           \
@@ -97,6 +97,7 @@ static void populate_index(SearchCtx* ctx, FileBuffer* fb)
                 ctx->blocks[block_n].min = block[i];
             if (block[i] > ctx->blocks[block_n].max)
                 ctx->blocks[block_n].max = block[i];
+            block_off += 1;
         }
         addr += min(fb_block_size, fb->size - fb->off);
     }
@@ -134,7 +135,7 @@ static void search(SearchCtx* ctx, FileBuffer* fb, const u8_t* data,
     while (addr + size <= fb->size) {
         if (ctx->has_index) {
             BlockInfo* binfo = get_block_at(ctx, addr);
-            if (!(data_min <= binfo->max && binfo->min <= data_max)) {
+            if (!(binfo->min <= data_min && data_max <= binfo->max)) {
                 addr += ctx->block_size;
                 continue;
             }
