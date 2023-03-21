@@ -58,6 +58,7 @@ static void fb_modified_check(FileBuffer* fb)
     if (was_file_modified(fb->path, fb->mod_time, &new_time)) {
         warning("the file was modified outside bhex, reloading it loosing all "
                 "the uncommitted modifications (sorry)");
+        fb->version += 1 + fb->modifications.size;
         if (!fb_reload(fb))
             panic("unable to reload the file");
         fb->mod_time = new_time;
@@ -81,6 +82,7 @@ FileBuffer* filebuffer_create(const char* path, int readonly)
     fb->readonly      = readonly;
     fb->modifications = ll_create();
     fb->block_dirty   = 1;
+    fb->version       = 0;
 
     FILE* f = NULL;
     if (!readonly) {
@@ -143,6 +145,7 @@ int fb_write(FileBuffer* fb, u8_t* data, size_t size)
 
     ll_add(&fb->modifications, (uptr_t)mod);
     fb->block_dirty = 1;
+    fb->version += 1;
     return 1;
 }
 
@@ -169,6 +172,7 @@ int fb_insert(FileBuffer* fb, u8_t* data, size_t size)
     ll_add(&fb->modifications, (uptr_t)mod);
     fb->size += size;
     fb->block_dirty = 1;
+    fb->version += 1;
     return 1;
 }
 
@@ -198,6 +202,7 @@ int fb_delete(FileBuffer* fb, size_t size)
         fb->size -= fb_block_size;
         size -= fb_block_size;
         num_blocks += 1;
+        fb->version += 1;
     }
     Modification* mod = bhex_malloc(sizeof(Modification));
     mod->type         = MOD_TYPE_DELETE;
@@ -210,6 +215,7 @@ int fb_delete(FileBuffer* fb, size_t size)
 
     fb->size -= size;
     fb->block_dirty = 1;
+    fb->version += 1;
     return 1;
 }
 
@@ -235,6 +241,7 @@ int fb_undo_last(FileBuffer* fb)
     delete_modification(n->data);
     bhex_free(n);
     fb->block_dirty = 1;
+    fb->version -= 1;
     return 1;
 }
 
@@ -409,6 +416,7 @@ void fb_commit(FileBuffer* fb)
     if (!r) {
         warning("something went wrong while committing the file. Probably the "
                 "output file is broken. I'll try to reload it");
+        fb->version += 1 + fb->modifications.size;
         if (!fb_reload(fb))
             panic("unable to reload the file");
         return;
@@ -552,6 +560,7 @@ const u8_t* fb_read(FileBuffer* fb, size_t size)
         if (!fb_read_internal(fb, fb->off, fb->size, 0, 0)) {
             warning(
                 "something went wrong while reading the file. Reloading it");
+            fb->version += 1 + fb->modifications.size;
             if (!fb_reload(fb))
                 panic("unable to reload the file");
         }

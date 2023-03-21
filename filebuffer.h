@@ -32,6 +32,7 @@ typedef struct FileBuffer {
     u64_t  off;
     u64_t  size;
     s8_t   readonly;
+    u64_t  version;
 
     LL modifications;
 
