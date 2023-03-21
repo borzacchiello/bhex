@@ -200,6 +200,9 @@ int main(int argc, char* argv[])
         bhex_free(backupname);
     }
 
+    if (!write_mode)
+        warning("file opened in read-only mode (use the switch '-w' to open the file in write mode)");
+
     CmdContext* cc = cmdctx_init();
     mainloop(fb, cc);
 
