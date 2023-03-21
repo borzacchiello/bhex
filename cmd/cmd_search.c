@@ -9,7 +9,7 @@
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define max(x, y) ((x) > (y) ? (x) : (y))
 
-#define N_BLOCKS 1024
+#define N_BLOCKS 512
 
 #define is_within_block(block_n, block_off, block_size)                        \
     ((((block_n) < N_BLOCKS - 1) && ((block_off) < (block_size))) ||           \
@@ -48,10 +48,11 @@ static void searchcmd_help(void* obj)
 {
     printf("\nsearch: search a string or a sequence of bytes in the file\n"
            "\n"
-           "  s[/{x, s}/sk] <data>\n"
+           "  src[/{x, s}/sk/p] <data>\n"
            "     x:  data is an hex string\n"
            "     s:  data is a string (default)\n"
            "     sk: seek to first match\n"
+           "     p:  print blocks info\n"
            "\n"
            "  data: either a string or an hex string\n"
            "\n");
@@ -102,6 +103,25 @@ static void populate_index(SearchCtx* ctx, FileBuffer* fb)
         addr += min(fb_block_size, fb->size - fb->off);
     }
     fb_seek(fb, orig_off);
+}
+
+static void print_block_info(SearchCtx* ctx, FileBuffer* fb)
+{
+    populate_index(ctx, fb);
+    if (!ctx->has_index) {
+        warning("file is too short, no blocks info");
+        return;
+    }
+
+    size_t i;
+    for (i = 0; i < N_BLOCKS; ++i) {
+        BlockInfo* binfo    = &ctx->blocks[i];
+        u64_t      min_addr = i * ctx->block_size;
+        u64_t      max_addr = i == N_BLOCKS - 1 ? (fb->size - 1)
+                                                : (min_addr + ctx->block_size - 1);
+        printf(" 0x%08llx - 0x%08llx : [min %3u, max %3u]\n", min_addr,
+               max_addr, binfo->min, binfo->max);
+    }
 }
 
 static void search(SearchCtx* ctx, FileBuffer* fb, const u8_t* data,
@@ -179,6 +199,16 @@ static void search(SearchCtx* ctx, FileBuffer* fb, const u8_t* data,
 
 static int searchcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 {
+    SearchCtx* ctx = (SearchCtx*)obj;
+
+    if (pc->cmd_modifiers.size == 1 &&
+        strcmp((const char*)pc->cmd_modifiers.head->data, "p") == 0) {
+        if (pc->args.size != 0)
+            return COMMAND_INVALID_ARG;
+        print_block_info(ctx, fb);
+        return COMMAND_OK;
+    }
+
     int     data_type     = DATA_TYPE_UNSET;
     int     seek_to_match = SEEK_TO_MATCH_UNSET;
     LLNode* curr          = pc->cmd_modifiers.head;
@@ -220,7 +250,6 @@ static int searchcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
             break;
     }
 
-    SearchCtx* ctx = (SearchCtx*)obj;
     search(ctx, fb, data, data_size, seek_to_match == SEEK_TO_MATCH_SET);
     bhex_free(data);
     return COMMAND_OK;

@@ -85,9 +85,11 @@ info: prints information about the opened binary
 
 search: search a string or a sequence of bytes in the file
 
-  s[/{x, s}] <data>
-     x: data is an hex string
-     s: data is a string (default)
+  src[/{x, s}/sk/p] <data>
+     x:  data is an hex string
+     s:  data is a string (default)
+     sk: seek to first match
+     p:  print blocks info
 
   data: either a string or an hex string
 ```
