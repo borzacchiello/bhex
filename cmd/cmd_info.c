@@ -8,7 +8,18 @@
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 
-static void infocmd_dispose(void* obj) { return; }
+typedef struct {
+    u64_t version;
+    float entropy;
+    char* md5;
+} InfoCtx;
+
+static void infocmd_dispose(void* obj)
+{
+    InfoCtx* ctx = (InfoCtx*)obj;
+    bhex_free(ctx->md5);
+    bhex_free(ctx);
+}
 
 static void infocmd_help(void* obj)
 {
@@ -72,6 +83,8 @@ static void calc_values(FileBuffer* fb, char** md5, float* entropy)
         }
     }
 
+    if (*entropy < 0.0f)
+        *entropy = 0.0f;
     fb_seek(fb, orig_off);
 }
 
@@ -82,9 +95,12 @@ static int infocmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     if (pc->cmd_modifiers.size != 0)
         return COMMAND_UNSUPPORTED_MOD;
 
-    char* md5;
-    float entropy;
-    calc_values(fb, &md5, &entropy);
+    InfoCtx* ctx = (InfoCtx*)obj;
+    if (fb->version != ctx->version) {
+        bhex_free(ctx->md5);
+        calc_values(fb, &ctx->md5, &ctx->entropy);
+        ctx->version = fb->version;
+    }
 
     printf("\n"
            "  path:    %s\n"
@@ -92,17 +108,21 @@ static int infocmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
            "  entropy: %.03f / 8.0\n"
            "  md5:     %s\n"
            "\n",
-           fb->path, fb->size, entropy, md5);
+           fb->path, fb->size, ctx->entropy, ctx->md5);
 
-    bhex_free(md5);
     return COMMAND_OK;
 }
 
 Cmd* infocmd_create()
 {
-    Cmd* cmd = bhex_malloc(sizeof(Cmd));
+    Cmd*     cmd = bhex_malloc(sizeof(Cmd));
+    InfoCtx* ctx = bhex_malloc(sizeof(InfoCtx));
 
-    cmd->obj   = NULL;
+    ctx->version = (u64_t)-1;
+    ctx->entropy = 0.0f;
+    ctx->md5     = NULL;
+
+    cmd->obj   = ctx;
     cmd->name  = "info";
     cmd->alias = "i";
 

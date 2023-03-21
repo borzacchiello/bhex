@@ -42,7 +42,7 @@ static inline BlockInfo* get_block_at(SearchCtx* ctx, u64_t addr)
     return &ctx->blocks[off];
 }
 
-static void searchcmd_dispose(void* obj) { free(obj); }
+static void searchcmd_dispose(void* obj) { bhex_free(obj); }
 
 static void searchcmd_help(void* obj)
 {
