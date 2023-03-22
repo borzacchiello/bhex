@@ -156,7 +156,9 @@ static void search(SearchCtx* ctx, FileBuffer* fb, const u8_t* data,
         if (ctx->has_index) {
             BlockInfo* binfo = get_block_at(ctx, addr);
             if (!(binfo->min <= data_min && data_max <= binfo->max)) {
-                addr += ctx->block_size;
+                // skip a block
+                addr = (addr / ctx->block_size) * ctx->block_size +
+                       ctx->block_size;
                 continue;
             }
         }
