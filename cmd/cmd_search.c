@@ -79,7 +79,7 @@ static void populate_index(SearchCtx* ctx, FileBuffer* fb)
     u32_t block_off    = 0;
     ctx->blocks[0].min = 255;
     ctx->blocks[0].max = 0;
-    ctx->block_size    = fb->size / (N_BLOCKS - 1);
+    ctx->block_size    = fb->size / N_BLOCKS + 1;
 
     u64_t addr = 0;
     while (addr < fb->size) {
@@ -159,6 +159,7 @@ static void search(SearchCtx* ctx, FileBuffer* fb, const u8_t* data,
                 // skip a block
                 addr = (addr / ctx->block_size) * ctx->block_size +
                        ctx->block_size;
+                buf_off = 0;
                 continue;
             }
         }
