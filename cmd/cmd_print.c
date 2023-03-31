@@ -11,6 +11,7 @@
 #define WIDTH_WORD  2
 #define WIDTH_DWORD 4
 #define WIDTH_QWORD 8
+#define WIDTH_ASCII 10
 
 #define ENDIANESS_UNSET  0
 #define ENDIANESS_LITTLE 1
@@ -43,6 +44,7 @@ static void printcmd_help(void* obj)
            "     w:  words\n"
            "     d:  dwords\n"
            "     q:  qwords\n"
+           "     a:  as ascii\n"
            "     le: little-endian (default)\n"
            "     be: big-endian\n"
            "     +:  seek forward after printing\n"
@@ -78,6 +80,10 @@ int printcmd_parse_args(ParsedCommand* pc, PrintCmdArgs* o_args)
             if (o_args->width != WIDTH_UNSET)
                 return COMMAND_INVALID_MODE;
             o_args->width = WIDTH_QWORD;
+        } else if (strcmp((char*)curr->data, "a") == 0) {
+            if (o_args->width != WIDTH_UNSET)
+                return COMMAND_INVALID_MODE;
+            o_args->width = WIDTH_ASCII;
         } else if (strcmp((char*)curr->data, "le") == 0) {
             if (o_args->endianess != ENDIANESS_UNSET)
                 return COMMAND_INVALID_MODE;
@@ -119,6 +125,29 @@ int printcmd_parse_args(ParsedCommand* pc, PrintCmdArgs* o_args)
     if (!str_to_uint64(s, &o_args->n_els))
         return COMMAND_INVALID_ARG;
     return COMMAND_OK;
+}
+
+static void print_ascii(const u8_t* bytes, size_t size)
+{
+    size_t last_newline_off = 0, off = 0, linenum = 0;
+    for (off=0; off<size; off++) {
+        if (bytes[off] == '\n')
+            last_newline_off = off;
+    }
+
+    printf("\n%03lu: ", ++linenum);
+    off = 0;
+    while (off < last_newline_off) {
+        if (is_printable_ascii(bytes[off]) || bytes[off] == '\t' || bytes[off] == '\n')
+            printf("%c", bytes[off]);
+        else
+            printf(".");
+        if (bytes[off] == '\n') {
+            printf("%03lu: ", ++linenum);
+        }
+        off += 1;
+    }
+    printf("\n\n");
 }
 
 static void print_hex(const u8_t* bytes, size_t size)
@@ -231,7 +260,9 @@ static int printcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     if (r != COMMAND_OK)
         return r;
 
-    size_t      size  = min(args.n_els * args.width, fb->size - fb->off);
+    size_t size = min(args.n_els * args.width, fb->size - fb->off);
+    if (args.width == WIDTH_ASCII)
+        size = fb_block_size;
     const u8_t* bytes = fb_read(fb, size);
     if (!bytes)
         return COMMAND_INVALID_ARG;
@@ -249,6 +280,9 @@ static int printcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
             break;
         case WIDTH_QWORD:
             print_qwords(bytes, size, args.endianess == ENDIANESS_LITTLE);
+            break;
+        case WIDTH_ASCII:
+            print_ascii(bytes, size);
             break;
     }
     if (args.seek == SEEK_FORWARD && fb->off + size < fb->size)
