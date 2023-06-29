@@ -4,6 +4,7 @@ project(bhex C)
 
 option(ASAN "Compile with asan (only for debug builds)" OFF)
 option(DISABLE_CAPSTONE "Disable Capstone (disas command)" OFF)
+option(STATIC_BUILD "Statically link libc" OFF)
 
 set(CMAKE_C_STANDARD 99)
 
@@ -82,6 +83,12 @@ add_executable(test_parser
 # Main executable
 add_executable(bhex
     ${src})
+
+if (STATIC_BUILD)
+    set_target_properties(bhex PROPERTIES LINK_SEARCH_START_STATIC ON)
+    set_target_properties(bhex PROPERTIES LINK_SEARCH_END_STATIC ON)
+    target_link_options(bhex PRIVATE -static-libgcc -static)
+endif()
 
 if (NOT DISABLE_CAPSTONE)
     target_link_libraries(bhex LINK_PUBLIC capstone)
