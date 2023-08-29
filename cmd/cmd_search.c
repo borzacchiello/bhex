@@ -218,18 +218,18 @@ static int searchcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     while (curr) {
         if (strcmp((char*)curr->data, "s") == 0) {
             if (data_type != DATA_TYPE_UNSET)
-                return COMMAND_INVALID_MODE;
+                return COMMAND_INVALID_MOD;
             data_type = DATA_TYPE_STRING;
         } else if (strcmp((char*)curr->data, "x") == 0) {
             if (data_type != DATA_TYPE_UNSET)
-                return COMMAND_INVALID_MODE;
+                return COMMAND_INVALID_MOD;
             data_type = DATA_TYPE_HEX;
         } else if (strcmp((char*)curr->data, "sk") == 0) {
             if (seek_to_match != SEEK_TO_MATCH_UNSET)
-                return COMMAND_INVALID_MODE;
+                return COMMAND_INVALID_MOD;
             seek_to_match = SEEK_TO_MATCH_SET;
         } else
-            return COMMAND_INVALID_MODE;
+            return COMMAND_INVALID_MOD;
         curr = curr->next;
     }
 

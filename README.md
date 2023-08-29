@@ -26,7 +26,7 @@ Just run `bhex <file>` to start the shell.
 
 # Compilation
 
-The project can be compiled using cmake. It has no runtime dependencies (apart from libc), so it should be quite strightforward:
+The project can be compiled using cmake. Without Captone and Keystone, it has no runtime dependencies (apart from libc), so it should be quite strightforward:
 
 ```
 $ mkdir build
@@ -36,6 +36,7 @@ $ make
 ```
 
 To enable the disassembler command, use "-DENABLE_CAPSTONE=on".
+To enable the assembler command, use "-DENABLE_KEYSTONE=on".
 
 # Command Format
 
@@ -63,6 +64,7 @@ Available commands:
     template [t]
     seek [s]
     print [p]
+    assemble [as]
     disas [ds]
     write [w]
     delete [d]
@@ -143,6 +145,21 @@ seek: change current offset
 
   off: can be either a number or the character '-'.
        In the latter case seek to the offset before the last seek.
+```
+
+### Assemble
+
+```
+[0x0000000] $ as?
+
+assemble: assemble code and write it at current offset
+
+  as[/l/i] <arch> "<code>"
+     l:  list supported architectures
+     i:  insert instead of overwrite
+
+  arch: the architecture to use
+  code: assembly code string (e.g., "inc eax; inc ecx; ret")
 ```
 
 ### Disassemble

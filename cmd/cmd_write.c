@@ -63,43 +63,43 @@ static int parse_write_arg(ParsedCommand* pc, WriteArg* o_arg)
     while (curr) {
         if (strcmp((char*)curr->data, "s") == 0) {
             if (input_type != INPUT_TYPE_UNSET)
-                return COMMAND_INVALID_MODE;
+                return COMMAND_INVALID_MOD;
             input_type = INPUT_TYPE_STRING;
         } else if (strcmp((char*)curr->data, "x") == 0) {
             if (input_type != INPUT_TYPE_UNSET)
-                return COMMAND_INVALID_MODE;
+                return COMMAND_INVALID_MOD;
             input_type = INPUT_TYPE_HEX;
         } else if (strcmp((char*)curr->data, "b") == 0) {
             if (input_type != INPUT_TYPE_UNSET)
-                return COMMAND_INVALID_MODE;
+                return COMMAND_INVALID_MOD;
             input_type = INPUT_TYPE_BYTE;
         } else if (strcmp((char*)curr->data, "w") == 0) {
             if (input_type != INPUT_TYPE_UNSET)
-                return COMMAND_INVALID_MODE;
+                return COMMAND_INVALID_MOD;
             input_type = INPUT_TYPE_WORD;
         } else if (strcmp((char*)curr->data, "d") == 0) {
             if (input_type != INPUT_TYPE_UNSET)
-                return COMMAND_INVALID_MODE;
+                return COMMAND_INVALID_MOD;
             input_type = INPUT_TYPE_DWORD;
         } else if (strcmp((char*)curr->data, "q") == 0) {
             if (input_type != INPUT_TYPE_UNSET)
-                return COMMAND_INVALID_MODE;
+                return COMMAND_INVALID_MOD;
             input_type = INPUT_TYPE_QWORD;
         } else if (strcmp((char*)curr->data, "le") == 0) {
             if (endiness != ENDIANESS_UNSET)
-                return COMMAND_INVALID_MODE;
+                return COMMAND_INVALID_MOD;
             endiness = ENDIANESS_LITTLE;
         } else if (strcmp((char*)curr->data, "be") == 0) {
             if (endiness != ENDIANESS_UNSET)
-                return COMMAND_INVALID_MODE;
+                return COMMAND_INVALID_MOD;
             endiness = ENDIANESS_BIG;
         } else if (strcmp((char*)curr->data, "u") == 0) {
             if (unsign)
-                return COMMAND_INVALID_MODE;
+                return COMMAND_INVALID_MOD;
             unsign = 1;
         } else if (strcmp((char*)curr->data, "i") == 0) {
             if (insert)
-                return COMMAND_INVALID_MODE;
+                return COMMAND_INVALID_MOD;
             insert = 1;
         } else {
             return COMMAND_UNSUPPORTED_MOD;

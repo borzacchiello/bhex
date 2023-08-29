@@ -66,39 +66,39 @@ int printcmd_parse_args(ParsedCommand* pc, PrintCmdArgs* o_args)
     while (curr) {
         if (strcmp((char*)curr->data, "x") == 0) {
             if (o_args->width != WIDTH_UNSET)
-                return COMMAND_INVALID_MODE;
+                return COMMAND_INVALID_MOD;
             o_args->width = WIDTH_BYTE;
         } else if (strcmp((char*)curr->data, "w") == 0) {
             if (o_args->width != WIDTH_UNSET)
-                return COMMAND_INVALID_MODE;
+                return COMMAND_INVALID_MOD;
             o_args->width = WIDTH_WORD;
         } else if (strcmp((char*)curr->data, "d") == 0) {
             if (o_args->width != WIDTH_UNSET)
-                return COMMAND_INVALID_MODE;
+                return COMMAND_INVALID_MOD;
             o_args->width = WIDTH_DWORD;
         } else if (strcmp((char*)curr->data, "q") == 0) {
             if (o_args->width != WIDTH_UNSET)
-                return COMMAND_INVALID_MODE;
+                return COMMAND_INVALID_MOD;
             o_args->width = WIDTH_QWORD;
         } else if (strcmp((char*)curr->data, "a") == 0) {
             if (o_args->width != WIDTH_UNSET)
-                return COMMAND_INVALID_MODE;
+                return COMMAND_INVALID_MOD;
             o_args->width = WIDTH_ASCII;
         } else if (strcmp((char*)curr->data, "le") == 0) {
             if (o_args->endianess != ENDIANESS_UNSET)
-                return COMMAND_INVALID_MODE;
+                return COMMAND_INVALID_MOD;
             o_args->endianess = ENDIANESS_LITTLE;
         } else if (strcmp((char*)curr->data, "be") == 0) {
             if (o_args->endianess != ENDIANESS_UNSET)
-                return COMMAND_INVALID_MODE;
+                return COMMAND_INVALID_MOD;
             o_args->endianess = ENDIANESS_BIG;
         } else if (strcmp((char*)curr->data, "+") == 0) {
             if (o_args->seek != SEEK_UNSET)
-                return COMMAND_INVALID_MODE;
+                return COMMAND_INVALID_MOD;
             o_args->seek = SEEK_FORWARD;
         } else if (strcmp((char*)curr->data, "-") == 0) {
             if (o_args->seek != SEEK_UNSET)
-                return COMMAND_INVALID_MODE;
+                return COMMAND_INVALID_MOD;
             o_args->seek = SEEK_BACKWARD;
         } else {
             return COMMAND_UNSUPPORTED_MOD;

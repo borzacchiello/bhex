@@ -12,6 +12,7 @@
 #include "cmd_commit.h"
 #include "cmd_template.h"
 #include "cmd_search.h"
+#include "cmd_assemble.h"
 #include "cmd_disas.h"
 #include "cmd_strings.h"
 
@@ -28,7 +29,7 @@ const char* cmdctx_err_to_string(int err)
             return "unsupported cmd modifier";
         case COMMAND_UNSUPPORTED_ARG:
             return "unsupported cmd argument";
-        case COMMAND_INVALID_MODE:
+        case COMMAND_INVALID_MOD:
             return "invalid cmd modifier";
         case COMMAND_INVALID_ARG:
             return "invalid arg";
@@ -49,6 +50,9 @@ CmdContext* cmdctx_init()
     ll_add(&cc->commands, (uptr_t)writecmd_create());
 #ifndef DISABLE_CAPSTONE
     ll_add(&cc->commands, (uptr_t)disascmd_create());
+#endif
+#ifndef DISABLE_KEYSTONE
+    ll_add(&cc->commands, (uptr_t)assemblecmd_create());
 #endif
     ll_add(&cc->commands, (uptr_t)printcmd_create());
     ll_add(&cc->commands, (uptr_t)seekcmd_create());
