@@ -12,7 +12,7 @@
 
 Minimalistic and lightweight shell-based hex editor.
 
-It is designed to have a low memory footprint independently from the size of the opened file. This makes the program usable on *very low-end* devices.
+It is designed to have a low memory footprint. This makes the program usable on *very low-end* devices.
 
 Supported features:
 - print file content in various format
@@ -20,7 +20,8 @@ Supported features:
 - undo writes until _committed_
 - enumerate (ascii) strings
 - search strings or binary data
-- disassemble code
+- disassemble opcodes (using Capstone)
+- assemble opcodes (using Keystone)
 
 Just run `bhex <file>` to start the shell.
 
@@ -36,6 +37,7 @@ $ make
 ```
 
 To enable the disassembler command, use "-DENABLE_CAPSTONE=on".
+
 To enable the assembler command, use "-DENABLE_KEYSTONE=on".
 
 # Command Format
