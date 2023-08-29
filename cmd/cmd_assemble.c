@@ -151,21 +151,18 @@ static int assemblecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     if (!do_assemble(arch, code_str, &code_bytes, &code_size))
         return COMMAND_INVALID_ARG;
 
-    for (size_t i = 0; i < code_size; ++i)
-        printf("%02x ", code_bytes[i]);
-    puts("");
-
-    int res = COMMAND_OK;
     if (overwrite) {
-        if (!fb_write(fb, code_bytes, code_size))
-            res = COMMAND_INVALID_ARG;
+        if (!fb_write(fb, code_bytes, code_size)) {
+            bhex_free(code_bytes);
+            return COMMAND_INVALID_ARG;
+        }
     } else {
-        if (!fb_insert(fb, code_bytes, code_size))
-            res = COMMAND_INVALID_ARG;
+        if (!fb_insert(fb, code_bytes, code_size)) {
+            bhex_free(code_bytes);
+            return COMMAND_INVALID_ARG;
+        }
     }
-
-    bhex_free(code_bytes);
-    return res;
+    return COMMAND_OK;
 }
 
 Cmd* assemblecmd_create()
