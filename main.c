@@ -3,13 +3,12 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <errno.h>
-#include <pwd.h>
 
 #include "linenoise/linenoise.h"
+#include "cmd/cmd.h"
 #include "parser.h"
 #include "alloc.h"
 #include "log.h"
-#include "cmd/cmd.h"
 
 const char* const   short_options  = "hwbn";
 const struct option long_options[] = {
@@ -32,23 +31,20 @@ static void print_banner()
 static void usage(const char* prog, int exit_code)
 {
     printf("Usage:  %s [ options ] inputfile\n", prog);
-    printf("  -h  --help        Display this usage information.\n"
-           "  -w  --write       Open the file in write mode.\n"
-           "  -b  --backup      Backup original file in \"filename.bk\".\n"
+    printf("  -h  --help        Display this usage information\n"
+           "  -w  --write       Open the file in write mode\n"
+           "  -b  --backup      Backup original file in \"filename.bk\"\n"
            "  -n  --no_history  Do not save command history\n"
            "\n"
            "command history is saved in \"$HOME/.bhex_history\", but it can be "
-           "changed setting BHEX_HISTORY_FILE env\n");
+           "changed setting BHEX_HISTORY_FILE env variable\n");
     exit(exit_code);
 }
 
 static const char* get_home()
 {
-    const char* homedir = NULL;
-    if ((homedir = getenv("HOME")) == NULL)
-        homedir = getpwuid(getuid())->pw_dir;
     // could be null!
-    return homedir;
+    return getenv("HOME");
 }
 
 static const char* get_history_file()
@@ -201,7 +197,8 @@ int main(int argc, char* argv[])
     }
 
     if (!write_mode)
-        warning("file opened in read-only mode (use the switch '-w' to open the file in write mode)");
+        warning("file opened in read-only mode (use the switch '-w' to open "
+                "the file in write mode)");
 
     CmdContext* cc = cmdctx_init();
     mainloop(fb, cc);

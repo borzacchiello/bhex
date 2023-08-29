@@ -31,11 +31,11 @@ The project can be compiled using cmake. It has no runtime dependencies (apart f
 ```
 $ mkdir build
 $ cd build
-$ cmake -DDISABLE_CAPSTONE=on ..
+$ cmake ..
 $ make
 ```
 
-To enable the disassembler command, use "-DDISABLE_CAPSTONE=off".
+To enable the disassembler command, use "-DENABLE_CAPSTONE=on".
 
 # Command Format
 

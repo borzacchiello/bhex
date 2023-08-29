@@ -3,12 +3,12 @@ cmake_minimum_required(VERSION 3.19)
 project(bhex C)
 
 option(ASAN "Compile with asan (only for debug builds)" OFF)
-option(DISABLE_CAPSTONE "Disable Capstone (disas command)" OFF)
+option(ENABLE_CAPSTONE "Enable Capstone (disas command)" OFF)
 option(STATIC_BUILD "Statically link libc" OFF)
 
 set(CMAKE_C_STANDARD 99)
 
-if (NOT DISABLE_CAPSTONE)
+if (ENABLE_CAPSTONE)
     set(BUILD_SHARED_LIBS OFF)
     set(CAPSTONE_X86_ATT_DISABLE ON)
     set(CAPSTONE_PPC_SUPPORT OFF)
@@ -90,6 +90,6 @@ if (STATIC_BUILD)
     target_link_options(bhex PRIVATE -static-libgcc -static)
 endif()
 
-if (NOT DISABLE_CAPSTONE)
+if (ENABLE_CAPSTONE)
     target_link_libraries(bhex LINK_PUBLIC capstone)
 endif()
