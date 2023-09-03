@@ -12,7 +12,7 @@
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 
-#define DEFAULT_DISAS_NBYTES 128
+#define DEFAULT_DISAS_OPCODES 8
 
 #define X86_64_ARCH      0
 #define X86_ARCH         1
@@ -64,9 +64,9 @@ static void disascmd_help(void* obj)
            "     l:  list supported architectures\n"
            "\n"
            "  arch:   the architecture to use\n"
-           "  nbytes: the number of bytes to disassemble, default value: %d\n"
+           "  nbytes: the number of opcodes to disassemble, default value: %d\n"
            "\n",
-           DEFAULT_DISAS_NBYTES);
+           DEFAULT_DISAS_OPCODES);
 }
 
 static void disascmd_dispose(void* obj) {}
@@ -110,7 +110,7 @@ static const char* bytes_str(const cs_insn* insn, size_t max_size)
     return disas;
 }
 
-static void do_disas(int arch, u64_t addr, const u8_t* code, size_t code_size)
+static void do_disas(int arch, u64_t addr, const u8_t* code, size_t code_size, u64_t nopcodes)
 {
     csh      handle;
     cs_insn* insn;
@@ -126,7 +126,7 @@ static void do_disas(int arch, u64_t addr, const u8_t* code, size_t code_size)
     count = cs_disasm(handle, code, code_size - 1, addr, 0, &insn);
     if (count > 0) {
         size_t j;
-        for (j = 0; j < count; j++) {
+        for (j = 0; j < min(count, nopcodes); j++) {
             printf("0x%llx: %s %s\t\t%s\n", (u64_t)insn[j].address,
                    bytes_str(&insn[j], 20), insn[j].mnemonic, insn[j].op_str);
         }
@@ -161,9 +161,9 @@ static int disascmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     if (pc->args.size != 1 && pc->args.size != 2)
         return COMMAND_INVALID_ARG;
 
-    int         arch  = 0;
-    u64_t       size  = 0;
-    const u8_t* bytes = NULL;
+    int         arch     = 0;
+    u64_t       nopcodes = 0;
+    const u8_t* bytes    = NULL;
 
     const char* arch_str = (const char*)pc->args.head->data;
     if (!parse_arch(arch_str, &arch)) {
@@ -172,16 +172,18 @@ static int disascmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 
     if (pc->args.size == 2) {
         const char* size_str = (const char*)pc->args.head->next->data;
-        if (!str_to_uint64(size_str, &size))
+        if (!str_to_uint64(size_str, &nopcodes))
             return COMMAND_INVALID_ARG;
     } else {
-        size = min(DEFAULT_DISAS_NBYTES, fb->size - fb->off);
+        nopcodes = DEFAULT_DISAS_OPCODES;
     }
 
-    bytes = fb_read(fb, size);
+    // we are assuming that no opcodes has more than 10 bytes
+    u64_t size = min(nopcodes*10, fb->size - fb->off);
+    bytes      = fb_read(fb, size);
     if (!bytes)
         return COMMAND_INVALID_ARG;
-    do_disas(arch, fb->off, bytes, size);
+    do_disas(arch, fb->off, bytes, size, nopcodes);
     return COMMAND_OK;
 }
 
