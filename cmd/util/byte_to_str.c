@@ -5,7 +5,7 @@ char nibble_to_hex_char(u8_t b)
 {
     if ((b & 0xf) < 10)
         return '0' + (b & 0xf);
-    return 'A' + ((b & 0xf) - 10);
+    return 'a' + ((b & 0xf) - 10);
 }
 
 char* bytes_to_hex(const u8_t* bytes, size_t size)
@@ -28,3 +28,4 @@ char get_printable_ascii_or_dot(char c)
         return c;
     return '.';
 }
+

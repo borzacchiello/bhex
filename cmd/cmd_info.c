@@ -88,6 +88,22 @@ static void calc_values(FileBuffer* fb, char** md5, float* entropy)
     fb_seek(fb, orig_off);
 }
 
+static const char* size_string(u64_t size)
+{
+    static char buf[256];
+    if (size / (1024ul * 1024 * 1024 * 1024) > 0)
+	snprintf((char*)buf, sizeof(buf)-1, "%.03Lf TiB", (double)size/(1024.0l * 1024 * 1024 * 1024));
+    else if (size / (1024ul * 1024 * 1024) > 0)
+	snprintf((char*)buf, sizeof(buf)-1, "%.03Lf GiB", (double)size/(1024.0l * 1024 * 1024));
+    else if (size / (1024ul * 1024) > 0)
+	snprintf((char*)buf, sizeof(buf)-1, "%.03Lf MiB", (double)size/(1024.0l * 1024));
+    else if (size / 1024ul > 0)
+	snprintf((char*)buf, sizeof(buf)-1, "%.03Lf KiB", (double)size/1024.0l);
+    else
+	snprintf((char*)buf, sizeof(buf)-1, "%llu Bytes", size);
+    return (const char*)&buf;
+}
+
 static int infocmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 {
     if (pc->args.size != 0)
@@ -104,11 +120,11 @@ static int infocmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 
     printf("\n"
            "  path:    %s\n"
-           "  size:    %llu bytes\n"
+           "  size:    %s\n"
            "  entropy: %.03f / 8.0\n"
            "  md5:     %s\n"
            "\n",
-           fb->path, fb->size, ctx->entropy, ctx->md5);
+           fb->path, size_string(fb->size), ctx->entropy, ctx->md5);
 
     return COMMAND_OK;
 }
