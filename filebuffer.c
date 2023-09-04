@@ -132,8 +132,10 @@ int fb_write(FileBuffer* fb, u8_t* data, size_t size)
         warning("the file was opened in read-only mode, thus you cannot commit "
                 "this modification");
 
-    if (fb->off + size > fb->size)
+    if (fb->off + size > fb->size) {
+        warning("not enough space to write the data");
         return 0;
+    }
 
     Modification* mod = bhex_malloc(sizeof(Modification));
     mod->type         = MOD_TYPE_OVERWRITE;

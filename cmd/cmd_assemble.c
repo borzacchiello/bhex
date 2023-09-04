@@ -53,9 +53,10 @@ static void assemblecmd_help(void* obj)
 {
     printf("\nassemble: assemble code and write it at current offset\n"
            "\n"
-           "  as[/l/i] <arch> \"<code>\"\n"
+           "  as[/l/i/s] <arch> \"<code>\"\n"
            "     l:  list supported architectures\n"
            "     i:  insert instead of overwrite\n"
+           "     s:  seek to the end of the write\n"
            "\n"
            "  arch: the architecture to use\n"
            "  code: assembly code string (e.g., \"inc eax; inc ecx; ret\")\n"
@@ -76,7 +77,7 @@ static int parse_arch(const char* a, int* out_arch)
     return 0;
 }
 
-static int do_assemble(int arch, const u8_t* code_str, u8_t** code,
+static int do_assemble(int arch, const char* code_str, u8_t** code,
                        size_t* code_size)
 {
     ks_engine* ks;
@@ -108,10 +109,6 @@ static int do_assemble(int arch, const u8_t* code_str, u8_t** code,
 
 static int assemblecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 {
-    if (pc->cmd_modifiers.size > 1)
-        return COMMAND_UNSUPPORTED_MOD;
-
-    int overwrite = 1;
     if (pc->cmd_modifiers.size == 1 &&
         strcmp((char*)pc->cmd_modifiers.head->data, "l") == 0) {
         if (pc->args.size != 0)
@@ -125,20 +122,29 @@ static int assemblecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
         }
         printf("\n");
         return COMMAND_OK;
-    } else if (pc->cmd_modifiers.size == 1 &&
-               strcmp((char*)pc->cmd_modifiers.head->data, "i") == 0) {
-        overwrite = 0;
-    } else if (pc->cmd_modifiers.size == 1) {
-        return COMMAND_UNSUPPORTED_MOD;
+    }
+
+    int     overwrite = 1, seek_to_end = 0;
+    LLNode* curr = pc->cmd_modifiers.head;
+    while (curr) {
+        if (strcmp((char*)curr->data, "i") == 0) {
+            if (!overwrite)
+                return COMMAND_INVALID_MOD;
+            overwrite = 0;
+        } else if (strcmp((char*)curr->data, "s") == 0) {
+            if (seek_to_end)
+                return COMMAND_INVALID_MOD;
+            seek_to_end = 1;
+        } else {
+            return COMMAND_UNSUPPORTED_MOD;
+        }
+        curr = curr->next;
     }
 
     if (pc->args.size != 2)
         return COMMAND_INVALID_ARG;
 
-    int         arch  = 0;
-    u64_t       size  = 0;
-    const u8_t* bytes = NULL;
-
+    int         arch     = 0;
     const char* arch_str = (const char*)pc->args.head->data;
     if (!parse_arch(arch_str, &arch)) {
         return COMMAND_INVALID_ARG;
@@ -162,6 +168,9 @@ static int assemblecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
             return COMMAND_INVALID_ARG;
         }
     }
+
+    if (seek_to_end)
+        fb_seek(fb, fb->off + code_size);
     return COMMAND_OK;
 }
 

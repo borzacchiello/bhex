@@ -156,9 +156,10 @@ seek: change current offset
 
 assemble: assemble code and write it at current offset
 
-  as[/l/i] <arch> "<code>"
+  as[/l/i/s] <arch> "<code>"
      l:  list supported architectures
      i:  insert instead of overwrite
+     s:  seek to the end of the write
 
   arch: the architecture to use
   code: assembly code string (e.g., "inc eax; inc ecx; ret")
