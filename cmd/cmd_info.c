@@ -90,17 +90,21 @@ static void calc_values(FileBuffer* fb, char** md5, float* entropy)
 
 static const char* size_string(u64_t size)
 {
-    static char buf[256];
+    static char buf[512];
     if (size / (1024ul * 1024 * 1024 * 1024) > 0)
-	snprintf((char*)buf, sizeof(buf)-1, "%.03Lf TiB", (double)size/(1024.0l * 1024 * 1024 * 1024));
+        snprintf((char*)buf, sizeof(buf) - 1, "%llu [ %.03Lf TiB ]", size,
+                 (double)size / (1024.0l * 1024 * 1024 * 1024));
     else if (size / (1024ul * 1024 * 1024) > 0)
-	snprintf((char*)buf, sizeof(buf)-1, "%.03Lf GiB", (double)size/(1024.0l * 1024 * 1024));
+        snprintf((char*)buf, sizeof(buf) - 1, "%llu [ %.03Lf GiB ]", size,
+                 (double)size / (1024.0l * 1024 * 1024));
     else if (size / (1024ul * 1024) > 0)
-	snprintf((char*)buf, sizeof(buf)-1, "%.03Lf MiB", (double)size/(1024.0l * 1024));
+        snprintf((char*)buf, sizeof(buf) - 1, "%llu [ %.03Lf MiB ]", size,
+                 (double)size / (1024.0l * 1024));
     else if (size / 1024ul > 0)
-	snprintf((char*)buf, sizeof(buf)-1, "%.03Lf KiB", (double)size/1024.0l);
+        snprintf((char*)buf, sizeof(buf) - 1, "%llu [ %.03Lf KiB ]", size,
+                 (double)size / 1024.0l);
     else
-	snprintf((char*)buf, sizeof(buf)-1, "%llu Bytes", size);
+        snprintf((char*)buf, sizeof(buf) - 1, "%llu Bytes", size);
     return (const char*)&buf;
 }
 
@@ -121,7 +125,7 @@ static int infocmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     printf("\n"
            "  path:    %s\n"
            "  size:    %s\n"
-           "  entropy: %.03f / 8.0\n"
+           "  entropy: %.03f / 8.000\n"
            "  md5:     %s\n"
            "\n",
            fb->path, size_string(fb->size), ctx->entropy, ctx->md5);

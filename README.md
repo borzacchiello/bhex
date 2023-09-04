@@ -105,7 +105,7 @@ search: search a string or a sequence of bytes in the file
 
 enumerate the strings in the file (i.e., sequences of printable ascii characters)
 
-  str[/n] <num>
+  str[/n] [<num>]
      n: look for null-terminated strings
 
   num: minimum length (default: 3)
@@ -175,7 +175,7 @@ disas: disassemble code at current offset
      l:  list supported architectures
 
   arch:   the architecture to use
-  nbytes: the number of bytes to disassemble, default value: 128
+  nbytes: the number of opcodes to disassemble, default value: 8
 ```
 
 ### Print

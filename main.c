@@ -115,8 +115,10 @@ static void mainloop(FileBuffer* fb, CmdContext* cc)
     while (1) {
         snprintf(prompt, sizeof(prompt), "[0x%07llX] $ ", fb->off);
         char* inp = linenoise(prompt);
-        if (!inp)
+        if (!inp || strcmp(inp, "exit") == 0) {
+            bhex_free(inp);
             break;
+        }
         linenoiseHistoryAdd(inp);
 
         ParsedCommand* pc;

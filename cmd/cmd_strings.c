@@ -16,7 +16,7 @@ static void stringscmd_help(void* obj)
            "enumerate the strings in the file (i.e., sequences of printable "
            "ascii characters)\n"
            "\n"
-           "  str[/n] <num>\n"
+           "  str[/n] [<num>]\n"
            "     n: look for null-terminated strings\n"
            "\n"
            "  num: minimum length (default: 3)\n"
