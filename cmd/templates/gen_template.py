@@ -66,7 +66,7 @@ print_el_num_template = """    {{
         {el_type} v = le 
             ? {read_le}(&s->{el_name})
             : {read_be}(&s->{el_name});
-        printf("  b+%lu %{alignNum}s: {el_format}\\n", offsetof({struct_name}, {el_name}), "{el_name}", v);
+        printf("  b+%03lu %{alignNum}s: {el_format}\\n", offsetof({struct_name}, {el_name}), "{el_name}", v);
     }}
 """
 
@@ -74,15 +74,17 @@ print_el_num_with_hex_template = """    {{
         {el_type} v = le 
             ? {read_le}(&s->{el_name})
             : {read_be}(&s->{el_name});
-        printf("  b+%lu %{alignNum}s: {el_format_1} [{el_format_2}]\\n", offsetof({struct_name}, {el_name}), "{el_name}", v, v);
+        printf("  b+%03lu %{alignNum}s: {el_format_1} [{el_format_2}]\\n", offsetof({struct_name}, {el_name}), "{el_name}", v, v);
     }}
 """
 
-print_el_str_template = """    printf("  b+%lu %{alignNum}s: %s\\n", offsetof({struct_name}, {el_name}), "{el_name}", s->{el_name});"""
+print_el_str_template = """    printf("  b+%03lu %{alignNum}s: %s\\n", offsetof({struct_name}, {el_name}), "{el_name}", s->{el_name});"""
+
+print_el_char_array_template = """    printf("  b+%03lu %{alignNum}s: %.{size}s\\n", offsetof({struct_name}, {el_name}), "{el_name}", s->{el_name});"""
 
 print_el_array_template = \
 """    hexstr = bytes_to_hex((u8_t*)s->{el_name}, sizeof(s->{el_name}));
-    printf("  b+%lu %{alignNum}s: %s\\n", offsetof({struct_name}, {el_name}), "{el_name}", hexstr);
+    printf("  b+%03lu %{alignNum}s: %s\\n", offsetof({struct_name}, {el_name}), "{el_name}", hexstr);
     free(hexstr);
 """
 
@@ -107,7 +109,10 @@ def get_code_from_type(struct_name, t, name, alignNum):
         assert len(t.declarators[0]) == 1
 
         # number of elements
-        _ = t.declarators[0][0]
+        nels = t.declarators[0][0]
+
+        if t.type_spec == "char":
+            return print_el_char_array_template.format(alignNum=alignNum, size=nels, struct_name=struct_name, el_name=name)
         return print_el_array_template.format(struct_name=struct_name, alignNum=alignNum, el_name=name)
 
     spec = t.type_spec
@@ -194,9 +199,12 @@ def parse_structs(sources):
 
     for source_file in sorted(sources):
         os.system("gcc -DCPARSER=on -E %s > /tmp/src.c" % source_file)
+        with open("/tmp/src.c", "r") as fin:
+            data = fin.read()
+        with open("/tmp/src.c", "w") as fout:
+            fout.write(data.replace("__attribute__((__packed__))", " "))
         parser = CParser(
-            ["../../defs.h", "/tmp/src.c"],
-            replace={"__attribute__((__packed__))": " "})
+            ["../../defs.h", "/tmp/src.c"])
         structs = parser.defs["structs"]
 
         for struct_name in structs:
