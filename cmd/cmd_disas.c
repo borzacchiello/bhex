@@ -16,14 +16,15 @@
 
 #define X86_64_ARCH      0
 #define X86_ARCH         1
-#define ARM32_ARCH       2
-#define ARM64_ARCH       3
-#define ARM32_THUMB_ARCH 4
-#define ARM64_THUMB_ARCH 5
-#define MIPS32_ARCH      6
-#define MIPS64_ARCH      7
-#define MIPSEL32_ARCH    8
-#define MIPSEL64_ARCH    9
+#define X86_16_ARCH      2
+#define ARM32_ARCH       3
+#define ARM64_ARCH       4
+#define ARM32_THUMB_ARCH 5
+#define ARM64_THUMB_ARCH 6
+#define MIPS32_ARCH      7
+#define MIPS64_ARCH      8
+#define MIPSEL32_ARCH    9
+#define MIPSEL64_ARCH    10
 
 typedef struct {
     cs_arch arch;
@@ -33,6 +34,7 @@ typedef struct {
 static CapstoneArchInfo map_arch[] = {
     {CS_ARCH_X86, CS_MODE_64},                              // X86_64_ARCH
     {CS_ARCH_X86, CS_MODE_32},                              // X86_ARCH
+    {CS_ARCH_X86, CS_MODE_16},                              // X86_16_ARCH
     {CS_ARCH_ARM, CS_MODE_ARM},                             // ARM32_ARCH
     {CS_ARCH_ARM64, CS_MODE_ARM},                           // ARM64_ARCH
     {CS_ARCH_ARM, CS_MODE_THUMB},                           // ARM32_THUMB_ARCH
@@ -46,6 +48,7 @@ static CapstoneArchInfo map_arch[] = {
 static const char* map_arch_names[] = {
     "x64",         // X86_64_ARCH
     "x86",         // X86_ARCH
+    "i8086",       // X86_16_ARCH
     "arm32",       // ARM32_ARCH
     "arm64",       // ARM64_ARCH
     "arm32-thumb", // ARM32_THUMB_ARCH
@@ -110,7 +113,8 @@ static const char* bytes_str(const cs_insn* insn, size_t max_size)
     return disas;
 }
 
-static void do_disas(int arch, u64_t addr, const u8_t* code, size_t code_size, u64_t nopcodes)
+static void do_disas(int arch, u64_t addr, const u8_t* code, size_t code_size,
+                     u64_t nopcodes)
 {
     csh      handle;
     cs_insn* insn;
@@ -179,7 +183,7 @@ static int disascmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     }
 
     // we are assuming that no opcodes has more than 10 bytes
-    u64_t size = min(nopcodes*10, fb->size - fb->off);
+    u64_t size = min(nopcodes * 10, fb->size - fb->off);
     bytes      = fb_read(fb, size);
     if (!bytes)
         return COMMAND_INVALID_ARG;

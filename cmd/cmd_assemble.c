@@ -9,14 +9,15 @@
 
 #define X86_64_ARCH      0
 #define X86_ARCH         1
-#define ARM32_ARCH       2
-#define ARM64_ARCH       3
-#define ARM32_THUMB_ARCH 4
-#define ARM64_THUMB_ARCH 5
-#define MIPS32_ARCH      6
-#define MIPS64_ARCH      7
-#define MIPSEL32_ARCH    8
-#define MIPSEL64_ARCH    9
+#define X86_16_ARCH      2
+#define ARM32_ARCH       3
+#define ARM64_ARCH       4
+#define ARM32_THUMB_ARCH 5
+#define ARM64_THUMB_ARCH 6
+#define MIPS32_ARCH      7
+#define MIPS64_ARCH      8
+#define MIPSEL32_ARCH    9
+#define MIPSEL64_ARCH    10
 
 typedef struct {
     ks_arch arch;
@@ -26,6 +27,7 @@ typedef struct {
 static KeystoneArchInfo map_arch[] = {
     {KS_ARCH_X86, KS_MODE_64},                              // X86_64_ARCH
     {KS_ARCH_X86, KS_MODE_32},                              // X86_ARCH
+    {KS_ARCH_X86, KS_MODE_16},                              // X86_16_ARCH
     {KS_ARCH_ARM, KS_MODE_ARM},                             // ARM32_ARCH
     {KS_ARCH_ARM64, KS_MODE_ARM},                           // ARM64_ARCH
     {KS_ARCH_ARM, KS_MODE_THUMB},                           // ARM32_THUMB_ARCH
@@ -39,6 +41,7 @@ static KeystoneArchInfo map_arch[] = {
 static const char* map_arch_names[] = {
     "x64",         // X86_64_ARCH
     "x86",         // X86_ARCH
+    "i8086",       // X86_16_ARCH
     "arm32",       // ARM32_ARCH
     "arm64",       // ARM64_ARCH
     "arm32-thumb", // ARM32_THUMB_ARCH
