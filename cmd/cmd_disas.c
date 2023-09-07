@@ -129,12 +129,13 @@ static void do_disas(int arch, u64_t addr, const u8_t* code, size_t code_size,
 
     count = cs_disasm(handle, code, code_size - 1, addr, 0, &insn);
     if (count > 0) {
+        puts("");
         size_t j;
         for (j = 0; j < min(count, nopcodes); j++) {
             printf("0x%08llx: %s %s\t\t%s\n", (u64_t)insn[j].address,
                    bytes_str(&insn[j], 20), insn[j].mnemonic, insn[j].op_str);
         }
-
+        puts("");
         cs_free(insn, count);
     } else
         printf("invalid\n");
