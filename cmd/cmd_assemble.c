@@ -87,8 +87,8 @@ static int do_assemble(int arch, const char* code_str, u8_t** code,
     ks_err     err;
     err = ks_open(map_arch[arch].arch, map_arch[arch].mode, &ks);
     if (err != KS_ERR_OK) {
-        warning("unable to assemble with given arch, maybe it is not "
-                "included in your keystone version");
+        error("unable to assemble with given arch, maybe it is not "
+              "included in your keystone version");
         return 0;
     }
 
@@ -96,8 +96,8 @@ static int do_assemble(int arch, const char* code_str, u8_t** code,
     size_t size;
     size_t count;
     if (ks_asm(ks, code_str, 0, &encode, &size, &count) != KS_ERR_OK) {
-        warning("ks_asm() failed & count = %lu, error = %u\n", count,
-                ks_errno(ks));
+        error("ks_asm() failed & count = %lu, error = %u\n", count,
+              ks_errno(ks));
         return 0;
     }
 

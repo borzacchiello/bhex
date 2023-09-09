@@ -65,7 +65,7 @@ static int templatecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
         Template* t = &templates[i];
         if (strcmp(tname, t->name) == 0) {
             if (t->get_size() > fb->size - fb->off) {
-                warning("not enough data to apply the template");
+                error("not enough data to apply the template");
                 return COMMAND_INVALID_ARG;
             }
             template_found = 1;
@@ -77,7 +77,7 @@ static int templatecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     }
 
     if (!template_found) {
-        warning("template not found");
+        error("template not found");
         return COMMAND_INVALID_ARG;
     }
     return COMMAND_OK;

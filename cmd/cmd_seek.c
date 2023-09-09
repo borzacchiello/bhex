@@ -111,8 +111,8 @@ static int seekcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     }
 
     if (a.off > fb->size) {
-        warning("trying to seek (%llu) after the size of the file (%llu)\n",
-                a.off, fb->size);
+        error("trying to seek (%llu) after the size of the file (%llu)\n",
+              a.off, fb->size);
         return COMMAND_INVALID_ARG;
     }
 

@@ -10,11 +10,12 @@
 #include "alloc.h"
 #include "log.h"
 
-const char* const   short_options  = "hwbnc:";
+const char* const   short_options  = "hw2bnc:";
 const struct option long_options[] = {
     {"help", no_argument, NULL, 'h'},
     {"write", no_argument, NULL, 'w'},
     {"backup", no_argument, NULL, 'b'},
+    {"no_warning", no_argument, NULL, 'n'},
     {"no_history", no_argument, NULL, 'n'},
     {NULL, 0, NULL, 0},
 };
@@ -37,6 +38,7 @@ static void usage(const char* prog, int exit_code)
            "  -w  --write         Open the file in write mode\n"
            "  -b  --backup        Backup original file in "
            "\"filename.bk\"\n"
+           "  -2  --no_warning    Disable warnings\n"
            "  -n  --no_history    Do not save command history\n"
            "  -c  \"c1; c2; ...\" Execute the commands given as "
            "arguments and exit\n"
@@ -182,6 +184,9 @@ int main(int argc, char* argv[])
                 case 'b':
                     backup = 1;
                     break;
+                case '2':
+                    disable_warning = 1;
+                    break;
                 case 'n':
                     save_history = 0;
                     break;
@@ -204,8 +209,8 @@ int main(int argc, char* argv[])
     if (path == NULL) {
         bhex_free(commands);
 
-        printf("missing input file\n\n");
-        usage(progname, 1);
+        error("missing input file\n");
+        exit(1);
     }
 
     if (save_history && !commands) {

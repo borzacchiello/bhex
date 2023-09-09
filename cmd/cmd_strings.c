@@ -101,7 +101,7 @@ static int stringscmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
         if (!str_to_uint32(arg, &s) || s == 0)
             return COMMAND_INVALID_ARG;
         if (s >= 4096) {
-            warning("the minimum length is greater than the max value (4096)");
+            error("the minimum length is greater than the max value (4096)");
             return COMMAND_INVALID_ARG;
         }
         min_length = s;

@@ -122,8 +122,8 @@ static void do_disas(int arch, u64_t addr, const u8_t* code, size_t code_size,
 
     if (cs_open(map_arch[arch].arch, map_arch[arch].mode, &handle) !=
         CS_ERR_OK) {
-        warning("unable to disassemble with given arch, maybe it is not "
-                "included in your capstone version");
+        error("unable to disassemble with given arch, maybe it is not "
+              "included in your capstone version");
         return;
     }
 
