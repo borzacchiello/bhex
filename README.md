@@ -142,6 +142,8 @@ template: parse a struct template at current offset
 [0x0000000] $ t/l
 
 Available templates:
+    ZipHeader
+    TarHeader
     Elf32_Ehdr
     Elf64_Ehdr
     IMAGE_DOS_HEADER

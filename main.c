@@ -34,17 +34,17 @@ static void print_banner()
 static void usage(const char* prog, int exit_code)
 {
     printf("Usage:  %s [ options ] inputfile\n", prog);
-    printf("  -h  --help        Display this usage information\n"
+    printf("  -h  --help        Give this help list\n"
            "  -w  --write       Open the file in write mode\n"
            "  -b  --backup      Backup original file in "
            "\"filename.bk\"\n"
            "  -2  --no_warning  Disable warnings\n"
            "  -n  --no_history  Do not save command history\n"
            "  -c  \"c1; c2; ...\" Execute the commands given as "
-           "arguments and exit\n"
+           "argument and exit\n"
            "\n"
-           "command history is saved in \"$HOME/.bhex_history\", but it can be "
-           "changed setting BHEX_HISTORY_FILE env variable\n");
+           "command history is saved in \"$HOME/.bhex_history\", it can be "
+           "changed setting BHEX_HISTORY_FILE environment variable\n");
     exit(exit_code);
 }
 
@@ -158,7 +158,7 @@ static void command_loop(FileBuffer* fb, CmdContext* cc, char* commands)
             return;
         }
         if ((r = cmdctx_run(cc, pc, fb)) != COMMAND_OK) {
-            fprintf(stderr, "  !Err: %s\n", parser_err_to_string(r));
+            fprintf(stderr, "  !Err: %s\n", cmdctx_err_to_string(r));
             parsed_command_destroy(pc);
             return;
         }
