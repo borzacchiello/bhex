@@ -34,12 +34,12 @@ static void print_banner()
 static void usage(const char* prog, int exit_code)
 {
     printf("Usage:  %s [ options ] inputfile\n", prog);
-    printf("  -h  --help          Display this usage information\n"
-           "  -w  --write         Open the file in write mode\n"
-           "  -b  --backup        Backup original file in "
+    printf("  -h  --help        Display this usage information\n"
+           "  -w  --write       Open the file in write mode\n"
+           "  -b  --backup      Backup original file in "
            "\"filename.bk\"\n"
-           "  -2  --no_warning    Disable warnings\n"
-           "  -n  --no_history    Do not save command history\n"
+           "  -2  --no_warning  Disable warnings\n"
+           "  -n  --no_history  Do not save command history\n"
            "  -c  \"c1; c2; ...\" Execute the commands given as "
            "arguments and exit\n"
            "\n"
@@ -209,7 +209,7 @@ int main(int argc, char* argv[])
     if (path == NULL) {
         bhex_free(commands);
 
-        error("missing input file\n");
+        error("missing input file");
         exit(1);
     }
 

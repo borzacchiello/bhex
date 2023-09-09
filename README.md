@@ -25,6 +25,20 @@ Supported features:
 
 Just run `bhex <file>` to start the shell.
 
+Supported flags:
+
+```
+Usage:  bhex [ options ] inputfile
+  -h  --help        Display this usage information
+  -w  --write       Open the file in write mode
+  -b  --backup      Backup original file in "filename.bk"
+  -2  --no_warning  Disable warnings
+  -n  --no_history  Do not save command history
+  -c  "c1; c2; ..." Execute the commands given as arguments and exit
+
+command history is saved in "$HOME/.bhex_history", but it can be changed setting BHEX_HISTORY_FILE env variable
+```
+
 # Compilation
 
 The project can be compiled using cmake. Without Captone and Keystone, it has no runtime dependencies (apart from libc), so it should be quite strightforward:
