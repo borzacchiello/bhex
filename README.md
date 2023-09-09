@@ -147,6 +147,8 @@ seek: change current offset
 
   off: can be either a number or the character '-'.
        In the latter case seek to the offset before the last seek.
+
+  NOTE: if called without arguments, print current offset
 ```
 
 ### Assemble
@@ -186,13 +188,16 @@ disas: disassemble code at current offset
 
 print: display the data at current offset in various formats
 
-  p[/{x,w,d,q}/{le,be}/{+,-}] <nelements>
+  p[/{x,w,d,q}/{le,be}/r/{+,-}] <nelements>
      x:  hex output (default)
      w:  words
      d:  dwords
      q:  qwords
+     a:  as ascii
+     C:  as C buffer
      le: little-endian (default)
      be: big-endian
+     r:  raw mode (no ascii, no header and no addresses)
      +:  seek forward after printing
      -:  seek backwards after printing
 
