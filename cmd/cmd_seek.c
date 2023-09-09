@@ -17,12 +17,20 @@ typedef struct SeekState {
 } SeekState;
 
 typedef struct SeekArg {
+    int   print_off;
     int   off_mode;
     u64_t off;
 } SeekArg;
 
 static int parse_seek_arg(SeekState* state, ParsedCommand* pc, SeekArg* o_arg)
 {
+    if (pc->args.size == 0) {
+        if (pc->cmd_modifiers.size != 0)
+            return COMMAND_UNSUPPORTED_MOD;
+        o_arg->print_off = 1;
+        return COMMAND_OK;
+    }
+
     int off_mode = OFF_ABSOLUTE;
     if (pc->cmd_modifiers.size > 1)
         return COMMAND_UNSUPPORTED_MOD;
@@ -74,6 +82,8 @@ static void seekcmd_help(void* obj)
         "\n"
         "  off: can be either a number or the character '-'.\n"
         "       In the latter case seek to the offset before the last seek.\n"
+        "\n"
+        "  NOTE: if called without arguments, print current offset\n"
         "\n");
 }
 
@@ -85,6 +95,11 @@ static int seekcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     int     r = parse_seek_arg(state, pc, &a);
     if (r != COMMAND_OK)
         return r;
+
+    if (a.print_off) {
+        printf("0x%llx\n", fb->off);
+        return COMMAND_OK;
+    }
 
     if (a.off_mode == OFF_SUM)
         a.off = (a.off + fb->off) % (fb->size + 1);
