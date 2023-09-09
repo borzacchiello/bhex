@@ -132,14 +132,14 @@ static void mainloop(FileBuffer* fb, CmdContext* cc)
         ParsedCommand* pc;
         int            r = parse(inp, &pc);
         if (r != PARSER_OK) {
-            printf("  !Err: %s\n", parser_err_to_string(r));
+            error("%s", parser_err_to_string(r));
             bhex_free(inp);
             continue;
         }
 
         r = cmdctx_run(cc, pc, fb);
         if (r != COMMAND_OK)
-            printf("  !Err: %s\n", cmdctx_err_to_string(r));
+            error("%s", cmdctx_err_to_string(r));
 
         parsed_command_destroy(pc);
         bhex_free(inp);
@@ -154,11 +154,11 @@ static void command_loop(FileBuffer* fb, CmdContext* cc, char* commands)
     char* token = strtok(commands, ";");
     while (token) {
         if ((r = parse(token, &pc)) != PARSER_OK) {
-            fprintf(stderr, "  !Err: %s\n", parser_err_to_string(r));
+            error("%s", parser_err_to_string(r));
             return;
         }
         if ((r = cmdctx_run(cc, pc, fb)) != COMMAND_OK) {
-            fprintf(stderr, "  !Err: %s\n", cmdctx_err_to_string(r));
+            error("%s", cmdctx_err_to_string(r));
             parsed_command_destroy(pc);
             return;
         }
