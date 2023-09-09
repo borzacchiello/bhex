@@ -93,9 +93,9 @@ static const char* bytes_str(const cs_insn* insn, size_t max_size)
     if (max_size >= sizeof(disas) || max_size < 3)
         panic("invalid max_size");
 
-    size_t i;
-    for (i = 0; i < insn->size * 2; i += 3) {
-        if (i + 3 > max_size - 3 && insn->size * 2 > max_size) {
+    size_t i = 0, off = 0;
+    while (off < insn->size) {
+        if (i + 3 >= max_size - 2 && off != insn->size - 1) {
             disas[i]     = '.';
             disas[i + 1] = '.';
             disas[i + 2] = '.';
@@ -103,8 +103,11 @@ static const char* bytes_str(const cs_insn* insn, size_t max_size)
             break;
         }
         disas[i + 2] = ' ';
-        disas[i + 1] = nibble_to_hex_char(insn->bytes[i >> 1] & 0xF);
-        disas[i]     = nibble_to_hex_char((insn->bytes[i >> 1] >> 4) & 0xF);
+        disas[i + 1] = nibble_to_hex_char(insn->bytes[off] & 0xF);
+        disas[i]     = nibble_to_hex_char((insn->bytes[off] >> 4) & 0xF);
+
+        off += 1;
+        i += 3;
     }
     for (; i < max_size; ++i)
         disas[i] = ' ';
@@ -133,7 +136,7 @@ static void do_disas(int arch, u64_t addr, const u8_t* code, size_t code_size,
         size_t j;
         for (j = 0; j < min(count, nopcodes); j++) {
             printf("0x%08llx: %s %s\t\t%s\n", (u64_t)insn[j].address,
-                   bytes_str(&insn[j], 20), insn[j].mnemonic, insn[j].op_str);
+                   bytes_str(&insn[j], 21), insn[j].mnemonic, insn[j].op_str);
         }
         puts("");
         cs_free(insn, count);
