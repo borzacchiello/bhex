@@ -142,7 +142,8 @@ int printcmd_parse_args(ParsedCommand* pc, PrintCmdArgs* o_args)
     return COMMAND_OK;
 }
 
-static void print_ascii(const u8_t* bytes, size_t size)
+static void print_ascii(const u8_t* bytes, size_t size, int print_header,
+                        int print_footer)
 {
     size_t last_newline_off = 0, off = 0, linenum = 0;
     for (off = 0; off < size; off++) {
@@ -150,7 +151,9 @@ static void print_ascii(const u8_t* bytes, size_t size)
             last_newline_off = off;
     }
 
-    printf("\n%03lu: ", ++linenum);
+    if (print_header)
+        puts("");
+    printf("%03lu: ", ++linenum);
     off = 0;
     while (off < last_newline_off) {
         if (is_printable_ascii(bytes[off]) || bytes[off] == '\t' ||
@@ -163,32 +166,40 @@ static void print_ascii(const u8_t* bytes, size_t size)
         }
         off += 1;
     }
-    printf("\n\n");
+    if (print_footer)
+        printf("\n\n");
 }
 
-static void print_c_buffer(const u8_t* bytes, size_t size)
+static void print_c_buffer(const u8_t* bytes, size_t size, int print_header,
+                           int print_footer)
 {
     if (size == 0)
         return;
 
-    printf("{ 0x%02x", bytes[0]);
-    for (size_t i = 1; i < size; ++i)
+    size_t i = 0;
+    if (print_header) {
+        printf("{ 0x%02x", bytes[0]);
+        i = 1;
+    }
+    for (; i < size; ++i)
         printf(", 0x%02x", bytes[i]);
-    printf(" }\n");
+    if (print_footer)
+        printf(" }\n");
 }
 
-static void print_hex(const u8_t* bytes, size_t size, int raw_mode)
+static void print_hex(const u8_t* bytes, size_t size, int raw_mode,
+                      int print_header, int print_footer, u64_t addr)
 {
     static int block_size = 16;
     size_t     off        = 0;
 
-    if (!raw_mode)
+    if (!raw_mode && print_header)
         printf("\n"
                "       00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F\n"
                "       -----------------------------------------------\n");
     while (off < size) {
         if (!raw_mode)
-            printf(" %04llx: ", (u64_t)off);
+            printf(" %04llx: ", (u64_t)off + addr);
         int i;
         for (i = 0; i < block_size; ++i) {
             if (off + i >= size) {
@@ -212,22 +223,24 @@ static void print_hex(const u8_t* bytes, size_t size, int raw_mode)
         }
         off += block_size;
     }
-    printf("\n");
+    if (print_footer)
+        printf("\n");
 }
 
 static void print_words(const u8_t* bytes, size_t size, int little_endian,
-                        int raw_mode)
+                        int raw_mode, int print_header, int print_footer,
+                        u64_t addr)
 {
     static int block_size = 16;
     size_t     off        = 0;
 
-    if (!raw_mode)
+    if (!raw_mode && print_header)
         printf("\n"
                "       00    02    04    06    08    0A    0C    0E   \n"
                "       -----------------------------------------------\n");
     while (off < size) {
         if (!raw_mode)
-            printf(" %04llx: ", (u64_t)off);
+            printf(" %04llx: ", (u64_t)off + addr);
         int i;
         for (i = 0; i < block_size; i += 2) {
             if (off + i + 1 >= size)
@@ -243,22 +256,24 @@ static void print_words(const u8_t* bytes, size_t size, int little_endian,
             printf("\n");
         off += block_size;
     }
-    printf("\n");
+    if (print_footer)
+        printf("\n");
 }
 
 static void print_dwords(const u8_t* bytes, size_t size, int little_endian,
-                         int raw_mode)
+                         int raw_mode, int print_header, int print_footer,
+                         u64_t addr)
 {
     static int block_size = 16;
     size_t     off        = 0;
 
-    if (!raw_mode)
+    if (!raw_mode && print_header)
         printf("\n"
                "       00        04        08        0C       \n"
                "       ---------------------------------------\n");
     while (off < size) {
         if (!raw_mode)
-            printf(" %04llx: ", (u64_t)off);
+            printf(" %04llx: ", (u64_t)off + addr);
         int i;
         for (i = 0; i < block_size; i += 4) {
             if (off + i + 3 >= size)
@@ -274,22 +289,24 @@ static void print_dwords(const u8_t* bytes, size_t size, int little_endian,
             printf("\n");
         off += block_size;
     }
-    printf("\n");
+    if (print_footer)
+        printf("\n");
 }
 
 static void print_qwords(const u8_t* bytes, size_t size, int little_endian,
-                         int raw_mode)
+                         int raw_mode, int print_header, int print_footer,
+                         u64_t addr)
 {
     static int block_size = 16;
     size_t     off        = 0;
 
-    if (!raw_mode)
+    if (!raw_mode && print_header)
         printf("\n"
                "       00                08               \n"
                "       -----------------------------------\n");
     while (off < size) {
         if (!raw_mode)
-            printf(" %04llx: ", (u64_t)off);
+            printf(" %04llx: ", (u64_t)off + addr);
         int i;
         for (i = 0; i < block_size; i += 8) {
             if (off + i + 7 >= size)
@@ -305,7 +322,8 @@ static void print_qwords(const u8_t* bytes, size_t size, int little_endian,
             printf("\n");
         off += block_size;
     }
-    printf("\n");
+    if (print_footer)
+        printf("\n");
 }
 
 static int printcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
@@ -323,33 +341,46 @@ static int printcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
         //        parameter
         size = fb_block_size;
 
-    const u8_t* bytes = fb_read(fb, size);
-    if (!bytes)
-        return COMMAND_INVALID_ARG;
+    u64_t  addr           = 0;
+    size_t remaining_size = size;
+    while (remaining_size != 0) {
+        size_t      read_size = min(remaining_size, fb_block_size);
+        const u8_t* bytes     = fb_read(fb, read_size);
+        if (!bytes)
+            return COMMAND_INVALID_ARG;
 
-    switch (args.width) {
-        case WIDTH_UNSET:
-        case WIDTH_BYTE:
-            print_hex(bytes, size, args.raw_mode);
-            break;
-        case WIDTH_WORD:
-            print_words(bytes, size, args.endianess == ENDIANESS_LITTLE,
-                        args.raw_mode);
-            break;
-        case WIDTH_DWORD:
-            print_dwords(bytes, size, args.endianess == ENDIANESS_LITTLE,
-                         args.raw_mode);
-            break;
-        case WIDTH_QWORD:
-            print_qwords(bytes, size, args.endianess == ENDIANESS_LITTLE,
-                         args.raw_mode);
-            break;
-        case WIDTH_CBUFFER:
-            print_c_buffer(bytes, size);
-            break;
-        case WIDTH_ASCII:
-            print_ascii(bytes, size);
-            break;
+        int print_header = addr == 0;
+        int print_footer = remaining_size == read_size;
+        switch (args.width) {
+            case WIDTH_UNSET:
+            case WIDTH_BYTE:
+                print_hex(bytes, read_size, args.raw_mode, print_header,
+                          print_footer, addr);
+                break;
+            case WIDTH_WORD:
+                print_words(bytes, read_size,
+                            args.endianess == ENDIANESS_LITTLE, args.raw_mode,
+                            print_header, print_footer, addr);
+                break;
+            case WIDTH_DWORD:
+                print_dwords(bytes, read_size,
+                             args.endianess == ENDIANESS_LITTLE, args.raw_mode,
+                             print_header, print_footer, addr);
+                break;
+            case WIDTH_QWORD:
+                print_qwords(bytes, read_size,
+                             args.endianess == ENDIANESS_LITTLE, args.raw_mode,
+                             print_header, print_footer, addr);
+                break;
+            case WIDTH_CBUFFER:
+                print_c_buffer(bytes, read_size, print_header, print_footer);
+                break;
+            case WIDTH_ASCII:
+                print_ascii(bytes, read_size, print_header, print_footer);
+                break;
+        }
+        remaining_size -= read_size;
+        addr += read_size;
     }
     if (args.seek == SEEK_FORWARD && fb->off + size < fb->size)
         fb_seek(fb, fb->off + size);

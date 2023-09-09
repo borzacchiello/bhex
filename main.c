@@ -10,10 +10,12 @@
 #include "alloc.h"
 #include "log.h"
 
-const char* const   short_options  = "hwbn";
+const char* const   short_options  = "hwbnc:";
 const struct option long_options[] = {
-    {"help", 0, NULL, 'h'},   {"write", 0, NULL, 'w'},
-    {"backup", 0, NULL, 'b'}, {"no_history", 0, NULL, 'n'},
+    {"help", no_argument, NULL, 'h'},
+    {"write", no_argument, NULL, 'w'},
+    {"backup", no_argument, NULL, 'b'},
+    {"no_history", no_argument, NULL, 'n'},
     {NULL, 0, NULL, 0},
 };
 
@@ -31,10 +33,13 @@ static void print_banner()
 static void usage(const char* prog, int exit_code)
 {
     printf("Usage:  %s [ options ] inputfile\n", prog);
-    printf("  -h  --help        Display this usage information\n"
-           "  -w  --write       Open the file in write mode\n"
-           "  -b  --backup      Backup original file in \"filename.bk\"\n"
-           "  -n  --no_history  Do not save command history\n"
+    printf("  -h  --help          Display this usage information\n"
+           "  -w  --write         Open the file in write mode\n"
+           "  -b  --backup        Backup original file in "
+           "\"filename.bk\"\n"
+           "  -n  --no_history    Do not save command history\n"
+           "  -c  \"c1; c2; ...\" Execute the commands given as "
+           "arguments and exit\n"
            "\n"
            "command history is saved in \"$HOME/.bhex_history\", but it can be "
            "changed setting BHEX_HISTORY_FILE env variable\n");
@@ -112,6 +117,7 @@ static void mainloop(FileBuffer* fb, CmdContext* cc)
 {
     static char prompt[256];
 
+    print_banner();
     while (1) {
         snprintf(prompt, sizeof(prompt), "[0x%07llX] $ ", fb->off);
         char* inp = linenoise(prompt);
@@ -138,12 +144,32 @@ static void mainloop(FileBuffer* fb, CmdContext* cc)
     }
 }
 
+static void command_loop(FileBuffer* fb, CmdContext* cc, char* commands)
+{
+    int            r;
+    ParsedCommand* pc;
+
+    char* token = strtok(commands, ";");
+    while (token) {
+        if ((r = parse(token, &pc)) != PARSER_OK) {
+            fprintf(stderr, "  !Err: %s\n", parser_err_to_string(r));
+            return;
+        }
+        if ((r = cmdctx_run(cc, pc, fb)) != COMMAND_OK) {
+            fprintf(stderr, "  !Err: %s\n", parser_err_to_string(r));
+            parsed_command_destroy(pc);
+            return;
+        }
+        token = strtok(NULL, ";");
+        parsed_command_destroy(pc);
+    }
+}
+
 int main(int argc, char* argv[])
 {
-    print_banner();
-
     const char* progname   = argv[0];
     const char* path       = NULL;
+    char*       commands   = NULL;
     int         write_mode = 0, backup = 0, save_history = 1;
     int         c;
     while (optind < argc) {
@@ -160,7 +186,11 @@ int main(int argc, char* argv[])
                     save_history = 0;
                     break;
                 case 'h':
+                    print_banner();
                     usage(progname, 0);
+                    break;
+                case 'c':
+                    commands = bhex_strdup(optarg);
                     break;
                 default:
                     break;
@@ -172,19 +202,23 @@ int main(int argc, char* argv[])
         }
     }
     if (path == NULL) {
+        bhex_free(commands);
+
         printf("missing input file\n\n");
         usage(progname, 1);
     }
 
-    if (save_history) {
+    if (save_history && !commands) {
         const char* history_file = get_history_file();
         if (history_file)
             linenoiseHistoryLoad(history_file);
     }
 
     FileBuffer* fb = filebuffer_create(path, !write_mode);
-    if (!fb)
+    if (!fb) {
+        bhex_free(commands);
         return 1;
+    }
 
     if (backup) {
         size_t backupname_len = strlen(fb->path) + 3 + 1;
@@ -203,9 +237,12 @@ int main(int argc, char* argv[])
                 "the file in write mode)");
 
     CmdContext* cc = cmdctx_init();
-    mainloop(fb, cc);
+    if (commands)
+        command_loop(fb, cc, commands);
+    else
+        mainloop(fb, cc);
 
-    if (save_history) {
+    if (save_history && !commands) {
         const char* history_file = get_history_file();
         if (history_file) {
             if (linenoiseHistorySave(history_file) < 0)
@@ -213,6 +250,7 @@ int main(int argc, char* argv[])
         }
     }
 
+    bhex_free(commands);
     cmdctx_destroy(cc);
     filebuffer_destroy(fb);
     return 0;
