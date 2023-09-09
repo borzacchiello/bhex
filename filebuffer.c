@@ -547,11 +547,11 @@ const u8_t* fb_read(FileBuffer* fb, size_t size)
     if (size > fb_block_size) {
         // FIXME: this case could be useful, maybe implement it using a dynamic
         //        buffer
-        error("You cannot read more than %lu bytes", fb_block_size);
+        error("you cannot read more than %lu bytes", fb_block_size);
         return NULL;
     }
     if (size + fb->off > fb->size) {
-        error("Too many bytes to read: %lu", size);
+        error("too many bytes to read: %lu", size);
         return NULL;
     }
 
