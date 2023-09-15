@@ -15,7 +15,7 @@ const struct option long_options[] = {
     {"help", no_argument, NULL, 'h'},
     {"write", no_argument, NULL, 'w'},
     {"backup", no_argument, NULL, 'b'},
-    {"no_warning", no_argument, NULL, 'n'},
+    {"no_warning", no_argument, NULL, '2'},
     {"no_history", no_argument, NULL, 'n'},
     {NULL, 0, NULL, 0},
 };
