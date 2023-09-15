@@ -256,7 +256,7 @@ void fb_undo_all(FileBuffer* fb)
 static int commit_write(FileBuffer* fb, Modification* mod)
 {
     if (mod->type != MOD_TYPE_OVERWRITE)
-        panic("commit_write(): invalid type %d\n", mod->type);
+        panic("commit_write(): invalid type %d", mod->type);
 
     if (fseek(fb->file, mod->off, SEEK_SET) < 0) {
         error("commit_write(): fseek failed");
@@ -272,7 +272,7 @@ static int commit_write(FileBuffer* fb, Modification* mod)
 static int commit_insert(FileBuffer* fb, Modification* mod)
 {
     if (mod->type != MOD_TYPE_INSERT)
-        panic("commit_insert(): invalid type %d\n", mod->type);
+        panic("commit_insert(): invalid type %d", mod->type);
 
     if (fseek(fb->file, 0, SEEK_END) < 0) {
         error("commit_insert(): fseek failed");
@@ -333,7 +333,7 @@ static int commit_insert(FileBuffer* fb, Modification* mod)
 static int commit_delete(FileBuffer* fb, Modification* mod)
 {
     if (mod->type != MOD_TYPE_DELETE)
-        panic("commit_delete(): invalid type %d\n", mod->type);
+        panic("commit_delete(): invalid type %d", mod->type);
 
     if (fseek(fb->file, 0, SEEK_END) < 0) {
         error("commit_delete(): fseek failed");
@@ -406,7 +406,7 @@ void fb_commit(FileBuffer* fb)
                 r = commit_delete(fb, mod);
                 break;
             default:
-                panic("unknown modification type: %d\n", mod->type);
+                panic("unknown modification type: %d", mod->type);
                 break;
         }
         if (!r)

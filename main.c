@@ -233,7 +233,7 @@ int main(int argc, char* argv[])
         backupname[backupname_len - 1] = 0;
 
         if (!copy_file(fb->path, backupname))
-            warning("unable to create the backup file: %s\n", strerror(errno));
+            warning("unable to create the backup file: %s", strerror(errno));
         bhex_free(backupname);
     }
 
