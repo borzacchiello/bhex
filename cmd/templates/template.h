@@ -8,6 +8,6 @@ typedef struct Template {
     void (*pretty_print)(const u8_t*, size_t, int);
 } Template;
 
-extern Template templates[7];
+extern Template templates[8];
 
 #endif

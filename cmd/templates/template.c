@@ -318,6 +318,57 @@ static void prettyprint_Elf64_Ehdr(const u8_t* data, size_t size, int le)
     }
 }
 
+#include "template_mach.h"
+
+static size_t sizeof_mach_header() { return sizeof(mach_header); }
+
+static void prettyprint_mach_header(const u8_t* data, size_t size, int le)
+{
+    if (size < sizeof_mach_header())
+        return;
+
+    __attribute__((unused)) char* hexstr;
+    const mach_header*            s = (const mach_header*)data;
+    printf("mach_header: (size: %lu)\n", sizeof(mach_header));
+
+    {
+        unsigned int v = le ? read_le32(&s->magic) : read_be32(&s->magic);
+        printf("  b+%03lu %10s: %-12u [0x%x]\n", offsetof(mach_header, magic),
+               "magic", v, v);
+    }
+    {
+        int v = le ? read_le32(&s->cputype) : read_be32(&s->cputype);
+        printf("  b+%03lu %10s: %-12d [0x%x]\n", offsetof(mach_header, cputype),
+               "cputype", v, v);
+    }
+    {
+        int v = le ? read_le32(&s->cpusubtype) : read_be32(&s->cpusubtype);
+        printf("  b+%03lu %10s: %-12d [0x%x]\n",
+               offsetof(mach_header, cpusubtype), "cpusubtype", v, v);
+    }
+    {
+        unsigned int v = le ? read_le32(&s->filetype) : read_be32(&s->filetype);
+        printf("  b+%03lu %10s: %-12u [0x%x]\n",
+               offsetof(mach_header, filetype), "filetype", v, v);
+    }
+    {
+        unsigned int v = le ? read_le32(&s->ncmds) : read_be32(&s->ncmds);
+        printf("  b+%03lu %10s: %-12u [0x%x]\n", offsetof(mach_header, ncmds),
+               "ncmds", v, v);
+    }
+    {
+        unsigned int v =
+            le ? read_le32(&s->sizeofcmds) : read_be32(&s->sizeofcmds);
+        printf("  b+%03lu %10s: %-12u [0x%x]\n",
+               offsetof(mach_header, sizeofcmds), "sizeofcmds", v, v);
+    }
+    {
+        unsigned int v = le ? read_le32(&s->flags) : read_be32(&s->flags);
+        printf("  b+%03lu %10s: %-12u [0x%x]\n", offsetof(mach_header, flags),
+               "flags", v, v);
+    }
+}
+
 #include "template_pe.h"
 
 static size_t sizeof_IMAGE_DOS_HEADER() { return sizeof(IMAGE_DOS_HEADER); }
@@ -977,6 +1028,10 @@ Template templates[] = {
     {.name         = "Elf64_Ehdr",
      .get_size     = sizeof_Elf64_Ehdr,
      .pretty_print = prettyprint_Elf64_Ehdr},
+
+    {.name         = "mach_header",
+     .get_size     = sizeof_mach_header,
+     .pretty_print = prettyprint_mach_header},
 
     {.name         = "IMAGE_DOS_HEADER",
      .get_size     = sizeof_IMAGE_DOS_HEADER,
