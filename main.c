@@ -34,7 +34,7 @@ static void print_banner()
 static void usage(const char* prog, int exit_code)
 {
     printf("Usage:  %s [ options ] inputfile\n", prog);
-    printf("  -h  --help        Give this help list\n"
+    printf("  -h  --help        Print help\n"
            "  -w  --write       Open the file in write mode\n"
            "  -b  --backup      Backup original file in "
            "\"filename.bk\"\n"
