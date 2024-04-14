@@ -8,6 +8,17 @@ char nibble_to_hex_char(u8_t b)
     return 'a' + ((b & 0xf) - 10);
 }
 
+int hex_to_nibble(char c)
+{
+    if (c >= '0' && c <= '9')
+        return c - '0';
+    if (c >= 'A' && c <= 'F')
+        return c - 'A' + 10;
+    if (c >= 'a' && c <= 'f')
+        return c - 'a' + 10;
+    return -1;
+}
+
 char* bytes_to_hex(const u8_t* bytes, size_t size)
 {
     char* res     = bhex_malloc(size * 2 + 1);
@@ -28,4 +39,3 @@ char get_printable_ascii_or_dot(char c)
         return c;
     return '.';
 }
-

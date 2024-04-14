@@ -75,6 +75,7 @@ set(src
 
     alloc.c
     filebuffer.c
+    tui.c
     ll.c
     log.c
     parser.c

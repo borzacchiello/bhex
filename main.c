@@ -8,13 +8,15 @@
 #include "cmd/cmd.h"
 #include "parser.h"
 #include "alloc.h"
+#include "tui.h"
 #include "log.h"
 
-const char* const   short_options  = "hw2bnc:";
+const char* const   short_options  = "hw2bnic:";
 const struct option long_options[] = {
     {"help", no_argument, NULL, 'h'},
     {"write", no_argument, NULL, 'w'},
     {"backup", no_argument, NULL, 'b'},
+    {"interactive", no_argument, NULL, 'i'},
     {"no_warning", no_argument, NULL, '2'},
     {"no_history", no_argument, NULL, 'n'},
     {NULL, 0, NULL, 0},
@@ -42,6 +44,7 @@ static void usage(const char* prog, int exit_code)
            "  -n  --no_history  Do not save command history\n"
            "  -c  \"c1; c2; ...\" Execute the commands given as "
            "argument and exit\n"
+           "  -i  --interactive Interactive mode\n"
            "\n"
            "command history is saved in \"$HOME/.bhex_history\", it can be "
            "changed setting BHEX_HISTORY_FILE environment variable\n");
@@ -172,7 +175,7 @@ int main(int argc, char* argv[])
     const char* progname   = argv[0];
     const char* path       = NULL;
     char*       commands   = NULL;
-    int         write_mode = 0, backup = 0, save_history = 1;
+    int         write_mode = 0, backup = 0, save_history = 1, interactive = 0;
     int         c;
     while (optind < argc) {
         if ((c = getopt_long(argc, argv, short_options, long_options, NULL)) !=
@@ -194,6 +197,9 @@ int main(int argc, char* argv[])
                     print_banner();
                     usage(progname, 0);
                     break;
+                case 'i':
+                    interactive = 1;
+                    break;
                 case 'c':
                     commands = bhex_strdup(optarg);
                     break;
@@ -213,7 +219,7 @@ int main(int argc, char* argv[])
         exit(1);
     }
 
-    if (save_history && !commands) {
+    if (save_history && !commands && !interactive) {
         const char* history_file = get_history_file();
         if (history_file)
             linenoiseHistoryLoad(history_file);
@@ -241,13 +247,18 @@ int main(int argc, char* argv[])
         warning("file opened in read-only mode (use the switch '-w' to open "
                 "the file in write mode)");
 
-    CmdContext* cc = cmdctx_init();
-    if (commands)
-        command_loop(fb, cc, commands);
-    else
-        mainloop(fb, cc);
+    if (interactive) {
+        tui_enter_loop(fb);
+    } else {
+        CmdContext* cc = cmdctx_init();
+        if (commands)
+            command_loop(fb, cc, commands);
+        else
+            mainloop(fb, cc);
+        cmdctx_destroy(cc);
+    }
 
-    if (save_history && !commands) {
+    if (save_history && !commands && !interactive) {
         const char* history_file = get_history_file();
         if (history_file) {
             if (linenoiseHistorySave(history_file) < 0)
@@ -256,7 +267,6 @@ int main(int argc, char* argv[])
     }
 
     bhex_free(commands);
-    cmdctx_destroy(cc);
     filebuffer_destroy(fb);
     return 0;
 }

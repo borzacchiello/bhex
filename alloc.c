@@ -24,8 +24,6 @@ void* bhex_calloc(size_t n)
 void* bhex_realloc(void* b, size_t size)
 {
     // check for weird usage of the API...
-    if (b == NULL)
-        panic("realloc buffer is NULL");
     if (size == 0)
         panic("realloc size is zero");
 
