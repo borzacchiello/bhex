@@ -376,7 +376,7 @@ static void sw_flush(ScreenWriter* sw)
 
 static int refresh_screen()
 {
-#define min_width  73
+#define min_width  80
 #define min_height 12
     ScreenWriter sw;
     char         buf[2048] = {0};
@@ -453,6 +453,11 @@ static int refresh_screen()
     return 0;
 }
 
+static void refresh_signal_handler(int __attribute__((unused)))
+{
+    refresh_screen();
+}
+
 static void write_key(int k)
 {
     u64_t old_off = g_fb->off;
@@ -496,10 +501,17 @@ end:
 
 int tui_enter_loop(FileBuffer* fb)
 {
+    struct sigaction sa, priorsa;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags   = SA_RESTART;
+    sa.sa_handler = refresh_signal_handler;
+    sigaction(SIGWINCH, &sa, &priorsa);
+
     enable_raw_mode();
     register_log_callback(log_callback);
 
     g_in_ascii_panel = 0;
+    g_selected       = fb->off;
     g_fb             = fb;
 
     if ((fb->off & 0xf) != 0)
@@ -573,6 +585,11 @@ int tui_enter_loop(FileBuffer* fb)
         }
     }
 
+    g_in_ascii_panel = 0;
+    g_second_nibble  = 0;
+    fb_seek(fb, g_selected);
+
+    signal(SIGWINCH, SIG_DFL);
     disable_raw_mode();
     unregister_log_callback();
     return 0;
