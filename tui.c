@@ -421,7 +421,8 @@ static int refresh_screen()
         return -1;
 
     g_min_visible_addr = g_fb->off;
-    g_max_visible_addr = g_fb->off + read_size - 1;
+    g_max_visible_addr = g_min_visible_addr +
+                         min(g_chunk_size * (sw.rows - 5), fb_block_size) - 1;
 
     sw_start_highlight(&sw, 0);
     sw_append(
@@ -455,8 +456,14 @@ static int refresh_screen()
 
         for (int j = 0; j < g_chunk_size; ++j) {
             if (off + j >= read_size) {
-                for (; j < g_chunk_size; ++j)
-                    sw_append(&sw, "   ");
+                for (; j < g_chunk_size; ++j) {
+                    if (off + j + g_fb->off == g_selected)
+                        sw_start_highlight(&sw, g_in_ascii_panel == 0);
+                    sw_append(&sw, "  ");
+                    if (off + j + g_fb->off == g_selected)
+                        sw_end_highlight(&sw);
+                    sw_append(&sw, " ");
+                }
                 break;
             }
             if (off + j + g_fb->off == g_selected)
@@ -470,6 +477,13 @@ static int refresh_screen()
         sw_append(&sw, "  ");
         for (int j = 0; j < g_chunk_size; ++j) {
             if (off + j >= read_size) {
+                for (; j < g_chunk_size; ++j) {
+                    if (off + j + g_fb->off == g_selected)
+                        sw_start_highlight(&sw, g_in_ascii_panel != 0);
+                    sw_append(&sw, " ");
+                    if (off + j + g_fb->off == g_selected)
+                        sw_end_highlight(&sw);
+                }
                 break;
             }
             if (off + j + g_fb->off == g_selected)
@@ -499,6 +513,9 @@ static void write_key(int k)
     fb_seek(g_fb, g_selected);
 
     if (!is_printable_ascii((char)k))
+        goto end;
+
+    if (!g_insert_mode && g_selected >= g_fb->size)
         goto end;
 
     if (g_in_ascii_panel) {
@@ -579,7 +596,7 @@ int tui_enter_loop(FileBuffer* fb)
             case ARROW_DOWN:
                 g_second_nibble = 0;
                 if (fb->size > g_chunk_size - 1 &&
-                    g_selected < fb->size - g_chunk_size - 1)
+                    g_selected < fb->size - g_chunk_size)
                     g_selected += g_chunk_size;
                 break;
             case ARROW_LEFT:
@@ -589,7 +606,7 @@ int tui_enter_loop(FileBuffer* fb)
                 break;
             case ARROW_UP:
                 g_second_nibble = 0;
-                if (g_selected > g_chunk_size - 1)
+                if (g_selected >= g_chunk_size)
                     g_selected -= g_chunk_size;
                 break;
             case PAGE_UP:
@@ -630,7 +647,8 @@ int tui_enter_loop(FileBuffer* fb)
         }
 
         if (k != PAGE_UP && k != PAGE_DOWN) {
-            if (g_selected > g_max_visible_addr)
+            if (g_selected > g_max_visible_addr &&
+                g_max_visible_addr < fb->size - 1)
                 fb_seek(fb, fb->off + g_chunk_size);
             if (g_selected < g_min_visible_addr)
                 fb_seek(fb, fb->off - g_chunk_size);
