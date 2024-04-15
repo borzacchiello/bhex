@@ -339,8 +339,6 @@ static int sw_end_line(ScreenWriter* sw)
 {
     if (sw->curr_row >= sw->rows)
         return 1;
-    if (sw->curr_col >= sw->cols)
-        return 1;
 
     size_t row_len = sw->cols - sw->curr_col;
     char* new      = bhex_realloc(sw->lines, sw->len + row_len + 2);
@@ -448,7 +446,6 @@ static int refresh_screen()
         off += 16;
     }
 
-    memset(g_msg, 0, sizeof(g_msg));
     sw_flush(&sw);
     return 0;
 }
@@ -521,6 +518,7 @@ int tui_enter_loop(FileBuffer* fb)
     while (!quit) {
         if (refresh_screen() != 0)
             return -1;
+        memset(g_msg, 0, sizeof(g_msg));
         int k = editor_read_key();
         switch (k) {
             case ARROW_RIGHT:
