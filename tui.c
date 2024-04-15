@@ -56,6 +56,7 @@ static u64_t g_max_visible_addr;
 static u64_t g_selected;
 static u64_t g_chunk_size = 16;
 static int   g_second_nibble;
+static int   g_insert_mode;
 static int   g_in_ascii_panel;
 static char  g_msg[2048];
 
@@ -86,16 +87,17 @@ static void log_callback(const char* msg)
     this list of conditions and the following disclaimer in the documentation
     and/or other materials provided with the distribution.
 
-    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-    ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-    WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-    DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
-    ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-    (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-    LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
-    ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+   AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+   IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+   ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+   LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+   CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+   SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+   INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+   CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+   POSSIBILITY OF SUCH DAMAGE.
 */
 
 static void disable_raw_mode()
@@ -412,8 +414,9 @@ static int refresh_screen()
     if (sw.cols >= 2 * min_width)
         g_chunk_size = 32;
 
-    size_t      read_size = min(g_chunk_size * (sw.rows - 5), fb_block_size);
-    const u8_t* bytes     = fb_read(g_fb, read_size);
+    size_t read_size  = min(g_chunk_size * (sw.rows - 5), fb_block_size);
+    read_size         = min(g_fb->size - g_fb->off, read_size);
+    const u8_t* bytes = fb_read(g_fb, read_size);
     if (!bytes)
         return -1;
 
@@ -421,9 +424,12 @@ static int refresh_screen()
     g_max_visible_addr = g_fb->off + read_size - 1;
 
     sw_start_highlight(&sw, 0);
-    sw_append(&sw, " CTRL-X [Exit] CTRL-U [Undo] TAB [Toggle ASCII]");
+    sw_append(
+        &sw, " CTRL-X [Exit] CTRL-U [Undo] CTRL-A [Insert] TAB [Toggle ASCII]");
+    if (g_insert_mode)
+        sw_append(&sw, " *INSERT*");
     if (g_fb->modifications.size > 0)
-        sw_append(&sw, "   *UNSAVED*");
+        sw_append(&sw, " *UNSAVED*");
     sw_end_line(&sw);
     sw_append(&sw, " ");
     sw_append(&sw, g_msg);
@@ -499,7 +505,10 @@ static void write_key(int k)
         u8_t  byte = (u8_t)k;
         u8_t* data = bhex_malloc(1);
         data[0]    = byte;
-        fb_write(g_fb, data, 1);
+        if (!g_insert_mode)
+            fb_write(g_fb, data, 1);
+        else
+            fb_insert(g_fb, data, 1);
         g_selected += 1;
         goto end;
     }
@@ -508,8 +517,9 @@ static void write_key(int k)
     if (b < 0)
         goto end;
 
-    u8_t byte      = (u8_t)b;
-    u8_t curr_byte = *fb_read(g_fb, 1);
+    u8_t byte = (u8_t)b;
+    u8_t curr_byte =
+        (g_insert_mode && !g_second_nibble) ? 0 : *fb_read(g_fb, 1);
     if (!g_second_nibble)
         byte = (byte << 4) | (curr_byte & 0xf);
     else
@@ -517,12 +527,16 @@ static void write_key(int k)
 
     u8_t* data = bhex_malloc(1);
     data[0]    = byte;
+    if (g_insert_mode && !g_second_nibble)
+        fb_insert(g_fb, data, 1);
+    else
+        fb_write(g_fb, data, 1);
+
     if (g_second_nibble) {
         g_second_nibble = 0;
         g_selected += 1;
     } else
         g_second_nibble = 1;
-    fb_write(g_fb, data, 1);
 
 end:
     fb_seek(g_fb, old_off);
@@ -530,6 +544,8 @@ end:
 
 int tui_enter_loop(FileBuffer* fb)
 {
+    int res = 0;
+
     struct sigaction sa, priorsa;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags   = SA_RESTART;
@@ -548,8 +564,10 @@ int tui_enter_loop(FileBuffer* fb)
 
     int quit = 0;
     while (!quit) {
-        if (refresh_screen() != 0)
-            return -1;
+        if (refresh_screen() != 0) {
+            res = -1;
+            break;
+        }
         memset(g_msg, 0, sizeof(g_msg));
         int k = editor_read_key();
         switch (k) {
@@ -597,6 +615,9 @@ int tui_enter_loop(FileBuffer* fb)
                 g_second_nibble  = 0;
                 g_in_ascii_panel = !g_in_ascii_panel;
                 break;
+            case CTRL_A:
+                g_insert_mode = !g_insert_mode;
+                break;
             case CTRL_U:
                 fb_undo_last(g_fb);
                 break;
@@ -623,5 +644,5 @@ int tui_enter_loop(FileBuffer* fb)
     signal(SIGWINCH, SIG_DFL);
     disable_raw_mode();
     unregister_log_callback();
-    return 0;
+    return res;
 }
