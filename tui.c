@@ -21,6 +21,7 @@
 #include "cmd/util/byte_to_str.h"
 #include "alloc.h"
 #include "defs.h"
+#include "log.h"
 #include "tui.h"
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
@@ -64,6 +65,14 @@ static u64_t g_max_visible_addr;
 static u64_t g_selected;
 static int   g_second_nibble;
 static int   g_in_ascii_panel;
+static char  g_msg[2048];
+
+// Log callback
+static void log_callback(const char* msg)
+{
+    memset(g_msg, 0, sizeof(g_msg));
+    strncpy(g_msg, msg, sizeof(g_msg) - 1);
+}
 
 // Low-level terminal APIs
 
@@ -86,7 +95,6 @@ static int enable_raw_mode()
         return 0; /* Already enabled. */
     if (!isatty(STDIN_FILENO))
         goto fatal;
-    atexit(disable_raw_mode);
     if (tcgetattr(STDIN_FILENO, &g_orig_termios) == -1)
         goto fatal;
 
@@ -368,19 +376,20 @@ static void sw_flush(ScreenWriter* sw)
 
 static int refresh_screen()
 {
-#define min_width 73
+#define min_width  73
+#define min_height 12
     ScreenWriter sw;
     char         buf[2048] = {0};
 
     sw_init(&sw);
-    if (sw.cols < min_width) {
+    if (sw.cols < min_width || sw.rows < min_height) {
         sw_add_line(&sw, "");
         sw_add_line(&sw, " screen too small");
         sw_flush(&sw);
         return 0;
     }
 
-    size_t      read_size = min(16 * (sw.rows - 2), fb_block_size);
+    size_t      read_size = min(16 * (sw.rows - 5), fb_block_size);
     const u8_t* bytes     = fb_read(g_fb, read_size);
     if (!bytes)
         return -1;
@@ -388,12 +397,24 @@ static int refresh_screen()
     g_min_visible_addr = g_fb->off;
     g_max_visible_addr = g_fb->off + read_size - 1;
 
-    sw_add_line(&sw, "       00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F");
-    sw_add_line(&sw, "       -----------------------------------------------");
+    sw_start_highlight(&sw, 0);
+    sw_append(&sw, " CTRL-X [Exit] CTRL-U [Undo] CTRL-A [Toggle ASCII]");
+    if (g_fb->modifications.size > 0)
+        sw_append(&sw, "   *UNSAVED*");
+    sw_end_line(&sw);
+    sw_append(&sw, " ");
+    sw_append(&sw, g_msg);
+    sw_end_line(&sw);
+    sw_end_highlight(&sw);
+    sw_end_line(&sw);
+    sw_add_line(&sw,
+                "           00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F");
+    sw_add_line(&sw,
+                "           -----------------------------------------------");
 
     u64_t off = 0;
-    for (int i = 0; i < sw.rows - 2; ++i) {
-        snprintf(buf, sizeof(buf) - 1, " %04llx: ", (u64_t)off + g_fb->off);
+    for (int i = 0; i < sw.rows - 5; ++i) {
+        snprintf(buf, sizeof(buf) - 1, " %08llx: ", (u64_t)off + g_fb->off);
         sw_append(&sw, buf);
 
         for (int j = 0; j < 16; ++j) {
@@ -427,6 +448,7 @@ static int refresh_screen()
         off += 16;
     }
 
+    memset(g_msg, 0, sizeof(g_msg));
     sw_flush(&sw);
     return 0;
 }
@@ -475,6 +497,8 @@ end:
 int tui_enter_loop(FileBuffer* fb)
 {
     enable_raw_mode();
+    register_log_callback(log_callback);
+
     g_in_ascii_panel = 0;
     g_fb             = fb;
 
@@ -494,7 +518,7 @@ int tui_enter_loop(FileBuffer* fb)
                 break;
             case ARROW_DOWN:
                 g_second_nibble = 0;
-                if (g_selected < fb->size - 15)
+                if (fb->size > 15 && g_selected < fb->size - 15)
                     g_selected += 16;
                 break;
             case ARROW_LEFT:
@@ -506,6 +530,25 @@ int tui_enter_loop(FileBuffer* fb)
                 g_second_nibble = 0;
                 if (g_selected > 15)
                     g_selected -= 16;
+                break;
+            case PAGE_UP:
+                g_second_nibble = 0;
+                u64_t tosub     = g_max_visible_addr - g_min_visible_addr + 1;
+                if (tosub <= g_fb->off) {
+                    g_selected -= tosub;
+                    fb_seek(fb, g_fb->off - tosub);
+                } else {
+                    g_selected = 0;
+                    fb_seek(fb, 0);
+                }
+                break;
+            case PAGE_DOWN:
+                g_second_nibble = 0;
+                u64_t toadd     = g_max_visible_addr - g_min_visible_addr + 1;
+                if (g_fb->off + toadd < g_fb->size) {
+                    g_selected += toadd;
+                    fb_seek(fb, g_fb->off + toadd);
+                }
                 break;
             case CTRL_U:
                 fb_undo_last(g_fb);
@@ -522,10 +565,15 @@ int tui_enter_loop(FileBuffer* fb)
                 break;
         }
 
-        if (g_selected > g_max_visible_addr)
-            fb_seek(fb, fb->off + 16);
-        if (g_selected < g_min_visible_addr)
-            fb_seek(fb, fb->off - 16);
+        if (k != PAGE_UP && k != PAGE_DOWN) {
+            if (g_selected > g_max_visible_addr)
+                fb_seek(fb, fb->off + 16);
+            if (g_selected < g_min_visible_addr)
+                fb_seek(fb, fb->off - 16);
+        }
     }
+
+    disable_raw_mode();
+    unregister_log_callback();
     return 0;
 }

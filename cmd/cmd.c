@@ -83,6 +83,7 @@ static int cmd_help(CmdContext* cc, ParsedCommand* pc)
 
     printf("\nAvailable commands:\n");
     printf("    help [h]\n");
+    printf("    interactive [int]\n");
     LLNode* curr = cc->commands.head;
     while (curr) {
         Cmd* cmd = (Cmd*)curr->data;

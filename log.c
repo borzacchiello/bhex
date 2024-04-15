@@ -1,16 +1,29 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <string.h>
 
 #include "log.h"
 
+static void (*g_callback)(const char*);
 int disable_warning = 0;
 
 static void common_print(const char* type, const char* format, va_list argp)
 {
-    fprintf(stderr, "[ %s ] ", type);
-    vfprintf(stderr, format, argp);
-    fprintf(stderr, "\n");
+    char buf[2048] = {0};
+    char tmp[1024] = {0};
+
+    if (g_callback == NULL) {
+        fprintf(stderr, "[ %s ] ", type);
+        vfprintf(stderr, format, argp);
+        fprintf(stderr, "\n");
+    } else {
+        sprintf(buf, "[ %s ] ", type);
+        vsprintf(tmp, format, argp);
+        strncat(buf, tmp, sizeof(buf) - 1 - strlen(buf));
+
+        g_callback(buf);
+    }
 }
 
 void panic(const char* format, ...)
@@ -40,3 +53,10 @@ void error(const char* format, ...)
 
     common_print(" ERROR ", format, argp);
 }
+
+void register_log_callback(void (*callback)(const char*))
+{
+    g_callback = callback;
+}
+
+void unregister_log_callback() { g_callback = NULL; }
