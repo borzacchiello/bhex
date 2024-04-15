@@ -14,7 +14,7 @@
 
 #include "ll.h"
 
-#define fb_block_size 2048
+#define fb_block_size 4096
 
 typedef struct Modification {
     s8_t   type;

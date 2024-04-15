@@ -130,6 +130,7 @@ static void mainloop(FileBuffer* fb, CmdContext* cc)
         }
         if (strcmp(inp, "int") == 0 || strcmp(inp, "interactive") == 0) {
             tui_enter_loop(fb);
+            puts("");
             bhex_free(inp);
             continue;
         }

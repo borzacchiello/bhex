@@ -2,21 +2,12 @@
 #define _POSIX_C_SOURCE 200809L
 #endif
 
-#include <termios.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <errno.h>
-#include <string.h>
-#include <ctype.h>
-#include <time.h>
-#include <sys/types.h>
 #include <sys/ioctl.h>
-#include <sys/time.h>
+#include <termios.h>
+#include <string.h>
 #include <unistd.h>
-#include <stdarg.h>
-#include <fcntl.h>
 #include <signal.h>
+#include <errno.h>
 
 #include "cmd/util/byte_to_str.h"
 #include "alloc.h"
@@ -63,18 +54,49 @@ static int            g_rawmode;      /* Terminal raw mode is enabled */
 static u64_t g_min_visible_addr;
 static u64_t g_max_visible_addr;
 static u64_t g_selected;
+static u64_t g_chunk_size = 16;
 static int   g_second_nibble;
 static int   g_in_ascii_panel;
 static char  g_msg[2048];
 
 // Log callback
+
 static void log_callback(const char* msg)
 {
     memset(g_msg, 0, sizeof(g_msg));
     strncpy(g_msg, msg, sizeof(g_msg) - 1);
 }
 
-// Low-level terminal APIs
+//                   Low-level terminal APIs
+//   *** Most of these functions are taken from KILO by antirez ***
+//                   https://github.com/antirez/kilo
+
+/*
+    Copyright (c) 2016, Salvatore Sanfilippo <antirez at gmail dot com>
+
+    All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions are met:
+
+    * Redistributions of source code must retain the above copyright notice,
+    this list of conditions and the following disclaimer.
+
+    * Redistributions in binary form must reproduce the above copyright notice,
+    this list of conditions and the following disclaimer in the documentation
+    and/or other materials provided with the distribution.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+    ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+    WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+    DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+    ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+    (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+    LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+    ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
 
 static void disable_raw_mode()
 {
@@ -387,7 +409,10 @@ static int refresh_screen()
         return 0;
     }
 
-    size_t      read_size = min(16 * (sw.rows - 5), fb_block_size);
+    if (sw.cols >= 2 * min_width)
+        g_chunk_size = 32;
+
+    size_t      read_size = min(g_chunk_size * (sw.rows - 5), fb_block_size);
     const u8_t* bytes     = fb_read(g_fb, read_size);
     if (!bytes)
         return -1;
@@ -396,7 +421,7 @@ static int refresh_screen()
     g_max_visible_addr = g_fb->off + read_size - 1;
 
     sw_start_highlight(&sw, 0);
-    sw_append(&sw, " CTRL-X [Exit] CTRL-U [Undo] CTRL-A [Toggle ASCII]");
+    sw_append(&sw, " CTRL-X [Exit] CTRL-U [Undo] TAB [Toggle ASCII]");
     if (g_fb->modifications.size > 0)
         sw_append(&sw, "   *UNSAVED*");
     sw_end_line(&sw);
@@ -405,19 +430,26 @@ static int refresh_screen()
     sw_end_line(&sw);
     sw_end_highlight(&sw);
     sw_end_line(&sw);
-    sw_add_line(&sw,
-                "           00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F");
-    sw_add_line(&sw,
-                "           -----------------------------------------------");
+    sw_append(&sw,
+              "           00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F");
+    if (g_chunk_size > 16)
+        sw_append(&sw, " 10 11 12 13 14 15 16 17 18 19 1A 1B 1C 1D 1E 1F");
+
+    sw_end_line(&sw);
+    sw_append(&sw,
+              "           -----------------------------------------------");
+    if (g_chunk_size > 16)
+        sw_append(&sw, "------------------------------------------------");
+    sw_end_line(&sw);
 
     u64_t off = 0;
     for (int i = 0; i < sw.rows - 5; ++i) {
         snprintf(buf, sizeof(buf) - 1, " %08llx: ", (u64_t)off + g_fb->off);
         sw_append(&sw, buf);
 
-        for (int j = 0; j < 16; ++j) {
+        for (int j = 0; j < g_chunk_size; ++j) {
             if (off + j >= read_size) {
-                for (; j < 16; ++j)
+                for (; j < g_chunk_size; ++j)
                     sw_append(&sw, "   ");
                 break;
             }
@@ -430,7 +462,7 @@ static int refresh_screen()
             sw_append(&sw, " ");
         }
         sw_append(&sw, "  ");
-        for (int j = 0; j < 16; ++j) {
+        for (int j = 0; j < g_chunk_size; ++j) {
             if (off + j >= read_size) {
                 break;
             }
@@ -443,7 +475,7 @@ static int refresh_screen()
                 sw_end_highlight(&sw);
         }
         sw_end_line(&sw);
-        off += 16;
+        off += g_chunk_size;
     }
 
     sw_flush(&sw);
@@ -528,8 +560,9 @@ int tui_enter_loop(FileBuffer* fb)
                 break;
             case ARROW_DOWN:
                 g_second_nibble = 0;
-                if (fb->size > 15 && g_selected < fb->size - 15)
-                    g_selected += 16;
+                if (fb->size > g_chunk_size - 1 &&
+                    g_selected < fb->size - g_chunk_size - 1)
+                    g_selected += g_chunk_size;
                 break;
             case ARROW_LEFT:
                 g_second_nibble = 0;
@@ -538,8 +571,8 @@ int tui_enter_loop(FileBuffer* fb)
                 break;
             case ARROW_UP:
                 g_second_nibble = 0;
-                if (g_selected > 15)
-                    g_selected -= 16;
+                if (g_selected > g_chunk_size - 1)
+                    g_selected -= g_chunk_size;
                 break;
             case PAGE_UP:
                 g_second_nibble = 0;
@@ -560,12 +593,12 @@ int tui_enter_loop(FileBuffer* fb)
                     fb_seek(fb, g_fb->off + toadd);
                 }
                 break;
-            case CTRL_U:
-                fb_undo_last(g_fb);
-                break;
-            case CTRL_A:
+            case TAB:
                 g_second_nibble  = 0;
                 g_in_ascii_panel = !g_in_ascii_panel;
+                break;
+            case CTRL_U:
+                fb_undo_last(g_fb);
                 break;
             case CTRL_X:
                 quit = 1;
@@ -577,9 +610,9 @@ int tui_enter_loop(FileBuffer* fb)
 
         if (k != PAGE_UP && k != PAGE_DOWN) {
             if (g_selected > g_max_visible_addr)
-                fb_seek(fb, fb->off + 16);
+                fb_seek(fb, fb->off + g_chunk_size);
             if (g_selected < g_min_visible_addr)
-                fb_seek(fb, fb->off - 16);
+                fb_seek(fb, fb->off - g_chunk_size);
         }
     }
 

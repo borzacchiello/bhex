@@ -129,8 +129,8 @@ int fb_write(FileBuffer* fb, u8_t* data, size_t size)
 {
     fb_modified_check(fb);
     if (fb->readonly)
-        warning("the file was opened in read-only mode, thus you won't be able "
-                "to commit this modification");
+        warning("the file was opened in read-only mode, you cannot commit this "
+                "modification");
 
     if (fb->off + size > fb->size) {
         error("not enough space to write the data");
@@ -155,8 +155,8 @@ int fb_insert(FileBuffer* fb, u8_t* data, size_t size)
 {
     fb_modified_check(fb);
     if (fb->readonly)
-        warning("the file was opened in read-only mode, thus you won't be able "
-                "to commit this modification");
+        warning("the file was opened in read-only mode, you cannot commit this "
+                "modification");
 
     if (size > fb_block_size) {
         error("cannot insert more than %lu bytes", fb_block_size);
@@ -182,8 +182,8 @@ int fb_delete(FileBuffer* fb, size_t size)
 {
     fb_modified_check(fb);
     if (fb->readonly)
-        warning("the file was opened in read-only mode, thus you won't be able "
-                "to commit this modification");
+        warning("the file was opened in read-only mode, you cannot commit this "
+                "modification");
 
     if (fb->size - fb->off < size) {
         error("not enough data to delete");
