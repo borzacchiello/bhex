@@ -3,6 +3,6 @@
 
 #include "filebuffer.h"
 
-int  tui_enter_loop(FileBuffer* fb);
+int tui_enter_loop(FileBuffer* fb);
 
 #endif

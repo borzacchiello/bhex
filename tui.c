@@ -576,8 +576,8 @@ int tui_enter_loop(FileBuffer* fb)
     g_selected       = fb->off;
     g_fb             = fb;
 
-    if ((fb->off & 0xf) != 0)
-        fb_seek(fb, fb->off & ~0xf);
+    if ((fb->off & (g_chunk_size - 1)) != 0)
+        fb_seek(fb, fb->off & ~(g_chunk_size - 1));
 
     int quit = 0;
     while (!quit) {
@@ -585,6 +585,12 @@ int tui_enter_loop(FileBuffer* fb)
             res = -1;
             break;
         }
+        int rows, cols;
+        if (get_window_size(&rows, &cols) != 0) {
+            res = -1;
+            break;
+        }
+
         memset(g_msg, 0, sizeof(g_msg));
         int k = editor_read_key();
         switch (k) {
@@ -596,8 +602,10 @@ int tui_enter_loop(FileBuffer* fb)
             case ARROW_DOWN:
                 g_second_nibble = 0;
                 if (fb->size > g_chunk_size - 1 &&
-                    g_selected < fb->size - g_chunk_size)
+                    g_selected <= fb->size - g_chunk_size)
                     g_selected += g_chunk_size;
+                else
+                    g_selected = fb->size;
                 break;
             case ARROW_LEFT:
                 g_second_nibble = 0;
@@ -608,11 +616,13 @@ int tui_enter_loop(FileBuffer* fb)
                 g_second_nibble = 0;
                 if (g_selected >= g_chunk_size)
                     g_selected -= g_chunk_size;
+                else
+                    g_selected = 0;
                 break;
             case PAGE_UP:
                 g_second_nibble = 0;
-                u64_t tosub     = g_max_visible_addr - g_min_visible_addr + 1;
-                if (tosub <= g_fb->off) {
+                u64_t tosub     = (rows - 5) * g_chunk_size;
+                if (tosub < g_selected && tosub < g_fb->off) {
                     g_selected -= tosub;
                     fb_seek(fb, g_fb->off - tosub);
                 } else {
@@ -622,10 +632,18 @@ int tui_enter_loop(FileBuffer* fb)
                 break;
             case PAGE_DOWN:
                 g_second_nibble = 0;
-                u64_t toadd     = g_max_visible_addr - g_min_visible_addr + 1;
-                if (g_fb->off + toadd < g_fb->size) {
+                u64_t toadd     = (rows - 5) * g_chunk_size;
+                if (g_selected + toadd < g_fb->size) {
                     g_selected += toadd;
                     fb_seek(fb, g_fb->off + toadd);
+                } else {
+                    g_selected = g_fb->size;
+                    if (g_selected > g_max_visible_addr) {
+                        if (g_fb->off + toadd < g_fb->size)
+                            fb_seek(fb, g_fb->off + toadd);
+                        else
+                            fb_seek(fb, g_selected & ~(g_chunk_size - 1));
+                    }
                 }
                 break;
             case TAB:
@@ -648,7 +666,7 @@ int tui_enter_loop(FileBuffer* fb)
 
         if (k != PAGE_UP && k != PAGE_DOWN) {
             if (g_selected > g_max_visible_addr &&
-                g_max_visible_addr < fb->size - 1)
+                g_max_visible_addr < fb->size)
                 fb_seek(fb, fb->off + g_chunk_size);
             if (g_selected < g_min_visible_addr)
                 fb_seek(fb, fb->off - g_chunk_size);
