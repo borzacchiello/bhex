@@ -74,6 +74,7 @@ Typing "help" prints the list of commands:
 
 Available commands:
     help [h]
+    interactive [int]
     info [i]
     search [src]
     strings [str]
@@ -95,6 +96,10 @@ Available commands:
 
 info: prints information about the opened binary
 ```
+
+### Interactive
+
+Start an interactive session.
 
 ### Search
 
