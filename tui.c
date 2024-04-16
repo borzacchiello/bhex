@@ -411,7 +411,7 @@ static int refresh_screen()
         return 0;
     }
 
-    if (sw.cols >= 2 * min_width)
+    if (sw.cols >= 2 * min_width - 10)
         g_chunk_size = 32;
     else
         g_chunk_size = 16;
@@ -661,6 +661,13 @@ int tui_enter_loop(FileBuffer* fb)
             case CTRL_X:
                 quit = 1;
                 break;
+            case DEL_KEY: {
+                u64_t tmp = g_fb->off;
+                fb_seek(g_fb, g_selected);
+                fb_delete(g_fb, 1);
+                fb_seek(g_fb, tmp);
+                break;
+            }
             default:
                 write_key(k);
                 break;
