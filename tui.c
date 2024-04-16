@@ -561,7 +561,8 @@ end:
 
 int tui_enter_loop(FileBuffer* fb)
 {
-    int res = 0;
+    int res  = 0;
+    int rows = 0, cols = 0;
 
     struct sigaction sa, priorsa;
     sigemptyset(&sa.sa_mask);
@@ -585,7 +586,6 @@ int tui_enter_loop(FileBuffer* fb)
             res = -1;
             break;
         }
-        int rows, cols;
         if (get_window_size(&rows, &cols) != 0) {
             res = -1;
             break;
@@ -680,5 +680,10 @@ int tui_enter_loop(FileBuffer* fb)
     signal(SIGWINCH, SIG_DFL);
     disable_raw_mode();
     unregister_log_callback();
+
+    // clear the screen
+    while (rows-- > 0)
+        puts("");
+    printf("\x1b[H");
     return res;
 }
