@@ -398,8 +398,8 @@ static void sw_flush(ScreenWriter* sw)
 
 static int refresh_screen()
 {
-#define min_width  80
-#define min_height 12
+#define min_width  78
+#define min_height 10
     ScreenWriter sw;
     char         buf[2048] = {0};
 
@@ -413,6 +413,8 @@ static int refresh_screen()
 
     if (sw.cols >= 2 * min_width)
         g_chunk_size = 32;
+    else
+        g_chunk_size = 16;
 
     size_t read_size  = min(g_chunk_size * (sw.rows - 5), fb_block_size);
     read_size         = min(g_fb->size - g_fb->off, read_size);
@@ -682,7 +684,8 @@ int tui_enter_loop(FileBuffer* fb)
     unregister_log_callback();
 
     // clear the screen
-    while (rows-- > 0)
+    get_window_size(&rows, &cols);
+    for (int i = 0; i < rows; ++i)
         puts("");
     printf("\x1b[H");
     return res;
