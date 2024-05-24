@@ -72,6 +72,7 @@ set(src
     cmd/cmd_seek.c
     cmd/cmd_undo.c
     cmd/cmd_commit.c
+    cmd/cmd_diff.c
 
     alloc.c
     filebuffer.c

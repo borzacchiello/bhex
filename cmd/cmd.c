@@ -15,6 +15,7 @@
 #include "cmd_assemble.h"
 #include "cmd_disas.h"
 #include "cmd_strings.h"
+#include "cmd_diff.h"
 
 const char* cmdctx_err_to_string(int err)
 {
@@ -54,6 +55,7 @@ CmdContext* cmdctx_init()
 #ifndef DISABLE_KEYSTONE
     ll_add(&cc->commands, (uptr_t)assemblecmd_create());
 #endif
+    ll_add(&cc->commands, (uptr_t)diffcmd_create());
     ll_add(&cc->commands, (uptr_t)printcmd_create());
     ll_add(&cc->commands, (uptr_t)seekcmd_create());
     ll_add(&cc->commands, (uptr_t)templatecmd_create());
