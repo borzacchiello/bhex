@@ -11,10 +11,11 @@
 #include "tui.h"
 #include "log.h"
 
-const char* const   short_options  = "hw2bnc:";
+const char* const   short_options  = "hw2bnsc:";
 const struct option long_options[] = {
     {"help", no_argument, NULL, 'h'},
     {"write", no_argument, NULL, 'w'},
+    {"script", no_argument, NULL, 's'},
     {"backup", no_argument, NULL, 'b'},
     {"no_warning", no_argument, NULL, '2'},
     {"no_history", no_argument, NULL, 'n'},
@@ -43,6 +44,7 @@ static void usage(const char* prog, int exit_code)
            "  -n  --no_history  Do not save command history\n"
            "  -c  \"c1; c2; ...\" Execute the commands given as "
            "argument and exit\n"
+           "  -s  --script      Script mode (commands from raw stdin)\n"
            "\n"
            "command history is saved in \"$HOME/.bhex_history\", it can be "
            "changed setting BHEX_HISTORY_FILE environment variable\n");
@@ -116,7 +118,7 @@ ret:
     return result;
 }
 
-static void mainloop(FileBuffer* fb, CmdContext* cc)
+static void main_loop(FileBuffer* fb, CmdContext* cc)
 {
     static char prompt[256];
 
@@ -174,12 +176,45 @@ static void command_loop(FileBuffer* fb, CmdContext* cc, char* commands)
     }
 }
 
+static void stdin_loop(FileBuffer* fb, CmdContext* cc)
+{
+    int            r;
+    ParsedCommand* pc;
+
+    size_t  len = 0;
+    ssize_t nread;
+    char*   lineptr = NULL;
+
+    while ((nread = getline(&lineptr, &len, stdin)) != -1) {
+        if ((r = parse(lineptr, &pc)) != PARSER_OK) {
+            error("%s", parser_err_to_string(r));
+            return;
+        }
+        if ((r = cmdctx_run(cc, pc, fb)) != COMMAND_OK) {
+            error("%s", cmdctx_err_to_string(r));
+            parsed_command_destroy(pc);
+            return;
+        }
+        parsed_command_destroy(pc);
+    }
+    free(lineptr);
+}
+
+static int file_exists(const char* path) { return access(path, F_OK) == 0; }
+
+static void create_file(const char* path)
+{
+    FILE* f = fopen(path, "w");
+    if (f)
+        fclose(f);
+}
+
 int main(int argc, char* argv[])
 {
     const char* progname   = argv[0];
     const char* path       = NULL;
     char*       commands   = NULL;
-    int         write_mode = 0, backup = 0, save_history = 1;
+    int         write_mode = 0, backup = 0, save_history = 1, script_mode = 0;
     int         c;
     while (optind < argc) {
         if ((c = getopt_long(argc, argv, short_options, long_options, NULL)) !=
@@ -204,6 +239,9 @@ int main(int argc, char* argv[])
                 case 'c':
                     commands = bhex_strdup(optarg);
                     break;
+                case 's':
+                    script_mode = 1;
+                    break;
                 default:
                     break;
             }
@@ -217,7 +255,14 @@ int main(int argc, char* argv[])
         bhex_free(commands);
 
         error("missing input file");
-        exit(1);
+        return 1;
+    }
+
+    if (commands && script_mode) {
+        bhex_free(commands);
+
+        error("cannot have both -c and -s");
+        return 1;
     }
 
     if (save_history && !commands) {
@@ -225,6 +270,9 @@ int main(int argc, char* argv[])
         if (history_file)
             linenoiseHistoryLoad(history_file);
     }
+
+    if (write_mode && !file_exists(path))
+        create_file(path);
 
     FileBuffer* fb = filebuffer_create(path, !write_mode);
     if (!fb) {
@@ -251,8 +299,10 @@ int main(int argc, char* argv[])
     CmdContext* cc = cmdctx_init();
     if (commands)
         command_loop(fb, cc, commands);
+    else if (script_mode)
+        stdin_loop(fb, cc);
     else
-        mainloop(fb, cc);
+        main_loop(fb, cc);
     cmdctx_destroy(cc);
 
     if (save_history && !commands) {
