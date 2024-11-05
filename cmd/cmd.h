@@ -10,8 +10,10 @@
 #define COMMAND_INVALID_HELP_COMMAND 2
 #define COMMAND_UNSUPPORTED_MOD      3
 #define COMMAND_UNSUPPORTED_ARG      4
-#define COMMAND_INVALID_MOD         5
+#define COMMAND_INVALID_MOD          5
 #define COMMAND_INVALID_ARG          6
+#define COMMAND_INTERNAL_ERROR       7
+#define COMMAND_FILE_WRITE_ERROR     8
 
 typedef void (*fptr_help_t)(void* obj);
 typedef void (*fptr_dispose_t)(void* obj);

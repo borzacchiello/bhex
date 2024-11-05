@@ -16,6 +16,7 @@
 #include "cmd_disas.h"
 #include "cmd_strings.h"
 #include "cmd_diff.h"
+#include "cmd_export.h"
 
 const char* cmdctx_err_to_string(int err)
 {
@@ -34,6 +35,10 @@ const char* cmdctx_err_to_string(int err)
             return "invalid cmd modifier";
         case COMMAND_INVALID_ARG:
             return "invalid arg";
+        case COMMAND_INTERNAL_ERROR:
+            return "internal error";
+        case COMMAND_FILE_WRITE_ERROR:
+            return "file write error";
         default:
             break;
     }
@@ -55,6 +60,7 @@ CmdContext* cmdctx_init(void)
 #ifndef DISABLE_KEYSTONE
     ll_add(&cc->commands, (uptr_t)assemblecmd_create());
 #endif
+    ll_add(&cc->commands, (uptr_t)exportcmd_create());
     ll_add(&cc->commands, (uptr_t)diffcmd_create());
     ll_add(&cc->commands, (uptr_t)printcmd_create());
     ll_add(&cc->commands, (uptr_t)seekcmd_create());
