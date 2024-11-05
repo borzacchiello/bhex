@@ -60,6 +60,7 @@ set(src
     cmd/util/byte_to_num.c
     cmd/util/endian.c
     cmd/util/str.c
+    cmd/util/print.c
     cmd/cmd_template.c
     cmd/cmd_search.c
     cmd/cmd_strings.c

@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "util/str.h"
+#include "util/print.h"
 #include "../alloc.h"
 #include "../log.h"
 
@@ -21,6 +22,9 @@
 
 #define SEEK_TO_MATCH_UNSET 0
 #define SEEK_TO_MATCH_SET   1
+
+#define PRINT_CTX_UNSET 0
+#define PRINT_CTX_SET   1
 
 typedef struct {
     u8_t min;
@@ -52,7 +56,7 @@ static void searchcmd_help(void* obj)
            "     x:  data is an hex string\n"
            "     s:  data is a string (default)\n"
            "     sk: seek to first match\n"
-           "     p:  print blocks info\n"
+           "     c:  print context\n"
            "\n"
            "  data: either a string or an hex string\n"
            "\n");
@@ -125,7 +129,7 @@ static void print_block_info(SearchCtx* ctx, FileBuffer* fb)
 }
 
 static void search(SearchCtx* ctx, FileBuffer* fb, const u8_t* data,
-                   size_t size, int seek_to_match)
+                   size_t size, int print_context, int seek_to_match)
 {
     if (size == 0)
         return;
@@ -190,6 +194,26 @@ static void search(SearchCtx* ctx, FileBuffer* fb, const u8_t* data,
                 seek_to_match = 0;
                 orig_off      = begin_addr;
             }
+            if (print_context) {
+                u64_t print_addr_begin = begin_addr;
+                u64_t print_addr_end   = begin_addr + size;
+
+#define PRINT_RANGE 16
+                // if we have enough bytes, expand by PRINT_RANGE bytes before
+                // and after
+                print_addr_begin = print_addr_begin >= PRINT_RANGE
+                                       ? print_addr_begin - PRINT_RANGE
+                                       : 0;
+                print_addr_end   = print_addr_end + PRINT_RANGE >= fb->size
+                                       ? fb->size
+                                       : print_addr_end + PRINT_RANGE;
+
+                fb_seek(fb, print_addr_begin);
+                const u8_t* data_to_print =
+                    fb_read(fb, print_addr_end - print_addr_begin);
+                print_hex(data_to_print, print_addr_end - print_addr_begin, 0,
+                          1, 1, print_addr_begin);
+            }
         }
 
         addr += 1;
@@ -214,12 +238,17 @@ static int searchcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 
     int     data_type     = DATA_TYPE_UNSET;
     int     seek_to_match = SEEK_TO_MATCH_UNSET;
+    int     print_context = PRINT_CTX_UNSET;
     LLNode* curr          = pc->cmd_modifiers.head;
     while (curr) {
         if (strcmp((char*)curr->data, "s") == 0) {
             if (data_type != DATA_TYPE_UNSET)
                 return COMMAND_INVALID_MOD;
             data_type = DATA_TYPE_STRING;
+        } else if (strcmp((char*)curr->data, "c") == 0) {
+            if (print_context == PRINT_CTX_SET)
+                return COMMAND_INVALID_MOD;
+            print_context = PRINT_CTX_SET;
         } else if (strcmp((char*)curr->data, "x") == 0) {
             if (data_type != DATA_TYPE_UNSET)
                 return COMMAND_INVALID_MOD;
@@ -253,7 +282,8 @@ static int searchcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
             break;
     }
 
-    search(ctx, fb, data, data_size, seek_to_match == SEEK_TO_MATCH_SET);
+    search(ctx, fb, data, data_size, print_context == PRINT_CTX_SET,
+           seek_to_match == SEEK_TO_MATCH_SET);
     bhex_free(data);
     return COMMAND_OK;
 }
