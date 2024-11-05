@@ -202,15 +202,16 @@ static void print_hex(const u8_t* bytes, size_t size, int raw_mode,
             printf(" %04llx: ", (u64_t)off + addr);
         int i;
         for (i = 0; i < block_size; ++i) {
-            if (off + i >= size) {
-                for (; i < block_size; ++i)
-                    printf("   ");
-                break;
-            }
-            if (!raw_mode)
+            if (!raw_mode) {
+                if (off + i >= size) {
+                    for (; i < block_size; ++i)
+                        printf("   ");
+                    break;
+                }
                 printf("%02X ", bytes[off + i]);
-            else
-                printf("0x%02X ", bytes[off + i]);
+            } else {
+                printf("%02X", bytes[off + i]);
+            }
         }
         if (!raw_mode) {
             printf("  ");
