@@ -81,6 +81,8 @@ Available commands:
     template [t]
     seek [s]
     print [p]
+    diff [df]
+    export [e]
     assemble [as]
     disas [ds]
     write [w]
@@ -224,6 +226,32 @@ print: display the data at current offset in various formats
 
   nelements: the number of elements to display
   (default: enough to display 256 bytes)
+```
+
+### Diff
+
+```
+[0x0000000] $ df?
+
+diff: prints the differences with another file
+
+  df[/p] <file>
+     p:  print different bytes
+
+  file: path to the file to compare
+```
+
+### Export
+
+```
+[0x0000000] $ e?
+
+export: write <size> bytes of the file starting from current offset to <ofile>
+
+  e <ofile> <size>
+
+  ofile: output file
+  size:  number of bytes to export
 ```
 
 ### Write
