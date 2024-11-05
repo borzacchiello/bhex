@@ -258,7 +258,7 @@ static int searchcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     return COMMAND_OK;
 }
 
-Cmd* searchcmd_create()
+Cmd* searchcmd_create(void)
 {
     Cmd*       cmd = bhex_malloc(sizeof(Cmd));
     SearchCtx* ctx = bhex_malloc(sizeof(SearchCtx));

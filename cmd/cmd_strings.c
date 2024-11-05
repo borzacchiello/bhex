@@ -111,7 +111,7 @@ static int stringscmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     return COMMAND_OK;
 }
 
-Cmd* stringscmd_create()
+Cmd* stringscmd_create(void)
 {
     Cmd* cmd = bhex_malloc(sizeof(Cmd));
 

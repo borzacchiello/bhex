@@ -2,7 +2,6 @@
 
 #include "util/byte_to_num.h"
 #include "../alloc.h"
-#include "../log.h"
 
 static void deletecmd_dispose(void* obj) { return; }
 
@@ -31,7 +30,7 @@ static int deletecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     return COMMAND_OK;
 }
 
-Cmd* deletecmd_create()
+Cmd* deletecmd_create(void)
 {
     Cmd* cmd = bhex_malloc(sizeof(Cmd));
 

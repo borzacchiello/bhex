@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 
-LL ll_create()
+LL ll_create(void)
 {
     LL ll = {.head = NULL, .size = 0};
     return ll;

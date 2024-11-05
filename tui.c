@@ -100,7 +100,7 @@ static void log_callback(const char* msg)
    POSSIBILITY OF SUCH DAMAGE.
 */
 
-static void disable_raw_mode()
+static void disable_raw_mode(void)
 {
     /* Don't even check the return value as it's too late. */
     if (g_rawmode) {
@@ -111,7 +111,7 @@ static void disable_raw_mode()
 }
 
 /* Raw mode: 1960 magic shit. */
-static int enable_raw_mode()
+static int enable_raw_mode(void)
 {
     struct termios raw;
 
@@ -152,7 +152,7 @@ fatal:
 
 /* Read a key from the terminal put in raw mode, trying to handle
  * escape sequences. */
-static int editor_read_key()
+static int editor_read_key(void)
 {
     int  nread;
     char c, seq[3];
@@ -396,7 +396,7 @@ static void sw_flush(ScreenWriter* sw)
     bhex_free(sw->lines);
 }
 
-static int refresh_screen()
+static int refresh_screen(void)
 {
 #define min_width  78
 #define min_height 10
@@ -456,7 +456,7 @@ static int refresh_screen()
         snprintf(buf, sizeof(buf) - 1, " %08llx: ", (u64_t)off + g_fb->off);
         sw_append(&sw, buf);
 
-        for (int j = 0; j < g_chunk_size; ++j) {
+        for (u64_t j = 0; j < g_chunk_size; ++j) {
             if (off + j >= read_size) {
                 for (; j < g_chunk_size; ++j) {
                     if (off + j + g_fb->off == g_selected)
@@ -477,7 +477,7 @@ static int refresh_screen()
             sw_append(&sw, " ");
         }
         sw_append(&sw, "  ");
-        for (int j = 0; j < g_chunk_size; ++j) {
+        for (u64_t j = 0; j < g_chunk_size; ++j) {
             if (off + j >= read_size) {
                 for (; j < g_chunk_size; ++j) {
                     if (off + j + g_fb->off == g_selected)
@@ -504,7 +504,7 @@ static int refresh_screen()
     return 0;
 }
 
-static void refresh_signal_handler(int __attribute__((unused)))
+static void refresh_signal_handler(int __attribute__((unused)) sig)
 {
     refresh_screen();
 }

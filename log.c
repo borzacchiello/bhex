@@ -59,4 +59,4 @@ void register_log_callback(void (*callback)(const char*))
     g_callback = callback;
 }
 
-void unregister_log_callback() { g_callback = NULL; }
+void unregister_log_callback(void) { g_callback = NULL; }

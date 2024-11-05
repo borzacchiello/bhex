@@ -19,7 +19,7 @@ static int undocmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     return COMMAND_OK;
 }
 
-Cmd* undocmd_create()
+Cmd* undocmd_create(void)
 {
     Cmd* cmd = bhex_malloc(sizeof(Cmd));
 

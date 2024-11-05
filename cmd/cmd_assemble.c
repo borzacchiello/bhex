@@ -177,7 +177,7 @@ static int assemblecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     return COMMAND_OK;
 }
 
-Cmd* assemblecmd_create()
+Cmd* assemblecmd_create(void)
 {
     Cmd* cmd   = bhex_malloc(sizeof(Cmd));
     cmd->obj   = NULL;

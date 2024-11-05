@@ -1,6 +1,5 @@
 #include <errno.h>
 #include <stdlib.h>
-#include <limits.h>
 #include <stdio.h>
 
 #include "byte_to_num.h"

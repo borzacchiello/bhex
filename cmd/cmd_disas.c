@@ -195,7 +195,7 @@ static int disascmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     return COMMAND_OK;
 }
 
-Cmd* disascmd_create()
+Cmd* disascmd_create(void)
 {
     Cmd* cmd   = bhex_malloc(sizeof(Cmd));
     cmd->obj   = NULL;

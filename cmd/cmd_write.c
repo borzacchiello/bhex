@@ -1,10 +1,9 @@
-#include "cmd_seek.h"
+#include "cmd_write.h"
 #include "util/str.h"
 #include "util/endian.h"
 #include "util/byte_to_num.h"
 
 #include "../alloc.h"
-#include "../log.h"
 
 #include <string.h>
 
@@ -238,7 +237,7 @@ static int writecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     return COMMAND_OK;
 }
 
-Cmd* writecmd_create()
+Cmd* writecmd_create(void)
 {
     Cmd* cmd = bhex_malloc(sizeof(Cmd));
 

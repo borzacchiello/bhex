@@ -43,7 +43,7 @@ char* bhex_strdup(const char* s)
     return r;
 }
 
-char* bhex_getline()
+char* bhex_getline(void)
 {
     char*   line      = NULL;
     size_t  line_size = 0;

@@ -98,7 +98,7 @@ static int diffcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     return COMMAND_OK;
 }
 
-Cmd* diffcmd_create()
+Cmd* diffcmd_create(void)
 {
     Cmd* cmd = bhex_malloc(sizeof(Cmd));
 

@@ -1,4 +1,4 @@
-#include "cmd_undo.h"
+#include "cmd_commit.h"
 
 #include "../alloc.h"
 
@@ -20,7 +20,7 @@ static int commitcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     return COMMAND_OK;
 }
 
-Cmd* commitcmd_create()
+Cmd* commitcmd_create(void)
 {
     Cmd* cmd = bhex_malloc(sizeof(Cmd));
 

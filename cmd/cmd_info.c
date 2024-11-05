@@ -133,7 +133,7 @@ static int infocmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     return COMMAND_OK;
 }
 
-Cmd* infocmd_create()
+Cmd* infocmd_create(void)
 {
     Cmd*     cmd = bhex_malloc(sizeof(Cmd));
     InfoCtx* ctx = bhex_malloc(sizeof(InfoCtx));

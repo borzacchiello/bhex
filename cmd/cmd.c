@@ -40,7 +40,7 @@ const char* cmdctx_err_to_string(int err)
     return "unknown";
 }
 
-CmdContext* cmdctx_init()
+CmdContext* cmdctx_init(void)
 {
     CmdContext* cc = bhex_malloc(sizeof(CmdContext));
     cc->commands   = ll_create();

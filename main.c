@@ -22,7 +22,7 @@ const struct option long_options[] = {
     {NULL, 0, NULL, 0},
 };
 
-static void print_banner()
+static void print_banner(void)
 {
     static const char* banner = "  ____  _    _\n"
                                 " |  _ \\| |  | |\n"
@@ -51,13 +51,13 @@ static void usage(const char* prog, int exit_code)
     exit(exit_code);
 }
 
-static const char* get_home()
+static const char* get_home(void)
 {
     // could be null!
     return getenv("HOME");
 }
 
-static const char* get_history_file()
+static const char* get_history_file(void)
 {
     static char history_path[1024];
     static int  history_file_set = 0;
@@ -67,7 +67,8 @@ static const char* get_history_file()
 
     const char* history_file = getenv("BHEX_HISTORY_FILE");
     if (history_file) {
-        if (strncpy(history_path, history_file, sizeof(history_path) - 1) <= 0)
+        if (strncpy(history_path, history_file, sizeof(history_path) - 1) ==
+            NULL)
             return NULL;
 
         history_path[sizeof(history_path) - 1] = 0;

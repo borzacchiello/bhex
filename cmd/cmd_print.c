@@ -390,7 +390,7 @@ static int printcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     return COMMAND_OK;
 }
 
-Cmd* printcmd_create()
+Cmd* printcmd_create(void)
 {
     Cmd* cmd = bhex_malloc(sizeof(Cmd));
 
