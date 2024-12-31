@@ -18,8 +18,8 @@ static void common_print(const char* type, const char* format, va_list argp)
         vfprintf(stderr, format, argp);
         fprintf(stderr, "\n");
     } else {
-        sprintf(buf, "[ %s ] ", type);
-        vsprintf(tmp, format, argp);
+        snprintf(buf, sizeof(buf) - 1, "[ %s ] ", type);
+        vsnprintf(tmp, sizeof(tmp) - 1, format, argp);
         strncat(buf, tmp, sizeof(buf) - 1 - strlen(buf));
 
         g_callback(buf);
