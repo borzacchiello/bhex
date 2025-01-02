@@ -61,6 +61,7 @@ set(src
     cmd/util/endian.c
     cmd/util/str.c
     cmd/util/print.c
+    cmd/cmd_legacy_template.c
     cmd/cmd_template.c
     cmd/cmd_search.c
     cmd/cmd_strings.c
@@ -75,6 +76,13 @@ set(src
     cmd/cmd_commit.c
     cmd/cmd_diff.c
     cmd/cmd_export.c
+
+    tengine/ast.c
+    tengine/dlist.c
+    tengine/lexer.c
+    tengine/map.c
+    tengine/parser.c
+    tengine/tengine.c
 
     alloc.c
     filebuffer.c
@@ -125,4 +133,3 @@ endif()
 if (ENABLE_KEYSTONE)
     target_link_libraries(bhex LINK_PUBLIC keystone)
 endif()
-

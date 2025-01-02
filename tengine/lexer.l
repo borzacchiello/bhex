@@ -7,6 +7,8 @@
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 
+#define YY_FATAL_ERROR(msg) panic(msg)
+
 char  yystrval[MAX_IDENT_SIZE];
 s64_t yynumval;
 int   yymax_ident_len;
@@ -23,7 +25,7 @@ int   yymax_ident_len;
 -?[0-9]+                {
                             if (!str_to_int64(yytext, &yynumval)) {
                                 error("[tengine lexer] invalid num '%s'", yytext);
-                                yyterminate();
+                                return 1;
                             }
                             return TNUM;
                         }
@@ -47,7 +49,7 @@ int   yymax_ident_len;
 ";"                     { return TSEMICOLON; }
 .                       {
                             error("[tengine lexer] unknown token");
-                            yyterminate();
+                            return 1;
                         }
 
 %%

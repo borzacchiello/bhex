@@ -17,6 +17,7 @@
 #include "cmd_strings.h"
 #include "cmd_diff.h"
 #include "cmd_export.h"
+#include "cmd_legacy_template.h"
 
 const char* cmdctx_err_to_string(int err)
 {
@@ -65,6 +66,7 @@ CmdContext* cmdctx_init(void)
     ll_add(&cc->commands, (uptr_t)printcmd_create());
     ll_add(&cc->commands, (uptr_t)seekcmd_create());
     ll_add(&cc->commands, (uptr_t)templatecmd_create());
+    ll_add(&cc->commands, (uptr_t)legacy_templatecmd_create());
     ll_add(&cc->commands, (uptr_t)stringscmd_create());
     ll_add(&cc->commands, (uptr_t)searchcmd_create());
     ll_add(&cc->commands, (uptr_t)infocmd_create());

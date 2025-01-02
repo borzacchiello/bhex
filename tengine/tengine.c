@@ -259,16 +259,6 @@ void TEngine_deinit(TEngine* engine)
     map_destroy(engine->proc_variables);
 }
 
-int TEngine_process_filename(TEngine* engine, FileBuffer* fb, const char* bhe)
-{
-    FILE* f = fopen(bhe, "r");
-    if (f == NULL) {
-        error("unable to open template file '%s'", bhe);
-        return 1;
-    }
-    return TEngine_process_file(engine, fb, f);
-}
-
 static const TEngineEmbeddedType* find_embedded_type(const char* type)
 {
     for (u64_t i = 0; i < sizeof(embedded_types) / sizeof(TEngineEmbeddedType);
@@ -554,6 +544,16 @@ static int process_ast(TEngine* engine, FileBuffer* fb)
             return 1;
     }
     return 0;
+}
+
+int TEngine_process_filename(TEngine* engine, FileBuffer* fb, const char* bhe)
+{
+    FILE* f = fopen(bhe, "r");
+    if (f == NULL) {
+        error("unable to open template file '%s'", bhe);
+        return 1;
+    }
+    return TEngine_process_file(engine, fb, f);
 }
 
 int TEngine_process_file(TEngine* engine, FileBuffer* fb, FILE* f)

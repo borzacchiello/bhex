@@ -18,7 +18,7 @@ void yyset_ctx(ASTCtx* ctx)
 
 void yyerror(const char *s)
 {
-    error("[tengine parser] %s [token '%s']\n", s, yytext);
+    error("[tengine parser] %s [near token '%s']", s, yytext);
 }
 
 %}

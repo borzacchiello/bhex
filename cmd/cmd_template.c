@@ -1,8 +1,9 @@
 #include "cmd_template.h"
 
+#include <sys/stat.h>
 #include <string.h>
 
-#include "templates/template.h"
+#include "../tengine/tengine.h"
 #include "../alloc.h"
 #include "../log.h"
 
@@ -10,15 +11,22 @@ static void templatecmd_dispose(void* obj) { return; }
 
 static void templatecmd_help(void* obj)
 {
-    printf("\ntemplate: parse a struct template at current offset\n"
+    printf("\ntemplate: parse the file at current offset using a 'bhe' "
+           "template file\n"
            "\n"
-           "  t[/l/{le,be}] <template_name>\n"
+           "  t[/l] <template>\n"
            "     l:  list available templates\n"
-           "     le: interpret numbers as little-endian (default)\n"
-           "     be: interpret numbers as big-endian\n"
            "\n"
-           "  template_name: the name of the template to use\n"
+           "  template: the name of the template to use or a path to a "
+           "template file\n"
            "\n");
+}
+
+static int file_exists(const char* path)
+{
+    struct stat path_stat;
+    stat(path, &path_stat);
+    return S_ISREG(path_stat.st_mode);
 }
 
 static int templatecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
@@ -33,54 +41,38 @@ static int templatecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 
         // list the templates
         printf("\nAvailable templates:\n");
-        size_t i;
-        for (i = 0; i < sizeof(templates) / sizeof(Template); ++i) {
-            Template* t = &templates[i];
-            printf("    %s\n", t->name);
-        }
+        // TODO: implement it
         printf("\n");
         return COMMAND_OK;
-    }
-
-    int le = 1;
-    if (pc->cmd_modifiers.size == 1) {
-        char* mod = (char*)pc->cmd_modifiers.head->data;
-        if (strcmp(mod, "le") == 0) {
-            le = 1;
-        } else if (strcmp(mod, "be") == 0) {
-            le = 0;
-        } else {
-            return COMMAND_UNSUPPORTED_MOD;
-        }
     }
 
     if (pc->args.size != 1)
         return COMMAND_INVALID_ARG;
 
-    int template_found = 0;
+    u64_t initial_off = fb->off;
+    char* bhe         = (char*)pc->args.head->data;
+    int   r           = COMMAND_INVALID_ARG;
 
-    char*  tname = (char*)pc->args.head->data;
-    size_t i;
-    for (i = 0; i < sizeof(templates) / sizeof(Template); ++i) {
-        Template* t = &templates[i];
-        if (strcmp(tname, t->name) == 0) {
-            if (t->get_size() > fb->size - fb->off) {
-                error("not enough data to apply the template");
-                return COMMAND_INVALID_ARG;
-            }
-            template_found = 1;
-            printf("\n");
-            t->pretty_print(fb_read(fb, t->get_size()), t->get_size(), le);
-            printf("\n");
-            break;
-        }
+    TEngine e;
+    TEngine_init(&e);
+
+    if (!file_exists(bhe)) {
+        error("'%s' is not a valid filename", bhe);
+        goto end;
     }
 
-    if (!template_found) {
-        error("template not found");
-        return COMMAND_INVALID_ARG;
+    printf("\n");
+    if (TEngine_process_filename(&e, fb, bhe) != 0) {
+        error("template execution failed");
+        goto end;
     }
-    return COMMAND_OK;
+    printf("\n");
+    r = COMMAND_OK;
+
+end:
+    fb_seek(fb, initial_off);
+    TEngine_deinit(&e);
+    return r;
 }
 
 Cmd* templatecmd_create(void)
