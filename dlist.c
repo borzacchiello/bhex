@@ -31,7 +31,7 @@ void DList_add(DList* l, void* item)
 {
     if (l->size == l->capacity) {
         l->capacity = l->capacity * 3 / 2;
-        l->data     = bhex_realloc(l->data, l->capacity);
+        l->data     = bhex_realloc(l->data, sizeof(void*) * l->capacity);
     }
     l->data[l->size++] = item;
 }

@@ -1,0 +1,10 @@
+proc
+{
+    uint32_t magic;
+    int32_t  cputype;
+    int32_t  cpusubtype;
+    uint32_t filetype;
+    uint32_t ncmds;
+    uint32_t sizeofcmds;
+    uint32_t flags;
+}

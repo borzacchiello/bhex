@@ -1,8 +1,0 @@
-proc
-{
-    uint64_t magic;
-    uint32_t size;
-    uint32_t type;
-    int8_t   v;
-    uint8_t  lst[100];
-}

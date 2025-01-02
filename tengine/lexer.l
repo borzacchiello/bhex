@@ -8,7 +8,7 @@
 #define min(x, y) ((x) < (y) ? (x) : (y))
 
 char  yystrval[MAX_IDENT_SIZE];
-u32_t yyuintval;
+s64_t yynumval;
 int   yymax_ident_len;
 
 %}
@@ -19,12 +19,12 @@ int   yymax_ident_len;
 
 [ \t\n]                 { }
 "proc"                  { return TPROC; }
-[0-9]+                  {
-                            if (!str_to_uint32(yytext, &yyuintval)) {
-                                error("[tengine lexer] invalid uint '%s'", yytext);
+-?[0-9]+                {
+                            if (!str_to_int64(yytext, &yynumval)) {
+                                error("[tengine lexer] invalid num '%s'", yytext);
                                 yyterminate();
                             }
-                            return TUINT;
+                            return TNUM;
                         }
 [a-zA-Z_][a-zA-Z0-9_]*  {
                             yy_size_t l = min(yyleng, sizeof(yystrval)-1);
@@ -35,6 +35,7 @@ int   yymax_ident_len;
                             memcpy(yystrval, yytext, l);
                             return TIDENTIFIER;
                         }
+"+"                     { return TADD; }
 "{"                     { return TLBRACE;}
 "}"                     { return TRBRACE; }
 "["                     { return SQLBRACE;}

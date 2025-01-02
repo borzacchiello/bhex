@@ -7,7 +7,7 @@
 extern int   yylex();
 extern char* yytext;
 extern char  yystrval[MAX_IDENT_SIZE];
-extern u32_t yyuintval;
+extern s64_t yynumval;
 
 static ASTCtx* g_ctx;
 
@@ -25,22 +25,26 @@ void yyerror(const char *s)
 
 // Represents the many different ways we can access our data
 %union {
-    Stmt*  stmt;
-    DList* stmts;
-    char*  ident;
-    u32_t  unum;
+    Stmt*    stmt;
+    DList*   stmts;
+    NumExpr* expr;
+    char*    ident;
 }
 
 // Terminal tokens
 %token TPROC
-%token TIDENTIFIER TUINT
+%token TIDENTIFIER TNUM
 %token TLBRACE TRBRACE SQLBRACE SQRBRACE TSEMICOLON
+%token TADD
 
 // Non terminal tokens types
-%type <stmt>  stmt  fvar_decl
+%type <stmt>  stmt fvar_decl
 %type <stmts> stmts proc
 %type <ident> ident
-%type <unum>  unum
+%type <expr>  expr num
+
+// Operator precedence
+%left TADD
 
 // The grammar
 %%
@@ -72,14 +76,29 @@ stmt        : fvar_decl
     ;
 
 fvar_decl   : ident ident                           {
-                                                        $$ = Stmt_FILE_VAR_DECL_new($1, $2, 1);
+                                                        $$ = Stmt_FILE_VAR_DECL_new($1, $2, NULL);
                                                         bhex_free($1);
                                                         bhex_free($2);
                                                     }
-            | ident ident SQLBRACE unum SQRBRACE    {
+            | ident ident SQLBRACE expr SQRBRACE    {
                                                         $$ = Stmt_FILE_VAR_DECL_new($1, $2, $4);
                                                         bhex_free($1);
                                                         bhex_free($2);
+                                                    }
+    ;
+
+expr        : num
+            | ident                                 {
+                                                        $$ = NumExpr_VAR_new($1);
+                                                        bhex_free($1);
+                                                    }
+            | expr TADD expr                        {
+                                                        $$ = NumExpr_ADD_new($1, $3);
+                                                    }
+    ;
+
+num         : TNUM                                  {
+                                                        $$ = NumExpr_CONST_new(yynumval);
                                                     }
     ;
 
@@ -87,9 +106,5 @@ ident       : TIDENTIFIER                           {
                                                         $$ = bhex_strdup(yystrval);
                                                     }
     ;
-
-unum        : TUINT                                 {
-                                                        $$ = yyuintval;
-                                                    }
 
 %%

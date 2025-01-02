@@ -31,7 +31,7 @@ int main(int argc, char** argv)
         goto end;
 
     printf("\n\n");
-    ASTCtx_pp(&e.ast);
+    TEngine_pp(&e);
 
 end:
     TEngine_deinit(&e);
