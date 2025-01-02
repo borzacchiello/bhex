@@ -16,6 +16,7 @@ extern int  yymax_ident_len;
 typedef struct ProcessContext {
     FileBuffer* fb;
     TEngine*    engine;
+    u64_t       initial_off;
     int         print_off;
 } ProcessContext;
 
@@ -430,22 +431,23 @@ static int process_array_type(ProcessContext ctx, const char* varname,
             return 1;
         }
         if (printed < size - 1) {
-            for (int i = 0; i < ctx.print_off + 4; ++i)
+            for (int i = 0; i < ctx.print_off + 4 + 11; ++i)
                 printf(" ");
             printf(", ");
         }
         // TODO save the array!
         map_destroy(custom_type_vars);
     }
-    printf("]\n");
+    printf("              ]\n");
     return 0;
 }
 
 static int process_FILE_VAR_DECL(ProcessContext ctx, Stmt* stmt, map* vars)
 {
+    printf("b+%08llx ", ctx.fb->off - ctx.initial_off);
     for (int i = 0; i < ctx.print_off; ++i)
         printf(" ");
-    printf("%*s: ", yymax_ident_len, stmt->name);
+    printf(" %*s: ", yymax_ident_len, stmt->name);
 
     if (stmt->arr_size == NULL) {
         // Not an array
@@ -544,7 +546,7 @@ static int process_ast(TEngine* engine, FileBuffer* fb)
         return 1;
     }
 
-    ProcessContext ctx   = {fb, engine, 0};
+    ProcessContext ctx   = {fb, engine, fb->off, 0};
     DList*         stmts = engine->ast.proc;
     for (u64_t i = 0; i < stmts->size; ++i) {
         Stmt* stmt = (Stmt*)stmts->data[i];
