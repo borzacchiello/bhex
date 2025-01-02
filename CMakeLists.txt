@@ -77,7 +77,6 @@ set(src
     cmd/cmd_export.c
 
     alloc.c
-    dlist.c
     filebuffer.c
     tui.c
     ll.c

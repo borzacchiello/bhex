@@ -1,19 +1,36 @@
 struct A
 {
+    endianess_le();
     uint32_t a_val_1;
+    endianess_be();
     uint32_t a_val_2;
     uint32_t a_val_3;
+    endianess_le();
 }
 
 struct B
 {
-    A b_val_1;
-    A b_val_2;
-    A b_val_3;
+    uint32_t b_val_1;
+    uint32_t b_val_2;
+    uint32_t b_val_3;
+}
+
+struct C
+{
+    A c_val_1;
+    A c_val_2;
+    A c_val_3;
+
+    B c_val_4;
+    B c_val_5;
+    B c_val_6;
 }
 
 proc
 {
-    B outer_val_1[3];
-    B outer_val_2;
+    fwd(24000);
+
+    uint8_t arr[8];
+    C outer_val_1[3];
+    A outer_val_2;
 }

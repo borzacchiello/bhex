@@ -1,8 +1,7 @@
 #include <string.h>
 
 #include "dlist.h"
-#include "alloc.h"
-#include "defs.h"
+#include "../alloc.h"
 
 #define INITIAL_CAPACITY 8
 

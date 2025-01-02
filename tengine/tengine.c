@@ -129,15 +129,15 @@ void TEngineVarValue_pp(TEngine* e, TEngineVarValue* v, int print_off)
     switch (v->t) {
         case UNUM:
             if (e->print_in_hex)
-                printf("%0*llx\n", v->unum_size * 2, v->unum);
+                printf("%0*llx", v->unum_size * 2, v->unum);
             else
-                printf("%llu\n", v->unum);
+                printf("%llu", v->unum);
             break;
         case SNUM:
             if (e->print_in_hex)
-                printf("%0*llx\n", v->unum_size * 2, v->unum);
+                printf("%0*llx", v->unum_size * 2, v->unum);
             else
-                printf("%lld\n", v->snum);
+                printf("%lld", v->snum);
             break;
         case CUSTOM_TYPE: {
             printf("\n");
@@ -148,6 +148,7 @@ void TEngineVarValue_pp(TEngine* e, TEngineVarValue* v, int print_off)
                 printf(".%.*s: ", yymax_ident_len, key);
                 TEngineVarValue* nv = map_get(v->subvals, key);
                 TEngineVarValue_pp(e, nv, print_off + 4);
+                printf("\n");
             }
             break;
         }
@@ -319,6 +320,7 @@ static TEngineVarValue* process_type(ProcessContext ctx, const char* varname,
     if (t != NULL) {
         TEngineVarValue* r = t->process(ctx.engine, varname, ctx.fb);
         TEngineVarValue_pp(ctx.engine, r, ctx.print_off);
+        printf("\n");
         return r;
     }
 
@@ -413,6 +415,7 @@ static int process_array_type(ProcessContext ctx, const char* varname,
         }
         if (!is_uint8)
             printf(" ]");
+        printf("\n");
 
         fb_seek(ctx.fb, final_off);
         return 0;
@@ -460,11 +463,72 @@ static int process_FILE_VAR_DECL(ProcessContext ctx, Stmt* stmt, map* vars)
     return 0;
 }
 
+static int process_FUNC_CALL(ProcessContext ctx, Stmt* stmt, map* vars)
+{
+#define REQUIRE_VOID                                                           \
+    if (stmt->params != NULL) {                                                \
+        error("[tengine] invalid call '%s', no param expected", stmt->fname);  \
+        return 1;                                                              \
+    }
+
+#define REQUIRE_ONE_PARAM                                                      \
+    if (stmt->params == NULL || stmt->params->size != 1) {                     \
+        error("[tengine] invalid call '%s', expected one parameter",           \
+              stmt->fname);                                                    \
+        return 1;                                                              \
+    }
+
+    // TODO: factor out build-in functions in an array
+    if (strcmp(stmt->fname, "endianess_le") == 0) {
+        REQUIRE_VOID
+        ctx.engine->endianess = TE_LITTLE_ENDIAN;
+        return 0;
+    } else if (strcmp(stmt->fname, "endianess_be") == 0) {
+        REQUIRE_VOID
+        ctx.engine->endianess = TE_BIG_ENDIAN;
+        return 0;
+    } else if (strcmp(stmt->fname, "nums_in_hex") == 0) {
+        REQUIRE_VOID
+        ctx.engine->print_in_hex = 1;
+        return 0;
+    } else if (strcmp(stmt->fname, "nums_in_dec") == 0) {
+        REQUIRE_VOID
+        ctx.engine->print_in_hex = 0;
+        return 0;
+    } else if (strcmp(stmt->fname, "seek") == 0 ||
+               strcmp(stmt->fname, "fwd") == 0) {
+        REQUIRE_ONE_PARAM
+        s64_t off;
+        if (evaluate_num_expr(ctx.engine, vars, stmt->params->data[0], &off) !=
+            0)
+            return 1;
+        if (off < 0) {
+            error("[tengine] negative seek/fwd offset '%lld'", off);
+            return 1;
+        }
+
+        u64_t to_off = (u64_t)off;
+        if (strcmp(stmt->fname, "fwd") == 0)
+            to_off = to_off + ctx.fb->off;
+
+        if (fb_seek(ctx.fb, (u64_t)off) != 0) {
+            error("[tengine] unable to seek to offset '%lld'", off);
+            return 1;
+        }
+        return 0;
+    }
+
+    error("[tengine] no such function '%s'", stmt->fname);
+    return 1;
+}
+
 static int process_stmt(ProcessContext ctx, Stmt* stmt, map* vars)
 {
     switch (stmt->t) {
         case FILE_VAR_DECL:
             return process_FILE_VAR_DECL(ctx, stmt, vars);
+        case FUNC_CALL:
+            return process_FUNC_CALL(ctx, stmt, vars);
         default: {
             error("[tengine] invalid stmt type %d", stmt->t);
             break;

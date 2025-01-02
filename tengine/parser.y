@@ -27,6 +27,7 @@ void yyerror(const char *s)
 %union {
     Stmt*    stmt;
     DList*   stmts;
+    DList*   params;
     NumExpr* expr;
     char*    ident;
 }
@@ -34,14 +35,15 @@ void yyerror(const char *s)
 // Terminal tokens
 %token TPROC TSTRUCT
 %token TIDENTIFIER TNUM
-%token TLBRACE TRBRACE SQLBRACE SQRBRACE TSEMICOLON
+%token TCLBRACE TCRBRACE TLBRACE TRBRACE SQLBRACE SQRBRACE TSEMICOLON TCOLON
 %token TADD
 
 // Non terminal tokens types
-%type <stmt>  stmt fvar_decl
-%type <stmts> stmts
-%type <ident> ident
-%type <expr>  expr num
+%type <stmt>   stmt fvar_decl func_call
+%type <stmts>  stmts
+%type <ident>  ident
+%type <expr>   expr num
+%type <params> params
 
 // Operator precedence
 %left TADD
@@ -73,6 +75,7 @@ stmts       : stmt TSEMICOLON                       {
     ;
 
 stmt        : fvar_decl
+            | func_call
     ;
 
 fvar_decl   : ident ident                           {
@@ -87,6 +90,16 @@ fvar_decl   : ident ident                           {
                                                     }
     ;
 
+func_call   : ident TCLBRACE TCRBRACE               {
+                                                        $$ = Stmt_FUNC_CALL_new($1, NULL);
+                                                        bhex_free($1);
+                                                    }
+            | ident TCLBRACE params TCRBRACE        {
+                                                        $$ = Stmt_FUNC_CALL_new($1, $3);
+                                                        bhex_free($1);
+                                                    }
+    ;
+
 expr        : num
             | ident                                 {
                                                         $$ = NumExpr_VAR_new($1);
@@ -94,6 +107,15 @@ expr        : num
                                                     }
             | expr TADD expr                        {
                                                         $$ = NumExpr_ADD_new($1, $3);
+                                                    }
+    ;
+
+params      : expr                                  {
+                                                        $$ = DList_new();
+                                                        DList_add($$, $1);
+                                                    }
+            | params TCOLON expr                    {
+                                                        DList_add($$, $3);
                                                     }
     ;
 

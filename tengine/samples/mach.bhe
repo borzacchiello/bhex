@@ -1,6 +1,8 @@
 struct mach_header
 {
-    uint8_t  magic[4];
+    endianess_be();
+    uint32_t magic;
+    endianess_le();
     int32_t  cputype;
     int32_t  cpusubtype;
     uint32_t filetype;

@@ -5,6 +5,7 @@
 
 #include "../alloc.h"
 #include "../log.h"
+#include "dlist.h"
 #include "map.h"
 
 NumExpr* NumExpr_CONST_new(s64_t v)
@@ -106,12 +107,30 @@ Stmt* Stmt_FILE_VAR_DECL_new(const char* type, const char* name, NumExpr* size)
     return stmt;
 }
 
+Stmt* Stmt_FUNC_CALL_new(const char* name, DList* params)
+{
+    Stmt* stmt   = bhex_calloc(sizeof(Stmt));
+    stmt->t      = FUNC_CALL;
+    stmt->fname  = bhex_strdup(name);
+    stmt->params = params;
+    return stmt;
+}
+
 static void FILE_VAR_DECL_free(Stmt* stmt)
 {
     bhex_free(stmt->type);
     bhex_free(stmt->name);
     if (stmt->arr_size)
         NumExpr_free(stmt->arr_size);
+}
+
+static void FUNC_CALL_free(Stmt* stmt)
+{
+    bhex_free(stmt->fname);
+    if (stmt->params) {
+        DList_foreach(stmt->params, (void (*)(void*))NumExpr_free);
+        bhex_free(stmt->params);
+    }
 }
 
 void Stmt_free(Stmt* stmt)
@@ -122,6 +141,9 @@ void Stmt_free(Stmt* stmt)
     switch (stmt->t) {
         case FILE_VAR_DECL:
             FILE_VAR_DECL_free(stmt);
+            break;
+        case FUNC_CALL:
+            FUNC_CALL_free(stmt);
             break;
         default:
             panic("unknown stmt type %d", stmt->t);
@@ -140,6 +162,18 @@ void Stmt_pp(Stmt* stmt)
                 printf("]");
             }
             printf(";\n");
+            break;
+        case FUNC_CALL:
+            printf("  %s(", stmt->fname);
+            if (stmt->params) {
+                for (u64_t i = 0; i < stmt->params->size; ++i) {
+                    NumExpr* param = stmt->params->data[i];
+                    NumExpr_pp(param);
+                    if (i < stmt->params->size - 1)
+                        printf(", ");
+                }
+            }
+            printf(");\n");
             break;
         default:
             panic("unknown stmt type %d", stmt->t);

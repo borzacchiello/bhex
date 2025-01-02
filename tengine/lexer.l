@@ -37,10 +37,13 @@ int   yymax_ident_len;
                             return TIDENTIFIER;
                         }
 "+"                     { return TADD; }
+"("                     { return TCLBRACE; }
+")"                     { return TCRBRACE; }
 "{"                     { return TLBRACE;}
 "}"                     { return TRBRACE; }
 "["                     { return SQLBRACE;}
 "]"                     { return SQRBRACE; }
+","                     { return TCOLON; }
 ";"                     { return TSEMICOLON; }
 .                       {
                             error("[tengine lexer] unknown token");

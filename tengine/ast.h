@@ -1,7 +1,7 @@
 #ifndef AST_H
 #define AST_H
 
-#include "../dlist.h"
+#include "dlist.h"
 #include "map.h"
 
 #define MAX_IDENT_SIZE 32
@@ -17,10 +17,10 @@ typedef struct NumExpr {
     union {
         // NUMEXPR_CONST
         s64_t value;
-        // EXPR_VAR
+        // NUMEXPR_VAR
         char* name;
         struct {
-            // EXPR_ADD
+            // NUMEXPR_ADD
             struct NumExpr* lhs;
             struct NumExpr* rhs;
         };
@@ -35,7 +35,8 @@ void     NumExpr_free(NumExpr* e);
 
 typedef enum ASTStmtType {
     FILE_VAR_DECL =
-        100, // File variable declaration (content is taken from FileBuffer)
+        100,   // File variable declaration (content is taken from FileBuffer)
+    FUNC_CALL, // Function call
 } ASTStmtType;
 
 typedef struct Stmt {
@@ -47,17 +48,23 @@ typedef struct Stmt {
             char*    name;
             NumExpr* arr_size;
         };
+        struct {
+            // FUNC_CALL
+            char*  fname;
+            DList* params;
+        };
     };
 } Stmt;
 
 Stmt* Stmt_FILE_VAR_DECL_new(const char* type, const char* name, NumExpr* size);
+Stmt* Stmt_FUNC_CALL_new(const char* name, DList* params);
 void  Stmt_free(Stmt* stmt);
 
 typedef struct ASTCtx {
     // proc { ... } => List of Stmt*
     DList* proc;
 
-    // struct XXX { ... } => Map of name to CustomStruct*
+    // struct XXX { ... } => Map of name to Stmt*
     map* structs;
 } ASTCtx;
 
