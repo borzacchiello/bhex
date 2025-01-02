@@ -1,0 +1,19 @@
+struct A
+{
+    uint32_t a_val_1;
+    uint32_t a_val_2;
+    uint32_t a_val_3;
+}
+
+struct B
+{
+    A b_val_1;
+    A b_val_2;
+    A b_val_3;
+}
+
+proc
+{
+    B outer_val_1[3];
+    B outer_val_2;
+}

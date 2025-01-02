@@ -9,7 +9,7 @@ typedef enum Endianess { TE_LITTLE_ENDIAN = 40, TE_BIG_ENDIAN } Endianess;
 
 typedef struct TEngine {
     ASTCtx ast;
-    map*   variables;
+    map*   proc_variables;
 
     Endianess endianess;
     int       print_in_hex;

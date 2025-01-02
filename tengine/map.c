@@ -48,7 +48,7 @@ map* map_create(void)
  * The map holds the pointers of the value: if a value is replaced, the element
  * will be disposed
  */
-void map_set_disposte(map* m, void (*c)(void*)) { m->el_dispose = c; }
+void map_set_dispose(map* m, void (*c)(void*)) { m->el_dispose = c; }
 
 /**
  * Free the memory used for a map after use.

@@ -5,6 +5,7 @@
 
 #include "../alloc.h"
 #include "../log.h"
+#include "map.h"
 
 NumExpr* NumExpr_CONST_new(s64_t v)
 {
@@ -145,7 +146,18 @@ void Stmt_pp(Stmt* stmt)
     }
 }
 
-void ASTCtx_init(ASTCtx* ctx) { ctx->proc = NULL; }
+static void dlist_stmts_free(DList* l)
+{
+    DList_foreach(l, (void (*)(void*))Stmt_free);
+    DList_deinit(l);
+}
+
+void ASTCtx_init(ASTCtx* ctx)
+{
+    ctx->proc    = NULL;
+    ctx->structs = map_create();
+    map_set_dispose(ctx->structs, (void (*)(void*))dlist_stmts_free);
+}
 
 void ASTCtx_deinit(ASTCtx* ctx)
 {
@@ -153,16 +165,26 @@ void ASTCtx_deinit(ASTCtx* ctx)
         return;
 
     if (ctx->proc) {
-        DList_foreach(ctx->proc, (void (*)(void*))Stmt_free);
-        DList_deinit(ctx->proc);
+        dlist_stmts_free(ctx->proc);
         bhex_free(ctx->proc);
     }
+    map_destroy(ctx->structs);
 }
 
 void ASTCtx_pp(ASTCtx* ctx)
 {
     printf("ASTCtx\n");
     printf("======\n");
+
+    printf("\n");
+    for (const char* key = map_first(ctx->structs); key != NULL;
+         key             = map_next(ctx->structs, key)) {
+        printf("struct %s\n{\n", key);
+        DList* stmts = map_get(ctx->structs, key);
+        DList_foreach(stmts, (void (*)(void*))Stmt_pp);
+        printf("}\n");
+    }
+    printf("\n");
 
     printf("proc\n{\n");
     if (ctx->proc) {

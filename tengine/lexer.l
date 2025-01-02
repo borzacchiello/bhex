@@ -19,6 +19,7 @@ int   yymax_ident_len;
 
 [ \t\n]                 { }
 "proc"                  { return TPROC; }
+"struct"                { return TSTRUCT; }
 -?[0-9]+                {
                             if (!str_to_int64(yytext, &yynumval)) {
                                 error("[tengine lexer] invalid num '%s'", yytext);

@@ -13,6 +13,14 @@ extern int  yymax_ident_len;
 
 #define MAX_ARR_PRINT_SIZE 16
 
+typedef struct ProcessContext {
+    FileBuffer* fb;
+    TEngine*    engine;
+    int         print_off;
+} ProcessContext;
+
+static int process_stmt(ProcessContext ctx, Stmt* stmt, map* vars);
+
 /*
  * Variables Values
  */
@@ -20,37 +28,56 @@ extern int  yymax_ident_len;
 typedef enum TEngineVarType {
     UNUM = 500,
     SNUM,
+    CUSTOM_TYPE,
 } TEngineVarType;
 
 typedef struct TEngineVarValue {
     TEngineVarType t;
+    char*          name;
     union {
         struct {
+            // UNUM
             u64_t unum;
             u32_t unum_size;
         };
         struct {
+            // SNUM
             s64_t snum;
             u32_t snum_size;
+        };
+        struct {
+            // CUSTOM_TYPE
+            map* subvals;
         };
     };
 } TEngineVarValue;
 
-TEngineVarValue* TEngineVarValue_UNUM_new(u64_t v, u32_t size)
+TEngineVarValue* TEngineVarValue_UNUM_new(const char* name, u64_t v, u32_t size)
 {
     TEngineVarValue* r = bhex_calloc(sizeof(TEngineVarValue));
+    r->name            = bhex_strdup(name);
     r->t               = UNUM;
     r->unum            = v;
     r->unum_size       = size;
     return r;
 }
 
-TEngineVarValue* TEngineVarValue_SNUM_new(s64_t v, u32_t size)
+TEngineVarValue* TEngineVarValue_SNUM_new(const char* name, s64_t v, u32_t size)
 {
     TEngineVarValue* r = bhex_calloc(sizeof(TEngineVarValue));
+    r->name            = bhex_strdup(name);
     r->t               = SNUM;
     r->snum            = v;
     r->snum_size       = size;
+    return r;
+}
+
+TEngineVarValue* TEngineVarValue_CUSTOM_TYPE_new(const char* name, map* subvals)
+{
+    TEngineVarValue* r = bhex_calloc(sizeof(TEngineVarValue));
+    r->name            = bhex_strdup(name);
+    r->t               = CUSTOM_TYPE;
+    r->subvals         = subvals;
     return r;
 }
 
@@ -60,7 +87,7 @@ int TEngineVarValue_get_num(TEngineVarValue* v, s64_t* onum)
         case UNUM:
             if ((v->unum >> 63) != 0) {
                 error("TEngineVarValue_get_num: the number '%llu' is too big "
-                      "to fit a TEngine num\n",
+                      "to fit a TEngine num",
                       v->unum);
                 return 1;
             }
@@ -69,6 +96,9 @@ int TEngineVarValue_get_num(TEngineVarValue* v, s64_t* onum)
         case SNUM:
             *onum = v->snum;
             return 0;
+        case CUSTOM_TYPE:
+            error("[tengine] not a numeric type");
+            return 1;
         default:
             panic("invalid type in TEngineVarValue_get_num");
     }
@@ -77,31 +107,50 @@ int TEngineVarValue_get_num(TEngineVarValue* v, s64_t* onum)
 
 void TEngineVarValue_free(TEngineVarValue* v)
 {
+    if (!v)
+        return;
+
     switch (v->t) {
         case UNUM:
         case SNUM:
+            break;
+        case CUSTOM_TYPE:
+            map_destroy(v->subvals);
             break;
         default:
             panic("invalid type in TEngineVarValue_free");
     }
+    bhex_free(v->name);
     bhex_free(v);
 }
 
-void TEngineVarValue_pp(TEngine* e, TEngineVarValue* v)
+void TEngineVarValue_pp(TEngine* e, TEngineVarValue* v, int print_off)
 {
     switch (v->t) {
         case UNUM:
             if (e->print_in_hex)
-                printf("%0*llx", v->unum_size * 2, v->unum);
+                printf("%0*llx\n", v->unum_size * 2, v->unum);
             else
-                printf("%llu", v->unum);
+                printf("%llu\n", v->unum);
             break;
         case SNUM:
             if (e->print_in_hex)
-                printf("%0*llx", v->unum_size * 2, v->unum);
+                printf("%0*llx\n", v->unum_size * 2, v->unum);
             else
-                printf("%lld", v->snum);
+                printf("%lld\n", v->snum);
             break;
+        case CUSTOM_TYPE: {
+            printf("\n");
+            for (const char* key = map_first(v->subvals); key != NULL;
+                 key             = map_next(v->subvals, key)) {
+                for (int i = 0; i < print_off + 4; ++i)
+                    printf(" ");
+                printf(".%.*s: ", yymax_ident_len, key);
+                TEngineVarValue* nv = map_get(v->subvals, key);
+                TEngineVarValue_pp(e, nv, print_off + 4);
+            }
+            break;
+        }
         default:
             panic("invalid type in TEngineVarValue_pp");
     }
@@ -113,27 +162,27 @@ void TEngineVarValue_pp(TEngine* e, TEngineVarValue* v)
 
 typedef struct TEngineEmbeddedType {
     const char name[MAX_IDENT_SIZE];
-    TEngineVarValue* (*process)(TEngine*, FileBuffer*);
+    TEngineVarValue* (*process)(TEngine*, const char*, FileBuffer*);
 } TEngineEmbeddedType;
 
-static TEngineVarValue* uint_process(TEngine* engine, const u8_t* buf,
-                                     u32_t size)
+static TEngineVarValue* uint_process(TEngine* e, const char* name,
+                                     const u8_t* buf, u32_t size)
 {
     u64_t v = 0;
     for (u32_t i = 0; i < size; ++i) {
-        v |= (u64_t)buf[i] << ((engine->endianess == TE_BIG_ENDIAN)
+        v |= (u64_t)buf[i] << ((e->endianess == TE_BIG_ENDIAN)
                                    ? ((size - i - 1) * 8)
                                    : (i * 8));
     }
-    return TEngineVarValue_UNUM_new(v, size);
+    return TEngineVarValue_UNUM_new(name, v, size);
 }
 
-static TEngineVarValue* int_process(TEngine* engine, const u8_t* buf,
-                                    u32_t size)
+static TEngineVarValue* int_process(TEngine* e, const char* name,
+                                    const u8_t* buf, u32_t size)
 {
     u64_t v = 0;
     for (u32_t i = 0; i < size; ++i) {
-        v |= (u64_t)buf[i] << ((engine->endianess == TE_BIG_ENDIAN)
+        v |= (u64_t)buf[i] << ((e->endianess == TE_BIG_ENDIAN)
                                    ? ((size - i - 1) * 8)
                                    : (i * 8));
     }
@@ -155,19 +204,20 @@ static TEngineVarValue* int_process(TEngine* engine, const u8_t* buf,
         default:
             panic("invalid size (%u) in 'int_print'", size);
     }
-    return TEngineVarValue_SNUM_new(sv, size);
+    return TEngineVarValue_SNUM_new(name, sv, size);
 }
 
 #define GEN_INT_PRINT(name, size, signed)                                      \
-    static TEngineVarValue* name##_process(TEngine* engine, FileBuffer* fb)    \
+    static TEngineVarValue* name##_process(                                    \
+        TEngine* engine, const char* varname, FileBuffer* fb)                  \
     {                                                                          \
         const u8_t* buf = fb_read(fb, size);                                   \
         fb_seek(fb, fb->off + size);                                           \
         if (buf == NULL)                                                       \
             return NULL;                                                       \
         if (!signed)                                                           \
-            return uint_process(engine, buf, size);                            \
-        return int_process(engine, buf, size);                                 \
+            return uint_process(engine, varname, buf, size);                   \
+        return int_process(engine, varname, buf, size);                        \
     }
 
 GEN_INT_PRINT(uint64_t, 8, 0)
@@ -193,17 +243,18 @@ static TEngineEmbeddedType embedded_types[] = {
 void TEngine_init(TEngine* engine)
 {
     ASTCtx_init(&engine->ast);
-    engine->variables    = map_create();
-    engine->endianess    = TE_LITTLE_ENDIAN;
-    engine->print_in_hex = 1;
+    engine->proc_variables = map_create();
+    engine->endianess      = TE_LITTLE_ENDIAN;
+    engine->print_in_hex   = 1;
 
-    map_set_disposte(engine->variables, (void (*)(void*))TEngineVarValue_free);
+    map_set_dispose(engine->proc_variables,
+                    (void (*)(void*))TEngineVarValue_free);
 }
 
 void TEngine_deinit(TEngine* engine)
 {
     ASTCtx_deinit(&engine->ast);
-    map_destroy(engine->variables);
+    map_destroy(engine->proc_variables);
 }
 
 int TEngine_process_filename(TEngine* engine, FileBuffer* fb, const char* bhe)
@@ -228,39 +279,82 @@ static const TEngineEmbeddedType* find_embedded_type(const char* type)
     return NULL;
 }
 
-static TEngineVarValue* process_type(TEngine* engine, const char* type,
-                                     FileBuffer* fb)
+static DList* get_custom_type_body(TEngine* e, const char* name)
 {
-    const TEngineEmbeddedType* t = find_embedded_type(type);
-    if (t != NULL)
-        return t->process(engine, fb);
-
-    // TODO check custom types
-    error("[tengine] unknown type %s\n", type);
+    for (const char* key = map_first(e->ast.structs); key != NULL;
+         key             = map_next(e->ast.structs, key)) {
+        if (strcmp(name, key) != 0)
+            continue;
+        return map_get(e->ast.structs, key);
+    }
     return NULL;
 }
 
-static int evaluate_num_expr(TEngine* engine, NumExpr* e, s64_t* oval)
+static map* process_custom_type(ProcessContext ctx, const char* type)
+{
+    DList* body = get_custom_type_body(ctx.engine, type);
+    if (body == NULL) {
+        error("[tengine] no such type '%s'", type);
+        return NULL;
+    }
+    map* type_vars = map_create();
+    map_set_dispose(type_vars, (void (*)(void*))TEngineVarValue_free);
+
+    printf("\n");
+    ctx.print_off += 4;
+    for (u64_t i = 0; i < body->size; ++i) {
+        Stmt* stmt = (Stmt*)body->data[i];
+        if (process_stmt(ctx, stmt, type_vars) != 0) {
+            map_destroy(type_vars);
+            return NULL;
+        }
+    }
+    return type_vars;
+}
+
+static TEngineVarValue* process_type(ProcessContext ctx, const char* varname,
+                                     const char* type, map* vars)
+{
+    const TEngineEmbeddedType* t = find_embedded_type(type);
+    if (t != NULL) {
+        TEngineVarValue* r = t->process(ctx.engine, varname, ctx.fb);
+        TEngineVarValue_pp(ctx.engine, r, ctx.print_off);
+        return r;
+    }
+
+    map* custom_type_vars = process_custom_type(ctx, type);
+    if (custom_type_vars == NULL) {
+        error("[tengine] unknown type %s", type);
+        return NULL;
+    }
+
+    TEngineVarValue* v =
+        TEngineVarValue_CUSTOM_TYPE_new(varname, custom_type_vars);
+    return v;
+}
+
+static int evaluate_num_expr(TEngine* engine, map* vars, NumExpr* e,
+                             s64_t* oval)
 {
     switch (e->t) {
         case NUMEXPR_CONST:
             *oval = e->value;
             return 0;
         case NUMEXPR_VAR: {
-            if (!map_contains(engine->variables, e->name)) {
+            if (!map_contains(vars, e->name)) {
                 error("[tengine] no such variable '%s'", e->name);
                 return 1;
             }
-            TEngineVarValue* value = map_get(engine->variables, e->name);
+            TEngineVarValue* value = map_get(vars, e->name);
             if (TEngineVarValue_get_num(value, oval) != 0)
                 return 1;
             return 0;
         }
         case NUMEXPR_ADD: {
             s64_t lhs, rhs;
-            if (evaluate_num_expr(engine, e->lhs, &lhs) != 0)
+            if (evaluate_num_expr(engine, vars, e->lhs, &lhs) != 0)
                 return 1;
-            if (evaluate_num_expr(engine, e->rhs, &rhs) != 0)
+            if (evaluate_num_expr(engine, vars, e->rhs, &rhs) != 0)
                 return 1;
             *oval = lhs + rhs;
             return 0;
@@ -271,24 +365,24 @@ static int evaluate_num_expr(TEngine* engine, NumExpr* e, s64_t* oval)
     return 1;
 }
 
-static int process_array_type(TEngine* engine, const char* type, NumExpr* esize,
-                              FileBuffer* fb)
+static int process_array_type(ProcessContext ctx, const char* varname,
+                              const char* type, NumExpr* esize, map* vars)
 {
     s64_t size;
-    if (evaluate_num_expr(engine, esize, &size) != 0)
+    if (evaluate_num_expr(ctx.engine, vars, esize, &size) != 0)
         return 1;
     if (size < 0) {
         error("[tengine] invalid array size: %lld", size);
         return 1;
     }
-    if ((u64_t)size > fb->size - fb->off) {
+    if ((u64_t)size > ctx.fb->size - ctx.fb->off) {
         error("[tengine] invalid array size: %lld, it is bigger than the "
               "remaining file size",
               size);
         return 1;
     }
 
-    u64_t final_off = fb->off + (u64_t)size;
+    u64_t final_off = ctx.fb->off + (u64_t)size;
 
     // Let's threat uint8_t arrays as byte arrays, we will print them in hex
     int is_uint8 = strcmp(type, "uint8_t") == 0;
@@ -299,15 +393,15 @@ static int process_array_type(TEngine* engine, const char* type, NumExpr* esize,
         if (!is_uint8)
             printf("[ ");
         while (printed < size) {
-            TEngineVarValue* val = t->process(engine, fb);
+            TEngineVarValue* val = t->process(ctx.engine, varname, ctx.fb);
             if (val == NULL)
                 return 1;
             if (is_uint8) {
-                int tmp = engine->print_in_hex;
-                TEngineVarValue_pp(engine, val);
-                engine->print_in_hex = tmp;
+                int tmp = ctx.engine->print_in_hex;
+                TEngineVarValue_pp(ctx.engine, val, ctx.print_off);
+                ctx.engine->print_in_hex = tmp;
             } else {
-                TEngineVarValue_pp(engine, val);
+                TEngineVarValue_pp(ctx.engine, val, ctx.print_off);
                 if (printed < size - 1)
                     printf(", ");
             }
@@ -320,42 +414,57 @@ static int process_array_type(TEngine* engine, const char* type, NumExpr* esize,
         if (!is_uint8)
             printf(" ]");
 
-        fb_seek(fb, final_off);
+        fb_seek(ctx.fb, final_off);
         return 0;
     }
 
-    // TODO check custom types
-    error("[tengine] unknown type %s", type);
-    return 1;
-}
-
-static int process_FILE_VAR_DECL(TEngine* engine, Stmt* stmt, FileBuffer* fb)
-{
-    printf("%*s: ", yymax_ident_len, stmt->name);
-    if (stmt->arr_size == NULL) {
-        // Not an array
-        TEngineVarValue* val = process_type(engine, stmt->type, fb);
-        if (val == NULL)
+    // Array of custom type
+    printf("[");
+    for (printed = 0; printed < size; ++printed) {
+        map* custom_type_vars = process_custom_type(ctx, type);
+        if (custom_type_vars == NULL) {
+            error("[tengine] unknown type %s", type);
             return 1;
-        TEngineVarValue_pp(engine, val);
-
-        map_set(engine->variables, stmt->name, val);
-    } else {
-        // Array type
-        if (process_array_type(engine, stmt->type, stmt->arr_size, fb) != 0)
-            return 1;
-
-        // TODO: valorize TEngineVarValue
+        }
+        if (printed < size - 1) {
+            for (int i = 0; i < ctx.print_off + 4; ++i)
+                printf(" ");
+            printf(", ");
+        }
+        // TODO save the array!
+        map_destroy(custom_type_vars);
     }
-    printf("\n");
+    printf("]\n");
     return 0;
 }
 
-static int process_stmt(TEngine* engine, Stmt* stmt, FileBuffer* fb)
+static int process_FILE_VAR_DECL(ProcessContext ctx, Stmt* stmt, map* vars)
+{
+    for (int i = 0; i < ctx.print_off; ++i)
+        printf(" ");
+    printf("%*s: ", yymax_ident_len, stmt->name);
+
+    if (stmt->arr_size == NULL) {
+        // Not an array
+        TEngineVarValue* val = process_type(ctx, stmt->name, stmt->type, vars);
+        if (val == NULL)
+            return 1;
+        map_set(vars, stmt->name, val);
+    } else {
+        // Array type
+        if (process_array_type(ctx, stmt->name, stmt->type, stmt->arr_size,
+                               vars) != 0)
+            return 1;
+        // TODO: valorize TEngineVarValue
+    }
+    return 0;
+}
+
+static int process_stmt(ProcessContext ctx, Stmt* stmt, map* vars)
 {
     switch (stmt->t) {
         case FILE_VAR_DECL:
-            return process_FILE_VAR_DECL(engine, stmt, fb);
+            return process_FILE_VAR_DECL(ctx, stmt, vars);
         default: {
             error("[tengine] invalid stmt type %d", stmt->t);
             break;
@@ -366,13 +475,17 @@ static int process_stmt(TEngine* engine, Stmt* stmt, FileBuffer* fb)
 
 static int process_ast(TEngine* engine, FileBuffer* fb)
 {
-    if (engine->ast.proc) {
-        DList* stmts = engine->ast.proc;
-        for (u64_t i = 0; i < stmts->size; ++i) {
-            Stmt* stmt = (Stmt*)stmts->data[i];
-            if (process_stmt(engine, stmt, fb) != 0)
-                return 1;
-        }
+    if (!engine->ast.proc) {
+        error("[tengine] no proc");
+        return 1;
+    }
+
+    ProcessContext ctx   = {fb, engine, 0};
+    DList*         stmts = engine->ast.proc;
+    for (u64_t i = 0; i < stmts->size; ++i) {
+        Stmt* stmt = (Stmt*)stmts->data[i];
+        if (process_stmt(ctx, stmt, engine->proc_variables) != 0)
+            return 1;
     }
     return 0;
 }
@@ -395,14 +508,13 @@ void TEngine_pp(TEngine* e)
     printf("TEngine\n\n");
     ASTCtx_pp(&e->ast);
 
-    printf("\nVariables\n");
+    printf("\nProc Variables\n");
     printf("=========\n");
-    for (const char* key = map_first(e->variables); key != NULL;
-         key             = map_next(e->variables, key)) {
+    for (const char* key = map_first(e->proc_variables); key != NULL;
+         key             = map_next(e->proc_variables, key)) {
         printf("%s ", key);
-        TEngineVarValue* v = map_get(e->variables, key);
-        TEngineVarValue_pp(e, v);
-        printf("\n");
+        TEngineVarValue* v = map_get(e->proc_variables, key);
+        TEngineVarValue_pp(e, v, 0);
     }
     printf("\n");
 }

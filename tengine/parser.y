@@ -32,14 +32,14 @@ void yyerror(const char *s)
 }
 
 // Terminal tokens
-%token TPROC
+%token TPROC TSTRUCT
 %token TIDENTIFIER TNUM
 %token TLBRACE TRBRACE SQLBRACE SQRBRACE TSEMICOLON
 %token TADD
 
 // Non terminal tokens types
 %type <stmt>  stmt fvar_decl
-%type <stmts> stmts proc
+%type <stmts> stmts
 %type <ident> ident
 %type <expr>  expr num
 
@@ -50,16 +50,16 @@ void yyerror(const char *s)
 %%
 
 program     :
-            | program proc                         {
+            | program TPROC TLBRACE stmts TRBRACE   {
                                                         if (g_ctx->proc != NULL)
                                                             // You can only have one proc
                                                             YYABORT;
-                                                        g_ctx->proc = $2;
+                                                        g_ctx->proc = $4;
                                                     }
-    ;
-
-proc        : TPROC TLBRACE stmts TRBRACE          {
-                                                        $$ = $3;
+            | program TSTRUCT ident TLBRACE stmts TRBRACE 
+                                                    {
+                                                        map_set(g_ctx->structs, $3, $5);
+                                                        bhex_free($3);
                                                     }
     ;
 

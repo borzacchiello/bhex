@@ -2,6 +2,7 @@
 #define AST_H
 
 #include "../dlist.h"
+#include "map.h"
 
 #define MAX_IDENT_SIZE 32
 
@@ -55,6 +56,9 @@ void  Stmt_free(Stmt* stmt);
 typedef struct ASTCtx {
     // proc { ... } => List of Stmt*
     DList* proc;
+
+    // struct XXX { ... } => Map of name to CustomStruct*
+    map* structs;
 } ASTCtx;
 
 void ASTCtx_init(ASTCtx* ctx);

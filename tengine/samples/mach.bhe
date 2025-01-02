@@ -1,10 +1,15 @@
-proc
+struct mach_header
 {
-    uint32_t magic;
+    uint8_t  magic[4];
     int32_t  cputype;
     int32_t  cpusubtype;
     uint32_t filetype;
     uint32_t ncmds;
     uint32_t sizeofcmds;
     uint32_t flags;
+}
+
+proc
+{
+    mach_header header;
 }
