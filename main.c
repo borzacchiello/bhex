@@ -123,7 +123,6 @@ static void main_loop(FileBuffer* fb, CmdContext* cc)
 {
     static char prompt[256];
 
-    print_banner();
     while (1) {
         snprintf(prompt, sizeof(prompt), "[0x%07llX] $ ", fb->off);
         char* inp = linenoise(prompt);
