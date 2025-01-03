@@ -1,3 +1,12 @@
+enum E : uint8_t
+{
+    PLUTO    = 0,
+    PAPERINO = 1,
+    PIPPO    = 2,
+    TOPOLINO = 0xCA,
+    MINNIE   = 0xBE
+}
+
 struct A
 {
     endianess_le();
@@ -28,6 +37,7 @@ struct C
 
 proc
 {
+    E e;
     fwd(24000);
 
     uint8_t arr[8];

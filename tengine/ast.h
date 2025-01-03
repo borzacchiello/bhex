@@ -6,32 +6,36 @@
 
 #define MAX_IDENT_SIZE 32
 
-typedef enum ASTNumExprType {
-    NUMEXPR_CONST = 200,
-    NUMEXPR_VAR,
-    NUMEXPR_ADD,
-} ASTNumExprType;
+typedef enum ASTExprType {
+    EXPR_CONST = 200,
+    EXPR_VAR,
+    EXPR_VARCHAIN,
+    EXPR_ADD,
+} ASTExprType;
 
-typedef struct NumExpr {
-    ASTNumExprType t;
+typedef struct Expr {
+    ASTExprType t;
     union {
-        // NUMEXPR_CONST
+        // EXPR_CONST
         s64_t value;
-        // NUMEXPR_VAR
+        // EXPR_VAR
         char* name;
+        // EXPR_VARCHAIN
+        DList* chain;
         struct {
-            // NUMEXPR_ADD
-            struct NumExpr* lhs;
-            struct NumExpr* rhs;
+            // EXPR_ADD
+            struct Expr* lhs;
+            struct Expr* rhs;
         };
     };
-} NumExpr;
+} Expr;
 
-NumExpr* NumExpr_CONST_new(s64_t v);
-NumExpr* NumExpr_VAR_new(const char* var);
-NumExpr* NumExpr_ADD_new(NumExpr* lhs, NumExpr* rhs);
-NumExpr* NumExpr_dup(NumExpr* e);
-void     NumExpr_free(NumExpr* e);
+Expr* Expr_CONST_new(s64_t v);
+Expr* Expr_VAR_new(const char* var);
+Expr* Expr_VARCHAIN_new(DList* chain);
+Expr* Expr_ADD_new(Expr* lhs, Expr* rhs);
+Expr* Expr_dup(Expr* e);
+void  Expr_free(Expr* e);
 
 typedef enum ASTStmtType {
     FILE_VAR_DECL =
@@ -44,9 +48,9 @@ typedef struct Stmt {
     union {
         struct {
             // FILE_VAR_DECL
-            char*    type;
-            char*    name;
-            NumExpr* arr_size;
+            char* type;
+            char* name;
+            Expr* arr_size;
         };
         struct {
             // FUNC_CALL
@@ -56,9 +60,27 @@ typedef struct Stmt {
     };
 } Stmt;
 
-Stmt* Stmt_FILE_VAR_DECL_new(const char* type, const char* name, NumExpr* size);
+Stmt* Stmt_FILE_VAR_DECL_new(const char* type, const char* name, Expr* size);
 Stmt* Stmt_FUNC_CALL_new(const char* name, DList* params);
 void  Stmt_free(Stmt* stmt);
+
+typedef struct EnumEntry {
+    char* name;
+    u64_t value;
+} EnumEntry;
+
+typedef struct Enum {
+    char*  type;
+    DList* entries;
+} Enum;
+
+EnumEntry* EnumEntry_new(const char* name, u64_t value);
+void       EnumEntry_free(EnumEntry* ee);
+void       EnumEntry_pp(EnumEntry* ee);
+
+Enum*       Enum_new(const char* type, DList* entries);
+const char* Enum_find_const(Enum* e, u64_t c);
+void        Enum_free(Enum* ee);
 
 typedef struct ASTCtx {
     // proc { ... } => List of Stmt*
@@ -66,13 +88,16 @@ typedef struct ASTCtx {
 
     // struct XXX { ... } => Map of name to Stmt*
     map* structs;
+
+    // enum XXX { ... } => Map of name to Enum
+    map* enums;
 } ASTCtx;
 
 void ASTCtx_init(ASTCtx* ctx);
 void ASTCtx_deinit(ASTCtx* ctx);
 
 // Debug print routines
-void NumExpr_pp(NumExpr* e);
+void Expr_pp(Expr* e);
 void Stmt_pp(Stmt* stmt);
 void ASTCtx_pp(ASTCtx* ctx);
 

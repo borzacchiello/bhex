@@ -28,22 +28,27 @@ void yyerror(const char *s)
     Stmt*    stmt;
     DList*   stmts;
     DList*   params;
-    NumExpr* expr;
+    DList*   enum_list;
+    DList*   varchain;
+    Expr*    expr;
     char*    ident;
 }
 
 // Terminal tokens
-%token TPROC TSTRUCT
+%token TPROC TSTRUCT TENUM
 %token TIDENTIFIER TNUM
-%token TCLBRACE TCRBRACE TLBRACE TRBRACE SQLBRACE SQRBRACE TSEMICOLON TCOLON
-%token TADD
+%token TCLBRACE TCRBRACE TLBRACE TRBRACE SQLBRACE SQRBRACE 
+%token TSEMICOLON TCOLON TCOMMA TDOT
+%token TADD TEQUAL
 
 // Non terminal tokens types
-%type <stmt>   stmt fvar_decl func_call
-%type <stmts>  stmts
-%type <ident>  ident
-%type <expr>   expr num
-%type <params> params
+%type <stmt>      stmt fvar_decl func_call
+%type <stmts>     stmts
+%type <enum_list> enum_list
+%type <varchain>  varchain
+%type <ident>     ident
+%type <expr>      expr num
+%type <params>    params
 
 // Operator precedence
 %left TADD
@@ -61,6 +66,23 @@ program     :
             | program TSTRUCT ident TLBRACE stmts TRBRACE 
                                                     {
                                                         map_set(g_ctx->structs, $3, $5);
+                                                        bhex_free($3);
+                                                    }
+            | program TENUM ident TCOLON ident TLBRACE enum_list TRBRACE 
+                                                    {
+                                                        map_set(g_ctx->enums, $3, Enum_new($5, $7));
+                                                        bhex_free($3);
+                                                        bhex_free($5);
+                                                    }
+    ;
+
+enum_list  : ident TEQUAL TNUM                      {
+                                                        $$ = DList_new();
+                                                        DList_add($$, EnumEntry_new($1, yynumval));
+                                                        bhex_free($1);
+                                                    }
+           | enum_list TCOMMA ident TEQUAL TNUM     {
+                                                        DList_add($1, EnumEntry_new($3, yynumval));
                                                         bhex_free($3);
                                                     }
     ;
@@ -102,11 +124,24 @@ func_call   : ident TCLBRACE TCRBRACE               {
 
 expr        : num
             | ident                                 {
-                                                        $$ = NumExpr_VAR_new($1);
+                                                        $$ = Expr_VAR_new($1);
                                                         bhex_free($1);
                                                     }
+            | varchain                              {
+                                                        $$ = Expr_VARCHAIN_new($1);
+                                                    }
             | expr TADD expr                        {
-                                                        $$ = NumExpr_ADD_new($1, $3);
+                                                        $$ = Expr_ADD_new($1, $3);
+                                                    }
+    ;
+
+varchain    : ident TDOT ident                      {
+                                                        $$ = DList_new();
+                                                        DList_add($$, $1);
+                                                        DList_add($$, $3);
+                                                    }
+            | varchain TDOT ident                   {
+                                                        DList_add($1, $3);
                                                     }
     ;
 
@@ -114,13 +149,13 @@ params      : expr                                  {
                                                         $$ = DList_new();
                                                         DList_add($$, $1);
                                                     }
-            | params TCOLON expr                    {
+            | params TCOMMA expr                    {
                                                         DList_add($$, $3);
                                                     }
     ;
 
 num         : TNUM                                  {
-                                                        $$ = NumExpr_CONST_new(yynumval);
+                                                        $$ = Expr_CONST_new(yynumval);
                                                     }
     ;
 

@@ -30,6 +30,7 @@ typedef enum TEngineVarType {
     UNUM = 500,
     SNUM,
     CUSTOM_TYPE,
+    ENUM_VALUE,
 } TEngineVarType;
 
 typedef struct TEngineVarValue {
@@ -49,6 +50,10 @@ typedef struct TEngineVarValue {
         struct {
             // CUSTOM_TYPE
             map* subvals;
+        };
+        struct {
+            // ENUM_VALUE
+            char* enum_value;
         };
     };
 } TEngineVarValue;
@@ -82,6 +87,16 @@ TEngineVarValue* TEngineVarValue_CUSTOM_TYPE_new(const char* name, map* subvals)
     return r;
 }
 
+TEngineVarValue* TEngineVarValue_ENUM_VALUE_new(const char* name,
+                                                const char* ename)
+{
+    TEngineVarValue* r = bhex_calloc(sizeof(TEngineVarValue));
+    r->name            = bhex_strdup(name);
+    r->t               = ENUM_VALUE;
+    r->enum_value      = bhex_strdup(ename);
+    return r;
+}
+
 int TEngineVarValue_get_num(TEngineVarValue* v, s64_t* onum)
 {
     switch (v->t) {
@@ -98,6 +113,7 @@ int TEngineVarValue_get_num(TEngineVarValue* v, s64_t* onum)
             *onum = v->snum;
             return 0;
         case CUSTOM_TYPE:
+        case ENUM_VALUE:
             error("[tengine] not a numeric type");
             return 1;
         default:
@@ -114,6 +130,9 @@ void TEngineVarValue_free(TEngineVarValue* v)
     switch (v->t) {
         case UNUM:
         case SNUM:
+            break;
+        case ENUM_VALUE:
+            bhex_free(v->enum_value);
             break;
         case CUSTOM_TYPE:
             map_destroy(v->subvals);
@@ -140,6 +159,10 @@ void TEngineVarValue_pp(TEngine* e, TEngineVarValue* v, int print_off)
             else
                 printf("%lld", v->snum);
             break;
+        case ENUM_VALUE: {
+            printf("%s", v->enum_value);
+            break;
+        }
         case CUSTOM_TYPE: {
             printf("\n");
             for (const char* key = map_first(v->subvals); key != NULL;
@@ -282,13 +305,23 @@ static DList* get_custom_type_body(TEngine* e, const char* name)
     return NULL;
 }
 
+static Enum* get_enum(TEngine* e, const char* name)
+{
+    for (const char* key = map_first(e->ast.enums); key != NULL;
+         key             = map_next(e->ast.enums, key)) {
+        if (strcmp(name, key) != 0)
+            continue;
+        return map_get(e->ast.enums, key);
+    }
+    return NULL;
+}
+
 static map* process_custom_type(ProcessContext ctx, const char* type)
 {
     DList* body = get_custom_type_body(ctx.engine, type);
-    if (body == NULL) {
-        error("[tengine] no such type '%s'", type);
+    if (body == NULL)
         return NULL;
-    }
+
     map* type_vars = map_create();
     map_set_dispose(type_vars, (void (*)(void*))TEngineVarValue_free);
 
@@ -304,6 +337,35 @@ static map* process_custom_type(ProcessContext ctx, const char* type)
     return type_vars;
 }
 
+static const char* process_enum_type(ProcessContext ctx, const char* type)
+{
+    Enum* e = get_enum(ctx.engine, type);
+    if (e == NULL)
+        return NULL;
+
+    const TEngineEmbeddedType* t = find_embedded_type(e->type);
+    if (t == NULL) {
+        error("[tengine] Enum %s has an invalid source type [%s]", type,
+              e->type);
+        return NULL;
+    }
+
+    TEngineVarValue* v = t->process(ctx.engine, e->type, ctx.fb);
+    if (v == NULL)
+        return NULL;
+
+    u64_t       val  = v->t == UNUM ? v->unum : (u64_t)v->snum;
+    const char* name = Enum_find_const(e, val);
+    if (name == NULL) {
+        warning("[tengine] Enum %s has no value %llu", type, val);
+        static char tmpbuf[1024];
+        memset(tmpbuf, 0, sizeof(tmpbuf));
+        snprintf(tmpbuf, sizeof(tmpbuf) - 1, "UNK [%llu ~ 0x%llx]", val, val);
+        return tmpbuf;
+    }
+    return name;
+}
+
 static TEngineVarValue* process_type(ProcessContext ctx, const char* varname,
                                      const char* type, map* vars)
 {
@@ -316,24 +378,31 @@ static TEngineVarValue* process_type(ProcessContext ctx, const char* varname,
     }
 
     map* custom_type_vars = process_custom_type(ctx, type);
-    if (custom_type_vars == NULL) {
-        error("[tengine] unknown type %s", type);
-        return NULL;
+    if (custom_type_vars != NULL) {
+        TEngineVarValue* v =
+            TEngineVarValue_CUSTOM_TYPE_new(varname, custom_type_vars);
+        return v;
     }
 
-    TEngineVarValue* v =
-        TEngineVarValue_CUSTOM_TYPE_new(varname, custom_type_vars);
-    return v;
+    const char* enum_var = process_enum_type(ctx, type);
+    if (enum_var != NULL) {
+        TEngineVarValue* v = TEngineVarValue_ENUM_VALUE_new(varname, enum_var);
+        TEngineVarValue_pp(ctx.engine, v, ctx.print_off);
+        printf("\n");
+        return v;
+    }
+
+    error("[tengine] unknown type %s", type);
+    return NULL;
 }
 
-static int evaluate_num_expr(TEngine* engine, map* vars, NumExpr* e,
-                             s64_t* oval)
+static int evaluate_num_expr(TEngine* engine, map* vars, Expr* e, s64_t* oval)
 {
     switch (e->t) {
-        case NUMEXPR_CONST:
+        case EXPR_CONST:
             *oval = e->value;
             return 0;
-        case NUMEXPR_VAR: {
+        case EXPR_VAR: {
             if (!map_contains(vars, e->name)) {
                 error("[tengine] no such variable '%s'", e->name);
                 return 1;
@@ -343,7 +412,30 @@ static int evaluate_num_expr(TEngine* engine, map* vars, NumExpr* e,
                 return 1;
             return 0;
         }
-        case NUMEXPR_ADD: {
+        case EXPR_VARCHAIN: {
+            map*             vars = engine->proc_variables;
+            TEngineVarValue* val  = NULL;
+            u64_t            i    = 0;
+            for (; i < e->chain->size; ++i) {
+                char* n = e->chain->data[i];
+                if (!map_contains(vars, n)) {
+                    error("[tengine] no such variable (in chain) '%s'", n);
+                    return 1;
+                }
+                val = map_get(vars, n);
+                if (val->t != CUSTOM_TYPE)
+                    break;
+                vars = val->subvals;
+            }
+            if (val == NULL || i != e->chain->size - 1) {
+                error("[tengine] invalid chain");
+                return 1;
+            }
+            if (TEngineVarValue_get_num(val, oval) != 0)
+                return 1;
+            return 0;
+        }
+        case EXPR_ADD: {
             s64_t lhs, rhs;
             if (evaluate_num_expr(engine, vars, e->lhs, &lhs) != 0)
                 return 1;
@@ -359,7 +451,7 @@ static int evaluate_num_expr(TEngine* engine, map* vars, NumExpr* e,
 }
 
 static int process_array_type(ProcessContext ctx, const char* varname,
-                              const char* type, NumExpr* esize, map* vars)
+                              const char* type, Expr* esize, map* vars)
 {
     s64_t size;
     if (evaluate_num_expr(ctx.engine, vars, esize, &size) != 0)
@@ -398,6 +490,7 @@ static int process_array_type(ProcessContext ctx, const char* varname,
                 if (printed < size - 1)
                     printf(", ");
             }
+            // TODO save the value!
             TEngineVarValue_free(val);
             if (printed++ >= MAX_ARR_PRINT_SIZE) {
                 printf("...");

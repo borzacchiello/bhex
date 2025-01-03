@@ -41,33 +41,41 @@
    enum yytokentype {
      TPROC = 258,
      TSTRUCT = 259,
-     TIDENTIFIER = 260,
-     TNUM = 261,
-     TCLBRACE = 262,
-     TCRBRACE = 263,
-     TLBRACE = 264,
-     TRBRACE = 265,
-     SQLBRACE = 266,
-     SQRBRACE = 267,
-     TSEMICOLON = 268,
-     TCOLON = 269,
-     TADD = 270
+     TENUM = 260,
+     TIDENTIFIER = 261,
+     TNUM = 262,
+     TCLBRACE = 263,
+     TCRBRACE = 264,
+     TLBRACE = 265,
+     TRBRACE = 266,
+     SQLBRACE = 267,
+     SQRBRACE = 268,
+     TSEMICOLON = 269,
+     TCOLON = 270,
+     TCOMMA = 271,
+     TDOT = 272,
+     TADD = 273,
+     TEQUAL = 274
    };
 #endif
 /* Tokens.  */
 #define TPROC 258
 #define TSTRUCT 259
-#define TIDENTIFIER 260
-#define TNUM 261
-#define TCLBRACE 262
-#define TCRBRACE 263
-#define TLBRACE 264
-#define TRBRACE 265
-#define SQLBRACE 266
-#define SQRBRACE 267
-#define TSEMICOLON 268
-#define TCOLON 269
-#define TADD 270
+#define TENUM 260
+#define TIDENTIFIER 261
+#define TNUM 262
+#define TCLBRACE 263
+#define TCRBRACE 264
+#define TLBRACE 265
+#define TRBRACE 266
+#define SQLBRACE 267
+#define SQRBRACE 268
+#define TSEMICOLON 269
+#define TCOLON 270
+#define TCOMMA 271
+#define TDOT 272
+#define TADD 273
+#define TEQUAL 274
 
 
 
@@ -79,11 +87,13 @@ typedef union YYSTYPE
     Stmt*    stmt;
     DList*   stmts;
     DList*   params;
-    NumExpr* expr;
+    DList*   enum_list;
+    DList*   varchain;
+    Expr*    expr;
     char*    ident;
 }
 /* Line 1529 of yacc.c.  */
-#line 87 "parser.h"
+#line 97 "parser.h"
 	YYSTYPE;
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
 # define YYSTYPE_IS_DECLARED 1
