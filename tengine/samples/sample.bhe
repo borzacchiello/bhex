@@ -1,8 +1,0 @@
-proc
-{
-    uint8_t a;
-    if (a == 0x7f) {
-        uint8_t b;
-    };
-    uint8_t c;
-}

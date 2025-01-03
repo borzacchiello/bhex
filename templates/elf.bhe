@@ -345,12 +345,14 @@ struct Elf64_Shdr
 proc
 {
     Elf_Ehdr header;
+
     seek(header.e_phoff);
     if (header.e_ident.ei_class == 2) {
         Elf64_Phdr phdr[header.e_phnum];
     } else {
         Elf32_Phdr phdr[header.e_phnum];
     };
+
     seek(header.e_shoff);
     if (header.e_ident.ei_class == 2) {
         Elf64_Shdr shdr[header.e_shnum];
