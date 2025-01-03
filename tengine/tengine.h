@@ -8,18 +8,22 @@
 typedef enum Endianess { TE_LITTLE_ENDIAN = 40, TE_BIG_ENDIAN } Endianess;
 
 typedef struct TEngine {
-    ASTCtx ast;
-    map*   proc_variables;
+    ASTCtx* ast;
+    map*    proc_variables;
 
     Endianess endianess;
     int       print_in_hex;
 } TEngine;
 
-void TEngine_init(TEngine* engine);
+ASTCtx* TEngine_parse_filename(const char* bhe);
+ASTCtx* TEngine_parse_file(FILE* f);
+
+void TEngine_init(TEngine* engine, ASTCtx* ast);
 void TEngine_deinit(TEngine* engine);
 
-int TEngine_process_filename(TEngine* engine, FileBuffer* fb, const char* bhe);
-int TEngine_process_file(TEngine* engine, FileBuffer* fb, FILE* f);
+int TEngine_process_filename(FileBuffer* fb, const char* bhe);
+int TEngine_process_file(FileBuffer* fb, FILE* f);
+int TEngine_process_ast(FileBuffer* fb, ASTCtx* ast);
 
 void TEngine_pp(TEngine* e);
 

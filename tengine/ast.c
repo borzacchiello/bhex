@@ -362,16 +362,18 @@ void Enum_free(Enum* e)
     bhex_free(e);
 }
 
-void ASTCtx_init(ASTCtx* ctx)
+ASTCtx* ASTCtx_new(void)
 {
+    ASTCtx* ctx  = bhex_calloc(sizeof(ASTCtx));
     ctx->proc    = NULL;
     ctx->structs = map_create();
     map_set_dispose(ctx->structs, (void (*)(void*))Block_free);
     ctx->enums = map_create();
     map_set_dispose(ctx->enums, (void (*)(void*))Enum_free);
+    return ctx;
 }
 
-void ASTCtx_deinit(ASTCtx* ctx)
+void ASTCtx_delete(ASTCtx* ctx)
 {
     if (!ctx)
         return;
@@ -380,6 +382,7 @@ void ASTCtx_deinit(ASTCtx* ctx)
         Block_free(ctx->proc);
     map_destroy(ctx->structs);
     map_destroy(ctx->enums);
+    bhex_free(ctx);
 }
 
 void ASTCtx_pp(ASTCtx* ctx)

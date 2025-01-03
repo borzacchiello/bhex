@@ -23,16 +23,7 @@ int main(int argc, char** argv)
         usage(argv[0]);
     }
 
-    TEngine e;
-    TEngine_init(&e);
-
-    if (TEngine_process_file(&e, fb, stdin) != 0)
-        goto end;
-
-    printf("\n\n");
-    TEngine_pp(&e);
-
-end:
-    TEngine_deinit(&e);
-    return 0;
+    int r = TEngine_process_file(fb, stdin);
+    filebuffer_destroy(fb);
+    return r;
 }

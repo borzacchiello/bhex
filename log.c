@@ -46,6 +46,17 @@ void warning(const char* format, ...)
     common_print("WARNING", format, argp);
 }
 
+void info(const char* format, ...)
+{
+    if (disable_warning)
+        return;
+
+    va_list argp;
+    va_start(argp, format);
+
+    common_print(" INFO  ", format, argp);
+}
+
 void error(const char* format, ...)
 {
     va_list argp;

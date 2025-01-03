@@ -1,5 +1,7 @@
 build/
 build_*/
+install/
+install_*/
 
 .vscode/
 .cache/

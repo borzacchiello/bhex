@@ -269,23 +269,6 @@ static TEngineEmbeddedType embedded_types[] = {
  * TEngine Object
  */
 
-void TEngine_init(TEngine* engine)
-{
-    ASTCtx_init(&engine->ast);
-    engine->proc_variables = map_create();
-    engine->endianess      = TE_LITTLE_ENDIAN;
-    engine->print_in_hex   = 1;
-
-    map_set_dispose(engine->proc_variables,
-                    (void (*)(void*))TEngineVarValue_free);
-}
-
-void TEngine_deinit(TEngine* engine)
-{
-    ASTCtx_deinit(&engine->ast);
-    map_destroy(engine->proc_variables);
-}
-
 static const TEngineEmbeddedType* find_embedded_type(const char* type)
 {
     for (u64_t i = 0; i < sizeof(embedded_types) / sizeof(TEngineEmbeddedType);
@@ -300,22 +283,22 @@ static const TEngineEmbeddedType* find_embedded_type(const char* type)
 
 static Block* get_custom_type_body(TEngine* e, const char* name)
 {
-    for (const char* key = map_first(e->ast.structs); key != NULL;
-         key             = map_next(e->ast.structs, key)) {
+    for (const char* key = map_first(e->ast->structs); key != NULL;
+         key             = map_next(e->ast->structs, key)) {
         if (strcmp(name, key) != 0)
             continue;
-        return map_get(e->ast.structs, key);
+        return map_get(e->ast->structs, key);
     }
     return NULL;
 }
 
 static Enum* get_enum(TEngine* e, const char* name)
 {
-    for (const char* key = map_first(e->ast.enums); key != NULL;
-         key             = map_next(e->ast.enums, key)) {
+    for (const char* key = map_first(e->ast->enums); key != NULL;
+         key             = map_next(e->ast->enums, key)) {
         if (strcmp(name, key) != 0)
             continue;
-        return map_get(e->ast.enums, key);
+        return map_get(e->ast->enums, key);
     }
     return NULL;
 }
@@ -691,13 +674,13 @@ static int process_stmt(ProcessContext ctx, Stmt* stmt, map* vars)
 
 static int process_ast(TEngine* engine, FileBuffer* fb)
 {
-    if (!engine->ast.proc) {
+    if (!engine->ast->proc) {
         error("[tengine] no proc");
         return 1;
     }
 
     ProcessContext ctx   = {fb, engine, fb->off, 0};
-    DList*         stmts = engine->ast.proc->stmts;
+    DList*         stmts = engine->ast->proc->stmts;
     for (u64_t i = 0; i < stmts->size; ++i) {
         Stmt* stmt = (Stmt*)stmts->data[i];
         if (process_stmt(ctx, stmt, engine->proc_variables) != 0)
@@ -706,33 +689,87 @@ static int process_ast(TEngine* engine, FileBuffer* fb)
     return 0;
 }
 
-int TEngine_process_filename(TEngine* engine, FileBuffer* fb, const char* bhe)
+ASTCtx* TEngine_parse_filename(const char* bhe)
+{
+    FILE* f = fopen(bhe, "r");
+    if (f == NULL) {
+        error("unable to open template file '%s'", bhe);
+        return NULL;
+    }
+
+    ASTCtx* ast = TEngine_parse_file(f);
+    fclose(f);
+    return ast;
+}
+
+ASTCtx* TEngine_parse_file(FILE* f)
+{
+    ASTCtx* ast = ASTCtx_new();
+
+    yyset_in(f);
+    yyset_ctx(ast);
+
+    if (yyparse() != 0) {
+        error("parsing failed");
+        ASTCtx_delete(ast);
+        return NULL;
+    }
+    return ast;
+}
+
+void TEngine_init(TEngine* engine, ASTCtx* ast)
+{
+    engine->ast            = ast;
+    engine->proc_variables = map_create();
+    engine->endianess      = TE_LITTLE_ENDIAN;
+    engine->print_in_hex   = 1;
+
+    map_set_dispose(engine->proc_variables,
+                    (void (*)(void*))TEngineVarValue_free);
+}
+
+void TEngine_deinit(TEngine* engine) { map_destroy(engine->proc_variables); }
+
+int TEngine_process_filename(FileBuffer* fb, const char* bhe)
 {
     FILE* f = fopen(bhe, "r");
     if (f == NULL) {
         error("unable to open template file '%s'", bhe);
         return 1;
     }
-    return TEngine_process_file(engine, fb, f);
+
+    int r = TEngine_process_file(fb, f);
+    fclose(f);
+    return r;
 }
 
-int TEngine_process_file(TEngine* engine, FileBuffer* fb, FILE* f)
+int TEngine_process_file(FileBuffer* fb, FILE* f)
 {
-    yyset_in(f);
-    yyset_ctx(&engine->ast);
-
-    if (yyparse() != 0) {
-        error("parsing failed");
+    ASTCtx* ast = TEngine_parse_file(f);
+    if (ast == NULL) {
+        fclose(f);
         return 1;
     }
 
-    return process_ast(engine, fb);
+    int r = TEngine_process_ast(fb, ast);
+    ASTCtx_delete(ast);
+    return r;
+}
+
+int TEngine_process_ast(FileBuffer* fb, ASTCtx* ast)
+{
+    TEngine eng;
+    TEngine_init(&eng, ast);
+
+    int r = process_ast(&eng, fb);
+    TEngine_deinit(&eng);
+    return r;
 }
 
 void TEngine_pp(TEngine* e)
 {
     printf("TEngine\n\n");
-    ASTCtx_pp(&e->ast);
+    ASTCtx_pp(e->ast);
 
     printf("\nProc Variables\n");
     printf("=========\n");

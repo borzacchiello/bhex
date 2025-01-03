@@ -133,3 +133,8 @@ endif()
 if (ENABLE_KEYSTONE)
     target_link_libraries(bhex LINK_PUBLIC keystone)
 endif()
+
+install (TARGETS bhex RUNTIME DESTINATION bin)
+install (DIRECTORY templates/
+        DESTINATION share/bhex/templates
+        FILES_MATCHING PATTERN "*.bhe")

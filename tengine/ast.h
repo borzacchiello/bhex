@@ -120,8 +120,8 @@ typedef struct ASTCtx {
     map* enums;
 } ASTCtx;
 
-void ASTCtx_init(ASTCtx* ctx);
-void ASTCtx_deinit(ASTCtx* ctx);
+ASTCtx* ASTCtx_new();
+void    ASTCtx_delete(ASTCtx* ctx);
 
 // Debug print routines
 void Expr_pp(Expr* e);

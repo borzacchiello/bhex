@@ -1,13 +1,26 @@
 #include "cmd_template.h"
 
 #include <sys/stat.h>
+#include <dirent.h>
 #include <string.h>
 
 #include "../tengine/tengine.h"
 #include "../alloc.h"
 #include "../log.h"
+#include "cmd.h"
 
-static void templatecmd_dispose(void* obj) { return; }
+static const char* search_folders[] = {"/usr/local/share/bhex/templates",
+                                       "../templates", "./templates"};
+
+typedef struct TemplateCtx {
+    map* templates;
+} TemplateCtx;
+
+static void templatecmd_dispose(TemplateCtx* ctx)
+{
+    map_destroy(ctx->templates);
+    return;
+}
 
 static void templatecmd_help(void* obj)
 {
@@ -29,7 +42,7 @@ static int file_exists(const char* path)
     return S_ISREG(path_stat.st_mode);
 }
 
-static int templatecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
+static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
 {
     if (pc->cmd_modifiers.size > 1)
         return COMMAND_UNSUPPORTED_MOD;
@@ -39,9 +52,10 @@ static int templatecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
         if (pc->args.size != 0)
             return COMMAND_INVALID_ARG;
 
-        // list the templates
         printf("\nAvailable templates:\n");
-        // TODO: implement it
+        for (const char* key = map_first(ctx->templates); key != NULL;
+             key             = map_next(ctx->templates, key))
+            printf("  %s\n", key);
         printf("\n");
         return COMMAND_OK;
     }
@@ -53,16 +67,23 @@ static int templatecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     char* bhe         = (char*)pc->args.head->data;
     int   r           = COMMAND_INVALID_ARG;
 
-    TEngine e;
-    TEngine_init(&e);
-
-    if (!file_exists(bhe)) {
-        error("'%s' is not a valid filename", bhe);
+    if (map_contains(ctx->templates, bhe)) {
+        // Pre-loaded template
+        printf("\n");
+        ASTCtx* ast = map_get(ctx->templates, bhe);
+        if (TEngine_process_ast(fb, ast) == 0) {
+            printf("\n");
+            r = COMMAND_OK;
+        }
         goto end;
     }
 
-    printf("\n");
-    if (TEngine_process_filename(&e, fb, bhe) != 0) {
+    if (!file_exists(bhe)) {
+        error("'%s' is not a valid template name or filename", bhe);
+        goto end;
+    }
+
+    if (TEngine_process_filename(fb, bhe) != 0) {
         error("template execution failed");
         goto end;
     }
@@ -71,7 +92,6 @@ static int templatecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 
 end:
     fb_seek(fb, initial_off);
-    TEngine_deinit(&e);
     return r;
 }
 
@@ -79,13 +99,60 @@ Cmd* templatecmd_create(void)
 {
     Cmd* cmd = bhex_malloc(sizeof(Cmd));
 
-    cmd->obj   = NULL;
+    TemplateCtx* ctx = bhex_calloc(sizeof(TemplateCtx));
+    ctx->templates   = map_create();
+    map_set_dispose(ctx->templates, (void (*)(void*))ASTCtx_delete);
+
+    char tmp[1024];
+
+    // Iterate over the default templates directories
+    for (u64_t i = 0; i < sizeof(search_folders) / sizeof(const char*); ++i) {
+        const char* dirpath = search_folders[i];
+        DIR*        dir     = opendir(dirpath);
+        if (dir == NULL)
+            continue;
+
+        struct dirent* entry;
+        while ((entry = readdir(dir)) != NULL) {
+            // look for "*.bhe" files
+            if (strcmp(entry->d_name, ".") == 0 ||
+                strcmp(entry->d_name, "..") == 0)
+                continue;
+            if (entry->d_namlen < 4 ||
+                strcmp(entry->d_name + (entry->d_namlen - 4), ".bhe") != 0)
+                continue;
+
+            memset(tmp, 0, sizeof(tmp));
+            snprintf(tmp, sizeof(tmp) - 1, "%s/%s", dirpath, entry->d_name);
+
+            // Remove extension
+            entry->d_name[entry->d_namlen - 4] = '\0';
+            if (map_contains(ctx->templates, entry->d_name)) {
+                warning("template '%s' already loaded, skipping file '%s'",
+                        entry->d_name, tmp);
+                continue;
+            }
+
+            ASTCtx* ast = TEngine_parse_filename(tmp);
+            if (ast == NULL)
+                // Invalid bhe file
+                continue;
+
+            // Remove extension
+            entry->d_name[entry->d_namlen - 4] = '\0';
+            map_set(ctx->templates, entry->d_name, ast);
+            info("loaded template '%s' from '%s'", entry->d_name, tmp);
+        }
+        closedir(dir);
+    }
+
+    cmd->obj   = ctx;
     cmd->name  = "template";
     cmd->alias = "t";
 
-    cmd->dispose = templatecmd_dispose;
+    cmd->dispose = (void (*)(void*))templatecmd_dispose;
     cmd->help    = templatecmd_help;
-    cmd->exec    = templatecmd_exec;
+    cmd->exec = (int (*)(void*, FileBuffer*, ParsedCommand*))templatecmd_exec;
 
     return cmd;
 }
