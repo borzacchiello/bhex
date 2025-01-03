@@ -1,5 +1,7 @@
 %{
 
+#include <stdio.h>
+
 #include "../alloc.h"
 #include "../log.h"
 #include "ast.h"
@@ -35,14 +37,14 @@ void yyerror(const char *s)
 }
 
 // Terminal tokens
-%token TPROC TSTRUCT TENUM
+%token TPROC TSTRUCT TENUM TIF TELSE
 %token TIDENTIFIER TNUM
 %token TCLBRACE TCRBRACE TLBRACE TRBRACE SQLBRACE SQRBRACE 
 %token TSEMICOLON TCOLON TCOMMA TDOT
-%token TADD TEQUAL
+%token TADD TBEQ TEQUAL
 
 // Non terminal tokens types
-%type <stmt>      stmt fvar_decl func_call
+%type <stmt>      stmt fvar_decl func_call if if_else
 %type <stmts>     stmts
 %type <enum_list> enum_list
 %type <varchain>  varchain
@@ -61,11 +63,11 @@ program     :
                                                         if (g_ctx->proc != NULL)
                                                             // You can only have one proc
                                                             YYABORT;
-                                                        g_ctx->proc = $4;
+                                                        g_ctx->proc = Block_new($4);
                                                     }
             | program TSTRUCT ident TLBRACE stmts TRBRACE 
                                                     {
-                                                        map_set(g_ctx->structs, $3, $5);
+                                                        map_set(g_ctx->structs, $3, Block_new($5));
                                                         bhex_free($3);
                                                     }
             | program TENUM ident TCOLON ident TLBRACE enum_list TRBRACE 
@@ -98,6 +100,8 @@ stmts       : stmt TSEMICOLON                       {
 
 stmt        : fvar_decl
             | func_call
+            | if
+            | if_else
     ;
 
 fvar_decl   : ident ident                           {
@@ -113,12 +117,24 @@ fvar_decl   : ident ident                           {
     ;
 
 func_call   : ident TCLBRACE TCRBRACE               {
-                                                        $$ = Stmt_FUNC_CALL_new($1, NULL);
+                                                        $$ = Stmt_VOID_FUNC_CALL_new($1, NULL);
                                                         bhex_free($1);
                                                     }
             | ident TCLBRACE params TCRBRACE        {
-                                                        $$ = Stmt_FUNC_CALL_new($1, $3);
+                                                        $$ = Stmt_VOID_FUNC_CALL_new($1, $3);
                                                         bhex_free($1);
+                                                    }
+    ;
+
+if          : TIF TCLBRACE expr TCRBRACE TLBRACE stmts TRBRACE
+                                                    {
+                                                        $$ = Stmt_STMT_IF_new($3, Block_new($6));
+                                                    }
+    ;
+
+if_else     : TIF TCLBRACE expr TCRBRACE TLBRACE stmts TRBRACE TELSE TLBRACE stmts TRBRACE
+                                                    {
+                                                        $$ = Stmt_STMT_IF_ELSE_new($3, Block_new($6), Block_new($10));
                                                     }
     ;
 
@@ -132,6 +148,9 @@ expr        : num
                                                     }
             | expr TADD expr                        {
                                                         $$ = Expr_ADD_new($1, $3);
+                                                    }
+            | expr TBEQ expr                        {
+                                                        $$ = Expr_BEQ_new($1, $3);
                                                     }
     ;
 

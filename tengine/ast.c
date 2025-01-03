@@ -44,12 +44,22 @@ Expr* Expr_ADD_new(Expr* lhs, Expr* rhs)
     return e;
 }
 
+Expr* Expr_BEQ_new(Expr* lhs, Expr* rhs)
+{
+    Expr* e = bhex_calloc(sizeof(Expr));
+    e->t    = EXPR_BEQ;
+    e->lhs  = lhs;
+    e->rhs  = rhs;
+    return e;
+}
+
 Expr* Expr_dup(Expr* e)
 {
     if (!e)
         return NULL;
 
     Expr* r = bhex_calloc(sizeof(Expr));
+    r->t    = e->t;
     switch (e->t) {
         case EXPR_CONST:
             r->value = e->value;
@@ -63,6 +73,7 @@ Expr* Expr_dup(Expr* e)
                 DList_add(r->chain, bhex_strdup(e->chain->data[i]));
             break;
         case EXPR_ADD:
+        case EXPR_BEQ:
             r->lhs = Expr_dup(e->lhs);
             r->rhs = Expr_dup(e->rhs);
             break;
@@ -88,6 +99,7 @@ void Expr_free(Expr* e)
             DList_deinit(e->chain);
             break;
         case EXPR_ADD:
+        case EXPR_BEQ:
             Expr_free(e->lhs);
             Expr_free(e->rhs);
             break;
@@ -122,6 +134,11 @@ void Expr_pp(Expr* e)
             printf(" + ");
             Expr_pp(e->rhs);
             break;
+        case EXPR_BEQ:
+            Expr_pp(e->lhs);
+            printf(" == ");
+            Expr_pp(e->rhs);
+            break;
         default:
             panic("unknown expression type %d", e->t);
     }
@@ -137,12 +154,32 @@ Stmt* Stmt_FILE_VAR_DECL_new(const char* type, const char* name, Expr* size)
     return stmt;
 }
 
-Stmt* Stmt_FUNC_CALL_new(const char* name, DList* params)
+Stmt* Stmt_VOID_FUNC_CALL_new(const char* name, DList* params)
 {
     Stmt* stmt   = bhex_calloc(sizeof(Stmt));
-    stmt->t      = FUNC_CALL;
+    stmt->t      = VOID_FUNC_CALL;
     stmt->fname  = bhex_strdup(name);
     stmt->params = params;
+    return stmt;
+}
+
+Stmt* Stmt_STMT_IF_new(Expr* cond, Block* b)
+{
+    Stmt* stmt    = bhex_calloc(sizeof(Stmt));
+    stmt->t       = STMT_IF;
+    stmt->cond    = cond;
+    stmt->if_body = b;
+    return stmt;
+}
+
+Stmt* Stmt_STMT_IF_ELSE_new(Expr* cond, struct Block* trueblock,
+                            struct Block* falseblock)
+{
+    Stmt* stmt               = bhex_calloc(sizeof(Stmt));
+    stmt->t                  = STMT_IF_ELSE;
+    stmt->if_else_cond       = cond;
+    stmt->if_else_true_body  = trueblock;
+    stmt->if_else_false_body = falseblock;
     return stmt;
 }
 
@@ -154,13 +191,26 @@ static void FILE_VAR_DECL_free(Stmt* stmt)
         Expr_free(stmt->arr_size);
 }
 
-static void FUNC_CALL_free(Stmt* stmt)
+static void VOID_FUNC_CALL_free(Stmt* stmt)
 {
     bhex_free(stmt->fname);
     if (stmt->params) {
         DList_foreach(stmt->params, (void (*)(void*))Expr_free);
         bhex_free(stmt->params);
     }
+}
+
+static void STMT_IF_free(Stmt* stmt)
+{
+    Expr_free(stmt->cond);
+    Block_free(stmt->if_body);
+}
+
+static void STMT_IF_ELSE_free(Stmt* stmt)
+{
+    Expr_free(stmt->if_else_cond);
+    Block_free(stmt->if_else_true_body);
+    Block_free(stmt->if_else_false_body);
 }
 
 void Stmt_free(Stmt* stmt)
@@ -172,8 +222,14 @@ void Stmt_free(Stmt* stmt)
         case FILE_VAR_DECL:
             FILE_VAR_DECL_free(stmt);
             break;
-        case FUNC_CALL:
-            FUNC_CALL_free(stmt);
+        case VOID_FUNC_CALL:
+            VOID_FUNC_CALL_free(stmt);
+            break;
+        case STMT_IF:
+            STMT_IF_free(stmt);
+            break;
+        case STMT_IF_ELSE:
+            STMT_IF_ELSE_free(stmt);
             break;
         default:
             panic("unknown stmt type %d", stmt->t);
@@ -193,7 +249,7 @@ void Stmt_pp(Stmt* stmt)
             }
             printf(";\n");
             break;
-        case FUNC_CALL:
+        case VOID_FUNC_CALL:
             printf("  %s(", stmt->fname);
             if (stmt->params) {
                 for (u64_t i = 0; i < stmt->params->size; ++i) {
@@ -204,6 +260,20 @@ void Stmt_pp(Stmt* stmt)
                 }
             }
             printf(");\n");
+            break;
+        case STMT_IF:
+            printf("if (");
+            Expr_pp(stmt->cond);
+            printf(")\n");
+            Block_pp(stmt->if_body);
+            break;
+        case STMT_IF_ELSE:
+            printf("if (");
+            Expr_pp(stmt->if_else_cond);
+            printf(")\n");
+            Block_pp(stmt->if_else_true_body);
+            printf("else");
+            Block_pp(stmt->if_else_false_body);
             break;
         default:
             panic("unknown stmt type %d", stmt->t);
@@ -216,9 +286,31 @@ static void dlist_stmts_free(DList* l)
     DList_deinit(l);
 }
 
+Block* Block_new(DList* stmts)
+{
+    Block* b = bhex_calloc(sizeof(Block));
+    b->stmts = stmts;
+    return b;
+}
+
+void Block_free(Block* b)
+{
+    if (!b)
+        return;
+    dlist_stmts_free(b->stmts);
+    bhex_free(b);
+}
+
+void Block_pp(Block* b)
+{
+    printf("{\n");
+    DList_foreach(b->stmts, (void (*)(void*))Stmt_pp);
+    printf("}\n");
+}
+
 EnumEntry* EnumEntry_new(const char* name, u64_t value)
 {
-    EnumEntry* ee = (EnumEntry*)bhex_calloc(sizeof(EnumEntry));
+    EnumEntry* ee = bhex_calloc(sizeof(EnumEntry));
     ee->name      = bhex_strdup(name);
     ee->value     = value;
     return ee;
@@ -274,7 +366,7 @@ void ASTCtx_init(ASTCtx* ctx)
 {
     ctx->proc    = NULL;
     ctx->structs = map_create();
-    map_set_dispose(ctx->structs, (void (*)(void*))dlist_stmts_free);
+    map_set_dispose(ctx->structs, (void (*)(void*))Block_free);
     ctx->enums = map_create();
     map_set_dispose(ctx->enums, (void (*)(void*))Enum_free);
 }
@@ -284,10 +376,8 @@ void ASTCtx_deinit(ASTCtx* ctx)
     if (!ctx)
         return;
 
-    if (ctx->proc) {
-        dlist_stmts_free(ctx->proc);
-        bhex_free(ctx->proc);
-    }
+    if (ctx->proc)
+        Block_free(ctx->proc);
     map_destroy(ctx->structs);
     map_destroy(ctx->enums);
 }
@@ -309,16 +399,15 @@ void ASTCtx_pp(ASTCtx* ctx)
     printf("\n");
     for (const char* key = map_first(ctx->structs); key != NULL;
          key             = map_next(ctx->structs, key)) {
-        printf("struct %s\n{\n", key);
-        DList* stmts = map_get(ctx->structs, key);
-        DList_foreach(stmts, (void (*)(void*))Stmt_pp);
-        printf("}\n");
+        printf("struct %s\n", key);
+        Block* b = map_get(ctx->structs, key);
+        Block_pp(b);
     }
 
     printf("\n");
     printf("proc\n{\n");
     if (ctx->proc) {
-        DList_foreach(ctx->proc, (void (*)(void*))Stmt_pp);
+        DList_foreach(ctx->proc->stmts, (void (*)(void*))Stmt_pp);
     }
     printf("}\n");
 }

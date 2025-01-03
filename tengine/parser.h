@@ -42,47 +42,53 @@
      TPROC = 258,
      TSTRUCT = 259,
      TENUM = 260,
-     TIDENTIFIER = 261,
-     TNUM = 262,
-     TCLBRACE = 263,
-     TCRBRACE = 264,
-     TLBRACE = 265,
-     TRBRACE = 266,
-     SQLBRACE = 267,
-     SQRBRACE = 268,
-     TSEMICOLON = 269,
-     TCOLON = 270,
-     TCOMMA = 271,
-     TDOT = 272,
-     TADD = 273,
-     TEQUAL = 274
+     TIF = 261,
+     TELSE = 262,
+     TIDENTIFIER = 263,
+     TNUM = 264,
+     TCLBRACE = 265,
+     TCRBRACE = 266,
+     TLBRACE = 267,
+     TRBRACE = 268,
+     SQLBRACE = 269,
+     SQRBRACE = 270,
+     TSEMICOLON = 271,
+     TCOLON = 272,
+     TCOMMA = 273,
+     TDOT = 274,
+     TADD = 275,
+     TBEQ = 276,
+     TEQUAL = 277
    };
 #endif
 /* Tokens.  */
 #define TPROC 258
 #define TSTRUCT 259
 #define TENUM 260
-#define TIDENTIFIER 261
-#define TNUM 262
-#define TCLBRACE 263
-#define TCRBRACE 264
-#define TLBRACE 265
-#define TRBRACE 266
-#define SQLBRACE 267
-#define SQRBRACE 268
-#define TSEMICOLON 269
-#define TCOLON 270
-#define TCOMMA 271
-#define TDOT 272
-#define TADD 273
-#define TEQUAL 274
+#define TIF 261
+#define TELSE 262
+#define TIDENTIFIER 263
+#define TNUM 264
+#define TCLBRACE 265
+#define TCRBRACE 266
+#define TLBRACE 267
+#define TRBRACE 268
+#define SQLBRACE 269
+#define SQRBRACE 270
+#define TSEMICOLON 271
+#define TCOLON 272
+#define TCOMMA 273
+#define TDOT 274
+#define TADD 275
+#define TBEQ 276
+#define TEQUAL 277
 
 
 
 
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 typedef union YYSTYPE
-#line 27 "parser.y"
+#line 29 "parser.y"
 {
     Stmt*    stmt;
     DList*   stmts;
@@ -93,7 +99,7 @@ typedef union YYSTYPE
     char*    ident;
 }
 /* Line 1529 of yacc.c.  */
-#line 97 "parser.h"
+#line 103 "parser.h"
 	YYSTYPE;
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
 # define YYSTYPE_IS_DECLARED 1

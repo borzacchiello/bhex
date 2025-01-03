@@ -195,15 +195,64 @@ enum ElfMachine : uint16_t
     EM_NUM           = 259
 }
 
-struct Elf64_Ehdr
+enum ElfIdentClass : uint8_t
 {
-    uint8_t    e_ident[16];
+    ELFCLASSNONE = 0,
+    ELFCLASS32   = 1,
+    ELFCLASS64   = 2
+}
+
+enum ElfIdentData : uint8_t
+{
+    ELFDATANONE = 0,
+    ELFDATA2LSB = 1,
+    ELFDATA2MSB = 2
+}
+
+enum ElfIdentOsABI : uint8_t
+{
+    ELFOSABI_NONE    = 0,
+    ELFOSABI_HPUX    = 1,
+    ELFOSABI_NETBSD  = 2,
+    ELFOSABI_LINUX   = 3,
+    ELFOSABI_SOLARIS = 6,
+    ELFOSABI_AIX     = 7,
+    ELFOSABI_IRIX    = 8,
+    ELFOSABI_FREEBSD = 9,
+    ELFOSABI_TRU64   = 10,
+    ELFOSABI_MODESTO = 11,
+    ELFOSABI_OPENBSD = 12,
+    ELFOSABI_OPENVMS = 13,
+    ELFOSABI_NSK     = 14
+}
+
+struct ElfIdent
+{
+    uint8_t       ei_mag[4];
+    ElfIdentClass ei_class;
+    ElfIdentData  ei_data;
+    uint8_t       ei_version;
+    ElfIdentOsABI ei_osabi;
+    uint8_t       ei_abiversion;
+    uint8_t       ei_pad[6];
+    uint8_t       ei_nident;
+}
+
+struct Elf_Ehdr
+{
+    ElfIdent   e_ident;
     ElfType    e_type;
     ElfMachine e_machine;
     uint32_t   e_version;
-    uint64_t   e_entry;
-    uint64_t   e_phoff;
-    uint64_t   e_shoff;
+    if (e_ident.ei_class == 2) {
+        uint64_t   e_entry;
+        uint64_t   e_phoff;
+        uint64_t   e_shoff;
+    } else {
+        uint32_t   e_entry;
+        uint32_t   e_phoff;
+        uint32_t   e_shoff;
+    };
     uint32_t   e_flags;
     uint16_t   e_ehsize;
     uint16_t   e_phentsize;
@@ -213,39 +262,99 @@ struct Elf64_Ehdr
     uint16_t   e_shstrndx;
 }
 
-struct Elf32_Ehdr
+enum PhdrType : uint32_t
 {
-    uint8_t    e_ident[16];
-    ElfType    e_type;
-    ElfMachine e_machine;
-    uint32_t   e_version;
-    uint32_t   e_entry;
-    uint32_t   e_phoff;
-    uint32_t   e_shoff;
-    uint32_t   e_flags;
-    uint16_t   e_ehsize;
-    uint16_t   e_phentsize;
-    uint16_t   e_phnum;
-    uint16_t   e_shentsize;
-    uint16_t   e_shnum;
-    uint16_t   e_shstrndx;
+    PT_NULL    = 0,
+    PT_LOAD    = 1,
+    PT_DYNAMIC = 2,
+    PT_INTERP  = 3,
+    PT_NOTE    = 4,
+    PT_SHLIB   = 5,
+    PT_PHDR    = 6,
+    PT_TLS     = 7,
+    PT_LOOS    = 0x60000000,
+    PT_HIOS    = 0x6fffffff,
+    PT_LOPROC  = 0x70000000,
+    PT_HIPROC  = 0x7fffffff
+}
+
+enum PhdrFlag : uint32_t
+{
+    NONE     = 0,
+    PF_X     = 1,
+    PF_W     = 2,
+    PF_W_X   = 3,
+    PF_R     = 4,
+    PF_R_X   = 5,
+    PF_R_W   = 6,
+    PF_R_W_X = 7
 }
 
 struct Elf32_Phdr
 {
-	uint32_t p_type;
-	uint32_t p_offset;
-	uint32_t p_vaddr;
-	uint32_t p_paddr;
-	uint32_t p_filesz;
-	uint32_t p_memsz;
-	uint32_t p_flags;
-	uint32_t p_align;
+    PhdrType    p_type;
+    uint32_t    p_offset;
+    uint32_t    p_vaddr;
+    uint32_t    p_paddr;
+    uint32_t    p_filesz;
+    uint32_t    p_memsz;
+    PhdrFlag    p_flags;
+    uint32_t    p_align;
+}
+
+struct Elf64_Phdr
+{
+    PhdrType    p_type;
+    uint32_t    p_offset;
+    uint64_t    p_vaddr;
+    uint64_t    p_paddr;
+    uint32_t    p_filesz;
+    uint32_t    p_memsz;
+    PhdrFlag    p_flags;
+    uint32_t    p_align;
+}
+
+struct Elf32_Shdr
+{
+    uint32_t	sh_name;
+    uint32_t	sh_type;
+    uint32_t	sh_flags;
+    uint32_t	sh_addr;
+    uint32_t	sh_offset;
+    uint32_t	sh_size;
+    uint32_t	sh_link;
+    uint32_t	sh_info;
+    uint32_t	sh_addralign;
+    uint32_t	sh_entsize;
+}
+
+struct Elf64_Shdr
+{
+    uint32_t	sh_name;
+    uint32_t	sh_type;
+    uint32_t	sh_flags;
+    uint64_t	sh_addr;
+    uint64_t	sh_offset;
+    uint32_t	sh_size;
+    uint32_t	sh_link;
+    uint32_t	sh_info;
+    uint32_t	sh_addralign;
+    uint32_t	sh_entsize;
 }
 
 proc
 {
-    Elf32_Ehdr header;
+    Elf_Ehdr header;
     seek(header.e_phoff);
-    Elf32_Phdr phdr;
+    if (header.e_ident.ei_class == 2) {
+        Elf64_Phdr phdr[header.e_phnum];
+    } else {
+        Elf32_Phdr phdr[header.e_phnum];
+    };
+    seek(header.e_shoff);
+    if (header.e_ident.ei_class == 2) {
+        Elf64_Shdr shdr[header.e_shnum];
+    } else {
+        Elf32_Shdr shdr[header.e_shnum];
+    };
 }

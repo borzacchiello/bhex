@@ -23,6 +23,8 @@ int   yymax_ident_len;
 "proc"                  { return TPROC; }
 "struct"                { return TSTRUCT; }
 "enum"                  { return TENUM; }
+"if"                    { return TIF; }
+"else"                  { return TELSE; }
 -?[0-9]+                {
                             if (!str_to_int64(yytext, &yynumval)) {
                                 error("[tengine lexer] invalid num '%s'", yytext);
@@ -47,6 +49,7 @@ int   yymax_ident_len;
                             return TIDENTIFIER;
                         }
 "+"                     { return TADD; }
+"=="                    { return TBEQ; }
 "="                     { return TEQUAL; }
 "("                     { return TCLBRACE; }
 ")"                     { return TCRBRACE; }

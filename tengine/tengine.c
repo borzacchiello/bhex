@@ -54,6 +54,7 @@ typedef struct TEngineVarValue {
         struct {
             // ENUM_VALUE
             char* enum_value;
+            u64_t enum_const;
         };
     };
 } TEngineVarValue;
@@ -88,12 +89,13 @@ TEngineVarValue* TEngineVarValue_CUSTOM_TYPE_new(const char* name, map* subvals)
 }
 
 TEngineVarValue* TEngineVarValue_ENUM_VALUE_new(const char* name,
-                                                const char* ename)
+                                                const char* ename, u64_t econst)
 {
     TEngineVarValue* r = bhex_calloc(sizeof(TEngineVarValue));
     r->name            = bhex_strdup(name);
     r->t               = ENUM_VALUE;
     r->enum_value      = bhex_strdup(ename);
+    r->enum_const      = econst;
     return r;
 }
 
@@ -112,8 +114,10 @@ int TEngineVarValue_get_num(TEngineVarValue* v, s64_t* onum)
         case SNUM:
             *onum = v->snum;
             return 0;
-        case CUSTOM_TYPE:
         case ENUM_VALUE:
+            *onum = (s64_t)v->enum_const;
+            return 0;
+        case CUSTOM_TYPE:
             error("[tengine] not a numeric type");
             return 1;
         default:
@@ -294,7 +298,7 @@ static const TEngineEmbeddedType* find_embedded_type(const char* type)
     return NULL;
 }
 
-static DList* get_custom_type_body(TEngine* e, const char* name)
+static Block* get_custom_type_body(TEngine* e, const char* name)
 {
     for (const char* key = map_first(e->ast.structs); key != NULL;
          key             = map_next(e->ast.structs, key)) {
@@ -318,7 +322,7 @@ static Enum* get_enum(TEngine* e, const char* name)
 
 static map* process_custom_type(ProcessContext ctx, const char* type)
 {
-    DList* body = get_custom_type_body(ctx.engine, type);
+    Block* body = get_custom_type_body(ctx.engine, type);
     if (body == NULL)
         return NULL;
 
@@ -327,8 +331,8 @@ static map* process_custom_type(ProcessContext ctx, const char* type)
 
     printf("\n");
     ctx.print_off += 4;
-    for (u64_t i = 0; i < body->size; ++i) {
-        Stmt* stmt = (Stmt*)body->data[i];
+    for (u64_t i = 0; i < body->stmts->size; ++i) {
+        Stmt* stmt = (Stmt*)body->stmts->data[i];
         if (process_stmt(ctx, stmt, type_vars) != 0) {
             map_destroy(type_vars);
             return NULL;
@@ -337,7 +341,8 @@ static map* process_custom_type(ProcessContext ctx, const char* type)
     return type_vars;
 }
 
-static const char* process_enum_type(ProcessContext ctx, const char* type)
+static const char* process_enum_type(ProcessContext ctx, const char* type,
+                                     u64_t* econst)
 {
     Enum* e = get_enum(ctx.engine, type);
     if (e == NULL)
@@ -354,7 +359,9 @@ static const char* process_enum_type(ProcessContext ctx, const char* type)
     if (v == NULL)
         return NULL;
 
-    u64_t       val  = v->t == UNUM ? v->unum : (u64_t)v->snum;
+    u64_t val = v->t == UNUM ? v->unum : (u64_t)v->snum;
+    if (econst)
+        *econst = val;
     const char* name = Enum_find_const(e, val);
     if (name == NULL) {
         warning("[tengine] Enum %s has no value %llu", type, val);
@@ -372,6 +379,9 @@ static TEngineVarValue* process_type(ProcessContext ctx, const char* varname,
     const TEngineEmbeddedType* t = find_embedded_type(type);
     if (t != NULL) {
         TEngineVarValue* r = t->process(ctx.engine, varname, ctx.fb);
+        if (r == NULL)
+            return NULL;
+
         TEngineVarValue_pp(ctx.engine, r, ctx.print_off);
         printf("\n");
         return r;
@@ -384,9 +394,11 @@ static TEngineVarValue* process_type(ProcessContext ctx, const char* varname,
         return v;
     }
 
-    const char* enum_var = process_enum_type(ctx, type);
+    u64_t       econst;
+    const char* enum_var = process_enum_type(ctx, type, &econst);
     if (enum_var != NULL) {
-        TEngineVarValue* v = TEngineVarValue_ENUM_VALUE_new(varname, enum_var);
+        TEngineVarValue* v =
+            TEngineVarValue_ENUM_VALUE_new(varname, enum_var, econst);
         TEngineVarValue_pp(ctx.engine, v, ctx.print_off);
         printf("\n");
         return v;
@@ -413,9 +425,8 @@ static int evaluate_num_expr(TEngine* engine, map* vars, Expr* e, s64_t* oval)
             return 0;
         }
         case EXPR_VARCHAIN: {
-            map*             vars = engine->proc_variables;
-            TEngineVarValue* val  = NULL;
-            u64_t            i    = 0;
+            TEngineVarValue* val = NULL;
+            u64_t            i   = 0;
             for (; i < e->chain->size; ++i) {
                 char* n = e->chain->data[i];
                 if (!map_contains(vars, n)) {
@@ -442,6 +453,15 @@ static int evaluate_num_expr(TEngine* engine, map* vars, Expr* e, s64_t* oval)
             if (evaluate_num_expr(engine, vars, e->rhs, &rhs) != 0)
                 return 1;
             *oval = lhs + rhs;
+            return 0;
+        }
+        case EXPR_BEQ: {
+            s64_t lhs, rhs;
+            if (evaluate_num_expr(engine, vars, e->lhs, &lhs) != 0)
+                return 1;
+            if (evaluate_num_expr(engine, vars, e->rhs, &rhs) != 0)
+                return 1;
+            *oval = (lhs == rhs) ? 1 : 0;
             return 0;
         }
         default:
@@ -506,7 +526,10 @@ static int process_array_type(ProcessContext ctx, const char* varname,
     }
 
     // Array of custom type
-    printf("[");
+    printf("\n");
+    for (int i = 0; i < ctx.print_off + 11 + yymax_ident_len; ++i)
+        printf(" ");
+    printf("[%lld]", printed);
     for (printed = 0; printed < size; ++printed) {
         map* custom_type_vars = process_custom_type(ctx, type);
         if (custom_type_vars == NULL) {
@@ -514,14 +537,13 @@ static int process_array_type(ProcessContext ctx, const char* varname,
             return 1;
         }
         if (printed < size - 1) {
-            for (int i = 0; i < ctx.print_off + 4 + 11; ++i)
+            for (int i = 0; i < ctx.print_off + 11 + yymax_ident_len; ++i)
                 printf(" ");
-            printf(", ");
+            printf("[%lld]", printed + 1);
         }
         // TODO save the array!
         map_destroy(custom_type_vars);
     }
-    printf("              ]\n");
     return 0;
 }
 
@@ -548,7 +570,7 @@ static int process_FILE_VAR_DECL(ProcessContext ctx, Stmt* stmt, map* vars)
     return 0;
 }
 
-static int process_FUNC_CALL(ProcessContext ctx, Stmt* stmt, map* vars)
+static int process_VOID_FUNC_CALL(ProcessContext ctx, Stmt* stmt, map* vars)
 {
 #define REQUIRE_VOID                                                           \
     if (stmt->params != NULL) {                                                \
@@ -607,13 +629,58 @@ static int process_FUNC_CALL(ProcessContext ctx, Stmt* stmt, map* vars)
     return 1;
 }
 
+static int process_STMT_IF(ProcessContext ctx, Stmt* stmt, map* vars)
+{
+    s64_t cond;
+    if (evaluate_num_expr(ctx.engine, vars, stmt->cond, &cond) != 0)
+        return 1;
+
+    if (cond != 0) {
+        // TODO: we are using the same context of the current block, to do the
+        // things correctly we should define a new var context and delete the
+        // new variables afterwards
+        // Ex, this is currently correct (for now it is fine though):
+        //   if (1) { uint8_t a; }
+        //   if (a) { uint8_t b; }
+        DList* stmts = stmt->if_body->stmts;
+        for (u64_t i = 0; i < stmts->size; ++i) {
+            Stmt* stmt = (Stmt*)stmts->data[i];
+            if (process_stmt(ctx, stmt, vars) != 0)
+                return 1;
+        }
+    }
+    return 0;
+}
+
+static int process_STMT_IF_ELSE(ProcessContext ctx, Stmt* stmt, map* vars)
+{
+    s64_t cond;
+    if (evaluate_num_expr(ctx.engine, vars, stmt->if_else_cond, &cond) != 0)
+        return 1;
+
+    // TODO: same problem WRT STMT_IF
+    DList* stmts = stmt->if_else_true_body->stmts;
+    if (cond == 0)
+        stmts = stmt->if_else_false_body->stmts;
+    for (u64_t i = 0; i < stmts->size; ++i) {
+        Stmt* stmt = (Stmt*)stmts->data[i];
+        if (process_stmt(ctx, stmt, vars) != 0)
+            return 1;
+    }
+    return 0;
+}
+
 static int process_stmt(ProcessContext ctx, Stmt* stmt, map* vars)
 {
     switch (stmt->t) {
         case FILE_VAR_DECL:
             return process_FILE_VAR_DECL(ctx, stmt, vars);
-        case FUNC_CALL:
-            return process_FUNC_CALL(ctx, stmt, vars);
+        case VOID_FUNC_CALL:
+            return process_VOID_FUNC_CALL(ctx, stmt, vars);
+        case STMT_IF:
+            return process_STMT_IF(ctx, stmt, vars);
+        case STMT_IF_ELSE:
+            return process_STMT_IF_ELSE(ctx, stmt, vars);
         default: {
             error("[tengine] invalid stmt type %d", stmt->t);
             break;
@@ -630,7 +697,7 @@ static int process_ast(TEngine* engine, FileBuffer* fb)
     }
 
     ProcessContext ctx   = {fb, engine, fb->off, 0};
-    DList*         stmts = engine->ast.proc;
+    DList*         stmts = engine->ast.proc->stmts;
     for (u64_t i = 0; i < stmts->size; ++i) {
         Stmt* stmt = (Stmt*)stmts->data[i];
         if (process_stmt(ctx, stmt, engine->proc_variables) != 0)
