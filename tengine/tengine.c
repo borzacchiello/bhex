@@ -345,6 +345,8 @@ static const char* process_enum_type(ProcessContext ctx, const char* type,
     u64_t val = v->t == UNUM ? v->unum : (u64_t)v->snum;
     if (econst)
         *econst = val;
+    TEngineVarValue_free(v);
+
     const char* name = Enum_find_const(e, val);
     if (name == NULL) {
         warning("[tengine] Enum %s has no value %llu", type, val);

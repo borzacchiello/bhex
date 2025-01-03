@@ -19,6 +19,7 @@ typedef struct TemplateCtx {
 static void templatecmd_dispose(TemplateCtx* ctx)
 {
     map_destroy(ctx->templates);
+    bhex_free(ctx);
     return;
 }
 
@@ -118,15 +119,16 @@ Cmd* templatecmd_create(void)
             if (strcmp(entry->d_name, ".") == 0 ||
                 strcmp(entry->d_name, "..") == 0)
                 continue;
-            if (entry->d_namlen < 4 ||
-                strcmp(entry->d_name + (entry->d_namlen - 4), ".bhe") != 0)
+            size_t d_namelen = strlen(entry->d_name);
+            if (d_namelen < 4 ||
+                strcmp(entry->d_name + (d_namelen - 4), ".bhe") != 0)
                 continue;
 
             memset(tmp, 0, sizeof(tmp));
             snprintf(tmp, sizeof(tmp) - 1, "%s/%s", dirpath, entry->d_name);
 
             // Remove extension
-            entry->d_name[entry->d_namlen - 4] = '\0';
+            entry->d_name[d_namelen - 4] = '\0';
             if (map_contains(ctx->templates, entry->d_name)) {
                 warning("template '%s' already loaded, skipping file '%s'",
                         entry->d_name, tmp);
@@ -139,7 +141,7 @@ Cmd* templatecmd_create(void)
                 continue;
 
             // Remove extension
-            entry->d_name[entry->d_namlen - 4] = '\0';
+            entry->d_name[d_namelen - 4] = '\0';
             map_set(ctx->templates, entry->d_name, ast);
             info("loaded template '%s' from '%s'", entry->d_name, tmp);
         }

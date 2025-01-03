@@ -97,6 +97,7 @@ void Expr_free(Expr* e)
         case EXPR_VARCHAIN:
             DList_foreach(e->chain, (void (*)(void*))bhex_free);
             DList_deinit(e->chain);
+            bhex_free(e->chain);
             break;
         case EXPR_ADD:
         case EXPR_BEQ:
@@ -196,6 +197,7 @@ static void VOID_FUNC_CALL_free(Stmt* stmt)
     bhex_free(stmt->fname);
     if (stmt->params) {
         DList_foreach(stmt->params, (void (*)(void*))Expr_free);
+        DList_deinit(stmt->params);
         bhex_free(stmt->params);
     }
 }
@@ -280,12 +282,6 @@ void Stmt_pp(Stmt* stmt)
     }
 }
 
-static void dlist_stmts_free(DList* l)
-{
-    DList_foreach(l, (void (*)(void*))Stmt_free);
-    DList_deinit(l);
-}
-
 Block* Block_new(DList* stmts)
 {
     Block* b = bhex_calloc(sizeof(Block));
@@ -297,7 +293,9 @@ void Block_free(Block* b)
 {
     if (!b)
         return;
-    dlist_stmts_free(b->stmts);
+    DList_foreach(b->stmts, (void (*)(void*))Stmt_free);
+    DList_deinit(b->stmts);
+    bhex_free(b->stmts);
     bhex_free(b);
 }
 
@@ -329,12 +327,6 @@ void EnumEntry_pp(EnumEntry* ee)
     printf("  %s = %llu\n", ee->name, ee->value);
 }
 
-static void dlist_enum_entry_free(DList* l)
-{
-    DList_foreach(l, (void (*)(void*))EnumEntry_free);
-    DList_deinit(l);
-}
-
 Enum* Enum_new(const char* type, DList* entries)
 {
     Enum* e    = bhex_calloc(sizeof(Enum));
@@ -358,7 +350,9 @@ void Enum_free(Enum* e)
     if (!e)
         return;
     bhex_free(e->type);
-    dlist_enum_entry_free(e->entries);
+    DList_foreach(e->entries, (void (*)(void*))EnumEntry_free);
+    DList_deinit(e->entries);
+    bhex_free(e->entries);
     bhex_free(e);
 }
 
