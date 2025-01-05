@@ -40,48 +40,64 @@
       know about them.  */
    enum yytokentype {
      TPROC = 258,
-     TSTRUCT = 259,
-     TENUM = 260,
-     TIF = 261,
-     TELSE = 262,
-     TIDENTIFIER = 263,
-     TNUM = 264,
-     TCLBRACE = 265,
-     TCRBRACE = 266,
-     TLBRACE = 267,
-     TRBRACE = 268,
-     SQLBRACE = 269,
-     SQRBRACE = 270,
-     TSEMICOLON = 271,
-     TCOLON = 272,
-     TCOMMA = 273,
-     TDOT = 274,
-     TADD = 275,
-     TBEQ = 276,
-     TEQUAL = 277
+     TLOCAL = 259,
+     TSTRUCT = 260,
+     TENUM = 261,
+     TIF = 262,
+     TELSE = 263,
+     TWHILE = 264,
+     TIDENTIFIER = 265,
+     TNUM = 266,
+     TCLBRACE = 267,
+     TCRBRACE = 268,
+     TLBRACE = 269,
+     TRBRACE = 270,
+     SQLBRACE = 271,
+     SQRBRACE = 272,
+     TSEMICOLON = 273,
+     TCOLON = 274,
+     TCOMMA = 275,
+     TDOT = 276,
+     TADD = 277,
+     TSUB = 278,
+     TMUL = 279,
+     TBEQ = 280,
+     TBGT = 281,
+     TBGE = 282,
+     TBLT = 283,
+     TBLE = 284,
+     TEQUAL = 285
    };
 #endif
 /* Tokens.  */
 #define TPROC 258
-#define TSTRUCT 259
-#define TENUM 260
-#define TIF 261
-#define TELSE 262
-#define TIDENTIFIER 263
-#define TNUM 264
-#define TCLBRACE 265
-#define TCRBRACE 266
-#define TLBRACE 267
-#define TRBRACE 268
-#define SQLBRACE 269
-#define SQRBRACE 270
-#define TSEMICOLON 271
-#define TCOLON 272
-#define TCOMMA 273
-#define TDOT 274
-#define TADD 275
-#define TBEQ 276
-#define TEQUAL 277
+#define TLOCAL 259
+#define TSTRUCT 260
+#define TENUM 261
+#define TIF 262
+#define TELSE 263
+#define TWHILE 264
+#define TIDENTIFIER 265
+#define TNUM 266
+#define TCLBRACE 267
+#define TCRBRACE 268
+#define TLBRACE 269
+#define TRBRACE 270
+#define SQLBRACE 271
+#define SQRBRACE 272
+#define TSEMICOLON 273
+#define TCOLON 274
+#define TCOMMA 275
+#define TDOT 276
+#define TADD 277
+#define TSUB 278
+#define TMUL 279
+#define TBEQ 280
+#define TBGT 281
+#define TBGE 282
+#define TBLT 283
+#define TBLE 284
+#define TEQUAL 285
 
 
 
@@ -99,7 +115,7 @@ typedef union YYSTYPE
     char*    ident;
 }
 /* Line 1529 of yacc.c.  */
-#line 103 "parser.h"
+#line 119 "parser.h"
 	YYSTYPE;
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
 # define YYSTYPE_IS_DECLARED 1

@@ -1,7 +1,7 @@
 all: parser lexer
 
 parser:
-	bison -d -o parser.c parser.y
+	bison -d -v -o parser.c parser.y
 
 lexer:
 	flex -o lexer.c lexer.l

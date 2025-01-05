@@ -37,14 +37,14 @@ void yyerror(const char *s)
 }
 
 // Terminal tokens
-%token TPROC TSTRUCT TENUM TIF TELSE
+%token TPROC TLOCAL TSTRUCT TENUM TIF TELSE TWHILE
 %token TIDENTIFIER TNUM
 %token TCLBRACE TCRBRACE TLBRACE TRBRACE SQLBRACE SQRBRACE 
 %token TSEMICOLON TCOLON TCOMMA TDOT
-%token TADD TBEQ TEQUAL
+%token TADD TSUB TMUL TBEQ TBGT TBGE TBLT TBLE TEQUAL
 
 // Non terminal tokens types
-%type <stmt>      stmt fvar_decl func_call if if_else
+%type <stmt>      stmt fvar_decl lvar_decl lvar_ass void_fcall if if_else while
 %type <stmts>     stmts
 %type <enum_list> enum_list
 %type <varchain>  varchain
@@ -53,7 +53,7 @@ void yyerror(const char *s)
 %type <params>    params
 
 // Operator precedence
-%left TADD
+%left TMUL TADD TSUB TBEQ TBLT TBLE TBGT TBGE
 
 // The grammar
 %%
@@ -99,9 +99,12 @@ stmts       : stmt TSEMICOLON                       {
     ;
 
 stmt        : fvar_decl
-            | func_call
+            | lvar_decl
+            | lvar_ass
+            | void_fcall
             | if
             | if_else
+            | while
     ;
 
 fvar_decl   : ident ident                           {
@@ -116,7 +119,19 @@ fvar_decl   : ident ident                           {
                                                     }
     ;
 
-func_call   : ident TCLBRACE TCRBRACE               {
+lvar_decl   : TLOCAL ident TEQUAL expr              {
+                                                        $$ = Stmt_LOCAL_VAR_DECL_new($2, $4);
+                                                        bhex_free($2);
+                                                    }
+    ;
+
+lvar_ass   : ident TEQUAL expr                      {
+                                                        $$ = Stmt_LOCAL_VAR_ASS_new($1, $3);
+                                                        bhex_free($1);
+                                                    }
+    ;
+
+void_fcall  : ident TCLBRACE TCRBRACE               {
                                                         $$ = Stmt_VOID_FUNC_CALL_new($1, NULL);
                                                         bhex_free($1);
                                                     }
@@ -138,6 +153,12 @@ if_else     : TIF TCLBRACE expr TCRBRACE TLBRACE stmts TRBRACE TELSE TLBRACE stm
                                                     }
     ;
 
+while       : TWHILE TCLBRACE expr TCRBRACE TLBRACE stmts TRBRACE
+                                                    {
+                                                        $$ = Stmt_WHILE_new($3, Block_new($6));
+                                                    }
+    ;
+
 expr        : num
             | ident                                 {
                                                         $$ = Expr_VAR_new($1);
@@ -146,11 +167,40 @@ expr        : num
             | varchain                              {
                                                         $$ = Expr_VARCHAIN_new($1);
                                                     }
+            | ident TCLBRACE TCRBRACE               {
+                                                        $$ = Expr_FUN_CALL_new($1, NULL);
+                                                        bhex_free($1);
+                                                    }
+            | ident TCLBRACE params TCRBRACE        {
+                                                        $$ = Expr_FUN_CALL_new($1, $3);
+                                                        bhex_free($1);
+                                                    }
+            | TCLBRACE expr TCRBRACE                {
+                                                        $$ = $2;
+                                                    }
             | expr TADD expr                        {
                                                         $$ = Expr_ADD_new($1, $3);
                                                     }
+            | expr TSUB expr                        {
+                                                        $$ = Expr_SUB_new($1, $3);
+                                                    }
+            | expr TMUL expr                        {
+                                                        $$ = Expr_MUL_new($1, $3);
+                                                    }
             | expr TBEQ expr                        {
                                                         $$ = Expr_BEQ_new($1, $3);
+                                                    }
+            | expr TBLT expr                        {
+                                                        $$ = Expr_BLT_new($1, $3);
+                                                    }
+            | expr TBLE expr                        {
+                                                        $$ = Expr_BLE_new($1, $3);
+                                                    }
+            | expr TBGT expr                        {
+                                                        $$ = Expr_BGT_new($1, $3);
+                                                    }
+            | expr TBGE expr                        {
+                                                        $$ = Expr_BGE_new($1, $3);
                                                     }
     ;
 

@@ -35,6 +35,19 @@ Expr* Expr_VARCHAIN_new(DList* chain)
     return e;
 }
 
+Expr* Expr_FUN_CALL_new(const char* fname, DList* params)
+{
+    if (params && params->size < 1)
+        panic("invalid FUNC_CALL, number of parameters is zero, param should "
+              "be NULL");
+
+    Expr* e   = bhex_calloc(sizeof(Expr));
+    e->t      = EXPR_FUN_CALL;
+    e->fname  = bhex_strdup(fname);
+    e->params = params;
+    return e;
+}
+
 Expr* Expr_ADD_new(Expr* lhs, Expr* rhs)
 {
     Expr* e = bhex_calloc(sizeof(Expr));
@@ -44,10 +57,64 @@ Expr* Expr_ADD_new(Expr* lhs, Expr* rhs)
     return e;
 }
 
+Expr* Expr_SUB_new(Expr* lhs, Expr* rhs)
+{
+    Expr* e = bhex_calloc(sizeof(Expr));
+    e->t    = EXPR_SUB;
+    e->lhs  = lhs;
+    e->rhs  = rhs;
+    return e;
+}
+
+Expr* Expr_MUL_new(Expr* lhs, Expr* rhs)
+{
+    Expr* e = bhex_calloc(sizeof(Expr));
+    e->t    = EXPR_MUL;
+    e->lhs  = lhs;
+    e->rhs  = rhs;
+    return e;
+}
+
 Expr* Expr_BEQ_new(Expr* lhs, Expr* rhs)
 {
     Expr* e = bhex_calloc(sizeof(Expr));
     e->t    = EXPR_BEQ;
+    e->lhs  = lhs;
+    e->rhs  = rhs;
+    return e;
+}
+
+Expr* Expr_BLT_new(Expr* lhs, Expr* rhs)
+{
+    Expr* e = bhex_calloc(sizeof(Expr));
+    e->t    = EXPR_BLT;
+    e->lhs  = lhs;
+    e->rhs  = rhs;
+    return e;
+}
+
+Expr* Expr_BLE_new(Expr* lhs, Expr* rhs)
+{
+    Expr* e = bhex_calloc(sizeof(Expr));
+    e->t    = EXPR_BLE;
+    e->lhs  = lhs;
+    e->rhs  = rhs;
+    return e;
+}
+
+Expr* Expr_BGT_new(Expr* lhs, Expr* rhs)
+{
+    Expr* e = bhex_calloc(sizeof(Expr));
+    e->t    = EXPR_BGT;
+    e->lhs  = lhs;
+    e->rhs  = rhs;
+    return e;
+}
+
+Expr* Expr_BGE_new(Expr* lhs, Expr* rhs)
+{
+    Expr* e = bhex_calloc(sizeof(Expr));
+    e->t    = EXPR_BGE;
     e->lhs  = lhs;
     e->rhs  = rhs;
     return e;
@@ -67,13 +134,27 @@ Expr* Expr_dup(Expr* e)
         case EXPR_VAR:
             r->name = bhex_strdup(e->name);
             break;
+        case EXPR_FUN_CALL:
+            r->fname = bhex_strdup(r->fname);
+            if (e->params) {
+                r->params = DList_new();
+                for (u64_t i = 0; i < e->params->size; ++i)
+                    DList_add(r->params, Expr_dup(e->params->data[i]));
+            }
+            break;
         case EXPR_VARCHAIN:
             r->chain = DList_new();
             for (u64_t i = 0; i < e->chain->size; ++i)
                 DList_add(r->chain, bhex_strdup(e->chain->data[i]));
             break;
         case EXPR_ADD:
+        case EXPR_SUB:
+        case EXPR_MUL:
         case EXPR_BEQ:
+        case EXPR_BLT:
+        case EXPR_BLE:
+        case EXPR_BGT:
+        case EXPR_BGE:
             r->lhs = Expr_dup(e->lhs);
             r->rhs = Expr_dup(e->rhs);
             break;
@@ -99,8 +180,22 @@ void Expr_free(Expr* e)
             DList_deinit(e->chain);
             bhex_free(e->chain);
             break;
+        case EXPR_FUN_CALL:
+            if (e->params) {
+                DList_foreach(e->params, (void (*)(void*))Expr_free);
+                DList_deinit(e->params);
+                bhex_free(e->params);
+            }
+            bhex_free(e->fname);
+            break;
         case EXPR_ADD:
+        case EXPR_SUB:
+        case EXPR_MUL:
         case EXPR_BEQ:
+        case EXPR_BLT:
+        case EXPR_BLE:
+        case EXPR_BGT:
+        case EXPR_BGE:
             Expr_free(e->lhs);
             Expr_free(e->rhs);
             break;
@@ -130,15 +225,70 @@ void Expr_pp(Expr* e)
                 printf(".%s", (char*)e->chain->data[i]);
             break;
         }
+        case EXPR_FUN_CALL:
+            printf("%s(", e->fname);
+            if (e->params && e->params->size > 0) {
+                printf("%s", (char*)e->params->data[0]);
+                for (u64_t i = 1; i < e->params->size; ++i)
+                    printf(", %s", (char*)e->params->data[i]);
+            }
+            printf(")");
+            break;
         case EXPR_ADD:
+            printf("( ");
             Expr_pp(e->lhs);
             printf(" + ");
             Expr_pp(e->rhs);
+            printf(" )");
+            break;
+        case EXPR_SUB:
+            printf("( ");
+            Expr_pp(e->lhs);
+            printf(" - ");
+            Expr_pp(e->rhs);
+            printf(" )");
+            break;
+        case EXPR_MUL:
+            printf("( ");
+            Expr_pp(e->lhs);
+            printf(" * ");
+            Expr_pp(e->rhs);
+            printf(" )");
             break;
         case EXPR_BEQ:
+            printf("( ");
             Expr_pp(e->lhs);
             printf(" == ");
             Expr_pp(e->rhs);
+            printf(" )");
+            break;
+        case EXPR_BLT:
+            printf("( ");
+            Expr_pp(e->lhs);
+            printf(" < ");
+            Expr_pp(e->rhs);
+            printf(" )");
+            break;
+        case EXPR_BLE:
+            printf("( ");
+            Expr_pp(e->lhs);
+            printf(" <= ");
+            Expr_pp(e->rhs);
+            printf(" )");
+            break;
+        case EXPR_BGT:
+            printf("( ");
+            Expr_pp(e->lhs);
+            printf(" > ");
+            Expr_pp(e->rhs);
+            printf(" )");
+            break;
+        case EXPR_BGE:
+            printf("( ");
+            Expr_pp(e->lhs);
+            printf(" >= ");
+            Expr_pp(e->rhs);
+            printf(" )");
             break;
         default:
             panic("unknown expression type %d", e->t);
@@ -155,6 +305,22 @@ Stmt* Stmt_FILE_VAR_DECL_new(const char* type, const char* name, Expr* size)
     return stmt;
 }
 
+Stmt* Stmt_LOCAL_VAR_DECL_new(const char* name, Expr* value)
+{
+    Stmt* stmt        = bhex_calloc(sizeof(Stmt));
+    stmt->t           = LOCAL_VAR_DECL;
+    stmt->local_name  = bhex_strdup(name);
+    stmt->local_value = value;
+    return stmt;
+}
+
+Stmt* Stmt_LOCAL_VAR_ASS_new(const char* name, Expr* value)
+{
+    Stmt* stmt = Stmt_LOCAL_VAR_DECL_new(name, value);
+    stmt->t    = LOCAL_VAR_ASS;
+    return stmt;
+}
+
 Stmt* Stmt_VOID_FUNC_CALL_new(const char* name, DList* params)
 {
     Stmt* stmt   = bhex_calloc(sizeof(Stmt));
@@ -166,10 +332,10 @@ Stmt* Stmt_VOID_FUNC_CALL_new(const char* name, DList* params)
 
 Stmt* Stmt_STMT_IF_new(Expr* cond, Block* b)
 {
-    Stmt* stmt    = bhex_calloc(sizeof(Stmt));
-    stmt->t       = STMT_IF;
-    stmt->cond    = cond;
-    stmt->if_body = b;
+    Stmt* stmt = bhex_calloc(sizeof(Stmt));
+    stmt->t    = STMT_IF;
+    stmt->cond = cond;
+    stmt->body = b;
     return stmt;
 }
 
@@ -184,12 +350,27 @@ Stmt* Stmt_STMT_IF_ELSE_new(Expr* cond, struct Block* trueblock,
     return stmt;
 }
 
+Stmt* Stmt_WHILE_new(Expr* cond, struct Block* b)
+{
+    Stmt* stmt = bhex_calloc(sizeof(Stmt));
+    stmt->t    = STMT_WHILE;
+    stmt->cond = cond;
+    stmt->body = b;
+    return stmt;
+}
+
 static void FILE_VAR_DECL_free(Stmt* stmt)
 {
     bhex_free(stmt->type);
     bhex_free(stmt->name);
     if (stmt->arr_size)
         Expr_free(stmt->arr_size);
+}
+
+static void LOCAL_VAR_DECL_free(Stmt* stmt)
+{
+    bhex_free(stmt->local_name);
+    Expr_free(stmt->local_value);
 }
 
 static void VOID_FUNC_CALL_free(Stmt* stmt)
@@ -202,10 +383,10 @@ static void VOID_FUNC_CALL_free(Stmt* stmt)
     }
 }
 
-static void STMT_IF_free(Stmt* stmt)
+static void STMT_IF_WHILE_free(Stmt* stmt)
 {
     Expr_free(stmt->cond);
-    Block_free(stmt->if_body);
+    Block_free(stmt->body);
 }
 
 static void STMT_IF_ELSE_free(Stmt* stmt)
@@ -224,11 +405,16 @@ void Stmt_free(Stmt* stmt)
         case FILE_VAR_DECL:
             FILE_VAR_DECL_free(stmt);
             break;
+        case LOCAL_VAR_DECL:
+        case LOCAL_VAR_ASS:
+            LOCAL_VAR_DECL_free(stmt);
+            break;
         case VOID_FUNC_CALL:
             VOID_FUNC_CALL_free(stmt);
             break;
         case STMT_IF:
-            STMT_IF_free(stmt);
+        case STMT_WHILE:
+            STMT_IF_WHILE_free(stmt);
             break;
         case STMT_IF_ELSE:
             STMT_IF_ELSE_free(stmt);
@@ -251,6 +437,16 @@ void Stmt_pp(Stmt* stmt)
             }
             printf(";\n");
             break;
+        case LOCAL_VAR_DECL:
+            printf("  local %s = ", stmt->local_name);
+            Expr_pp(stmt->local_value);
+            printf(";\n");
+            break;
+        case LOCAL_VAR_ASS:
+            printf("  %s = ", stmt->local_name);
+            Expr_pp(stmt->local_value);
+            printf(";\n");
+            break;
         case VOID_FUNC_CALL:
             printf("  %s(", stmt->fname);
             if (stmt->params) {
@@ -267,7 +463,7 @@ void Stmt_pp(Stmt* stmt)
             printf("if (");
             Expr_pp(stmt->cond);
             printf(")\n");
-            Block_pp(stmt->if_body);
+            Block_pp(stmt->body);
             break;
         case STMT_IF_ELSE:
             printf("if (");
@@ -276,6 +472,12 @@ void Stmt_pp(Stmt* stmt)
             Block_pp(stmt->if_else_true_body);
             printf("else");
             Block_pp(stmt->if_else_false_body);
+            break;
+        case STMT_WHILE:
+            printf("while (");
+            Expr_pp(stmt->cond);
+            printf(")\n");
+            Block_pp(stmt->body);
             break;
         default:
             panic("unknown stmt type %d", stmt->t);

@@ -10,8 +10,15 @@ typedef enum ASTExprType {
     EXPR_CONST = 200,
     EXPR_VAR,
     EXPR_VARCHAIN,
+    EXPR_FUN_CALL,
     EXPR_ADD,
+    EXPR_SUB,
+    EXPR_MUL,
     EXPR_BEQ,
+    EXPR_BLT,
+    EXPR_BLE,
+    EXPR_BGT,
+    EXPR_BGE
 } ASTExprType;
 
 typedef struct Expr {
@@ -24,9 +31,14 @@ typedef struct Expr {
         // EXPR_VARCHAIN
         DList* chain;
         struct {
-            // EXPR_ADD, EXPR_BEQ
+            // EXPR_ADD, EXPR_SUB, EXPR_BEQ, EXPR_BLT, EXPR_BLE, EXPR_BGT, EXPR_BGE
             struct Expr* lhs;
             struct Expr* rhs;
+        };
+        struct {
+            // EXPR_FUN_CALL
+            char*  fname;
+            DList* params;
         };
     };
 } Expr;
@@ -34,17 +46,27 @@ typedef struct Expr {
 Expr* Expr_CONST_new(s64_t v);
 Expr* Expr_VAR_new(const char* var);
 Expr* Expr_VARCHAIN_new(DList* chain);
+Expr* Expr_FUN_CALL_new(const char* fname, DList* params);
 Expr* Expr_ADD_new(Expr* lhs, Expr* rhs);
+Expr* Expr_SUB_new(Expr* lhs, Expr* rhs);
+Expr* Expr_MUL_new(Expr* lhs, Expr* rhs);
 Expr* Expr_BEQ_new(Expr* lhs, Expr* rhs);
+Expr* Expr_BLT_new(Expr* lhs, Expr* rhs);
+Expr* Expr_BLE_new(Expr* lhs, Expr* rhs);
+Expr* Expr_BGT_new(Expr* lhs, Expr* rhs);
+Expr* Expr_BGE_new(Expr* lhs, Expr* rhs);
 Expr* Expr_dup(Expr* e);
 void  Expr_free(Expr* e);
 
 typedef enum ASTStmtType {
     FILE_VAR_DECL =
         100, // File variable declaration (content is taken from FileBuffer)
+    LOCAL_VAR_DECL,
+    LOCAL_VAR_ASS,
     VOID_FUNC_CALL, // Function call
     STMT_IF,
     STMT_IF_ELSE,
+    STMT_WHILE,
 } ASTStmtType;
 
 struct Block;
@@ -58,14 +80,19 @@ typedef struct Stmt {
             Expr* arr_size;
         };
         struct {
+            // LOCAL_VAR_DECL, LOCAL_VAR_ASS
+            char* local_name;
+            Expr* local_value;
+        };
+        struct {
             // VOID_FUNC_CALL
             char*  fname;
             DList* params;
         };
         struct {
-            // STMT_IF
+            // STMT_IF, STMT_WHILE
             Expr*         cond;
-            struct Block* if_body;
+            struct Block* body;
         };
         struct {
             // STMT_IF_ELSE
@@ -77,10 +104,13 @@ typedef struct Stmt {
 } Stmt;
 
 Stmt* Stmt_FILE_VAR_DECL_new(const char* type, const char* name, Expr* size);
+Stmt* Stmt_LOCAL_VAR_DECL_new(const char* name, Expr* value);
+Stmt* Stmt_LOCAL_VAR_ASS_new(const char* name, Expr* value);
 Stmt* Stmt_VOID_FUNC_CALL_new(const char* name, DList* params);
 Stmt* Stmt_STMT_IF_new(Expr* cond, struct Block* trueblock);
 Stmt* Stmt_STMT_IF_ELSE_new(Expr* cond, struct Block* trueblock,
                             struct Block* falseblock);
+Stmt* Stmt_WHILE_new(Expr* cond, struct Block* block);
 void  Stmt_free(Stmt* stmt);
 
 typedef struct Block {

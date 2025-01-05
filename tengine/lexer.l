@@ -21,10 +21,12 @@ int   yymax_ident_len;
 
 [ \t\n]                 { }
 "proc"                  { return TPROC; }
+"local"                 { return TLOCAL; }
 "struct"                { return TSTRUCT; }
 "enum"                  { return TENUM; }
 "if"                    { return TIF; }
 "else"                  { return TELSE; }
+"while"                 { return TWHILE; }
 -?[0-9]+                {
                             if (!str_to_int64(yytext, &yynumval)) {
                                 error("[tengine lexer] invalid num '%s'", yytext);
@@ -49,7 +51,13 @@ int   yymax_ident_len;
                             return TIDENTIFIER;
                         }
 "+"                     { return TADD; }
+"-"                     { return TSUB; }
+"*"                     { return TMUL; }
 "=="                    { return TBEQ; }
+">"                     { return TBGT; }
+"<"                     { return TBLT; }
+">="                    { return TBGE; }
+"<="                    { return TBLE; }
 "="                     { return TEQUAL; }
 "("                     { return TCLBRACE; }
 ")"                     { return TCRBRACE; }

@@ -3,16 +3,17 @@
 
 #include "../filebuffer.h"
 #include "ast.h"
-#include "map.h"
 
 typedef enum Endianess { TE_LITTLE_ENDIAN = 40, TE_BIG_ENDIAN } Endianess;
 
+struct Scope;
 typedef struct TEngine {
-    ASTCtx* ast;
-    map*    proc_variables;
+    ASTCtx*       ast;
+    struct Scope* proc_scope;
 
     Endianess endianess;
     int       print_in_hex;
+    int       quiet_mode;
 } TEngine;
 
 ASTCtx* TEngine_parse_filename(const char* bhe);

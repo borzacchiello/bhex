@@ -346,17 +346,54 @@ proc
 {
     Elf_Ehdr header;
 
-    seek(header.e_phoff);
-    if (header.e_ident.ei_class == 2) {
-        Elf64_Phdr phdr[header.e_phnum];
+    local is_64bit = header.e_ident.ei_class == 2;
+
+    disable_print();
+    local off = curroff();
+    local strtab_off = header.e_shoff + (header.e_shstrndx * header.e_shentsize);
+    seek(strtab_off);
+    if (is_64bit) {
+        Elf64_Shdr shdr;
+        local str_off = shdr.sh_offset;
     } else {
-        Elf32_Phdr phdr[header.e_phnum];
+        Elf32_Shdr shdr;
+        local str_off = shdr.sh_offset;
+    };
+    seek(off);
+    enable_print();
+
+    seek(header.e_phoff);
+    local i = 0;
+    while (i < header.e_phnum) {
+        if (is_64bit) {
+            Elf64_Phdr phdr;
+        } else {
+            Elf32_Phdr phdr;
+        };
+
+        local off = curroff();
+        seek(phdr.p_offset);
+        uint8_t PrevPhData[phdr.p_filesz];
+        seek(off);
+
+        i = i + 1;
     };
 
     seek(header.e_shoff);
-    if (header.e_ident.ei_class == 2) {
-        Elf64_Shdr shdr[header.e_shnum];
-    } else {
-        Elf32_Shdr shdr[header.e_shnum];
+    local i = 0;
+    while (i < header.e_shnum) {
+        if (is_64bit) {
+            Elf64_Shdr shdr;
+        } else {
+            Elf32_Shdr shdr;
+        };
+        local off = curroff();
+        seek(str_off + shdr.sh_name);
+        string_t PrevShName;
+        seek(shdr.sh_offset);
+        uint8_t PrevPhData[shdr.sh_size];
+        seek(off);
+
+        i = i + 1;
     };
 }

@@ -6,6 +6,13 @@
 #include "ast.h"
 #include "map.h"
 
+#define engine_printf(e, ...)                                                  \
+    do {                                                                       \
+        if (!e->quiet_mode) {                                                  \
+            printf(__VA_ARGS__);                                               \
+        }                                                                      \
+    } while (0)
+
 extern int  yyparse(void);
 extern void yyset_in(FILE*);
 extern void yyset_ctx(ASTCtx*);
@@ -20,7 +27,8 @@ typedef struct ProcessContext {
     int         print_off;
 } ProcessContext;
 
-static int process_stmt(ProcessContext ctx, Stmt* stmt, map* vars);
+struct Scope;
+static int process_stmt(ProcessContext ctx, Stmt* stmt, struct Scope* scope);
 
 /*
  * Variables Values
@@ -29,6 +37,8 @@ static int process_stmt(ProcessContext ctx, Stmt* stmt, map* vars);
 typedef enum TEngineVarType {
     UNUM = 500,
     SNUM,
+    CHAR,
+    STRING,
     CUSTOM_TYPE,
     ENUM_VALUE,
 } TEngineVarType;
@@ -46,6 +56,14 @@ typedef struct TEngineVarValue {
             // SNUM
             s64_t snum;
             u32_t snum_size;
+        };
+        struct {
+            // CHAR
+            char c;
+        };
+        struct {
+            // STRING
+            char* str;
         };
         struct {
             // CUSTOM_TYPE
@@ -66,6 +84,24 @@ TEngineVarValue* TEngineVarValue_UNUM_new(const char* name, u64_t v, u32_t size)
     r->t               = UNUM;
     r->unum            = v;
     r->unum_size       = size;
+    return r;
+}
+
+TEngineVarValue* TEngine_CHAR_new(const char* name, char c)
+{
+    TEngineVarValue* r = bhex_calloc(sizeof(TEngineVarValue));
+    r->name            = bhex_strdup(name);
+    r->t               = CHAR;
+    r->c               = c;
+    return r;
+}
+
+TEngineVarValue* TEngine_STRING_new(const char* name, const char* str)
+{
+    TEngineVarValue* r = bhex_calloc(sizeof(TEngineVarValue));
+    r->name            = bhex_strdup(name);
+    r->t               = STRING;
+    r->str             = bhex_strdup(str);
     return r;
 }
 
@@ -114,9 +150,13 @@ int TEngineVarValue_get_num(TEngineVarValue* v, s64_t* onum)
         case SNUM:
             *onum = v->snum;
             return 0;
+        case CHAR:
+            *onum = (s64_t)v->c;
+            return 0;
         case ENUM_VALUE:
             *onum = (s64_t)v->enum_const;
             return 0;
+        case STRING:
         case CUSTOM_TYPE:
             error("[tengine] not a numeric type");
             return 1;
@@ -134,6 +174,10 @@ void TEngineVarValue_free(TEngineVarValue* v)
     switch (v->t) {
         case UNUM:
         case SNUM:
+        case CHAR:
+            break;
+        case STRING:
+            bhex_free(v->str);
             break;
         case ENUM_VALUE:
             bhex_free(v->enum_value);
@@ -153,30 +197,36 @@ void TEngineVarValue_pp(TEngine* e, TEngineVarValue* v, int print_off)
     switch (v->t) {
         case UNUM:
             if (e->print_in_hex)
-                printf("%0*llx", v->unum_size * 2, v->unum);
+                engine_printf(e, "%0*llx", v->unum_size * 2, v->unum);
             else
-                printf("%llu", v->unum);
+                engine_printf(e, "%llu", v->unum);
             break;
         case SNUM:
             if (e->print_in_hex)
-                printf("%0*llx", v->unum_size * 2, v->unum);
+                engine_printf(e, "%0*llx", v->unum_size * 2, v->unum);
             else
-                printf("%lld", v->snum);
+                engine_printf(e, "%lld", v->snum);
+            break;
+        case CHAR:
+            engine_printf(e, "%c", v->c);
+            return;
+        case STRING:
+            engine_printf(e, "'%s'", v->str);
             break;
         case ENUM_VALUE: {
-            printf("%s", v->enum_value);
+            engine_printf(e, "%s", v->enum_value);
             break;
         }
         case CUSTOM_TYPE: {
-            printf("\n");
+            engine_printf(e, "\n");
             for (const char* key = map_first(v->subvals); key != NULL;
                  key             = map_next(v->subvals, key)) {
                 for (int i = 0; i < print_off + 4; ++i)
-                    printf(" ");
-                printf(".%.*s: ", yymax_ident_len, key);
+                    engine_printf(e, " ");
+                engine_printf(e, ".%.*s: ", yymax_ident_len, key);
                 TEngineVarValue* nv = map_get(v->subvals, key);
                 TEngineVarValue_pp(e, nv, print_off + 4);
-                printf("\n");
+                engine_printf(e, "\n");
             }
             break;
         }
@@ -193,6 +243,53 @@ typedef struct TEngineEmbeddedType {
     const char name[MAX_IDENT_SIZE];
     TEngineVarValue* (*process)(TEngine*, const char*, FileBuffer*);
 } TEngineEmbeddedType;
+
+static TEngineVarValue* string_process(TEngine* e, const char* name,
+                                       FileBuffer* fb)
+{
+    u64_t tmp_capacity = 8;
+    u64_t tmp_size     = 0;
+    char* tmp          = bhex_calloc(tmp_capacity);
+
+#define enlarge_tmp                                                            \
+    if (tmp_size == tmp_capacity) {                                            \
+        tmp_capacity *= 2;                                                     \
+        tmp = bhex_realloc(tmp, tmp_capacity);                                 \
+    }
+
+    const uint8_t* buf = fb_read(fb, 1);
+    if (buf == NULL)
+        return NULL;
+
+    TEngineVarValue* r = NULL;
+    while (*buf) {
+        enlarge_tmp;
+
+        tmp[tmp_size++] = (char)*buf;
+        if (fb_seek(fb, fb->off + 1) != 0)
+            goto end;
+        buf = fb_read(fb, 1);
+    }
+
+    enlarge_tmp;
+    tmp[tmp_size] = '\0';
+    r             = TEngine_STRING_new(name, tmp);
+
+end:
+    bhex_free(tmp);
+    return r;
+}
+
+static TEngineVarValue* char_process(TEngine* e, const char* name,
+                                     FileBuffer* fb)
+{
+    const uint8_t* buf = fb_read(fb, 1);
+    if (buf == NULL)
+        return NULL;
+    if (fb_seek(fb, fb->off + 1) != 0)
+        return NULL;
+    return TEngine_CHAR_new(name, *buf);
+}
 
 static TEngineVarValue* uint_process(TEngine* e, const char* name,
                                      const u8_t* buf, u32_t size)
@@ -263,7 +360,78 @@ static TEngineEmbeddedType embedded_types[] = {
     {"uint16_t", uint16_t_process}, {"uint8_t", uint8_t_process},
     {"int64_t", int64_t_process},   {"int32_t", int32_t_process},
     {"int16_t", int16_t_process},   {"int8_t", int8_t_process},
+    {"char", char_process},         {"string_t", string_process},
 };
+
+/*
+ * Scope Object
+ */
+
+typedef struct Scope {
+    map* filevars;
+    map* locals;
+} Scope;
+
+Scope* Scope_new()
+{
+    Scope* s    = bhex_calloc(sizeof(Scope));
+    s->locals   = map_create();
+    s->filevars = map_create();
+    map_set_dispose(s->locals, (void (*)(void*))TEngineVarValue_free);
+    map_set_dispose(s->filevars, (void (*)(void*))TEngineVarValue_free);
+    return s;
+}
+
+void Scope_free(Scope* s)
+{
+    if (!s)
+        return;
+
+    map_destroy(s->locals);
+    map_destroy(s->filevars);
+    bhex_free(s);
+}
+
+TEngineVarValue* Scope_get_filevar(Scope* s, const char* name)
+{
+    if (!map_contains(s->filevars, name))
+        return NULL;
+    return map_get(s->filevars, name);
+}
+
+TEngineVarValue* Scope_get_local(Scope* s, const char* name)
+{
+    if (!map_contains(s->locals, name))
+        return NULL;
+    return map_get(s->locals, name);
+}
+
+TEngineVarValue* Scope_get_anyvar(Scope* s, const char* name)
+{
+    TEngineVarValue* v = Scope_get_filevar(s, name);
+    if (v == NULL)
+        return Scope_get_local(s, name);
+    return v;
+}
+
+void Scope_add_filevar(Scope* s, const char* name, TEngineVarValue* value)
+{
+    map_set(s->filevars, name, value);
+}
+
+void Scope_add_local(Scope* s, const char* name, TEngineVarValue* value)
+{
+    map_set(s->locals, name, value);
+}
+
+map* Scope_free_and_get_filevars(Scope* s)
+{
+    // Destroy only the locals
+    map_destroy(s->locals);
+    map* r = s->filevars;
+    bhex_free(s);
+    return r;
+}
 
 /*
  * TEngine Object
@@ -309,19 +477,18 @@ static map* process_custom_type(ProcessContext ctx, const char* type)
     if (body == NULL)
         return NULL;
 
-    map* type_vars = map_create();
-    map_set_dispose(type_vars, (void (*)(void*))TEngineVarValue_free);
+    Scope* scope = Scope_new();
 
-    printf("\n");
+    engine_printf(ctx.engine, "\n");
     ctx.print_off += 4;
     for (u64_t i = 0; i < body->stmts->size; ++i) {
         Stmt* stmt = (Stmt*)body->stmts->data[i];
-        if (process_stmt(ctx, stmt, type_vars) != 0) {
-            map_destroy(type_vars);
+        if (process_stmt(ctx, stmt, scope) != 0) {
+            Scope_free(scope);
             return NULL;
         }
     }
-    return type_vars;
+    return Scope_free_and_get_filevars(scope);
 }
 
 static const char* process_enum_type(ProcessContext ctx, const char* type,
@@ -359,7 +526,7 @@ static const char* process_enum_type(ProcessContext ctx, const char* type,
 }
 
 static TEngineVarValue* process_type(ProcessContext ctx, const char* varname,
-                                     const char* type, map* vars)
+                                     const char* type, Scope* scope)
 {
     const TEngineEmbeddedType* t = find_embedded_type(type);
     if (t != NULL) {
@@ -368,7 +535,7 @@ static TEngineVarValue* process_type(ProcessContext ctx, const char* varname,
             return NULL;
 
         TEngineVarValue_pp(ctx.engine, r, ctx.print_off);
-        printf("\n");
+        engine_printf(ctx.engine, "\n");
         return r;
     }
 
@@ -385,7 +552,7 @@ static TEngineVarValue* process_type(ProcessContext ctx, const char* varname,
         TEngineVarValue* v =
             TEngineVarValue_ENUM_VALUE_new(varname, enum_var, econst);
         TEngineVarValue_pp(ctx.engine, v, ctx.print_off);
-        printf("\n");
+        engine_printf(ctx.engine, "\n");
         return v;
     }
 
@@ -393,35 +560,68 @@ static TEngineVarValue* process_type(ProcessContext ctx, const char* varname,
     return NULL;
 }
 
-static int evaluate_num_expr(TEngine* engine, map* vars, Expr* e, s64_t* oval)
+static int process_builtin_expr_func_call(ProcessContext ctx, Scope* scope,
+                                          const char* fname, DList* params,
+                                          s64_t* oval)
+{
+#define REQUIRE_EXPR_CALL_VOID                                                 \
+    if (params != NULL) {                                                      \
+        error("[tengine] invalid expr call '%s', no param expected", fname);   \
+        return 1;                                                              \
+    }
+
+    // TODO: factor out build-ins to an array, do it also for void calls (stmts)
+    if (strcmp(fname, "curroff") == 0) {
+        REQUIRE_EXPR_CALL_VOID
+
+        // TODO: I'm assuming that the offset fits in 63 bits
+        *oval = (s64_t)ctx.fb->off;
+        return 0;
+    }
+
+    error("[tengine] no such non-void function '%s'", fname);
+    return 1;
+}
+
+static int evaluate_num_expr(ProcessContext ctx, Scope* scope, Expr* e,
+                             s64_t* oval)
 {
     switch (e->t) {
         case EXPR_CONST:
             *oval = e->value;
             return 0;
         case EXPR_VAR: {
-            if (!map_contains(vars, e->name)) {
+            TEngineVarValue* value = Scope_get_anyvar(scope, e->name);
+            if (!value) {
                 error("[tengine] no such variable '%s'", e->name);
                 return 1;
             }
-            TEngineVarValue* value = map_get(vars, e->name);
             if (TEngineVarValue_get_num(value, oval) != 0)
                 return 1;
             return 0;
         }
         case EXPR_VARCHAIN: {
-            TEngineVarValue* val = NULL;
-            u64_t            i   = 0;
-            for (; i < e->chain->size; ++i) {
-                char* n = e->chain->data[i];
-                if (!map_contains(vars, n)) {
-                    error("[tengine] no such variable (in chain) '%s'", n);
-                    return 1;
+            if (e->chain->size == 0) {
+                error("[tengine] varchain with size zero");
+                return 1;
+            }
+
+            // Only FILEVARS can have custom types
+            TEngineVarValue* val = Scope_get_filevar(scope, e->chain->data[0]);
+            u64_t            i   = 1;
+            if (val->t == CUSTOM_TYPE) {
+                map* vars = val->subvals;
+                for (; i < e->chain->size; ++i) {
+                    char* n = e->chain->data[i];
+                    if (!map_contains(vars, n)) {
+                        error("[tengine] no such variable (in chain) '%s'", n);
+                        return 1;
+                    }
+                    val = map_get(vars, n);
+                    if (val->t != CUSTOM_TYPE)
+                        break;
+                    vars = val->subvals;
                 }
-                val = map_get(vars, n);
-                if (val->t != CUSTOM_TYPE)
-                    break;
-                vars = val->subvals;
             }
             if (val == NULL || i != e->chain->size - 1) {
                 error("[tengine] invalid chain");
@@ -431,22 +631,79 @@ static int evaluate_num_expr(TEngine* engine, map* vars, Expr* e, s64_t* oval)
                 return 1;
             return 0;
         }
+        case EXPR_FUN_CALL:
+            return process_builtin_expr_func_call(ctx, scope, e->fname,
+                                                  e->params, oval);
         case EXPR_ADD: {
             s64_t lhs, rhs;
-            if (evaluate_num_expr(engine, vars, e->lhs, &lhs) != 0)
+            if (evaluate_num_expr(ctx, scope, e->lhs, &lhs) != 0)
                 return 1;
-            if (evaluate_num_expr(engine, vars, e->rhs, &rhs) != 0)
+            if (evaluate_num_expr(ctx, scope, e->rhs, &rhs) != 0)
                 return 1;
             *oval = lhs + rhs;
             return 0;
         }
+        case EXPR_SUB: {
+            s64_t lhs, rhs;
+            if (evaluate_num_expr(ctx, scope, e->lhs, &lhs) != 0)
+                return 1;
+            if (evaluate_num_expr(ctx, scope, e->rhs, &rhs) != 0)
+                return 1;
+            *oval = lhs - rhs;
+            return 0;
+        }
+        case EXPR_MUL: {
+            s64_t lhs, rhs;
+            if (evaluate_num_expr(ctx, scope, e->lhs, &lhs) != 0)
+                return 1;
+            if (evaluate_num_expr(ctx, scope, e->rhs, &rhs) != 0)
+                return 1;
+            *oval = lhs * rhs;
+            return 0;
+        }
         case EXPR_BEQ: {
             s64_t lhs, rhs;
-            if (evaluate_num_expr(engine, vars, e->lhs, &lhs) != 0)
+            if (evaluate_num_expr(ctx, scope, e->lhs, &lhs) != 0)
                 return 1;
-            if (evaluate_num_expr(engine, vars, e->rhs, &rhs) != 0)
+            if (evaluate_num_expr(ctx, scope, e->rhs, &rhs) != 0)
                 return 1;
             *oval = (lhs == rhs) ? 1 : 0;
+            return 0;
+        }
+        case EXPR_BLT: {
+            s64_t lhs, rhs;
+            if (evaluate_num_expr(ctx, scope, e->lhs, &lhs) != 0)
+                return 1;
+            if (evaluate_num_expr(ctx, scope, e->rhs, &rhs) != 0)
+                return 1;
+            *oval = (lhs < rhs) ? 1 : 0;
+            return 0;
+        }
+        case EXPR_BLE: {
+            s64_t lhs, rhs;
+            if (evaluate_num_expr(ctx, scope, e->lhs, &lhs) != 0)
+                return 1;
+            if (evaluate_num_expr(ctx, scope, e->rhs, &rhs) != 0)
+                return 1;
+            *oval = (lhs <= rhs) ? 1 : 0;
+            return 0;
+        }
+        case EXPR_BGT: {
+            s64_t lhs, rhs;
+            if (evaluate_num_expr(ctx, scope, e->lhs, &lhs) != 0)
+                return 1;
+            if (evaluate_num_expr(ctx, scope, e->rhs, &rhs) != 0)
+                return 1;
+            *oval = (lhs > rhs) ? 1 : 0;
+            return 0;
+        }
+        case EXPR_BGE: {
+            s64_t lhs, rhs;
+            if (evaluate_num_expr(ctx, scope, e->lhs, &lhs) != 0)
+                return 1;
+            if (evaluate_num_expr(ctx, scope, e->rhs, &rhs) != 0)
+                return 1;
+            *oval = (lhs >= rhs) ? 1 : 0;
             return 0;
         }
         default:
@@ -456,10 +713,10 @@ static int evaluate_num_expr(TEngine* engine, map* vars, Expr* e, s64_t* oval)
 }
 
 static int process_array_type(ProcessContext ctx, const char* varname,
-                              const char* type, Expr* esize, map* vars)
+                              const char* type, Expr* esize, Scope* scope)
 {
     s64_t size;
-    if (evaluate_num_expr(ctx.engine, vars, esize, &size) != 0)
+    if (evaluate_num_expr(ctx, scope, esize, &size) != 0)
         return 1;
     if (size < 0) {
         error("[tengine] invalid array size: %lld", size);
@@ -481,7 +738,7 @@ static int process_array_type(ProcessContext ctx, const char* varname,
     s64_t                      printed = 0;
     if (t != NULL) {
         if (!is_uint8)
-            printf("[ ");
+            engine_printf(ctx.engine, "[ ");
         while (printed < size) {
             TEngineVarValue* val = t->process(ctx.engine, varname, ctx.fb);
             if (val == NULL)
@@ -493,28 +750,28 @@ static int process_array_type(ProcessContext ctx, const char* varname,
             } else {
                 TEngineVarValue_pp(ctx.engine, val, ctx.print_off);
                 if (printed < size - 1)
-                    printf(", ");
+                    engine_printf(ctx.engine, ", ");
             }
             // TODO save the value!
             TEngineVarValue_free(val);
             if (printed++ >= MAX_ARR_PRINT_SIZE) {
-                printf("...");
+                engine_printf(ctx.engine, "...");
                 break;
             }
         }
         if (!is_uint8)
-            printf(" ]");
-        printf("\n");
+            engine_printf(ctx.engine, " ]");
+        engine_printf(ctx.engine, "\n");
 
         fb_seek(ctx.fb, final_off);
         return 0;
     }
 
     // Array of custom type
-    printf("\n");
+    engine_printf(ctx.engine, "\n");
     for (int i = 0; i < ctx.print_off + 11 + yymax_ident_len; ++i)
-        printf(" ");
-    printf("[%lld]", printed);
+        engine_printf(ctx.engine, " ");
+    engine_printf(ctx.engine, "[%lld]", printed);
     for (printed = 0; printed < size; ++printed) {
         map* custom_type_vars = process_custom_type(ctx, type);
         if (custom_type_vars == NULL) {
@@ -523,8 +780,8 @@ static int process_array_type(ProcessContext ctx, const char* varname,
         }
         if (printed < size - 1) {
             for (int i = 0; i < ctx.print_off + 11 + yymax_ident_len; ++i)
-                printf(" ");
-            printf("[%lld]", printed + 1);
+                engine_printf(ctx.engine, " ");
+            engine_printf(ctx.engine, "[%lld]", printed + 1);
         }
         // TODO save the array!
         map_destroy(custom_type_vars);
@@ -532,30 +789,57 @@ static int process_array_type(ProcessContext ctx, const char* varname,
     return 0;
 }
 
-static int process_FILE_VAR_DECL(ProcessContext ctx, Stmt* stmt, map* vars)
+static int process_FILE_VAR_DECL(ProcessContext ctx, Stmt* stmt, Scope* scope)
 {
-    printf("b+%08llx ", ctx.fb->off - ctx.initial_off);
+    engine_printf(ctx.engine, "b+%08llx ", ctx.fb->off - ctx.initial_off);
     for (int i = 0; i < ctx.print_off; ++i)
-        printf(" ");
-    printf(" %*s: ", yymax_ident_len, stmt->name);
+        engine_printf(ctx.engine, " ");
+    engine_printf(ctx.engine, " %*s: ", yymax_ident_len, stmt->name);
 
     if (stmt->arr_size == NULL) {
         // Not an array
-        TEngineVarValue* val = process_type(ctx, stmt->name, stmt->type, vars);
+        TEngineVarValue* val = process_type(ctx, stmt->name, stmt->type, scope);
         if (val == NULL)
             return 1;
-        map_set(vars, stmt->name, val);
+        Scope_add_filevar(scope, stmt->name, val);
     } else {
         // Array type
         if (process_array_type(ctx, stmt->name, stmt->type, stmt->arr_size,
-                               vars) != 0)
+                               scope) != 0)
             return 1;
         // TODO: valorize TEngineVarValue
     }
     return 0;
 }
 
-static int process_VOID_FUNC_CALL(ProcessContext ctx, Stmt* stmt, map* vars)
+static int process_LOCAL_VAR_DECL(ProcessContext ctx, Stmt* stmt, Scope* scope)
+{
+    s64_t num;
+    if (evaluate_num_expr(ctx, scope, stmt->local_value, &num) != 0)
+        return 1;
+
+    Scope_add_local(scope, stmt->local_name,
+                    TEngineVarValue_SNUM_new(stmt->local_name, num, 8));
+    return 0;
+}
+
+static int process_LOCAL_VAR_ASS(ProcessContext ctx, Stmt* stmt, Scope* scope)
+{
+    s64_t num;
+    if (evaluate_num_expr(ctx, scope, stmt->local_value, &num) != 0)
+        return 1;
+
+    if (Scope_get_local(scope, stmt->local_name) == NULL) {
+        error("[tengine] no such local variable '%s", stmt->local_name);
+        return 1;
+    }
+
+    Scope_add_local(scope, stmt->local_name,
+                    TEngineVarValue_SNUM_new(stmt->local_name, num, 8));
+    return 0;
+}
+
+static int process_VOID_FUNC_CALL(ProcessContext ctx, Stmt* stmt, Scope* scope)
 {
 #define REQUIRE_VOID                                                           \
     if (stmt->params != NULL) {                                                \
@@ -587,12 +871,19 @@ static int process_VOID_FUNC_CALL(ProcessContext ctx, Stmt* stmt, map* vars)
         REQUIRE_VOID
         ctx.engine->print_in_hex = 0;
         return 0;
+    } else if (strcmp(stmt->fname, "disable_print") == 0) {
+        REQUIRE_VOID
+        ctx.engine->quiet_mode = 1;
+        return 0;
+    } else if (strcmp(stmt->fname, "enable_print") == 0) {
+        REQUIRE_VOID
+        ctx.engine->quiet_mode = 0;
+        return 0;
     } else if (strcmp(stmt->fname, "seek") == 0 ||
                strcmp(stmt->fname, "fwd") == 0) {
         REQUIRE_ONE_PARAM
         s64_t off;
-        if (evaluate_num_expr(ctx.engine, vars, stmt->params->data[0], &off) !=
-            0)
+        if (evaluate_num_expr(ctx, scope, stmt->params->data[0], &off) != 0)
             return 1;
         if (off < 0) {
             error("[tengine] negative seek/fwd offset '%lld'", off);
@@ -614,10 +905,10 @@ static int process_VOID_FUNC_CALL(ProcessContext ctx, Stmt* stmt, map* vars)
     return 1;
 }
 
-static int process_STMT_IF(ProcessContext ctx, Stmt* stmt, map* vars)
+static int process_STMT_IF(ProcessContext ctx, Stmt* stmt, Scope* scope)
 {
     s64_t cond;
-    if (evaluate_num_expr(ctx.engine, vars, stmt->cond, &cond) != 0)
+    if (evaluate_num_expr(ctx, scope, stmt->cond, &cond) != 0)
         return 1;
 
     if (cond != 0) {
@@ -627,20 +918,20 @@ static int process_STMT_IF(ProcessContext ctx, Stmt* stmt, map* vars)
         // Ex, this is currently correct (for now it is fine though):
         //   if (1) { uint8_t a; }
         //   if (a) { uint8_t b; }
-        DList* stmts = stmt->if_body->stmts;
+        DList* stmts = stmt->body->stmts;
         for (u64_t i = 0; i < stmts->size; ++i) {
             Stmt* stmt = (Stmt*)stmts->data[i];
-            if (process_stmt(ctx, stmt, vars) != 0)
+            if (process_stmt(ctx, stmt, scope) != 0)
                 return 1;
         }
     }
     return 0;
 }
 
-static int process_STMT_IF_ELSE(ProcessContext ctx, Stmt* stmt, map* vars)
+static int process_STMT_IF_ELSE(ProcessContext ctx, Stmt* stmt, Scope* scope)
 {
     s64_t cond;
-    if (evaluate_num_expr(ctx.engine, vars, stmt->if_else_cond, &cond) != 0)
+    if (evaluate_num_expr(ctx, scope, stmt->if_else_cond, &cond) != 0)
         return 1;
 
     // TODO: same problem WRT STMT_IF
@@ -649,23 +940,51 @@ static int process_STMT_IF_ELSE(ProcessContext ctx, Stmt* stmt, map* vars)
         stmts = stmt->if_else_false_body->stmts;
     for (u64_t i = 0; i < stmts->size; ++i) {
         Stmt* stmt = (Stmt*)stmts->data[i];
-        if (process_stmt(ctx, stmt, vars) != 0)
+        if (process_stmt(ctx, stmt, scope) != 0)
             return 1;
     }
     return 0;
 }
 
-static int process_stmt(ProcessContext ctx, Stmt* stmt, map* vars)
+static int process_STMT_WHILE(ProcessContext ctx, Stmt* stmt, Scope* scope)
+{
+    // TODO: same problem WRT STMT_IF
+
+    s64_t cond;
+    if (evaluate_num_expr(ctx, scope, stmt->cond, &cond) != 0)
+        return 1;
+
+    while (cond != 0) {
+        DList* stmts = stmt->body->stmts;
+        for (u64_t i = 0; i < stmts->size; ++i) {
+            Stmt* stmt = (Stmt*)stmts->data[i];
+            if (process_stmt(ctx, stmt, scope) != 0)
+                return 1;
+        }
+
+        if (evaluate_num_expr(ctx, scope, stmt->cond, &cond) != 0)
+            return 1;
+    }
+    return 0;
+}
+
+static int process_stmt(ProcessContext ctx, Stmt* stmt, Scope* scope)
 {
     switch (stmt->t) {
         case FILE_VAR_DECL:
-            return process_FILE_VAR_DECL(ctx, stmt, vars);
+            return process_FILE_VAR_DECL(ctx, stmt, scope);
+        case LOCAL_VAR_DECL:
+            return process_LOCAL_VAR_DECL(ctx, stmt, scope);
+        case LOCAL_VAR_ASS:
+            return process_LOCAL_VAR_ASS(ctx, stmt, scope);
         case VOID_FUNC_CALL:
-            return process_VOID_FUNC_CALL(ctx, stmt, vars);
+            return process_VOID_FUNC_CALL(ctx, stmt, scope);
         case STMT_IF:
-            return process_STMT_IF(ctx, stmt, vars);
+            return process_STMT_IF(ctx, stmt, scope);
         case STMT_IF_ELSE:
-            return process_STMT_IF_ELSE(ctx, stmt, vars);
+            return process_STMT_IF_ELSE(ctx, stmt, scope);
+        case STMT_WHILE:
+            return process_STMT_WHILE(ctx, stmt, scope);
         default: {
             error("[tengine] invalid stmt type %d", stmt->t);
             break;
@@ -685,7 +1004,7 @@ static int process_ast(TEngine* engine, FileBuffer* fb)
     DList*         stmts = engine->ast->proc->stmts;
     for (u64_t i = 0; i < stmts->size; ++i) {
         Stmt* stmt = (Stmt*)stmts->data[i];
-        if (process_stmt(ctx, stmt, engine->proc_variables) != 0)
+        if (process_stmt(ctx, stmt, engine->proc_scope) != 0)
             return 1;
     }
     return 0;
@@ -721,16 +1040,14 @@ ASTCtx* TEngine_parse_file(FILE* f)
 
 void TEngine_init(TEngine* engine, ASTCtx* ast)
 {
-    engine->ast            = ast;
-    engine->proc_variables = map_create();
-    engine->endianess      = TE_LITTLE_ENDIAN;
-    engine->print_in_hex   = 1;
-
-    map_set_dispose(engine->proc_variables,
-                    (void (*)(void*))TEngineVarValue_free);
+    engine->ast          = ast;
+    engine->proc_scope   = Scope_new();
+    engine->endianess    = TE_LITTLE_ENDIAN;
+    engine->print_in_hex = 1;
+    engine->quiet_mode   = 0;
 }
 
-void TEngine_deinit(TEngine* engine) { map_destroy(engine->proc_variables); }
+void TEngine_deinit(TEngine* engine) { Scope_free(engine->proc_scope); }
 
 int TEngine_process_filename(FileBuffer* fb, const char* bhe)
 {
@@ -770,16 +1087,32 @@ int TEngine_process_ast(FileBuffer* fb, ASTCtx* ast)
 
 void TEngine_pp(TEngine* e)
 {
+    int orig_quiet_mode = e->quiet_mode;
+    e->quiet_mode       = 0;
+
     printf("TEngine\n\n");
     ASTCtx_pp(e->ast);
 
-    printf("\nProc Variables\n");
+    printf("\nProc File Variables\n");
     printf("=========\n");
-    for (const char* key = map_first(e->proc_variables); key != NULL;
-         key             = map_next(e->proc_variables, key)) {
+    for (const char* key = map_first(e->proc_scope->filevars); key != NULL;
+         key             = map_next(e->proc_scope->filevars, key)) {
         printf("%s ", key);
-        TEngineVarValue* v = map_get(e->proc_variables, key);
+        TEngineVarValue* v = map_get(e->proc_scope->filevars, key);
         TEngineVarValue_pp(e, v, 0);
     }
     printf("\n");
+
+    printf("\nProc Local Variables\n");
+    printf("=========\n");
+    for (const char* key = map_first(e->proc_scope->locals); key != NULL;
+         key             = map_next(e->proc_scope->locals, key)) {
+        printf("%s ", key);
+        TEngineVarValue* v = map_get(e->proc_scope->locals, key);
+        TEngineVarValue_pp(e, v, 0);
+        printf("\n");
+    }
+    printf("\n");
+
+    e->quiet_mode = orig_quiet_mode;
 }

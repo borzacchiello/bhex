@@ -1,4 +1,5 @@
 test
 test.*
+parser.output
 
 samples/*
