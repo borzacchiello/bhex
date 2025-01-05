@@ -10,7 +10,7 @@
 #include "cmd.h"
 
 static const char* search_folders[] = {"/usr/local/share/bhex/templates",
-                                       "../templates", "./templates"};
+                                       "../templates", "."};
 
 typedef struct TemplateCtx {
     map* templates;
@@ -28,11 +28,12 @@ static void templatecmd_help(void* obj)
     printf("\ntemplate: parse the file at current offset using a 'bhe' "
            "template file\n"
            "\n"
-           "  t[/l] <template>\n"
+           "  t[/l/ls] <name>\n"
            "     l:  list available templates\n"
+           "     ls: list available structs\n"
            "\n"
-           "  template: the name of the template to use or a path to a "
-           "template file\n"
+           "  name: the name of the pre-loaded template/struct to use, of a "
+           "path to a template file\n"
            "\n");
 }
 
@@ -45,18 +46,43 @@ static int file_exists(const char* path)
 
 static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
 {
-    if (pc->cmd_modifiers.size > 1)
-        return COMMAND_UNSUPPORTED_MOD;
+    int listed_templates = 0;
+    int listed_structs   = 0;
 
-    if (pc->cmd_modifiers.size == 1 &&
-        strcmp((char*)pc->cmd_modifiers.head->data, "l") == 0) {
+    LLNode* curr = pc->cmd_modifiers.head;
+    while (curr) {
+        const char* mod = (const char*)curr->data;
+        if (strcmp(mod, "l") == 0) {
+            if (listed_templates) {
+                error("l modifier is specified two times");
+                return 1;
+            }
+            printf("\nAvailable templates:\n");
+            for (const char* key = map_first(ctx->templates); key != NULL;
+                 key             = map_next(ctx->templates, key))
+                printf("  %s\n", key);
+            listed_templates = 1;
+        } else if (strcmp(mod, "ls") == 0) {
+            if (listed_structs) {
+                error("lh modifier is specified two times");
+                return 1;
+            }
+            printf("\nAvailable template structs:\n");
+            for (const char* key = map_first(ctx->templates); key != NULL;
+                 key             = map_next(ctx->templates, key)) {
+                ASTCtx* ast = map_get(ctx->templates, key);
+                for (const char* str = map_first(ast->structs); str != NULL;
+                     str             = map_next(ast->structs, str)) {
+                    printf("  %s.%s\n", key, str);
+                }
+            }
+            listed_structs = 1;
+        }
+        curr = curr->next;
+    }
+    if (listed_templates || listed_structs) {
         if (pc->args.size != 0)
             return COMMAND_INVALID_ARG;
-
-        printf("\nAvailable templates:\n");
-        for (const char* key = map_first(ctx->templates); key != NULL;
-             key             = map_next(ctx->templates, key))
-            printf("  %s\n", key);
         printf("\n");
         return COMMAND_OK;
     }
@@ -68,6 +94,16 @@ static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
     char* bhe         = (char*)pc->args.head->data;
     int   r           = COMMAND_INVALID_ARG;
 
+    if (file_exists(bhe)) {
+        // Template file
+        if (TEngine_process_filename(fb, bhe) != 0) {
+            error("template execution failed");
+            goto end;
+        }
+        printf("\n");
+        r = COMMAND_OK;
+        goto end;
+    }
     if (map_contains(ctx->templates, bhe)) {
         // Pre-loaded template
         printf("\n");
@@ -78,22 +114,36 @@ static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
         }
         goto end;
     }
+    // Pre-loaded struct
+    char* tname = strtok(bhe, ".");
+    if (tname == NULL)
+        goto err;
 
-    if (!file_exists(bhe)) {
-        error("'%s' is not a valid template name or filename", bhe);
-        goto end;
-    }
+    if (!map_contains(ctx->templates, tname))
+        goto err;
 
-    if (TEngine_process_filename(fb, bhe) != 0) {
-        error("template execution failed");
-        goto end;
-    }
+    char* sname = strtok(NULL, ".");
+    if (sname == NULL)
+        goto err;
+
+    if (strtok(NULL, ".") != NULL)
+        goto err;
+
     printf("\n");
+    ASTCtx* ast = map_get(ctx->templates, tname);
+    if (TEngine_process_ast_struct(fb, ast, sname) != 0)
+        goto err;
+    printf("\n");
+
     r = COMMAND_OK;
 
 end:
     fb_seek(fb, initial_off);
     return r;
+
+err:
+    error("'%s' is not a valid template/struct name or filename", bhe);
+    goto end;
 }
 
 Cmd* templatecmd_create(void)

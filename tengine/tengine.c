@@ -1085,6 +1085,31 @@ int TEngine_process_ast(FileBuffer* fb, ASTCtx* ast)
     return r;
 }
 
+int TEngine_process_ast_struct(FileBuffer* fb, ASTCtx* ast, const char* s)
+{
+    TEngine eng;
+    TEngine_init(&eng, ast);
+
+    int r = 1;
+    if (!map_contains(ast->structs, s)) {
+        error("[tengine] no such struct '%s'", s);
+        goto end;
+    }
+
+    ProcessContext ctx = {fb, &eng, fb->off, 0};
+    Block*         b   = map_get(ast->structs, s);
+    for (u64_t i = 0; i < b->stmts->size; ++i) {
+        Stmt* stmt = (Stmt*)b->stmts->data[i];
+        if (process_stmt(ctx, stmt, eng.proc_scope) != 0)
+            goto end;
+    }
+    r = 0;
+
+end:
+    TEngine_deinit(&eng);
+    return r;
+}
+
 void TEngine_pp(TEngine* e)
 {
     int orig_quiet_mode = e->quiet_mode;
