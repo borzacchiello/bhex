@@ -68,6 +68,7 @@ typedef enum ASTStmtType {
     STMT_IF,
     STMT_IF_ELSE,
     STMT_WHILE,
+    STMT_BREAK,
 } ASTStmtType;
 
 struct Block;
@@ -112,6 +113,7 @@ Stmt* Stmt_STMT_IF_new(Expr* cond, struct Block* trueblock);
 Stmt* Stmt_STMT_IF_ELSE_new(Expr* cond, struct Block* trueblock,
                             struct Block* falseblock);
 Stmt* Stmt_WHILE_new(Expr* cond, struct Block* block);
+Stmt* Stmt_BREAK_new();
 void  Stmt_free(Stmt* stmt);
 
 typedef struct Block {

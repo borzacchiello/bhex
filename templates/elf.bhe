@@ -452,8 +452,6 @@ proc
         local off = curroff();
         seek(str_off + shdr.sh_name);
         string_t PrevShName;
-        seek(shdr.sh_offset);
-        uint8_t PrevPhData[shdr.sh_size];
         seek(off);
 
         i = i + 1;

@@ -37,14 +37,14 @@ void yyerror(const char *s)
 }
 
 // Terminal tokens
-%token TPROC TLOCAL TSTRUCT TENUM TORENUM TIF TELSE TWHILE
+%token TPROC TLOCAL TSTRUCT TENUM TORENUM TIF TELSE TWHILE TBREAK
 %token TIDENTIFIER TNUM
 %token TCLBRACE TCRBRACE TLBRACE TRBRACE SQLBRACE SQRBRACE 
 %token TSEMICOLON TCOLON TCOMMA TDOT
 %token TADD TSUB TMUL TBEQ TBGT TBGE TBLT TBLE TEQUAL
 
 // Non terminal tokens types
-%type <stmt>      stmt fvar_decl lvar_decl lvar_ass void_fcall if if_else while
+%type <stmt>      stmt fvar_decl lvar_decl lvar_ass void_fcall if if_else while break
 %type <stmts>     stmts
 %type <enum_list> enum_list
 %type <varchain>  varchain
@@ -111,6 +111,7 @@ stmt        : fvar_decl
             | if
             | if_else
             | while
+            | break
     ;
 
 fvar_decl   : ident ident                           {
@@ -162,6 +163,11 @@ if_else     : TIF TCLBRACE expr TCRBRACE TLBRACE stmts TRBRACE TELSE TLBRACE stm
 while       : TWHILE TCLBRACE expr TCRBRACE TLBRACE stmts TRBRACE
                                                     {
                                                         $$ = Stmt_WHILE_new($3, Block_new($6));
+                                                    }
+    ;
+
+break       : TBREAK                                {
+                                                        $$ = Stmt_BREAK_new();
                                                     }
     ;
 

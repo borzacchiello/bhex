@@ -22,6 +22,7 @@ int   yymax_ident_len;
 [ \t\n]                 { }
 "proc"                  { return TPROC; }
 "local"                 { return TLOCAL; }
+"break"                 { return TBREAK; }
 "struct"                { return TSTRUCT; }
 "enum"                  { return TENUM; }
 "orenum"                { return TORENUM; }

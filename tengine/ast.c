@@ -359,6 +359,13 @@ Stmt* Stmt_WHILE_new(Expr* cond, struct Block* b)
     return stmt;
 }
 
+Stmt* Stmt_BREAK_new()
+{
+    Stmt* stmt = bhex_calloc(sizeof(Stmt));
+    stmt->t    = STMT_BREAK;
+    return stmt;
+}
+
 static void FILE_VAR_DECL_free(Stmt* stmt)
 {
     bhex_free(stmt->type);
@@ -419,6 +426,8 @@ void Stmt_free(Stmt* stmt)
         case STMT_IF_ELSE:
             STMT_IF_ELSE_free(stmt);
             break;
+        case STMT_BREAK:
+            break;
         default:
             panic("unknown stmt type %d", stmt->t);
     }
@@ -478,6 +487,9 @@ void Stmt_pp(Stmt* stmt)
             Expr_pp(stmt->cond);
             printf(")\n");
             Block_pp(stmt->body);
+            break;
+        case STMT_BREAK:
+            printf("break;");
             break;
         default:
             panic("unknown stmt type %d", stmt->t);
