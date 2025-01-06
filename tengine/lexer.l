@@ -24,6 +24,7 @@ int   yymax_ident_len;
 "local"                 { return TLOCAL; }
 "struct"                { return TSTRUCT; }
 "enum"                  { return TENUM; }
+"orenum"                { return TORENUM; }
 "if"                    { return TIF; }
 "else"                  { return TELSE; }
 "while"                 { return TWHILE; }

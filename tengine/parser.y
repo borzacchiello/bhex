@@ -37,7 +37,7 @@ void yyerror(const char *s)
 }
 
 // Terminal tokens
-%token TPROC TLOCAL TSTRUCT TENUM TIF TELSE TWHILE
+%token TPROC TLOCAL TSTRUCT TENUM TORENUM TIF TELSE TWHILE
 %token TIDENTIFIER TNUM
 %token TCLBRACE TCRBRACE TLBRACE TRBRACE SQLBRACE SQRBRACE 
 %token TSEMICOLON TCOLON TCOMMA TDOT
@@ -72,7 +72,13 @@ program     :
                                                     }
             | program TENUM ident TCOLON ident TLBRACE enum_list TRBRACE 
                                                     {
-                                                        map_set(g_ctx->enums, $3, Enum_new($5, $7));
+                                                        map_set(g_ctx->enums, $3, Enum_new($5, $7, 0));
+                                                        bhex_free($3);
+                                                        bhex_free($5);
+                                                    }
+            | program TORENUM ident TCOLON ident TLBRACE enum_list TRBRACE
+                                                    {
+                                                        map_set(g_ctx->enums, $3, Enum_new($5, $7, 1));
                                                         bhex_free($3);
                                                         bhex_free($5);
                                                     }

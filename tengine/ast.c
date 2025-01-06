@@ -529,20 +529,53 @@ void EnumEntry_pp(EnumEntry* ee)
     printf("  %s = %llu\n", ee->name, ee->value);
 }
 
-Enum* Enum_new(const char* type, DList* entries)
+Enum* Enum_new(const char* type, DList* entries, int isor)
 {
     Enum* e    = bhex_calloc(sizeof(Enum));
     e->type    = bhex_strdup(type);
     e->entries = entries;
+    e->isor    = isor;
     return e;
 }
 
 const char* Enum_find_const(Enum* e, u64_t c)
 {
-    for (u64_t i = 0; i < e->entries->size; ++i) {
-        EnumEntry* ee = e->entries->data[i];
-        if (ee->value == c)
-            return ee->name;
+    if (!e->isor) {
+        for (u64_t i = 0; i < e->entries->size; ++i) {
+            EnumEntry* ee = e->entries->data[i];
+            if (ee->value == c)
+                return ee->name;
+        }
+    } else {
+        if (c == 0)
+            return "NONE";
+
+        // TODO: fix this code, it is horrible
+        static char  tmp[1024];
+        static u64_t written = 0;
+        memset(tmp, 0, sizeof(tmp));
+        written = 0;
+
+        for (u64_t i = 0; i < e->entries->size; ++i) {
+            EnumEntry* ee = e->entries->data[i];
+            if (ee->value & c) {
+                u64_t n = strlen(ee->name);
+                if (n + 3 + written > sizeof(tmp) - 5) {
+                    written += 4;
+                    strcat(tmp, " ...");
+                    break;
+                }
+                if (written > 0) {
+                    strcat(tmp, " | ");
+                    written += 3;
+                }
+                strcat(tmp, ee->name);
+                written += n;
+            }
+        }
+        if (written == 0)
+            return NULL;
+        return tmp;
     }
     return NULL;
 }

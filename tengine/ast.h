@@ -31,7 +31,8 @@ typedef struct Expr {
         // EXPR_VARCHAIN
         DList* chain;
         struct {
-            // EXPR_ADD, EXPR_SUB, EXPR_BEQ, EXPR_BLT, EXPR_BLE, EXPR_BGT, EXPR_BGE
+            // EXPR_ADD, EXPR_SUB, EXPR_BEQ, EXPR_BLT, EXPR_BLE, EXPR_BGT,
+            // EXPR_BGE
             struct Expr* lhs;
             struct Expr* rhs;
         };
@@ -129,13 +130,14 @@ typedef struct EnumEntry {
 typedef struct Enum {
     char*  type;
     DList* entries;
+    int    isor;
 } Enum;
 
 EnumEntry* EnumEntry_new(const char* name, u64_t value);
 void       EnumEntry_free(EnumEntry* ee);
 void       EnumEntry_pp(EnumEntry* ee);
 
-Enum*       Enum_new(const char* type, DList* entries);
+Enum*       Enum_new(const char* type, DList* entries, int isor);
 const char* Enum_find_const(Enum* e, u64_t c);
 void        Enum_free(Enum* ee);
 
