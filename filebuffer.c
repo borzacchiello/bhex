@@ -1,12 +1,13 @@
+#include "filebuffer.h"
+
 #include <sys/stat.h>
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
 
-#include "filebuffer.h"
-#include "alloc.h"
-#include "log.h"
+#include <alloc.h>
+#include <log.h>
 
 #define MOD_TYPE_OVERWRITE 1
 #define MOD_TYPE_INSERT    2

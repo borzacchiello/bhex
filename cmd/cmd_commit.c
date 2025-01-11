@@ -1,6 +1,6 @@
 #include "cmd_commit.h"
 
-#include "../alloc.h"
+#include <alloc.h>
 
 static void commitcmd_dispose(void* obj) { return; }
 

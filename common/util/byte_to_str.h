@@ -1,7 +1,7 @@
 #ifndef BYTE_TO_STR_H
 #define BYTE_TO_STR_H
 
-#include "../../defs.h"
+#include <defs.h>
 #include <stdlib.h>
 
 char  nibble_to_hex_char(u8_t b);

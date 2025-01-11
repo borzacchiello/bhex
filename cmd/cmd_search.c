@@ -2,10 +2,10 @@
 
 #include <string.h>
 
-#include "util/str.h"
-#include "util/print.h"
-#include "../alloc.h"
-#include "../log.h"
+#include <util/str.h>
+#include <util/print.h>
+#include <alloc.h>
+#include <log.h>
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define max(x, y) ((x) > (y) ? (x) : (y))

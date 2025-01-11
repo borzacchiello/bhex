@@ -14,6 +14,8 @@ option(STATIC_BUILD "Statically link libc" OFF)
 
 set(CMAKE_C_STANDARD 99)
 
+include_directories("${CMAKE_SOURCE_DIR}/common")
+
 if (ENABLE_CAPSTONE)
     set(BUILD_SHARED_LIBS OFF)
     set(BUILD_LIBS_ONLY ON)
@@ -53,15 +55,18 @@ endif()
 set(src
     linenoise/linenoise.c
 
+    common/alloc.c
+    common/dlist.c
+    common/ll.c
+    common/log.c
+    common/util/byte_to_num.c
+    common/util/byte_to_str.c
+    common/util/endian.c
+    common/util/print.c
+    common/util/str.c
+    common/hash/md5.c
+
     cmd/cmd.c
-    cmd/hash/md5.c
-    cmd/templates/template.c
-    cmd/util/byte_to_str.c
-    cmd/util/byte_to_num.c
-    cmd/util/endian.c
-    cmd/util/str.c
-    cmd/util/print.c
-    cmd/cmd_legacy_template.c
     cmd/cmd_template.c
     cmd/cmd_search.c
     cmd/cmd_strings.c
@@ -78,17 +83,13 @@ set(src
     cmd/cmd_export.c
 
     tengine/ast.c
-    tengine/dlist.c
     tengine/lexer.c
     tengine/map.c
     tengine/parser.c
     tengine/tengine.c
 
-    alloc.c
     filebuffer.c
     tui.c
-    ll.c
-    log.c
     parser.c
     main.c)
 
@@ -105,15 +106,15 @@ endif()
 
 # Tests
 add_executable(test_ll
-    ll.c
-    alloc.c
-    log.c
+    common/ll.c
+    common/alloc.c
+    common/log.c
     tests/test_ll.c)
 
 add_executable(test_parser
-    ll.c
-    alloc.c
-    log.c
+    common/ll.c
+    common/alloc.c
+    common/log.c
     parser.c
     tests/test_parser.c)
 

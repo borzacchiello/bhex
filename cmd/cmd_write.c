@@ -1,9 +1,9 @@
 #include "cmd_write.h"
-#include "util/str.h"
-#include "util/endian.h"
-#include "util/byte_to_num.h"
+#include <util/str.h>
+#include <util/endian.h>
+#include <util/byte_to_num.h>
 
-#include "../alloc.h"
+#include <alloc.h>
 
 #include <string.h>
 

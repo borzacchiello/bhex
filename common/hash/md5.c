@@ -42,7 +42,7 @@
  * will fill a supplied 16-byte array with the digest.
  */
 
-#include "../util/endian.h"
+#include <util/endian.h>
 
 #define PUT_64BIT_LE(cp, value)                                                \
     do {                                                                       \

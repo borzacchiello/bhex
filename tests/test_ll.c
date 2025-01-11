@@ -1,9 +1,9 @@
+#include "test.h"
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "test.h"
-#include "../ll.h"
-#include "../alloc.h"
+#include <ll.h>
+#include <alloc.h>
 
 static int check_eq(LL* ll, uptr_t* arr, size_t size)
 {

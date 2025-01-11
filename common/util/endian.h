@@ -3,7 +3,7 @@
 #ifndef ENDIAN_H
 #define ENDIAN_H
 
-#include "../../defs.h"
+#include <defs.h>
 #include <stdlib.h>
 
 u8_t read8(const void* src);

@@ -1,7 +1,7 @@
 #ifndef DLIST_H
 #define DLIST_H
 
-#include "../defs.h"
+#include <defs.h>
 
 typedef struct DList {
     void** data;

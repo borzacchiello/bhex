@@ -1,7 +1,7 @@
 #ifndef CMD_H
 #define CMD_H
 
-#include "../ll.h"
+#include <ll.h>
 #include "../filebuffer.h"
 #include "../parser.h"
 

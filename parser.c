@@ -1,8 +1,8 @@
-#include <string.h>
-
 #include "parser.h"
-#include "alloc.h"
-#include "ll.h"
+
+#include <string.h>
+#include <alloc.h>
+#include <ll.h>
 
 static const char* space_tokens   = " \t\n";
 static const char  quotation_char = '"';

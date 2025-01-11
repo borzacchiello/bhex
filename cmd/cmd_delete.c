@@ -1,7 +1,7 @@
 #include "cmd_delete.h"
 
-#include "util/byte_to_num.h"
-#include "../alloc.h"
+#include <util/byte_to_num.h>
+#include <alloc.h>
 
 static void deletecmd_dispose(void* obj) { return; }
 

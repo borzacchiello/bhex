@@ -10,9 +10,9 @@
 
 #include <stdio.h>
 #include <time.h>
-#include "defs.h"
+#include <defs.h>
 
-#include "ll.h"
+#include <ll.h>
 
 #define fb_block_size 4096
 

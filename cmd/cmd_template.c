@@ -5,8 +5,8 @@
 #include <string.h>
 
 #include "../tengine/tengine.h"
-#include "../alloc.h"
-#include "../log.h"
+#include <alloc.h>
+#include <log.h>
 #include "cmd.h"
 
 static const char* search_folders[] = {"/usr/local/share/bhex/templates",

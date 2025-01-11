@@ -3,13 +3,13 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <errno.h>
+#include <alloc.h>
+#include "tui.h"
+#include <log.h>
 
 #include "linenoise/linenoise.h"
 #include "cmd/cmd.h"
 #include "parser.h"
-#include "alloc.h"
-#include "tui.h"
-#include "log.h"
 
 const char* const   short_options  = "hw2bnsc:";
 const struct option long_options[] = {

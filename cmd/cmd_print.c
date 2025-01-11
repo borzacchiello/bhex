@@ -1,7 +1,7 @@
 #include "cmd_print.h"
-#include "util/byte_to_num.h"
-#include "util/print.h"
-#include "../alloc.h"
+#include <util/byte_to_num.h>
+#include <util/print.h>
+#include <alloc.h>
 
 #include <string.h>
 

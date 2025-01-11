@@ -1,5 +1,5 @@
-#include "ll.h"
-#include "alloc.h"
+#include <ll.h>
+#include <alloc.h>
 
 #include <stdio.h>
 

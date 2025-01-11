@@ -3,7 +3,7 @@
 #include <stdarg.h>
 #include <string.h>
 
-#include "log.h"
+#include <log.h>
 
 static void (*g_callback)(const char*);
 int disable_warning = 0;

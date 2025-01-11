@@ -3,9 +3,9 @@
 
 #include "ast.h"
 
-#include "../alloc.h"
-#include "../log.h"
-#include "dlist.h"
+#include <alloc.h>
+#include <log.h>
+#include <dlist.h>
 #include "map.h"
 
 Expr* Expr_CONST_new(s64_t v)
@@ -359,7 +359,7 @@ Stmt* Stmt_WHILE_new(Expr* cond, struct Block* b)
     return stmt;
 }
 
-Stmt* Stmt_BREAK_new()
+Stmt* Stmt_BREAK_new(void)
 {
     Stmt* stmt = bhex_calloc(sizeof(Stmt));
     stmt->t    = STMT_BREAK;

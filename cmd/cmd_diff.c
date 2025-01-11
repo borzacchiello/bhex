@@ -1,5 +1,5 @@
 #include "cmd_diff.h"
-#include "../alloc.h"
+#include <alloc.h>
 
 #include <stdio.h>
 #include <string.h>

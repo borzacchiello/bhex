@@ -1,5 +1,5 @@
 #include "byte_to_str.h"
-#include "../../alloc.h"
+#include <alloc.h>
 
 char nibble_to_hex_char(u8_t b)
 {

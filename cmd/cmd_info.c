@@ -1,10 +1,10 @@
 #include "cmd_info.h"
 #include "hash/md5.h"
-#include "util/byte_to_str.h"
+#include <util/byte_to_str.h>
 
 #include <string.h>
 
-#include "../alloc.h"
+#include <alloc.h>
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 

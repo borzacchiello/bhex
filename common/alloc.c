@@ -1,5 +1,5 @@
-#include "alloc.h"
-#include "log.h"
+#include <alloc.h>
+#include <log.h>
 
 #include <sys/types.h>
 #include <string.h>

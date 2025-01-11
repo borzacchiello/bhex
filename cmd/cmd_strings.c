@@ -1,10 +1,10 @@
 #include "cmd_strings.h"
-#include "util/byte_to_num.h"
+#include <util/byte_to_num.h>
 
 #include <string.h>
 
-#include "../alloc.h"
-#include "../log.h"
+#include <alloc.h>
+#include <log.h>
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 

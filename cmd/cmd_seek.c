@@ -1,10 +1,10 @@
 #include "cmd_seek.h"
-#include "util/byte_to_num.h"
+#include <util/byte_to_num.h>
 
 #include <string.h>
 
-#include "../alloc.h"
-#include "../log.h"
+#include <alloc.h>
+#include <log.h>
 
 #define OFF_ABSOLUTE 0
 #define OFF_SUM      1

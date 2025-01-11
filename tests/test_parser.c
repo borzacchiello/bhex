@@ -1,9 +1,9 @@
-#include <string.h>
-
 #include "test.h"
 
+#include <string.h>
+#include <ll.h>
+
 #include "../parser.h"
-#include "../ll.h"
 
 int  tokenize(const char* str, LL* o_result);
 void destroy_token(uptr_t tptr);

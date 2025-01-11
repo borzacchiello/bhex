@@ -1,6 +1,6 @@
 #include <stdlib.h>
 
-#include "../../defs.h"
+#include <defs.h>
 
 void print_ascii(const u8_t* bytes, size_t size, int print_header,
                  int print_footer);

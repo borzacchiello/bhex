@@ -1,7 +1,7 @@
 #include "cmd_undo.h"
 
-#include "../alloc.h"
-#include "../log.h"
+#include <alloc.h>
+#include <log.h>
 
 static void undocmd_dispose(void* obj) { return; }
 

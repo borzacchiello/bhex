@@ -1,7 +1,7 @@
 #ifndef PARSER_H
 #define PARSER_H
 
-#include "ll.h"
+#include <ll.h>
 
 #define PARSER_OK                           0
 #define PARSER_ERR_UNCLOSED_QUOTATION       1

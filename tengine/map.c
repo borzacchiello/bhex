@@ -1,6 +1,6 @@
 #include "map.h"
-#include "../alloc.h"
-#include "../log.h"
+#include <alloc.h>
+#include <log.h>
 
 #include <string.h>
 

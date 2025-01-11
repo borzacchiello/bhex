@@ -2,8 +2,8 @@
 
 #include "ast.h"
 #include "parser.h"
-#include "../cmd/util/byte_to_num.h"
-#include "../log.h"
+#include <util/byte_to_num.h>
+#include <log.h>
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 

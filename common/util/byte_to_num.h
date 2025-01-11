@@ -1,7 +1,7 @@
 #ifndef BYTE_TO_NUM_H
 #define BYTE_TO_NUM_H
 
-#include "../../defs.h"
+#include <defs.h>
 
 int str_to_uint64(const char* str, u64_t* o_num);
 int str_to_uint32(const char* str, u32_t* o_num);

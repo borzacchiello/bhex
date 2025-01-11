@@ -9,10 +9,10 @@
 #include <signal.h>
 #include <errno.h>
 
-#include "cmd/util/byte_to_str.h"
-#include "alloc.h"
-#include "defs.h"
-#include "log.h"
+#include <util/byte_to_str.h>
+#include <alloc.h>
+#include <defs.h>
+#include <log.h>
 #include "tui.h"
 
 #define min(x, y) ((x) < (y) ? (x) : (y))

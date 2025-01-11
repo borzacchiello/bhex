@@ -1,7 +1,7 @@
 #ifndef LL_H
 #define LL_H
 
-#include "defs.h"
+#include <defs.h>
 
 typedef struct LLNode {
     struct LLNode* next;

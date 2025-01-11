@@ -2,10 +2,10 @@
 
 #include "cmd_disas.h"
 
-#include "util/byte_to_num.h"
-#include "util/byte_to_str.h"
-#include "../alloc.h"
-#include "../log.h"
+#include <util/byte_to_num.h>
+#include <util/byte_to_str.h>
+#include <alloc.h>
+#include <log.h>
 
 #include <capstone/capstone.h>
 #include <string.h>

@@ -1,8 +1,8 @@
 #include <string.h>
 
-#include "../cmd/util/byte_to_num.h"
-#include "../log.h"
-#include "../alloc.h"
+#include <util/byte_to_num.h>
+#include <log.h>
+#include <alloc.h>
 #include "tengine.h"
 #include "ast.h"
 #include "map.h"

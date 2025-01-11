@@ -2,8 +2,8 @@
 
 #include <stdio.h>
 
-#include "../alloc.h"
-#include "../log.h"
+#include <alloc.h>
+#include <log.h>
 #include "ast.h"
 
 extern int   yylex();

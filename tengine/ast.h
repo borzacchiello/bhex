@@ -1,7 +1,7 @@
 #ifndef AST_H
 #define AST_H
 
-#include "dlist.h"
+#include <dlist.h>
 #include "map.h"
 
 #define MAX_IDENT_SIZE 32

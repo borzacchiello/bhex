@@ -4,8 +4,8 @@
 #include <string.h>
 
 #include "cmd.h"
-#include "../alloc.h"
-#include "../log.h"
+#include <alloc.h>
+#include <log.h>
 
 #define X86_64_ARCH      0
 #define X86_ARCH         1

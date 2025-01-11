@@ -10,7 +10,7 @@
 #define HASH_MD5_BLOCK_LENGTH 0x40
 
 #include <string.h>
-#include "../../defs.h"
+#include <defs.h>
 
 /*  The below was retrieved from
  *  http://www.openbsd.org/cgi-bin/cvsweb/~checkout~/src/sys/crypto/md5.h?rev=1.1

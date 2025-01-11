@@ -1,9 +1,9 @@
 #include "cmd_export.h"
 #include "cmd.h"
-#include "util/byte_to_num.h"
+#include <util/byte_to_num.h>
 
-#include "../alloc.h"
-#include "../log.h"
+#include <alloc.h>
+#include <log.h>
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 

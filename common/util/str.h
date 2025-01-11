@@ -1,7 +1,7 @@
 #ifndef STR_H
 #define STR_H
 
-#include "../../defs.h"
+#include <defs.h>
 #include <stdlib.h>
 
 int escape_char_to_byte(char c, u8_t* o_byte);
