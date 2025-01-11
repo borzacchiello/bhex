@@ -59,6 +59,7 @@ set(src
     common/dlist.c
     common/ll.c
     common/log.c
+    common/map.c
     common/util/byte_to_num.c
     common/util/byte_to_str.c
     common/util/endian.c
@@ -83,10 +84,12 @@ set(src
     cmd/cmd_export.c
 
     tengine/ast.c
+    tengine/builtin.c
+    tengine/scope.c
     tengine/lexer.c
-    tengine/map.c
     tengine/parser.c
     tengine/tengine.c
+    tengine/value.c
 
     filebuffer.c
     tui.c
