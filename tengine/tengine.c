@@ -1,6 +1,5 @@
 #include "tengine.h"
 #include "builtin.h"
-#include "defs.h"
 #include "local.h"
 #include "value.h"
 #include "scope.h"
@@ -8,9 +7,8 @@
 
 #include <string.h>
 
-#include <util/byte_to_num.h>
-#include <log.h>
 #include <alloc.h>
+#include <log.h>
 #include <map.h>
 
 #define MAX_ARR_PRINT_SIZE 16
@@ -139,59 +137,23 @@ static TEngineValue* process_type(ProcessContext* ctx, const char* varname,
     return NULL;
 }
 
-static TEngineValue* process_builtin_expr_func_call(ProcessContext* ctx,
-                                                    Scope*          scope,
-                                                    const char*     fname,
-                                                    DList*          params)
+static DList* evaluate_list_of_exprs(ProcessContext* ctx, Scope* scope,
+                                     DList* l)
 {
-#define REQUIRE_EXPR_CALL_VOID                                                 \
-    if (params != NULL) {                                                      \
-        error("[tengine] invalid expr call '%s', no param expected", fname);   \
-        return NULL;                                                           \
-    }
-#define REQUIRE_EXPR_CALL_ONE_PARAM                                            \
-    if (params == NULL || params->size != 1) {                                 \
-        error("[tengine] invalid expr call '%s', one param expected", fname);  \
-        return NULL;                                                           \
-    }
-
-    // TODO: factor out build-ins to an array, do it also for void calls (stmts)
-    if (strcmp(fname, "curroff") == 0) {
-        REQUIRE_EXPR_CALL_VOID;
-
-        return TEngineValue_UNUM_new(ctx->fb->off, 64);
-    }
-    if (strcmp(fname, "size") == 0) {
-        REQUIRE_EXPR_CALL_VOID;
-
-        return TEngineValue_UNUM_new(ctx->fb->size, 64);
-    }
-    if (strcmp(fname, "atoi") == 0) {
-        REQUIRE_EXPR_CALL_ONE_PARAM;
-
-        const char* str;
-        if (eval_to_str(ctx, scope, params->data[0], &str) != 0)
-            return NULL;
-
-        s64_t oval;
-        if (!str_to_int64(str, &oval)) {
-            error("atoi: invalid input %s", str);
-            return NULL;
+    DList* r = NULL;
+    if (l) {
+        r = DList_new();
+        for (u64_t i = 0; i < l->size; ++i) {
+            TEngineValue* el = evaluate_expr(ctx, scope, l->data[i]);
+            if (el == NULL) {
+                DList_foreach(r, (void (*)(void*))TEngineValue_free);
+                DList_deinit(r);
+                return NULL;
+            }
+            DList_add(r, el);
         }
-        return TEngineValue_SNUM_new(oval, 64);
     }
-    if (strcmp(fname, "strlen") == 0) {
-        REQUIRE_EXPR_CALL_ONE_PARAM;
-
-        const char* str;
-        if (eval_to_str(ctx, scope, params->data[0], &str) != 0)
-            return NULL;
-
-        return TEngineValue_UNUM_new(strlen(str), 64);
-    }
-
-    error("[tengine] no such non-void function '%s'", fname);
-    return NULL;
+    return r;
 }
 
 static TEngineValue* evaluate_expr(ProcessContext* ctx, Scope* scope, Expr* e)
@@ -236,9 +198,20 @@ static TEngineValue* evaluate_expr(ProcessContext* ctx, Scope* scope, Expr* e)
             }
             return TEngineValue_dup(val);
         }
-        case EXPR_FUN_CALL:
-            return process_builtin_expr_func_call(ctx, scope, e->fname,
-                                                  e->params);
+        case EXPR_FUN_CALL: {
+            const TEngineBuiltinFunc* func = get_builtin_func(e->fname);
+            if (func == NULL) {
+                error("[tengine] no such non-void function '%s'", e->fname);
+                return NULL;
+            }
+            DList* params_vals = evaluate_list_of_exprs(ctx, scope, e->params);
+            TEngineValue* r = func->process(ctx->engine, ctx->fb, params_vals);
+            if (params_vals) {
+                DList_foreach(params_vals, (void (*)(void*))TEngineValue_free);
+                DList_deinit(params_vals);
+            }
+            return r;
+        }
         case EXPR_ADD: {
             TEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
             TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
@@ -492,64 +465,20 @@ static int process_LOCAL_VAR_ASS(ProcessContext* ctx, Stmt* stmt, Scope* scope)
 
 static int process_VOID_FUNC_CALL(ProcessContext* ctx, Stmt* stmt, Scope* scope)
 {
-#define REQUIRE_VOID                                                           \
-    if (stmt->params != NULL) {                                                \
-        error("[tengine] invalid call '%s', no param expected", stmt->fname);  \
-        return 1;                                                              \
+    const TEngineBuiltinFunc* func = get_builtin_func(stmt->fname);
+    if (func == NULL) {
+        error("[tengine] no such function '%s'", stmt->fname);
+        return 1;
     }
 
-#define REQUIRE_ONE_PARAM                                                      \
-    if (stmt->params == NULL || stmt->params->size != 1) {                     \
-        error("[tengine] invalid call '%s', expected one parameter",           \
-              stmt->fname);                                                    \
-        return 1;                                                              \
+    DList* params_vals = evaluate_list_of_exprs(ctx, scope, stmt->params);
+    TEngineValue* r    = func->process(ctx->engine, ctx->fb, params_vals);
+    if (params_vals) {
+        DList_foreach(params_vals, (void (*)(void*))TEngineValue_free);
+        DList_deinit(params_vals);
     }
-
-    // TODO: factor out build-in functions in an array
-    if (strcmp(stmt->fname, "endianess_le") == 0) {
-        REQUIRE_VOID
-        ctx->engine->endianess = TE_LITTLE_ENDIAN;
-        return 0;
-    } else if (strcmp(stmt->fname, "endianess_be") == 0) {
-        REQUIRE_VOID
-        ctx->engine->endianess = TE_BIG_ENDIAN;
-        return 0;
-    } else if (strcmp(stmt->fname, "nums_in_hex") == 0) {
-        REQUIRE_VOID
-        ctx->engine->print_in_hex = 1;
-        return 0;
-    } else if (strcmp(stmt->fname, "nums_in_dec") == 0) {
-        REQUIRE_VOID
-        ctx->engine->print_in_hex = 0;
-        return 0;
-    } else if (strcmp(stmt->fname, "disable_print") == 0) {
-        REQUIRE_VOID
-        ctx->engine->quiet_mode = 1;
-        return 0;
-    } else if (strcmp(stmt->fname, "enable_print") == 0) {
-        REQUIRE_VOID
-        ctx->engine->quiet_mode = 0;
-        return 0;
-    } else if (strcmp(stmt->fname, "seek") == 0 ||
-               strcmp(stmt->fname, "fwd") == 0) {
-        REQUIRE_ONE_PARAM
-
-        u64_t off;
-        if (eval_to_u64(ctx, scope, stmt->params->data[0], &off) != 0)
-            return 1;
-
-        if (strcmp(stmt->fname, "fwd") == 0)
-            off = off + ctx->fb->off;
-
-        if (fb_seek(ctx->fb, off) != 0) {
-            error("[tengine] unable to seek to offset '%lld'", off);
-            return 1;
-        }
-        return 0;
-    }
-
-    error("[tengine] no such function '%s'", stmt->fname);
-    return 1;
+    TEngineValue_free(r);
+    return 0;
 }
 
 static int process_STMT_IF(ProcessContext* ctx, Stmt* stmt, Scope* scope)

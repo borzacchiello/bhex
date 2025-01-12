@@ -30,11 +30,22 @@ static const char* type_to_string(TEngineValueType t)
     return NULL;
 }
 
-TEngineValue* TEngineValue_UNUM_new(u64_t v, u32_t size)
+TEngineValue* TEngineValue_SNUM_new(s64_t v, u32_t size)
 {
     TEngineValue* r = bhex_calloc(sizeof(TEngineValue));
+    r->t            = SNUM;
+    r->snum         = v;
+    r->snum_size    = size;
+    return r;
+}
+
+TEngineValue* TEngineValue_UNUM_new(u64_t v, u32_t size)
+{
+    u64_t mask = (2ul << ((u64_t)size * 8 - 1ul)) - 1ul;
+
+    TEngineValue* r = bhex_calloc(sizeof(TEngineValue));
     r->t            = UNUM;
-    r->unum         = v;
+    r->unum         = v & mask;
     r->unum_size    = size;
     return r;
 }
@@ -52,15 +63,6 @@ TEngineValue* TEngineValue_STRING_new(const char* str)
     TEngineValue* r = bhex_calloc(sizeof(TEngineValue));
     r->t            = STRING;
     r->str          = bhex_strdup(str);
-    return r;
-}
-
-TEngineValue* TEngineValue_SNUM_new(s64_t v, u32_t size)
-{
-    TEngineValue* r = bhex_calloc(sizeof(TEngineValue));
-    r->t            = SNUM;
-    r->snum         = v;
-    r->snum_size    = size;
     return r;
 }
 

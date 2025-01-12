@@ -49,9 +49,9 @@ typedef struct TEngineValue {
 } TEngineValue;
 
 TEngineValue* TEngineValue_UNUM_new(u64_t v, u32_t size);
+TEngineValue* TEngineValue_SNUM_new(s64_t v, u32_t size);
 TEngineValue* TEngineValue_CHAR_new(char c);
 TEngineValue* TEngineValue_STRING_new(const char* str);
-TEngineValue* TEngineValue_SNUM_new(s64_t v, u32_t size);
 TEngineValue* TEngineValue_CUSTOM_TYPE_new(map* subvals);
 TEngineValue* TEngineValue_ENUM_VALUE_new(const char* ename, u64_t econst);
 TEngineValue* TEngineValue_dup(TEngineValue* v);
