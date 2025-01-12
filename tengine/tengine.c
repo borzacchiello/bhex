@@ -13,6 +13,11 @@
 
 #define MAX_ARR_PRINT_SIZE 16
 
+typedef struct yy_buffer_state* YY_BUFFER_STATE;
+extern int                      yyparse();
+extern YY_BUFFER_STATE          yy_scan_string(const char* str);
+extern void                     yy_delete_buffer(YY_BUFFER_STATE buffer);
+
 typedef struct ProcessContext {
     FileBuffer* fb;
     TEngine*    engine;
@@ -306,8 +311,8 @@ static int eval_to_u64(ProcessContext* ctx, Scope* scope, Expr* e, u64_t* o)
     return 0;
 }
 
-static int eval_to_str(ProcessContext* ctx, Scope* scope, Expr* e,
-                       const char** o)
+__attribute__((unused)) static int
+eval_to_str(ProcessContext* ctx, Scope* scope, Expr* e, const char** o)
 {
     TEngineValue* v = evaluate_expr(ctx, scope, e);
     if (v == NULL)
@@ -625,6 +630,23 @@ ASTCtx* TEngine_parse_file(FILE* f)
     return ast;
 }
 
+ASTCtx* TEngine_parse_string(const char* str)
+{
+    ASTCtx* ast = ASTCtx_new();
+
+    yyset_ctx(ast);
+    YY_BUFFER_STATE state = yy_scan_string(str);
+    if (yyparse() != 0) {
+        error("parsing failed");
+        ASTCtx_delete(ast);
+        yy_delete_buffer(state);
+        return NULL;
+    }
+
+    yy_delete_buffer(state);
+    return ast;
+}
+
 void TEngine_init(TEngine* engine, ASTCtx* ast)
 {
     engine->ast          = ast;
@@ -652,10 +674,38 @@ int TEngine_process_filename(FileBuffer* fb, const char* bhe)
 int TEngine_process_file(FileBuffer* fb, FILE* f)
 {
     ASTCtx* ast = TEngine_parse_file(f);
-    if (ast == NULL) {
-        fclose(f);
+    if (ast == NULL)
         return 1;
+
+    int r = TEngine_process_ast(fb, ast);
+    ASTCtx_delete(ast);
+    return r;
+}
+
+TEngine* TEngine_run_on_string(FileBuffer* fb, const char* str)
+{
+    ASTCtx* ast = TEngine_parse_string(str);
+    if (ast == NULL)
+        return NULL;
+
+    TEngine* e = bhex_calloc(sizeof(TEngine));
+    TEngine_init(e, ast);
+
+    if (process_ast(e, fb) != 0) {
+        ASTCtx_delete(ast);
+        TEngine_deinit(e);
+        bhex_free(e);
+        return NULL;
     }
+    ASTCtx_delete(ast);
+    return e;
+}
+
+int TEngine_process_string(FileBuffer* fb, const char* str)
+{
+    ASTCtx* ast = TEngine_parse_string(str);
+    if (ast == NULL)
+        return 1;
 
     int r = TEngine_process_ast(fb, ast);
     ASTCtx_delete(ast);

@@ -52,9 +52,7 @@ else()
     add_compile_definitions(DISABLE_KEYSTONE)
 endif()
 
-set(src
-    linenoise/linenoise.c
-
+set(common_src
     common/alloc.c
     common/dlist.c
     common/ll.c
@@ -65,8 +63,9 @@ set(src
     common/util/endian.c
     common/util/print.c
     common/util/str.c
-    common/hash/md5.c
+    common/hash/md5.c)
 
+set(command_src
     cmd/cmd.c
     cmd/cmd_template.c
     cmd/cmd_search.c
@@ -81,20 +80,16 @@ set(src
     cmd/cmd_undo.c
     cmd/cmd_commit.c
     cmd/cmd_diff.c
-    cmd/cmd_export.c
+    cmd/cmd_export.c)
 
+set(tengine_src
     tengine/ast.c
     tengine/builtin.c
     tengine/scope.c
     tengine/lexer.c
     tengine/parser.c
     tengine/tengine.c
-    tengine/value.c
-
-    filebuffer.c
-    tui.c
-    parser.c
-    main.c)
+    tengine/value.c)
 
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -Wall")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wall")
@@ -109,21 +104,30 @@ endif()
 
 # Tests
 add_executable(test_ll
-    common/ll.c
-    common/alloc.c
-    common/log.c
+    ${common_src}
     tests/test_ll.c)
 
 add_executable(test_parser
-    common/ll.c
-    common/alloc.c
-    common/log.c
+    ${common_src}
     parser.c
     tests/test_parser.c)
 
+add_executable(test_tengine
+    ${common_src}
+    ${tengine_src}
+    filebuffer.c
+    tests/test_tengine.c)
+
 # Main executable
 add_executable(bhex
-    ${src})
+    ${common_src}
+    ${command_src}
+    ${tengine_src}
+    linenoise/linenoise.c
+    filebuffer.c
+    tui.c
+    parser.c
+    main.c)
 
 if (STATIC_BUILD)
     set_target_properties(bhex PROPERTIES LINK_SEARCH_START_STATIC ON)

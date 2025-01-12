@@ -89,7 +89,7 @@ static TEngineValue* int_process(TEngine* e, const u8_t* buf, u32_t size)
             sv = (s64_t)(s32_t)v;
             break;
         case 8:
-            sv = (s64_t)(s64_t)v;
+            sv = (s64_t)v;
             break;
         default:
             panic("invalid size (%u) in 'int_print'", size);

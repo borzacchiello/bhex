@@ -18,6 +18,7 @@ typedef struct TEngine {
 
 ASTCtx* TEngine_parse_filename(const char* bhe);
 ASTCtx* TEngine_parse_file(FILE* f);
+ASTCtx* TEngine_parse_string(const char* str);
 
 void TEngine_init(TEngine* engine, ASTCtx* ast);
 void TEngine_deinit(TEngine* engine);
@@ -26,6 +27,8 @@ int TEngine_process_filename(FileBuffer* fb, const char* bhe);
 int TEngine_process_file(FileBuffer* fb, FILE* f);
 int TEngine_process_ast(FileBuffer* fb, ASTCtx* ast);
 int TEngine_process_ast_struct(FileBuffer* fb, ASTCtx* ast, const char* s);
+
+TEngine* TEngine_run_on_string(FileBuffer* fb, const char* str);
 
 void TEngine_pp(TEngine* e);
 
