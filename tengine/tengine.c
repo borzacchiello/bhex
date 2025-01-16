@@ -38,7 +38,7 @@ static void value_pp(TEngine* e, u32_t off, TEngineValue* v)
     char* value_str = TEngineValue_tostring(v, e->print_in_hex);
     if (off && count_chars_in_str(value_str, '\n'))
         value_str = str_indent(value_str, off);
-    engine_printf(e, value_str);
+    engine_printf(e, "%s", value_str);
     bhex_free(value_str);
 }
 
@@ -224,6 +224,7 @@ static TEngineValue* evaluate_expr(ProcessContext* ctx, Scope* scope, Expr* e)
             if (params_vals) {
                 DList_foreach(params_vals, (void (*)(void*))TEngineValue_free);
                 DList_deinit(params_vals);
+                bhex_free(params_vals);
             }
             return r;
         }
@@ -491,6 +492,7 @@ static int process_VOID_FUNC_CALL(ProcessContext* ctx, Stmt* stmt, Scope* scope)
     if (params_vals) {
         DList_foreach(params_vals, (void (*)(void*))TEngineValue_free);
         DList_deinit(params_vals);
+        bhex_free(params_vals);
     }
     TEngineValue_free(r);
     return 0;
