@@ -7,6 +7,7 @@
 
 #include <string.h>
 
+#include <util/str.h>
 #include <alloc.h>
 #include <log.h>
 #include <map.h>
@@ -31,6 +32,15 @@ static TEngineValue* evaluate_expr(ProcessContext* ctx, Scope* scope, Expr* e);
 static int eval_to_u64(ProcessContext* ctx, Scope* scope, Expr* e, u64_t* o);
 static int eval_to_str(ProcessContext* ctx, Scope* scope, Expr* e,
                        const char** o);
+
+static void value_pp(TEngine* e, u32_t off, TEngineValue* v)
+{
+    char* value_str = TEngineValue_tostring(v, e->print_in_hex);
+    if (off && count_chars_in_str(value_str, '\n'))
+        value_str = str_indent(value_str, off);
+    engine_printf(e, value_str);
+    bhex_free(value_str);
+}
 
 static Block* get_struct_body(TEngine* e, const char* name)
 {
@@ -93,7 +103,7 @@ static const char* process_enum_type(ProcessContext* ctx, const char* type,
     if (v == NULL)
         return NULL;
 
-    u64_t val = v->t == UNUM ? v->unum : (u64_t)v->snum;
+    u64_t val = v->t == TENGINE_UNUM ? v->unum : (u64_t)v->snum;
     if (econst)
         *econst = val;
     TEngineValue_free(v);
@@ -118,14 +128,14 @@ static TEngineValue* process_type(ProcessContext* ctx, const char* varname,
         if (r == NULL)
             return NULL;
 
-        TEngineValue_pp(ctx->engine, r, ctx->print_off);
+        value_pp(ctx->engine, ctx->print_off, r);
         engine_printf(ctx->engine, "\n");
         return r;
     }
 
     map* custom_type_vars = process_struct_type(ctx, type);
     if (custom_type_vars != NULL) {
-        TEngineValue* v = TEngineValue_CUSTOM_TYPE_new(custom_type_vars);
+        TEngineValue* v = TEngineValue_OBJ_new(custom_type_vars);
         return v;
     }
 
@@ -133,7 +143,7 @@ static TEngineValue* process_type(ProcessContext* ctx, const char* varname,
     const char* enum_var = process_enum_type(ctx, type, &econst);
     if (enum_var != NULL) {
         TEngineValue* v = TEngineValue_ENUM_VALUE_new(enum_var, econst);
-        TEngineValue_pp(ctx->engine, v, ctx->print_off);
+        value_pp(ctx->engine, ctx->print_off, v);
         engine_printf(ctx->engine, "\n");
         return v;
     }
@@ -183,7 +193,7 @@ static TEngineValue* evaluate_expr(ProcessContext* ctx, Scope* scope, Expr* e)
             // Only FILEVARS can have custom types
             TEngineValue* val = Scope_get_filevar(scope, e->chain->data[0]);
             u64_t         i   = 1;
-            if (val->t == CUSTOM_TYPE) {
+            if (val->t == TENGINE_OBJ) {
                 map* vars = val->subvals;
                 for (; i < e->chain->size; ++i) {
                     char* n = e->chain->data[i];
@@ -192,7 +202,7 @@ static TEngineValue* evaluate_expr(ProcessContext* ctx, Scope* scope, Expr* e)
                         return NULL;
                     }
                     val = map_get(vars, n);
-                    if (val->t != CUSTOM_TYPE)
+                    if (val->t != TENGINE_OBJ)
                         break;
                     vars = val->subvals;
                 }
@@ -352,8 +362,8 @@ static int process_array_type(ProcessContext* ctx, const char* varname,
         const uint8_t* buf = fb_read(ctx->fb, size);
         memcpy(tmp, buf, size);
         *oval = TEngineValue_STRING_new(tmp);
-        TEngineValue_pp(ctx->engine, *oval, ctx->print_off);
-        printf("\n");
+        value_pp(ctx->engine, ctx->print_off, *oval);
+        engine_printf(ctx->engine, "\n");
         bhex_free(tmp);
         fb_seek(ctx->fb, final_off);
         return 0;
@@ -373,10 +383,10 @@ static int process_array_type(ProcessContext* ctx, const char* varname,
             if (is_uint8) {
                 int tmp                   = ctx->engine->print_in_hex;
                 ctx->engine->print_in_hex = 1;
-                TEngineValue_pp(ctx->engine, val, ctx->print_off);
+                value_pp(ctx->engine, ctx->print_off, val);
                 ctx->engine->print_in_hex = tmp;
             } else {
-                TEngineValue_pp(ctx->engine, val, ctx->print_off);
+                value_pp(ctx->engine, ctx->print_off, val);
                 if (printed < size - 1)
                     engine_printf(ctx->engine, ", ");
             }
@@ -761,7 +771,7 @@ void TEngine_pp(TEngine* e)
          key             = map_next(e->proc_scope->filevars, key)) {
         printf("%s ", key);
         TEngineValue* v = map_get(e->proc_scope->filevars, key);
-        TEngineValue_pp(e, v, 0);
+        value_pp(e, 0, v);
     }
     printf("\n");
 
@@ -771,8 +781,7 @@ void TEngine_pp(TEngine* e)
          key             = map_next(e->proc_scope->locals, key)) {
         printf("%s ", key);
         TEngineValue* v = map_get(e->proc_scope->locals, key);
-        TEngineValue_pp(e, v, 0);
-        printf("\n");
+        value_pp(e, 0, v);
     }
     printf("\n");
 

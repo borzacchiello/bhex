@@ -21,10 +21,10 @@ static void delete_tengine(TEngine* e)
     bhex_free(e);
 }
 
-#define IS_SNUM_EQ(r, v, n)                                                    \
+#define IS_TENGINE_SNUM_EQ(r, v, n)                                                    \
     if ((v) == NULL)                                                           \
         goto end;                                                              \
-    if ((v)->t != SNUM)                                                        \
+    if ((v)->t != TENGINE_SNUM)                                                        \
         goto end;                                                              \
     if ((v)->snum != (n))                                                      \
         goto end;                                                              \
@@ -40,7 +40,7 @@ static int test_const()
 
     int           r = 0;
     TEngineValue* v = Scope_get_local(e->proc_scope, "a");
-    IS_SNUM_EQ(r, v, 0);
+    IS_TENGINE_SNUM_EQ(r, v, 0);
 
 end:
     delete_tengine(e);
@@ -57,7 +57,7 @@ static int test_hex_const()
 
     int           r = 0;
     TEngineValue* v = Scope_get_local(e->proc_scope, "a");
-    IS_SNUM_EQ(r, v, 0xdeadbeef);
+    IS_TENGINE_SNUM_EQ(r, v, 0xdeadbeef);
 
 end:
     delete_tengine(e);
@@ -74,7 +74,7 @@ static int test_const_limit_1()
 
     int           r = 0;
     TEngineValue* v = Scope_get_local(e->proc_scope, "a");
-    IS_SNUM_EQ(r, v, 0x7fffffffffffffffl);
+    IS_TENGINE_SNUM_EQ(r, v, 0x7fffffffffffffffl);
 
 end:
     delete_tengine(e);
@@ -91,7 +91,7 @@ static int test_const_limit_2()
 
     int           r = 0;
     TEngineValue* v = Scope_get_local(e->proc_scope, "a");
-    IS_SNUM_EQ(r, v, -0x8000000000000000l);
+    IS_TENGINE_SNUM_EQ(r, v, -0x8000000000000000l);
 
 end:
     delete_tengine(e);
@@ -108,7 +108,7 @@ static int test_neg_const()
 
     int           r = 0;
     TEngineValue* v = Scope_get_local(e->proc_scope, "a");
-    IS_SNUM_EQ(r, v, -42);
+    IS_TENGINE_SNUM_EQ(r, v, -42);
 
 end:
     delete_tengine(e);
@@ -125,7 +125,7 @@ static int test_sub()
 
     int           r = 0;
     TEngineValue* v = Scope_get_local(e->proc_scope, "b");
-    IS_SNUM_EQ(r, v, -1);
+    IS_TENGINE_SNUM_EQ(r, v, -1);
 
 end:
     delete_tengine(e);
@@ -142,7 +142,7 @@ static int test_add()
 
     int           r = 0;
     TEngineValue* v = Scope_get_local(e->proc_scope, "b");
-    IS_SNUM_EQ(r, v, 14);
+    IS_TENGINE_SNUM_EQ(r, v, 14);
 
 end:
     delete_tengine(e);
@@ -159,7 +159,7 @@ static int test_add_wrap()
 
     int           r = 0;
     TEngineValue* v = Scope_get_local(e->proc_scope, "b");
-    IS_SNUM_EQ(r, v, -0x8000000000000000l);
+    IS_TENGINE_SNUM_EQ(r, v, -0x8000000000000000l);
 
 end:
     delete_tengine(e);
@@ -176,7 +176,7 @@ static int test_mul()
 
     int           r = 0;
     TEngineValue* v = Scope_get_local(e->proc_scope, "b");
-    IS_SNUM_EQ(r, v, 40);
+    IS_TENGINE_SNUM_EQ(r, v, 40);
 
 end:
     delete_tengine(e);
@@ -194,7 +194,7 @@ static int test_if_1()
 
     int           r = 0;
     TEngineValue* v = Scope_get_local(e->proc_scope, "b");
-    IS_SNUM_EQ(r, v, 45);
+    IS_TENGINE_SNUM_EQ(r, v, 45);
 
 end:
     delete_tengine(e);
@@ -212,7 +212,7 @@ static int test_if_2()
 
     int           r = 0;
     TEngineValue* v = Scope_get_local(e->proc_scope, "b");
-    IS_SNUM_EQ(r, v, 3);
+    IS_TENGINE_SNUM_EQ(r, v, 3);
 
 end:
     delete_tengine(e);
@@ -230,7 +230,7 @@ static int test_while_1()
 
     int           r = 0;
     TEngineValue* v = Scope_get_local(e->proc_scope, "b");
-    IS_SNUM_EQ(r, v, 90);
+    IS_TENGINE_SNUM_EQ(r, v, 90);
 
 end:
     delete_tengine(e);

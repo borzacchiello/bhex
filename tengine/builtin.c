@@ -147,7 +147,7 @@ static TEngineValue* builtin_curroff(TEngine* e, FileBuffer* fb, DList* params)
     if (params && params->size > 0)
         panic("[tengine] builtin_curroff invalid parameters");
 
-    return TEngineValue_UNUM_new(fb->off, 64);
+    return TEngineValue_UNUM_new(fb->off, 8);
 }
 
 static TEngineValue* builtin_size(TEngine* e, FileBuffer* fb, DList* params)
@@ -155,7 +155,7 @@ static TEngineValue* builtin_size(TEngine* e, FileBuffer* fb, DList* params)
     if (params && params->size > 0)
         panic("[tengine] builtin_size invalid parameters");
 
-    return TEngineValue_UNUM_new(fb->size, 64);
+    return TEngineValue_UNUM_new(fb->size, 8);
 }
 
 static TEngineValue* builtin_atoi(TEngine* e, FileBuffer* fb, DList* params)
@@ -190,7 +190,7 @@ static TEngineValue* builtin_strlen(TEngine* e, FileBuffer* fb, DList* params)
         return NULL;
     }
 
-    return TEngineValue_UNUM_new(strlen(param_str), 64);
+    return TEngineValue_UNUM_new(strlen(param_str), 8);
 }
 
 static TEngineValue* builtin_endianess_le(TEngine* e, FileBuffer* fb,

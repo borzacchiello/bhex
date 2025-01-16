@@ -66,7 +66,7 @@ int unescape_ascii_string(char* str, u8_t** o_buf, size_t* o_size)
             c = str[++i];
 
             u8_t b;
-            int     r = escape_char_to_byte(c, &b);
+            int  r = escape_char_to_byte(c, &b);
             if (r == ESCAPE_ERR) {
                 goto ERR_OUT;
             } else if (r == ESCAPE_NEXT_IS_BYTE) {
@@ -134,4 +134,43 @@ int hex_to_bytes(char* hex_string, u8_t** o_buf, size_t* o_size)
 ERR_OUT:
     bhex_free(res);
     return 0;
+}
+
+size_t count_chars_in_str(char* s, char c)
+{
+    if (!s)
+        return 0;
+
+    size_t n = 0;
+    while (*s)
+        if (*s++ == c)
+            n += 1;
+    return n;
+}
+
+char* str_indent(char* s, u32_t spaces)
+{
+    if (spaces == 0)
+        return s;
+
+    size_t len    = strlen(s);
+    size_t newlen = len + (count_chars_in_str(s, '\n') + 1) * spaces;
+
+    s = bhex_realloc(s, newlen + 1);
+
+    memmove(s + spaces, s, len);
+    memset(s, ' ', spaces);
+    u32_t i = spaces;
+    while (i < newlen) {
+        if (s[i] == '\n') {
+            i += 1;
+            memmove(s + i + spaces, s + i, len - i);
+            memset(s + i, ' ', spaces);
+            i += spaces;
+            continue;
+        }
+        i += 1;
+    }
+    s[newlen] = 0;
+    return s;
 }
