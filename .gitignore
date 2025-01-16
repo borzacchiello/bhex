@@ -6,4 +6,10 @@ install_*/
 .vscode/
 .cache/
 
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+compile_commands.json
+Makefile
+
 .DS_Store
