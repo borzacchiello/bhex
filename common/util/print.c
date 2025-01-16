@@ -5,7 +5,7 @@
 #include <stdio.h>
 
 void print_ascii(const u8_t* bytes, size_t size, int print_header,
-                        int print_footer)
+                 int print_footer)
 {
     size_t last_newline_off = 0, off = 0, linenum = 0;
     for (off = 0; off < size; off++) {
@@ -33,7 +33,7 @@ void print_ascii(const u8_t* bytes, size_t size, int print_header,
 }
 
 void print_c_buffer(const u8_t* bytes, size_t size, int print_header,
-                           int print_footer)
+                    int print_footer)
 {
     if (size == 0)
         return;
@@ -49,11 +49,11 @@ void print_c_buffer(const u8_t* bytes, size_t size, int print_header,
         printf(" }\n");
 }
 
-void print_hex(const u8_t* bytes, size_t size, int raw_mode,
-                      int print_header, int print_footer, u64_t addr)
+void print_hex(const u8_t* bytes, size_t size, int raw_mode, int print_header,
+               int print_footer, u64_t addr)
 {
-    int block_size = 16;
-    size_t     off        = 0;
+    int    block_size = 16;
+    size_t off        = 0;
 
     if (!raw_mode && print_header)
         printf("\n"
@@ -72,6 +72,8 @@ void print_hex(const u8_t* bytes, size_t size, int raw_mode,
                 }
                 printf("%02X ", bytes[off + i]);
             } else {
+                if (off + i >= size)
+                    break;
                 printf("%02X", bytes[off + i]);
             }
         }
@@ -91,11 +93,10 @@ void print_hex(const u8_t* bytes, size_t size, int raw_mode,
 }
 
 void print_words(const u8_t* bytes, size_t size, int little_endian,
-                        int raw_mode, int print_header, int print_footer,
-                        u64_t addr)
+                 int raw_mode, int print_header, int print_footer, u64_t addr)
 {
-    int block_size = 16;
-    size_t     off        = 0;
+    int    block_size = 16;
+    size_t off        = 0;
 
     if (!raw_mode && print_header)
         printf("\n"
@@ -124,11 +125,10 @@ void print_words(const u8_t* bytes, size_t size, int little_endian,
 }
 
 void print_dwords(const u8_t* bytes, size_t size, int little_endian,
-                         int raw_mode, int print_header, int print_footer,
-                         u64_t addr)
+                  int raw_mode, int print_header, int print_footer, u64_t addr)
 {
-    int block_size = 16;
-    size_t     off        = 0;
+    int    block_size = 16;
+    size_t off        = 0;
 
     if (!raw_mode && print_header)
         printf("\n"
@@ -157,11 +157,10 @@ void print_dwords(const u8_t* bytes, size_t size, int little_endian,
 }
 
 void print_qwords(const u8_t* bytes, size_t size, int little_endian,
-                         int raw_mode, int print_header, int print_footer,
-                         u64_t addr)
+                  int raw_mode, int print_header, int print_footer, u64_t addr)
 {
-    int block_size = 16;
-    size_t     off        = 0;
+    int    block_size = 16;
+    size_t off        = 0;
 
     if (!raw_mode && print_header)
         printf("\n"

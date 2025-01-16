@@ -2,7 +2,7 @@
 
 Work in progress template engine
 
-[ ] p/r 100 prints 112 chars
+[X] p/r 100 prints 112 chars
 [ ] calls to non-existent non-void function leads to segfault
 [ ] make sure operator precedence is respected
 [ ] implement remaining expression operators
