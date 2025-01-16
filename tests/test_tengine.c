@@ -21,10 +21,19 @@ static void delete_tengine(TEngine* e)
     bhex_free(e);
 }
 
-#define IS_TENGINE_SNUM_EQ(r, v, n)                                                    \
+#define IS_TENGINE_SNUM_EQ(r, v, n)                                            \
     if ((v) == NULL)                                                           \
         goto end;                                                              \
-    if ((v)->t != TENGINE_SNUM)                                                        \
+    if ((v)->t != TENGINE_SNUM)                                                \
+        goto end;                                                              \
+    if ((v)->snum != (n))                                                      \
+        goto end;                                                              \
+    (r) = 1;
+
+#define IS_TENGINE_UNUM_EQ(r, v, n)                                            \
+    if ((v) == NULL)                                                           \
+        goto end;                                                              \
+    if ((v)->t != TENGINE_UNUM)                                                \
         goto end;                                                              \
     if ((v)->snum != (n))                                                      \
         goto end;                                                              \
@@ -47,6 +56,23 @@ end:
     return r;
 }
 
+static int test_const_u8()
+{
+    char* prog = "proc { local a = 16u8; }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "a");
+    IS_TENGINE_UNUM_EQ(r, v, 16);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
 static int test_hex_const()
 {
     char* prog = "proc { local a = 0xdeadbeef; }";
@@ -58,6 +84,23 @@ static int test_hex_const()
     int           r = 0;
     TEngineValue* v = Scope_get_local(e->proc_scope, "a");
     IS_TENGINE_SNUM_EQ(r, v, 0xdeadbeef);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
+static int test_hex_const_u8()
+{
+    char* prog = "proc { local a = 0xffu8; }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "a");
+    IS_TENGINE_UNUM_EQ(r, v, 255);
 
 end:
     delete_tengine(e);
@@ -239,7 +282,9 @@ end:
 
 static test_t tests[] = {
     {"const", &test_const},
+    {"const_u8", &test_const_u8},
     {"hex_const", &test_hex_const},
+    {"hex_const_u8", &test_hex_const_u8},
     {"neg_const", &test_neg_const},
     {"const_limit_1", &test_const_limit_1},
     {"const_limit_2", &test_const_limit_2},

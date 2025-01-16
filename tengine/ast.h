@@ -1,13 +1,15 @@
 #ifndef AST_H
 #define AST_H
 
+#include "defs.h"
 #include <dlist.h>
 #include <map.h>
 
 #define MAX_IDENT_SIZE 32
 
 typedef enum ASTExprType {
-    EXPR_CONST = 200,
+    EXPR_SCONST = 200,
+    EXPR_UCONST,
     EXPR_VAR,
     EXPR_VARCHAIN,
     EXPR_FUN_CALL,
@@ -24,8 +26,16 @@ typedef enum ASTExprType {
 typedef struct Expr {
     ASTExprType t;
     union {
-        // EXPR_CONST
-        s64_t value;
+        // EXPR_SCONST
+        struct {
+            s64_t sconst_value;
+            u8_t  sconst_size;
+        };
+        // EXPR_UCONST
+        struct {
+            u64_t uconst_value;
+            u8_t  uconst_size;
+        };
         // EXPR_VAR
         char* name;
         // EXPR_VARCHAIN
@@ -44,7 +54,8 @@ typedef struct Expr {
     };
 } Expr;
 
-Expr* Expr_CONST_new(s64_t v);
+Expr* Expr_SCONST_new(s64_t v, u8_t size);
+Expr* Expr_UCONST_new(u64_t v, u8_t size);
 Expr* Expr_VAR_new(const char* var);
 Expr* Expr_VARCHAIN_new(DList* chain);
 Expr* Expr_FUN_CALL_new(const char* fname, DList* params);

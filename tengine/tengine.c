@@ -174,8 +174,10 @@ static DList* evaluate_list_of_exprs(ProcessContext* ctx, Scope* scope,
 static TEngineValue* evaluate_expr(ProcessContext* ctx, Scope* scope, Expr* e)
 {
     switch (e->t) {
-        case EXPR_CONST:
-            return TEngineValue_SNUM_new(e->value, 64);
+        case EXPR_SCONST:
+            return TEngineValue_SNUM_new(e->sconst_value, e->sconst_size);
+        case EXPR_UCONST:
+            return TEngineValue_UNUM_new(e->uconst_value, e->uconst_size);
         case EXPR_VAR: {
             TEngineValue* value = Scope_get_anyvar(scope, e->name);
             if (!value) {

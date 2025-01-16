@@ -10,7 +10,9 @@
 #define YY_FATAL_ERROR(msg) panic(msg)
 
 char  yystrval[MAX_IDENT_SIZE];
-s64_t yynumval;
+s64_t yysnumval;
+u64_t yyunumval;
+int   yynumsize;
 int   yymax_ident_len;
 
 %}
@@ -30,18 +32,42 @@ int   yymax_ident_len;
 "else"                  { return TELSE; }
 "while"                 { return TWHILE; }
 -?[0-9]+                {
-                            if (!str_to_int64(yytext, &yynumval)) {
-                                error("[tengine lexer] invalid num '%s'", yytext);
+                            yynumsize = 8;
+                            if (!str_to_int64(yytext, &yysnumval)) {
+                                error("[tengine lexer] invalid s64 num '%s'", yytext);
                                 return 1;
                             }
-                            return TNUM;
+                            return TSNUM64;
                         }
 -?0x[0-9a-fA-F]+        {
-                            if (!str_to_int64(yytext, &yynumval)) {
-                                error("[tengine lexer] invalid hex num '%s'", yytext);
+                            yynumsize = 8;
+                            if (!str_to_int64(yytext, &yysnumval)) {
+                                error("[tengine lexer] invalid s64 hex num '%s'", yytext);
                                 return 1;
                             }
-                            return TNUM;
+                            return TSNUM64;
+                        }
+[0-9]+u8                {
+                            u8_t n;
+                            yynumsize = 1;
+                            yytext[yyleng-2] = '\0';
+                            if (!str_to_uint8(yytext, &n)) {
+                                error("[tengine lexer] invalid u8 num '%s'", yytext);
+                                return 1;
+                            }
+                            yyunumval = (u64_t)n;
+                            return TUNUM8;
+                        }
+0x[0-9a-fA-F]+u8        {
+                            u8_t n;
+                            yynumsize = 1;
+                            yytext[yyleng-2] = '\0';
+                            if (!str_to_uint8(yytext, &n)) {
+                                error("[tengine lexer] invalid u8 hex num '%s'", yytext);
+                                return 1;
+                            }
+                            yyunumval = (u64_t)n;
+                            return TUNUM8;
                         }
 [a-zA-Z_][a-zA-Z0-9_]*  {
                             yy_size_t l = min(yyleng, sizeof(yystrval)-1);

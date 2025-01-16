@@ -8,11 +8,21 @@
 #include <dlist.h>
 #include <map.h>
 
-Expr* Expr_CONST_new(s64_t v)
+Expr* Expr_SCONST_new(s64_t v, u8_t size)
 {
-    Expr* e  = bhex_calloc(sizeof(Expr));
-    e->t     = EXPR_CONST;
-    e->value = v;
+    Expr* e         = bhex_calloc(sizeof(Expr));
+    e->t            = EXPR_SCONST;
+    e->sconst_value = v;
+    e->sconst_size  = size;
+    return e;
+}
+
+Expr* Expr_UCONST_new(u64_t v, u8_t size)
+{
+    Expr* e         = bhex_calloc(sizeof(Expr));
+    e->t            = EXPR_UCONST;
+    e->uconst_value = v;
+    e->uconst_size  = size;
     return e;
 }
 
@@ -128,9 +138,13 @@ Expr* Expr_dup(Expr* e)
     Expr* r = bhex_calloc(sizeof(Expr));
     r->t    = e->t;
     switch (e->t) {
-        case EXPR_CONST:
-            r->value = e->value;
+        case EXPR_SCONST:
+            r->sconst_value = e->sconst_value;
+            r->sconst_size  = e->sconst_size;
             break;
+        case EXPR_UCONST:
+            r->uconst_value = e->uconst_value;
+            r->uconst_size  = e->uconst_size;
         case EXPR_VAR:
             r->name = bhex_strdup(e->name);
             break;
@@ -170,7 +184,8 @@ void Expr_free(Expr* e)
         return;
 
     switch (e->t) {
-        case EXPR_CONST:
+        case EXPR_SCONST:
+        case EXPR_UCONST:
             break;
         case EXPR_VAR:
             bhex_free(e->name);
@@ -209,8 +224,11 @@ void Expr_free(Expr* e)
 void Expr_pp(Expr* e)
 {
     switch (e->t) {
-        case EXPR_CONST:
-            printf("%lld", e->value);
+        case EXPR_SCONST:
+            printf("%lld", e->sconst_value);
+            break;
+        case EXPR_UCONST:
+            printf("%llu", e->uconst_value);
             break;
         case EXPR_VAR:
             printf("%s", e->name);
