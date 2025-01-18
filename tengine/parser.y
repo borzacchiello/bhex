@@ -11,7 +11,6 @@ extern char* yytext;
 extern char  yystrval[MAX_IDENT_SIZE];
 extern s64_t yysnumval;
 extern u64_t yyunumval;
-extern int   yynumsize;
 extern int   yymax_ident_len;
 
 static ASTCtx* g_ctx;
@@ -41,7 +40,7 @@ void yyerror(const char *s)
 
 // Terminal tokens
 %token TPROC TLOCAL TSTRUCT TENUM TORENUM TIF TELSE TWHILE TBREAK
-%token TIDENTIFIER TSNUM64 TUNUM8
+%token TIDENTIFIER TSNUM64 TUNUM8 TUNUM16 TUNUM32 TUNUM64
 %token TCLBRACE TCRBRACE TLBRACE TRBRACE SQLBRACE SQRBRACE 
 %token TSEMICOLON TCOLON TCOMMA TDOT
 %token TADD TSUB TMUL TBEQ TBGT TBGE TBLT TBLE TEQUAL
@@ -239,10 +238,19 @@ params      : expr                                  {
     ;
 
 num         : TSNUM64                               {
-                                                        $$ = Expr_SCONST_new(yysnumval, yynumsize);
+                                                        $$ = Expr_SCONST_new(yysnumval, 8);
                                                     }
             | TUNUM8                                {
-                                                        $$ = Expr_UCONST_new(yyunumval, yynumsize);
+                                                        $$ = Expr_UCONST_new(yyunumval, 1);
+                                                    }
+            | TUNUM16                               {
+                                                        $$ = Expr_UCONST_new(yyunumval, 2);
+                                                    }
+            | TUNUM32                               {
+                                                        $$ = Expr_UCONST_new(yyunumval, 4);
+                                                    }
+            | TUNUM64                               {
+                                                        $$ = Expr_UCONST_new(yyunumval, 8);
                                                     }
     ;
 

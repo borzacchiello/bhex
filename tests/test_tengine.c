@@ -35,7 +35,7 @@ static void delete_tengine(TEngine* e)
         goto end;                                                              \
     if ((v)->t != TENGINE_UNUM)                                                \
         goto end;                                                              \
-    if ((v)->snum != (n))                                                      \
+    if ((v)->unum != (n))                                                      \
         goto end;                                                              \
     (r) = 1;
 
@@ -73,6 +73,57 @@ end:
     return r;
 }
 
+static int test_const_u16()
+{
+    char* prog = "proc { local a = 300u16; }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "a");
+    IS_TENGINE_UNUM_EQ(r, v, 300);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
+static int test_const_u32()
+{
+    char* prog = "proc { local a = 100000u32; }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "a");
+    IS_TENGINE_UNUM_EQ(r, v, 100000);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
+static int test_const_u64()
+{
+    char* prog = "proc { local a = 1099511627537u64; }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "a");
+    IS_TENGINE_UNUM_EQ(r, v, 1099511627537);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
 static int test_hex_const()
 {
     char* prog = "proc { local a = 0xdeadbeef; }";
@@ -101,6 +152,57 @@ static int test_hex_const_u8()
     int           r = 0;
     TEngineValue* v = Scope_get_local(e->proc_scope, "a");
     IS_TENGINE_UNUM_EQ(r, v, 255);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
+static int test_hex_const_u16()
+{
+    char* prog = "proc { local a = 0xfffu16; }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "a");
+    IS_TENGINE_UNUM_EQ(r, v, 0xfff);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
+static int test_hex_const_u32()
+{
+    char* prog = "proc { local a = 0xffffffu32; }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "a");
+    IS_TENGINE_UNUM_EQ(r, v, 0xffffff);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
+static int test_hex_const_u64()
+{
+    char* prog = "proc { local a = 0xffffffffffu64; }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "a");
+    IS_TENGINE_UNUM_EQ(r, v, 0xffffffffff);
 
 end:
     delete_tengine(e);
@@ -283,8 +385,14 @@ end:
 static test_t tests[] = {
     {"const", &test_const},
     {"const_u8", &test_const_u8},
+    {"const_u16", &test_const_u16},
+    {"const_u32", &test_const_u32},
+    {"const_u64", &test_const_u64},
     {"hex_const", &test_hex_const},
     {"hex_const_u8", &test_hex_const_u8},
+    {"hex_const_u16", &test_hex_const_u16},
+    {"hex_const_u32", &test_hex_const_u32},
+    {"hex_const_u64", &test_hex_const_u64},
     {"neg_const", &test_neg_const},
     {"const_limit_1", &test_const_limit_1},
     {"const_limit_2", &test_const_limit_2},

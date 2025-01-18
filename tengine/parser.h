@@ -66,25 +66,28 @@ extern int yydebug;
     TIDENTIFIER = 267,             /* TIDENTIFIER  */
     TSNUM64 = 268,                 /* TSNUM64  */
     TUNUM8 = 269,                  /* TUNUM8  */
-    TCLBRACE = 270,                /* TCLBRACE  */
-    TCRBRACE = 271,                /* TCRBRACE  */
-    TLBRACE = 272,                 /* TLBRACE  */
-    TRBRACE = 273,                 /* TRBRACE  */
-    SQLBRACE = 274,                /* SQLBRACE  */
-    SQRBRACE = 275,                /* SQRBRACE  */
-    TSEMICOLON = 276,              /* TSEMICOLON  */
-    TCOLON = 277,                  /* TCOLON  */
-    TCOMMA = 278,                  /* TCOMMA  */
-    TDOT = 279,                    /* TDOT  */
-    TADD = 280,                    /* TADD  */
-    TSUB = 281,                    /* TSUB  */
-    TMUL = 282,                    /* TMUL  */
-    TBEQ = 283,                    /* TBEQ  */
-    TBGT = 284,                    /* TBGT  */
-    TBGE = 285,                    /* TBGE  */
-    TBLT = 286,                    /* TBLT  */
-    TBLE = 287,                    /* TBLE  */
-    TEQUAL = 288                   /* TEQUAL  */
+    TUNUM16 = 270,                 /* TUNUM16  */
+    TUNUM32 = 271,                 /* TUNUM32  */
+    TUNUM64 = 272,                 /* TUNUM64  */
+    TCLBRACE = 273,                /* TCLBRACE  */
+    TCRBRACE = 274,                /* TCRBRACE  */
+    TLBRACE = 275,                 /* TLBRACE  */
+    TRBRACE = 276,                 /* TRBRACE  */
+    SQLBRACE = 277,                /* SQLBRACE  */
+    SQRBRACE = 278,                /* SQRBRACE  */
+    TSEMICOLON = 279,              /* TSEMICOLON  */
+    TCOLON = 280,                  /* TCOLON  */
+    TCOMMA = 281,                  /* TCOMMA  */
+    TDOT = 282,                    /* TDOT  */
+    TADD = 283,                    /* TADD  */
+    TSUB = 284,                    /* TSUB  */
+    TMUL = 285,                    /* TMUL  */
+    TBEQ = 286,                    /* TBEQ  */
+    TBGT = 287,                    /* TBGT  */
+    TBGE = 288,                    /* TBGE  */
+    TBLT = 289,                    /* TBLT  */
+    TBLE = 290,                    /* TBLE  */
+    TEQUAL = 291                   /* TEQUAL  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -93,7 +96,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 32 "parser.y"
+#line 31 "parser.y"
 
     Stmt*    stmt;
     DList*   stmts;
@@ -103,7 +106,7 @@ union YYSTYPE
     Expr*    expr;
     char*    ident;
 
-#line 107 "parser.h"
+#line 110 "parser.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

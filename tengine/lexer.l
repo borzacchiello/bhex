@@ -12,7 +12,6 @@
 char  yystrval[MAX_IDENT_SIZE];
 s64_t yysnumval;
 u64_t yyunumval;
-int   yynumsize;
 int   yymax_ident_len;
 
 %}
@@ -32,7 +31,6 @@ int   yymax_ident_len;
 "else"                  { return TELSE; }
 "while"                 { return TWHILE; }
 -?[0-9]+                {
-                            yynumsize = 8;
                             if (!str_to_int64(yytext, &yysnumval)) {
                                 error("[tengine lexer] invalid s64 num '%s'", yytext);
                                 return 1;
@@ -40,7 +38,6 @@ int   yymax_ident_len;
                             return TSNUM64;
                         }
 -?0x[0-9a-fA-F]+        {
-                            yynumsize = 8;
                             if (!str_to_int64(yytext, &yysnumval)) {
                                 error("[tengine lexer] invalid s64 hex num '%s'", yytext);
                                 return 1;
@@ -49,7 +46,6 @@ int   yymax_ident_len;
                         }
 [0-9]+u8                {
                             u8_t n;
-                            yynumsize = 1;
                             yytext[yyleng-2] = '\0';
                             if (!str_to_uint8(yytext, &n)) {
                                 error("[tengine lexer] invalid u8 num '%s'", yytext);
@@ -60,7 +56,6 @@ int   yymax_ident_len;
                         }
 0x[0-9a-fA-F]+u8        {
                             u8_t n;
-                            yynumsize = 1;
                             yytext[yyleng-2] = '\0';
                             if (!str_to_uint8(yytext, &n)) {
                                 error("[tengine lexer] invalid u8 hex num '%s'", yytext);
@@ -68,6 +63,66 @@ int   yymax_ident_len;
                             }
                             yyunumval = (u64_t)n;
                             return TUNUM8;
+                        }
+[0-9]+u16               {
+                            u16_t n;
+                            yytext[yyleng-3] = '\0';
+                            if (!str_to_uint16(yytext, &n)) {
+                                error("[tengine lexer] invalid u16 num '%s'", yytext);
+                                return 1;
+                            }
+                            yyunumval = (u64_t)n;
+                            return TUNUM16;
+                        }
+0x[0-9a-fA-F]+u16       {
+                            u16_t n;
+                            yytext[yyleng-3] = '\0';
+                            if (!str_to_uint16(yytext, &n)) {
+                                error("[tengine lexer] invalid u16 hex num '%s'", yytext);
+                                return 1;
+                            }
+                            yyunumval = (u64_t)n;
+                            return TUNUM16;
+                        }
+[0-9]+u32               {
+                            u32_t n;
+                            yytext[yyleng-3] = '\0';
+                            if (!str_to_uint32(yytext, &n)) {
+                                error("[tengine lexer] invalid u32 num '%s'", yytext);
+                                return 1;
+                            }
+                            yyunumval = (u64_t)n;
+                            return TUNUM32;
+                        }
+0x[0-9a-fA-F]+u32       {
+                            u32_t n;
+                            yytext[yyleng-3] = '\0';
+                            if (!str_to_uint32(yytext, &n)) {
+                                error("[tengine lexer] invalid u32 hex num '%s'", yytext);
+                                return 1;
+                            }
+                            yyunumval = (u64_t)n;
+                            return TUNUM32;
+                        }
+[0-9]+u64               {
+                            u64_t n;
+                            yytext[yyleng-3] = '\0';
+                            if (!str_to_uint64(yytext, &n)) {
+                                error("[tengine lexer] invalid u64 num '%s'", yytext);
+                                return 1;
+                            }
+                            yyunumval = (u64_t)n;
+                            return TUNUM64;
+                        }
+0x[0-9a-fA-F]+u64       {
+                            u64_t n;
+                            yytext[yyleng-3] = '\0';
+                            if (!str_to_uint64(yytext, &n)) {
+                                error("[tengine lexer] invalid u64 hex num '%s'", yytext);
+                                return 1;
+                            }
+                            yyunumval = (u64_t)n;
+                            return TUNUM64;
                         }
 [a-zA-Z_][a-zA-Z0-9_]*  {
                             yy_size_t l = min(yyleng, sizeof(yystrval)-1);
