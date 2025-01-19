@@ -179,6 +179,13 @@ static DList* evaluate_list_of_exprs(ProcessContext* ctx, Scope* scope,
 
 static TEngineValue* evaluate_expr(ProcessContext* ctx, Scope* scope, Expr* e)
 {
+#define evaluate_check_null                                                    \
+    if (!lhs || !rhs) {                                                        \
+        TEngineValue_free(lhs);                                                \
+        TEngineValue_free(rhs);                                                \
+        return NULL;                                                           \
+    }
+
     switch (e->t) {
         case EXPR_SCONST:
             return TEngineValue_SNUM_new(e->sconst_value, e->sconst_size);
@@ -241,6 +248,7 @@ static TEngineValue* evaluate_expr(ProcessContext* ctx, Scope* scope, Expr* e)
         case EXPR_ADD: {
             TEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
             TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
+            evaluate_check_null;
 
             TEngineValue* res = TEngineValue_add(lhs, rhs);
             TEngineValue_free(lhs);
@@ -250,6 +258,7 @@ static TEngineValue* evaluate_expr(ProcessContext* ctx, Scope* scope, Expr* e)
         case EXPR_SUB: {
             TEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
             TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
+            evaluate_check_null;
 
             TEngineValue* res = TEngineValue_sub(lhs, rhs);
             TEngineValue_free(lhs);
@@ -259,8 +268,39 @@ static TEngineValue* evaluate_expr(ProcessContext* ctx, Scope* scope, Expr* e)
         case EXPR_MUL: {
             TEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
             TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
+            evaluate_check_null;
 
             TEngineValue* res = TEngineValue_mul(lhs, rhs);
+            TEngineValue_free(lhs);
+            TEngineValue_free(rhs);
+            return res;
+        }
+        case EXPR_AND: {
+            TEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
+            TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
+            evaluate_check_null;
+
+            TEngineValue* res = TEngineValue_and(lhs, rhs);
+            TEngineValue_free(lhs);
+            TEngineValue_free(rhs);
+            return res;
+        }
+        case EXPR_OR: {
+            TEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
+            TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
+            evaluate_check_null;
+
+            TEngineValue* res = TEngineValue_or(lhs, rhs);
+            TEngineValue_free(lhs);
+            TEngineValue_free(rhs);
+            return res;
+        }
+        case EXPR_XOR: {
+            TEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
+            TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
+            evaluate_check_null;
+
+            TEngineValue* res = TEngineValue_xor(lhs, rhs);
             TEngineValue_free(lhs);
             TEngineValue_free(rhs);
             return res;
@@ -268,6 +308,7 @@ static TEngineValue* evaluate_expr(ProcessContext* ctx, Scope* scope, Expr* e)
         case EXPR_BEQ: {
             TEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
             TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
+            evaluate_check_null;
 
             TEngineValue* res = TEngineValue_beq(lhs, rhs);
             TEngineValue_free(lhs);
@@ -277,6 +318,7 @@ static TEngineValue* evaluate_expr(ProcessContext* ctx, Scope* scope, Expr* e)
         case EXPR_BLT: {
             TEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
             TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
+            evaluate_check_null;
 
             TEngineValue* res = TEngineValue_blt(lhs, rhs);
             TEngineValue_free(lhs);
@@ -286,6 +328,7 @@ static TEngineValue* evaluate_expr(ProcessContext* ctx, Scope* scope, Expr* e)
         case EXPR_BLE: {
             TEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
             TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
+            evaluate_check_null;
 
             TEngineValue* res = TEngineValue_ble(lhs, rhs);
             TEngineValue_free(lhs);
@@ -295,6 +338,7 @@ static TEngineValue* evaluate_expr(ProcessContext* ctx, Scope* scope, Expr* e)
         case EXPR_BGT: {
             TEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
             TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
+            evaluate_check_null;
 
             TEngineValue* res = TEngineValue_bgt(lhs, rhs);
             TEngineValue_free(lhs);
@@ -304,6 +348,7 @@ static TEngineValue* evaluate_expr(ProcessContext* ctx, Scope* scope, Expr* e)
         case EXPR_BGE: {
             TEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
             TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
+            evaluate_check_null;
 
             TEngineValue* res = TEngineValue_bge(lhs, rhs);
             TEngineValue_free(lhs);

@@ -147,6 +147,33 @@ TEngineValue* TEngineValue_mul(const TEngineValue* lhs, const TEngineValue* rhs)
     return NULL;
 }
 
+TEngineValue* TEngineValue_and(const TEngineValue* lhs, const TEngineValue* rhs)
+{
+    binop_num(&);
+
+    error("[tengine] and undefined for types %s and %s", type_to_string(lhs->t),
+          type_to_string(rhs->t));
+    return NULL;
+}
+
+TEngineValue* TEngineValue_or(const TEngineValue* lhs, const TEngineValue* rhs)
+{
+    binop_num(|);
+
+    error("[tengine] or undefined for types %s and %s", type_to_string(lhs->t),
+          type_to_string(rhs->t));
+    return NULL;
+}
+
+TEngineValue* TEngineValue_xor(const TEngineValue* lhs, const TEngineValue* rhs)
+{
+    binop_num(^);
+
+    error("[tengine] xor undefined for types %s and %s", type_to_string(lhs->t),
+          type_to_string(rhs->t));
+    return NULL;
+}
+
 #define binop_bool(op)                                                         \
     if (lhs == NULL || rhs == NULL)                                            \
         return NULL;                                                           \

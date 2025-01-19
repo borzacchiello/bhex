@@ -86,12 +86,15 @@ extern int yydebug;
     TADD = 287,                    /* TADD  */
     TSUB = 288,                    /* TSUB  */
     TMUL = 289,                    /* TMUL  */
-    TBEQ = 290,                    /* TBEQ  */
-    TBGT = 291,                    /* TBGT  */
-    TBGE = 292,                    /* TBGE  */
-    TBLT = 293,                    /* TBLT  */
-    TBLE = 294,                    /* TBLE  */
-    TEQUAL = 295                   /* TEQUAL  */
+    TAND = 290,                    /* TAND  */
+    TOR = 291,                     /* TOR  */
+    TXOR = 292,                    /* TXOR  */
+    TBEQ = 293,                    /* TBEQ  */
+    TBGT = 294,                    /* TBGT  */
+    TBGE = 295,                    /* TBGE  */
+    TBLT = 296,                    /* TBLT  */
+    TBLE = 297,                    /* TBLE  */
+    TEQUAL = 298                   /* TEQUAL  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -110,7 +113,7 @@ union YYSTYPE
     Expr*    expr;
     char*    ident;
 
-#line 114 "parser.h"
+#line 117 "parser.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

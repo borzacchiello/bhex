@@ -17,6 +17,9 @@ typedef enum ASTExprType {
     EXPR_ADD,
     EXPR_SUB,
     EXPR_MUL,
+    EXPR_AND,
+    EXPR_OR,
+    EXPR_XOR,
     EXPR_BEQ,
     EXPR_BLT,
     EXPR_BLE,
@@ -48,7 +51,7 @@ typedef struct Expr {
         DList* chain;
         struct {
             // EXPR_ADD, EXPR_SUB, EXPR_BEQ, EXPR_BLT, EXPR_BLE, EXPR_BGT,
-            // EXPR_BGE
+            // EXPR_BGE, EXPR_AND, EXPR_OR, EXPR_XOR
             struct Expr* lhs;
             struct Expr* rhs;
         };
@@ -67,6 +70,9 @@ Expr* Expr_VAR_new(const char* var);
 Expr* Expr_VARCHAIN_new(DList* chain);
 Expr* Expr_FUN_CALL_new(const char* fname, DList* params);
 Expr* Expr_ADD_new(Expr* lhs, Expr* rhs);
+Expr* Expr_AND_new(Expr* lhs, Expr* rhs);
+Expr* Expr_OR_new(Expr* lhs, Expr* rhs);
+Expr* Expr_XOR_new(Expr* lhs, Expr* rhs);
 Expr* Expr_SUB_new(Expr* lhs, Expr* rhs);
 Expr* Expr_MUL_new(Expr* lhs, Expr* rhs);
 Expr* Expr_BEQ_new(Expr* lhs, Expr* rhs);

@@ -64,6 +64,11 @@ TEngineValue* TEngineValue_sub(const TEngineValue* lhs,
                                const TEngineValue* rhs);
 TEngineValue* TEngineValue_mul(const TEngineValue* lhs,
                                const TEngineValue* rhs);
+TEngineValue* TEngineValue_and(const TEngineValue* lhs,
+                               const TEngineValue* rhs);
+TEngineValue* TEngineValue_or(const TEngineValue* lhs, const TEngineValue* rhs);
+TEngineValue* TEngineValue_xor(const TEngineValue* lhs,
+                               const TEngineValue* rhs);
 TEngineValue* TEngineValue_bgt(const TEngineValue* lhs,
                                const TEngineValue* rhs);
 TEngineValue* TEngineValue_bge(const TEngineValue* lhs,

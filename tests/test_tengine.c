@@ -357,7 +357,8 @@ end:
 
 static int test_eq_str()
 {
-    char* prog = "proc { local a = \"ciao\"; local b = \"ciao\"; local c = a == b; }";
+    char* prog =
+        "proc { local a = \"ciao\"; local b = \"ciao\"; local c = a == b; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -392,6 +393,23 @@ end:
 static int test_add()
 {
     char* prog = "proc { local a = 4; local b = a + 10; }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "b");
+    IS_TENGINE_SNUM_EQ(r, v, 14);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
+static int test_add_no_space()
+{
+    char* prog = "proc { local a = 4; local b = a+10; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -560,6 +578,57 @@ end:
     return r;
 }
 
+static int test_and()
+{
+    char* prog = "proc { local a = 0xffff; local b = a & 0xf0f0; }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "b");
+    IS_TENGINE_SNUM_EQ(r, v, 0xf0f0);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
+static int test_or()
+{
+    char* prog = "proc { local a = 0xf0f0; local b = a | 0x0f0f; }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "b");
+    IS_TENGINE_SNUM_EQ(r, v, 0xffff);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
+static int test_xor()
+{
+    char* prog = "proc { local a = 0xff; local b = a ^ 0xf0; }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "b");
+    IS_TENGINE_SNUM_EQ(r, v, 0x0f);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
 static int test_precedence_op_1()
 {
     char* prog = "proc { local a = 4 + 3 * 8; }";
@@ -624,6 +693,25 @@ static int test_precedence_op_4()
     int           r = 0;
     TEngineValue* v = Scope_get_local(e->proc_scope, "a");
     IS_TENGINE_SNUM_EQ(r, v, 11);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
+static int test_precedence_op_5()
+{
+    char* prog = "proc { local a = (4 + 3) * 8; }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r     = 0;
+    TEngineValue* v     = Scope_get_local(e->proc_scope, "a");
+    char*         str_v = TEngineValue_tostring(v, 0);
+    bhex_free(str_v);
+    IS_TENGINE_SNUM_EQ(r, v, 56);
 
 end:
     delete_tengine(e);
@@ -705,6 +793,7 @@ static test_t tests[] = {
     {"str_const_2", &test_str_const_2},
     {"eq_str", &test_eq_str},
     {"add", &test_add},
+    {"add_no_space", &test_add_no_space},
     {"add_wrap", &test_add_wrap},
     {"add_wrap_s8", &test_add_wrap_s8},
     {"add_wrap_s16", &test_add_wrap_s16},
@@ -715,10 +804,14 @@ static test_t tests[] = {
     {"add_wrap_u64", &test_add_wrap_u64},
     {"sub", &test_sub},
     {"mul", &test_mul},
+    {"and", &test_and},
+    {"or", &test_or},
+    {"xor", &test_xor},
     {"precedence_op_1", &test_precedence_op_1},
     {"precedence_op_2", &test_precedence_op_2},
     {"precedence_op_3", &test_precedence_op_3},
     {"precedence_op_4", &test_precedence_op_4},
+    {"precedence_op_5", &test_precedence_op_5},
     {"if_1", &test_if_1},
     {"if_2", &test_if_2},
     {"while_1", &test_while_1},
