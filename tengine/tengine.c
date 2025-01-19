@@ -184,6 +184,8 @@ static TEngineValue* evaluate_expr(ProcessContext* ctx, Scope* scope, Expr* e)
             return TEngineValue_SNUM_new(e->sconst_value, e->sconst_size);
         case EXPR_UCONST:
             return TEngineValue_UNUM_new(e->uconst_value, e->uconst_size);
+        case EXPR_STRING:
+            return TEngineValue_STRING_new(e->str, e->str_len);
         case EXPR_VAR: {
             TEngineValue* value = Scope_get_anyvar(scope, e->name);
             if (!value) {
@@ -367,10 +369,10 @@ static int process_array_type(ProcessContext* ctx, const char* varname,
     int is_char = strcmp(type, "char") == 0;
     if (is_char) {
         // Special case, the output variable is a string
-        char*          tmp = bhex_calloc(size + 1);
-        const uint8_t* buf = fb_read(ctx->fb, size);
+        u8_t*       tmp = bhex_calloc(size + 1);
+        const u8_t* buf = fb_read(ctx->fb, size);
         memcpy(tmp, buf, size);
-        *oval = TEngineValue_STRING_new(tmp);
+        *oval = TEngineValue_STRING_new(tmp, size);
         value_pp(ctx->engine, ctx->print_off, *oval);
         engine_printf(ctx->engine, "\n");
         bhex_free(tmp);

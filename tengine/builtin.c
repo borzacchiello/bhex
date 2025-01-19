@@ -16,7 +16,7 @@ static TEngineValue* string_process(TEngine* e, FileBuffer* fb)
 {
     u64_t tmp_capacity = 8;
     u64_t tmp_size     = 0;
-    char* tmp          = bhex_calloc(tmp_capacity);
+    u8_t* tmp          = bhex_calloc(tmp_capacity);
 
 #define enlarge_tmp                                                            \
     if (tmp_size == tmp_capacity) {                                            \
@@ -24,7 +24,7 @@ static TEngineValue* string_process(TEngine* e, FileBuffer* fb)
         tmp = bhex_realloc(tmp, tmp_capacity);                                 \
     }
 
-    const uint8_t* buf = fb_read(fb, 1);
+    const u8_t* buf = fb_read(fb, 1);
     if (buf == NULL)
         return NULL;
 
@@ -40,7 +40,7 @@ static TEngineValue* string_process(TEngine* e, FileBuffer* fb)
 
     enlarge_tmp;
     tmp[tmp_size] = '\0';
-    r             = TEngineValue_STRING_new(tmp);
+    r             = TEngineValue_STRING_new(tmp, tmp_size);
 
 end:
     bhex_free(tmp);

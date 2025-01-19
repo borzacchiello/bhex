@@ -2,7 +2,10 @@
 
 #include "ast.h"
 #include "parser.h"
+
 #include <util/byte_to_num.h>
+#include <util/str.h>
+#include <alloc.h>
 #include <log.h>
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
@@ -10,9 +13,13 @@
 #define YY_FATAL_ERROR(msg) panic(msg)
 
 char  yystrval[MAX_IDENT_SIZE];
+u8_t* yyheapbuf = NULL;
+u32_t yyheapbuf_len;
 s64_t yysnumval;
 u64_t yyunumval;
 int   yymax_ident_len;
+
+__attribute__((destructor)) static void delete_yyheapbuf(void) { if (yyheapbuf) bhex_free(yyheapbuf); }
 
 %}
 
@@ -212,6 +219,23 @@ int   yymax_ident_len;
 "."                     { return TDOT; }
 ":"                     { return TCOLON; }
 ";"                     { return TSEMICOLON; }
+\"[^"]*\"               {
+                            if (yyheapbuf) bhex_free(yyheapbuf);
+
+                            char* tmp = bhex_calloc(yyleng-1);
+                            memcpy(tmp, yytext+1, yyleng-2);
+
+                            size_t len;
+                            if (!unescape_ascii_string(tmp, &yyheapbuf, &len)) {
+                                error("[tengine lexer] invalid string '%s'", tmp);
+                                yyheapbuf = NULL;
+                                bhex_free(tmp);
+                                return 1;
+                            }
+                            yyheapbuf_len = (uint32_t)len;
+                            bhex_free(tmp);
+                            return TSTR;
+                        }
 .                       {
                             error("[tengine lexer] unknown token");
                             return 1;

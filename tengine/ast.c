@@ -2,6 +2,8 @@
 #include <string.h>
 
 #include "ast.h"
+#include "defs.h"
+#include "util/byte_to_str.h"
 
 #include <alloc.h>
 #include <log.h>
@@ -23,6 +25,16 @@ Expr* Expr_UCONST_new(u64_t v, u8_t size)
     e->t            = EXPR_UCONST;
     e->uconst_value = v;
     e->uconst_size  = size;
+    return e;
+}
+
+Expr* Expr_STRING_new(const u8_t* str, u32_t size)
+{
+    Expr* e    = bhex_calloc(sizeof(Expr));
+    e->t       = EXPR_STRING;
+    e->str     = bhex_calloc(size + 1);
+    e->str_len = size;
+    memcpy(e->str, str, size);
     return e;
 }
 
@@ -145,6 +157,12 @@ Expr* Expr_dup(Expr* e)
         case EXPR_UCONST:
             r->uconst_value = e->uconst_value;
             r->uconst_size  = e->uconst_size;
+            break;
+        case EXPR_STRING:
+            r->str     = bhex_calloc(e->str_len + 1);
+            r->str_len = r->str_len;
+            memcpy(r->str, e->str, e->str_len);
+            break;
         case EXPR_VAR:
             r->name = bhex_strdup(e->name);
             break;
@@ -186,6 +204,9 @@ void Expr_free(Expr* e)
     switch (e->t) {
         case EXPR_SCONST:
         case EXPR_UCONST:
+            break;
+        case EXPR_STRING:
+            bhex_free(e->str);
             break;
         case EXPR_VAR:
             bhex_free(e->name);
@@ -229,6 +250,16 @@ void Expr_pp(Expr* e)
             break;
         case EXPR_UCONST:
             printf("%llu", e->uconst_value);
+            break;
+        case EXPR_STRING:
+            printf("'");
+            for (u32_t i = 0; i < e->str_len; ++i) {
+                if (is_printable_ascii(e->str[i]))
+                    printf("%c", e->str[i]);
+                else
+                    printf("\\x%02x", e->str[i]);
+            }
+            printf("'");
             break;
         case EXPR_VAR:
             printf("%s", e->name);

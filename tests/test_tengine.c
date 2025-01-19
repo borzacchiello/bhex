@@ -1,5 +1,6 @@
 #include "test.h"
 
+#include <string.h>
 #include <alloc.h>
 #include <log.h>
 
@@ -36,6 +37,15 @@ static void delete_tengine(TEngine* e)
     if ((v)->t != TENGINE_UNUM)                                                \
         goto end;                                                              \
     if ((v)->unum != (n))                                                      \
+        goto end;                                                              \
+    (r) = 1;
+
+#define IS_TENGINE_STRING_EQ(r, v, n)                                          \
+    if ((v) == NULL)                                                           \
+        goto end;                                                              \
+    if ((v)->t != TENGINE_STRING)                                              \
+        goto end;                                                              \
+    if (strcmp((char*)(v)->str, (n)) != 0)                                     \
         goto end;                                                              \
     (r) = 1;
 
@@ -305,6 +315,57 @@ static int test_neg_const()
     int           r = 0;
     TEngineValue* v = Scope_get_local(e->proc_scope, "a");
     IS_TENGINE_SNUM_EQ(r, v, -42);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
+static int test_str_const_1()
+{
+    char* prog = "proc { local a = \"ciao\"; }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "a");
+    IS_TENGINE_STRING_EQ(r, v, "ciao");
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
+static int test_str_const_2()
+{
+    char* prog = "proc { local a = \"ciao\xde\xad\xbe\xef\"; }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "a");
+    IS_TENGINE_STRING_EQ(r, v, "ciao\xde\xad\xbe\xef");
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
+static int test_eq_str()
+{
+    char* prog = "proc { local a = \"ciao\"; local b = \"ciao\"; local c = a == b; }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "c");
+    IS_TENGINE_UNUM_EQ(r, v, 1);
 
 end:
     delete_tengine(e);
@@ -637,9 +698,12 @@ static test_t tests[] = {
     {"hex_const_u16", &test_hex_const_u16},
     {"hex_const_u32", &test_hex_const_u32},
     {"hex_const_u64", &test_hex_const_u64},
-    {"neg_const", &test_neg_const},
     {"const_limit_1", &test_const_limit_1},
     {"const_limit_2", &test_const_limit_2},
+    {"neg_const", &test_neg_const},
+    {"str_const_1", &test_str_const_1},
+    {"str_const_2", &test_str_const_2},
+    {"eq_str", &test_eq_str},
     {"add", &test_add},
     {"add_wrap", &test_add_wrap},
     {"add_wrap_s8", &test_add_wrap_s8},

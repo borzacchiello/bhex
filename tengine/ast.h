@@ -10,6 +10,7 @@
 typedef enum ASTExprType {
     EXPR_SCONST = 200,
     EXPR_UCONST,
+    EXPR_STRING,
     EXPR_VAR,
     EXPR_VARCHAIN,
     EXPR_FUN_CALL,
@@ -36,6 +37,11 @@ typedef struct Expr {
             u64_t uconst_value;
             u8_t  uconst_size;
         };
+        struct {
+            // EXPR_STRING
+            u8_t* str;
+            u32_t str_len;
+        };
         // EXPR_VAR
         char* name;
         // EXPR_VARCHAIN
@@ -56,6 +62,7 @@ typedef struct Expr {
 
 Expr* Expr_SCONST_new(s64_t v, u8_t size);
 Expr* Expr_UCONST_new(u64_t v, u8_t size);
+Expr* Expr_STRING_new(const u8_t* str, u32_t size);
 Expr* Expr_VAR_new(const char* var);
 Expr* Expr_VARCHAIN_new(DList* chain);
 Expr* Expr_FUN_CALL_new(const char* fname, DList* params);

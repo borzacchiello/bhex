@@ -1,6 +1,7 @@
 #include "value.h"
 #include "defs.h"
 #include "local.h"
+#include "util/byte_to_str.h"
 
 #include <strbuilder.h>
 #include <util/str.h>
@@ -72,11 +73,13 @@ TEngineValue* TEngineValue_CHAR_new(char c)
     return r;
 }
 
-TEngineValue* TEngineValue_STRING_new(const char* str)
+TEngineValue* TEngineValue_STRING_new(const u8_t* str, u32_t size)
 {
     TEngineValue* r = bhex_calloc(sizeof(TEngineValue));
     r->t            = TENGINE_STRING;
-    r->str          = bhex_strdup(str);
+    r->str          = bhex_calloc(size + 1);
+    r->str_size     = size;
+    memcpy(r->str, str, size);
     return r;
 }
 
@@ -98,6 +101,8 @@ TEngineValue* TEngineValue_ENUM_VALUE_new(const char* ename, u64_t econst)
 }
 
 #define binop_num(op)                                                          \
+    if (lhs == NULL || rhs == NULL)                                            \
+        return NULL;                                                           \
     if (lhs->t == TENGINE_UNUM && rhs->t == TENGINE_UNUM) {                    \
         return TEngineValue_UNUM_new(lhs->unum op rhs->unum,                   \
                                      max(lhs->unum_size, rhs->unum_size));     \
@@ -143,6 +148,8 @@ TEngineValue* TEngineValue_mul(const TEngineValue* lhs, const TEngineValue* rhs)
 }
 
 #define binop_bool(op)                                                         \
+    if (lhs == NULL || rhs == NULL)                                            \
+        return NULL;                                                           \
     if (lhs->t == TENGINE_UNUM && rhs->t == TENGINE_UNUM) {                    \
         return TEngineValue_UNUM_new((lhs->unum op rhs->unum) ? 1 : 0, 8);     \
     }                                                                          \
@@ -199,8 +206,10 @@ TEngineValue* TEngineValue_beq(const TEngineValue* lhs, const TEngineValue* rhs)
     binop_bool(==);
 
     if (lhs->t == TENGINE_STRING && rhs->t == TENGINE_STRING) {
-        return TEngineValue_UNUM_new((strcmp(lhs->str, rhs->str) == 0) ? 1 : 0,
-                                     8);
+        if (lhs->str_size != rhs->str_size ||
+            memcmp(lhs->str, rhs->str, lhs->str_size) != 0)
+            return TEngineValue_UNUM_new(0, 8);
+        return TEngineValue_UNUM_new(1, 8);
     }
     if (lhs->t == TENGINE_CHAR && rhs->t == TENGINE_CHAR) {
         return TEngineValue_UNUM_new((lhs->c == rhs->c) ? 1 : 0, 8);
@@ -264,7 +273,7 @@ int TEngineValue_as_u64(TEngineValue* v, u64_t* o)
 int TEngineValue_as_string(TEngineValue* v, const char** o)
 {
     if (v->t == TENGINE_STRING) {
-        *o = v->str;
+        *o = (char*)v->str;
         return 0;
     }
 
@@ -343,7 +352,7 @@ TEngineValue* TEngineValue_dup(TEngineValue* v)
         case TENGINE_CHAR:
             return TEngineValue_CHAR_new(v->c);
         case TENGINE_STRING:
-            return TEngineValue_STRING_new(v->str);
+            return TEngineValue_STRING_new(v->str, v->str_size);
         case TENGINE_ENUM_VALUE:
             return TEngineValue_ENUM_VALUE_new(v->enum_value, v->enum_const);
         case TENGINE_OBJ: {
@@ -391,9 +400,19 @@ char* TEngineValue_tostring(TEngineValue* v, int hex)
         case TENGINE_CHAR:
             strbuilder_appendf(sb, "%c", ascii_or_space(v->c));
             break;
-        case TENGINE_STRING:
-            strbuilder_appendf(sb, "'%s'", v->str);
+        case TENGINE_STRING: {
+            strbuilder_append_char(sb, '\'');
+            for (uint32_t i = 0; i < v->str_size; ++i) {
+                if (!v->str[i])
+                    break;
+                if (is_printable_ascii(v->str[i]))
+                    strbuilder_append_char(sb, v->str[i]);
+                else
+                    strbuilder_appendf(sb, "\\x%02x", v->str[i]);
+            }
+            strbuilder_append_char(sb, '\'');
             break;
+        }
         case TENGINE_ENUM_VALUE: {
             strbuilder_appendf(sb, "%s", v->enum_value);
             break;

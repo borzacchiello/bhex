@@ -71,5 +71,5 @@ void strbuilder_append_char(StringBuilder* sb, char c)
     }
     sb->str[sb->size]     = c;
     sb->str[sb->size + 1] = '\0';
-    sb->size += 2;
+    sb->size += 1;
 }

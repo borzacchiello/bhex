@@ -9,6 +9,8 @@
 extern int   yylex();
 extern char* yytext;
 extern char  yystrval[MAX_IDENT_SIZE];
+extern u8_t* yyheapbuf;
+extern u32_t yyheapbuf_len;
 extern s64_t yysnumval;
 extern u64_t yyunumval;
 extern int   yymax_ident_len;
@@ -40,7 +42,7 @@ void yyerror(const char *s)
 
 // Terminal tokens
 %token TPROC TLOCAL TSTRUCT TENUM TORENUM TIF TELSE TWHILE TBREAK
-%token TIDENTIFIER TUNUM8 TUNUM16 TUNUM32 TUNUM64 TSNUM8 TSNUM16 TSNUM32 TSNUM64
+%token TIDENTIFIER TUNUM8 TUNUM16 TUNUM32 TUNUM64 TSNUM8 TSNUM16 TSNUM32 TSNUM64 TSTR
 %token TCLBRACE TCRBRACE TLBRACE TRBRACE SQLBRACE SQRBRACE 
 %token TSEMICOLON TCOLON TCOMMA TDOT
 %token TADD TSUB TMUL TBEQ TBGT TBGE TBLT TBLE TEQUAL
@@ -176,6 +178,9 @@ break       : TBREAK                                {
     ;
 
 expr        : num
+            | TSTR                                  {
+                                                        $$ = Expr_STRING_new(yyheapbuf, yyheapbuf_len);
+                                                    }
             | ident                                 {
                                                         $$ = Expr_VAR_new($1);
                                                         bhex_free($1);
