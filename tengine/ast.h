@@ -24,7 +24,9 @@ typedef enum ASTExprType {
     EXPR_BLT,
     EXPR_BLE,
     EXPR_BGT,
-    EXPR_BGE
+    EXPR_BGE,
+    EXPR_BAND,
+    EXPR_BOR
 } ASTExprType;
 
 typedef struct Expr {
@@ -80,6 +82,8 @@ Expr* Expr_BLT_new(Expr* lhs, Expr* rhs);
 Expr* Expr_BLE_new(Expr* lhs, Expr* rhs);
 Expr* Expr_BGT_new(Expr* lhs, Expr* rhs);
 Expr* Expr_BGE_new(Expr* lhs, Expr* rhs);
+Expr* Expr_BAND_new(Expr* lhs, Expr* rhs);
+Expr* Expr_BOR_new(Expr* lhs, Expr* rhs);
 Expr* Expr_dup(Expr* e);
 void  Expr_free(Expr* e);
 

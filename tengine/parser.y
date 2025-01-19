@@ -45,7 +45,7 @@ void yyerror(const char *s)
 %token TIDENTIFIER TUNUM8 TUNUM16 TUNUM32 TUNUM64 TSNUM8 TSNUM16 TSNUM32 TSNUM64 TSTR
 %token TCLBRACE TCRBRACE TLBRACE TRBRACE SQLBRACE SQRBRACE 
 %token TSEMICOLON TCOLON TCOMMA TDOT
-%token TADD TSUB TMUL TAND TOR TXOR TBEQ TBGT TBGE TBLT TBLE TEQUAL
+%token TADD TSUB TMUL TAND TOR TXOR TBAND TBOR TBEQ TBGT TBGE TBLT TBLE TEQUAL
 
 // Non terminal tokens types
 %type <stmt>      stmt fvar_decl lvar_decl lvar_ass void_fcall if if_else while break
@@ -57,6 +57,7 @@ void yyerror(const char *s)
 %type <params>    params
 
 // Operator precedence
+%left TBAND TBOR
 %left TBEQ TBLT TBLE TBGT TBGE
 %left TAND TOR TXOR
 %left TADD TSUB
@@ -200,6 +201,9 @@ expr        : num
             | TCLBRACE expr TCRBRACE                {
                                                         $$ = $2;
                                                     }
+            | TSUB expr                             {
+                                                        $$ = Expr_SUB_new(Expr_SCONST_new(0, 1), $2);
+                                                    }
             | expr TAND expr                        {
                                                         $$ = Expr_AND_new($1, $3);
                                                     }
@@ -232,6 +236,12 @@ expr        : num
                                                     }
             | expr TBGE expr                        {
                                                         $$ = Expr_BGE_new($1, $3);
+                                                    }
+            | expr TBAND expr                       {
+                                                        $$ = Expr_BAND_new($1, $3);
+                                                    }
+            | expr TBOR expr                        {
+                                                        $$ = Expr_BOR_new($1, $3);
                                                     }
     ;
 

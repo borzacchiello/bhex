@@ -178,18 +178,18 @@ TEngineValue* TEngineValue_xor(const TEngineValue* lhs, const TEngineValue* rhs)
     if (lhs == NULL || rhs == NULL)                                            \
         return NULL;                                                           \
     if (lhs->t == TENGINE_UNUM && rhs->t == TENGINE_UNUM) {                    \
-        return TEngineValue_UNUM_new((lhs->unum op rhs->unum) ? 1 : 0, 8);     \
+        return TEngineValue_UNUM_new((lhs->unum op rhs->unum) ? 1 : 0, 1);     \
     }                                                                          \
     if (lhs->t == TENGINE_SNUM && rhs->t == TENGINE_UNUM) {                    \
         return TEngineValue_UNUM_new(((u64_t)lhs->snum op rhs->unum) ? 1 : 0,  \
-                                     8);                                       \
+                                     1);                                       \
     }                                                                          \
     if (lhs->t == TENGINE_UNUM && rhs->t == TENGINE_SNUM) {                    \
         return TEngineValue_UNUM_new((lhs->unum op(u64_t) rhs->snum) ? 1 : 0,  \
-                                     8);                                       \
+                                     1);                                       \
     }                                                                          \
     if (lhs->t == TENGINE_SNUM && rhs->t == TENGINE_SNUM) {                    \
-        return TEngineValue_UNUM_new((lhs->snum op rhs->snum) ? 1 : 0, 8);     \
+        return TEngineValue_UNUM_new((lhs->snum op rhs->snum) ? 1 : 0, 1);     \
     }
 
 TEngineValue* TEngineValue_bgt(const TEngineValue* lhs, const TEngineValue* rhs)
@@ -239,28 +239,47 @@ TEngineValue* TEngineValue_beq(const TEngineValue* lhs, const TEngineValue* rhs)
         return TEngineValue_UNUM_new(1, 8);
     }
     if (lhs->t == TENGINE_CHAR && rhs->t == TENGINE_CHAR) {
-        return TEngineValue_UNUM_new((lhs->c == rhs->c) ? 1 : 0, 8);
+        return TEngineValue_UNUM_new((lhs->c == rhs->c) ? 1 : 0, 1);
     }
     if (lhs->t == TENGINE_ENUM_VALUE && rhs->t == TENGINE_ENUM_VALUE) {
         return TEngineValue_UNUM_new(
-            (lhs->enum_const == rhs->enum_const) ? 1 : 0, 8);
+            (lhs->enum_const == rhs->enum_const) ? 1 : 0, 1);
     }
     if (lhs->t == TENGINE_ENUM_VALUE && rhs->t == TENGINE_SNUM) {
         return TEngineValue_UNUM_new(
-            (lhs->enum_const == (u64_t)rhs->snum) ? 1 : 0, 8);
+            (lhs->enum_const == (u64_t)rhs->snum) ? 1 : 0, 1);
     }
     if (lhs->t == TENGINE_SNUM && rhs->t == TENGINE_ENUM_VALUE) {
         return TEngineValue_UNUM_new(
-            ((u64_t)lhs->snum == rhs->enum_const) ? 1 : 0, 8);
+            ((u64_t)lhs->snum == rhs->enum_const) ? 1 : 0, 1);
     }
     if (lhs->t == TENGINE_ENUM_VALUE && rhs->t == TENGINE_UNUM) {
-        return TEngineValue_UNUM_new((lhs->enum_const == rhs->unum) ? 1 : 0, 8);
+        return TEngineValue_UNUM_new((lhs->enum_const == rhs->unum) ? 1 : 0, 1);
     }
     if (lhs->t == TENGINE_UNUM && rhs->t == TENGINE_ENUM_VALUE) {
-        return TEngineValue_UNUM_new((lhs->unum == rhs->enum_const) ? 1 : 0, 8);
+        return TEngineValue_UNUM_new((lhs->unum == rhs->enum_const) ? 1 : 0, 1);
     }
 
     error("[tengine] beq undefined for types %s and %s", type_to_string(lhs->t),
+          type_to_string(rhs->t));
+    return NULL;
+}
+
+TEngineValue* TEngineValue_band(const TEngineValue* lhs,
+                                const TEngineValue* rhs)
+{
+    binop_bool(&&);
+
+    error("[tengine] band undefined for types %s and %s",
+          type_to_string(lhs->t), type_to_string(rhs->t));
+    return NULL;
+}
+
+TEngineValue* TEngineValue_bor(const TEngineValue* lhs, const TEngineValue* rhs)
+{
+    binop_bool(||);
+
+    error("[tengine] bor undefined for types %s and %s", type_to_string(lhs->t),
           type_to_string(rhs->t));
     return NULL;
 }

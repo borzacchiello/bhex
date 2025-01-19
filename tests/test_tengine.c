@@ -40,6 +40,17 @@ static void delete_tengine(TEngine* e)
         goto end;                                                              \
     (r) = 1;
 
+#define IS_TENGINE_BOOL_EQ(r, v, n)                                            \
+    if ((v) == NULL)                                                           \
+        goto end;                                                              \
+    if ((v)->t != TENGINE_UNUM)                                                \
+        goto end;                                                              \
+    if ((v)->unum_size != 1)                                                   \
+        goto end;                                                              \
+    if ((v)->unum != (n))                                                      \
+        goto end;                                                              \
+    (r) = 1;
+
 #define IS_TENGINE_STRING_EQ(r, v, n)                                          \
     if ((v) == NULL)                                                           \
         goto end;                                                              \
@@ -629,6 +640,108 @@ end:
     return r;
 }
 
+static int test_neg_1()
+{
+    char* prog = "proc { local a = -(42+16); }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "a");
+    IS_TENGINE_SNUM_EQ(r, v, -58);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
+static int test_neg_2()
+{
+    char* prog = "proc { local a = 43 + -(42+16); }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "a");
+    IS_TENGINE_SNUM_EQ(r, v, -58 + 43);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
+static int test_band_1()
+{
+    char* prog = "proc { local a = 1; local b = 0; local c = a && b; }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "c");
+    IS_TENGINE_BOOL_EQ(r, v, 0);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
+static int test_band_2()
+{
+    char* prog = "proc { local a = 1; local b = 1; local c = a && b; }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "c");
+    IS_TENGINE_BOOL_EQ(r, v, 1);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
+static int test_bor_1()
+{
+    char* prog = "proc { local a = 1; local b = 0; local c = a || b; }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "c");
+    IS_TENGINE_BOOL_EQ(r, v, 1);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
+static int test_bor_2()
+{
+    char* prog = "proc { local a = 0; local b = 0; local c = a && b; }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "c");
+    IS_TENGINE_BOOL_EQ(r, v, 0);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
 static int test_precedence_op_1()
 {
     char* prog = "proc { local a = 4 + 3 * 8; }";
@@ -807,6 +920,12 @@ static test_t tests[] = {
     {"and", &test_and},
     {"or", &test_or},
     {"xor", &test_xor},
+    {"neg_1", &test_neg_1},
+    {"neg_2", &test_neg_2},
+    {"band_1", &test_band_1},
+    {"band_2", &test_band_2},
+    {"bor_1", &test_bor_1},
+    {"bor_2", &test_bor_2},
     {"precedence_op_1", &test_precedence_op_1},
     {"precedence_op_2", &test_precedence_op_2},
     {"precedence_op_3", &test_precedence_op_3},

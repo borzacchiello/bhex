@@ -3,9 +3,11 @@
 Work in progress template engine
 
 [X] fix that p/r 100 prints 112 chars
-[ ] calls to non-existent non-void function leads to segfault
+[ ] fix mem leak when syntax error occurs
+[ ] find a way to test tengine through in-memory file buffers
+[ ] calls to non-existent non-void function leads to segfault (??? cannot reproduce)
 [X] make sure operator precedence is respected
-[ ] implement remaining expression operators
+[X] implement remaining expression operators
 [ ] implement a 'remaining size' API
 [X] implement literals
 	[X] string

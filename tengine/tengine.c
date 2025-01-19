@@ -355,6 +355,26 @@ static TEngineValue* evaluate_expr(ProcessContext* ctx, Scope* scope, Expr* e)
             TEngineValue_free(rhs);
             return res;
         }
+        case EXPR_BAND: {
+            TEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
+            TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
+            evaluate_check_null;
+
+            TEngineValue* res = TEngineValue_band(lhs, rhs);
+            TEngineValue_free(lhs);
+            TEngineValue_free(rhs);
+            return res;
+        }
+        case EXPR_BOR: {
+            TEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
+            TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
+            evaluate_check_null;
+
+            TEngineValue* res = TEngineValue_bor(lhs, rhs);
+            TEngineValue_free(lhs);
+            TEngineValue_free(rhs);
+            return res;
+        }
         default:
             break;
     }

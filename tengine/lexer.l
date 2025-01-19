@@ -131,7 +131,7 @@ __attribute__((destructor)) static void delete_yyheapbuf(void) { if (yyheapbuf) 
                             yyunumval = (u64_t)n;
                             return TUNUM64;
                         }
-[0-9]+s8                {
+-?[0-9]+s8              {
                             s8_t n;
                             yytext[yyleng-2] = '\0';
                             if (!str_to_int8(yytext, &n)) {
@@ -141,7 +141,7 @@ __attribute__((destructor)) static void delete_yyheapbuf(void) { if (yyheapbuf) 
                             yysnumval = (s64_t)n;
                             return TSNUM8;
                         }
-0x[0-9a-fA-F]+s8        {
+-?0x[0-9a-fA-F]+s8      {
                             s8_t n;
                             yytext[yyleng-2] = '\0';
                             if (!str_to_int8(yytext, &n)) {
@@ -151,7 +151,7 @@ __attribute__((destructor)) static void delete_yyheapbuf(void) { if (yyheapbuf) 
                             yysnumval = (s64_t)n;
                             return TSNUM8;
                         }
-[0-9]+s16               {
+-?[0-9]+s16             {
                             s16_t n;
                             yytext[yyleng-3] = '\0';
                             if (!str_to_int16(yytext, &n)) {
@@ -161,7 +161,7 @@ __attribute__((destructor)) static void delete_yyheapbuf(void) { if (yyheapbuf) 
                             yysnumval = (s64_t)n;
                             return TSNUM16;
                         }
-0x[0-9a-fA-F]+s16       {
+-?0x[0-9a-fA-F]+s16     {
                             s16_t n;
                             yytext[yyleng-3] = '\0';
                             if (!str_to_int16(yytext, &n)) {
@@ -171,7 +171,7 @@ __attribute__((destructor)) static void delete_yyheapbuf(void) { if (yyheapbuf) 
                             yysnumval = (s64_t)n;
                             return TSNUM16;
                         }
-[0-9]+s32               {
+-?[0-9]+s32             {
                             s32_t n;
                             yytext[yyleng-3] = '\0';
                             if (!str_to_int32(yytext, &n)) {
@@ -181,7 +181,7 @@ __attribute__((destructor)) static void delete_yyheapbuf(void) { if (yyheapbuf) 
                             yysnumval = (s64_t)n;
                             return TSNUM32;
                         }
-0x[0-9a-fA-F]+s32       {
+-?0x[0-9a-fA-F]+s32     {
                             s32_t n;
                             yytext[yyleng-3] = '\0';
                             if (!str_to_int32(yytext, &n)) {
@@ -211,6 +211,8 @@ __attribute__((destructor)) static void delete_yyheapbuf(void) { if (yyheapbuf) 
 "<"                     { return TBLT; }
 ">="                    { return TBGE; }
 "<="                    { return TBLE; }
+"&&"                    { return TBAND; }
+"||"                    { return TBOR; }
 "="                     { return TEQUAL; }
 "("                     { return TCLBRACE; }
 ")"                     { return TCRBRACE; }
