@@ -14,8 +14,14 @@
 
 #define MAX_ARR_PRINT_SIZE 16
 
+#define engine_printf(e, ...)                                                  \
+    do {                                                                       \
+        if (!e->quiet_mode) {                                                  \
+            printf(__VA_ARGS__);                                               \
+        }                                                                      \
+    } while (0)
+
 typedef struct yy_buffer_state* YY_BUFFER_STATE;
-extern int                      yyparse();
 extern YY_BUFFER_STATE          yy_scan_string(const char* str);
 extern void                     yy_delete_buffer(YY_BUFFER_STATE buffer);
 

@@ -64,30 +64,33 @@ extern int yydebug;
     TWHILE = 265,                  /* TWHILE  */
     TBREAK = 266,                  /* TBREAK  */
     TIDENTIFIER = 267,             /* TIDENTIFIER  */
-    TSNUM64 = 268,                 /* TSNUM64  */
-    TUNUM8 = 269,                  /* TUNUM8  */
-    TUNUM16 = 270,                 /* TUNUM16  */
-    TUNUM32 = 271,                 /* TUNUM32  */
-    TUNUM64 = 272,                 /* TUNUM64  */
-    TCLBRACE = 273,                /* TCLBRACE  */
-    TCRBRACE = 274,                /* TCRBRACE  */
-    TLBRACE = 275,                 /* TLBRACE  */
-    TRBRACE = 276,                 /* TRBRACE  */
-    SQLBRACE = 277,                /* SQLBRACE  */
-    SQRBRACE = 278,                /* SQRBRACE  */
-    TSEMICOLON = 279,              /* TSEMICOLON  */
-    TCOLON = 280,                  /* TCOLON  */
-    TCOMMA = 281,                  /* TCOMMA  */
-    TDOT = 282,                    /* TDOT  */
-    TADD = 283,                    /* TADD  */
-    TSUB = 284,                    /* TSUB  */
-    TMUL = 285,                    /* TMUL  */
-    TBEQ = 286,                    /* TBEQ  */
-    TBGT = 287,                    /* TBGT  */
-    TBGE = 288,                    /* TBGE  */
-    TBLT = 289,                    /* TBLT  */
-    TBLE = 290,                    /* TBLE  */
-    TEQUAL = 291                   /* TEQUAL  */
+    TUNUM8 = 268,                  /* TUNUM8  */
+    TUNUM16 = 269,                 /* TUNUM16  */
+    TUNUM32 = 270,                 /* TUNUM32  */
+    TUNUM64 = 271,                 /* TUNUM64  */
+    TSNUM8 = 272,                  /* TSNUM8  */
+    TSNUM16 = 273,                 /* TSNUM16  */
+    TSNUM32 = 274,                 /* TSNUM32  */
+    TSNUM64 = 275,                 /* TSNUM64  */
+    TCLBRACE = 276,                /* TCLBRACE  */
+    TCRBRACE = 277,                /* TCRBRACE  */
+    TLBRACE = 278,                 /* TLBRACE  */
+    TRBRACE = 279,                 /* TRBRACE  */
+    SQLBRACE = 280,                /* SQLBRACE  */
+    SQRBRACE = 281,                /* SQRBRACE  */
+    TSEMICOLON = 282,              /* TSEMICOLON  */
+    TCOLON = 283,                  /* TCOLON  */
+    TCOMMA = 284,                  /* TCOMMA  */
+    TDOT = 285,                    /* TDOT  */
+    TADD = 286,                    /* TADD  */
+    TSUB = 287,                    /* TSUB  */
+    TMUL = 288,                    /* TMUL  */
+    TBEQ = 289,                    /* TBEQ  */
+    TBGT = 290,                    /* TBGT  */
+    TBGE = 291,                    /* TBGE  */
+    TBLT = 292,                    /* TBLT  */
+    TBLE = 293,                    /* TBLE  */
+    TEQUAL = 294                   /* TEQUAL  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -106,7 +109,7 @@ union YYSTYPE
     Expr*    expr;
     char*    ident;
 
-#line 110 "parser.h"
+#line 113 "parser.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

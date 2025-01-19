@@ -4,12 +4,12 @@ Work in progress template engine
 
 [X] p/r 100 prints 112 chars
 [ ] calls to non-existent non-void function leads to segfault
-[ ] make sure operator precedence is respected
+[X] make sure operator precedence is respected
 [ ] implement remaining expression operators
 [ ] implement a 'remaining size' API
 [ ] implement literals
 	[ ] string
-	[ ] u8, u16, u32, i8, i16, i32
+	[X] u8, u16, u32, i8, i16, i32
 	[ ] raw_buffer
 [ ] implement print API
 	* needs string literal

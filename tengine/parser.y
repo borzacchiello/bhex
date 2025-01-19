@@ -40,7 +40,7 @@ void yyerror(const char *s)
 
 // Terminal tokens
 %token TPROC TLOCAL TSTRUCT TENUM TORENUM TIF TELSE TWHILE TBREAK
-%token TIDENTIFIER TSNUM64 TUNUM8 TUNUM16 TUNUM32 TUNUM64
+%token TIDENTIFIER TUNUM8 TUNUM16 TUNUM32 TUNUM64 TSNUM8 TSNUM16 TSNUM32 TSNUM64
 %token TCLBRACE TCRBRACE TLBRACE TRBRACE SQLBRACE SQRBRACE 
 %token TSEMICOLON TCOLON TCOMMA TDOT
 %token TADD TSUB TMUL TBEQ TBGT TBGE TBLT TBLE TEQUAL
@@ -55,7 +55,9 @@ void yyerror(const char *s)
 %type <params>    params
 
 // Operator precedence
-%left TMUL TADD TSUB TBEQ TBLT TBLE TBGT TBGE
+%left TBEQ TBLT TBLE TBGT TBGE
+%left TADD TSUB
+%left TMUL
 
 // The grammar
 %%
@@ -237,10 +239,7 @@ params      : expr                                  {
                                                     }
     ;
 
-num         : TSNUM64                               {
-                                                        $$ = Expr_SCONST_new(yysnumval, 8);
-                                                    }
-            | TUNUM8                                {
+num         : TUNUM8                                {
                                                         $$ = Expr_UCONST_new(yyunumval, 1);
                                                     }
             | TUNUM16                               {
@@ -251,6 +250,18 @@ num         : TSNUM64                               {
                                                     }
             | TUNUM64                               {
                                                         $$ = Expr_UCONST_new(yyunumval, 8);
+                                                    }
+            | TSNUM8                                {
+                                                        $$ = Expr_SCONST_new(yysnumval, 1);
+                                                    }
+            | TSNUM16                               {
+                                                        $$ = Expr_SCONST_new(yysnumval, 2);
+                                                    }
+            | TSNUM32                               {
+                                                        $$ = Expr_SCONST_new(yysnumval, 4);
+                                                    }
+            | TSNUM64                               {
+                                                        $$ = Expr_SCONST_new(yysnumval, 8);
                                                     }
     ;
 

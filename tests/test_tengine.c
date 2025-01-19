@@ -56,6 +56,57 @@ end:
     return r;
 }
 
+static int test_const_s8()
+{
+    char* prog = "proc { local a = 42s8; }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "a");
+    IS_TENGINE_SNUM_EQ(r, v, 42);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
+static int test_const_s16()
+{
+    char* prog = "proc { local a = 42s16; }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "a");
+    IS_TENGINE_SNUM_EQ(r, v, 42);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
+static int test_const_s32()
+{
+    char* prog = "proc { local a = 42s32; }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "a");
+    IS_TENGINE_SNUM_EQ(r, v, 42);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
 static int test_const_u8()
 {
     char* prog = "proc { local a = 16u8; }";
@@ -311,6 +362,57 @@ end:
     return r;
 }
 
+static int test_add_wrap_s8()
+{
+    char* prog = "proc { local a = 127s8; local b = a + 1s8; }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "b");
+    IS_TENGINE_SNUM_EQ(r, v, -0x80);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
+static int test_add_wrap_s16()
+{
+    char* prog = "proc { local a = 0x7fffs16; local b = a + 1s16; }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "b");
+    IS_TENGINE_SNUM_EQ(r, v, -0x8000);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
+static int test_add_wrap_s32()
+{
+    char* prog = "proc { local a = 0x7fffffffs32; local b = a + 1s32; }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "b");
+    IS_TENGINE_SNUM_EQ(r, v, -0x80000000l);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
 static int test_add_wrap_u8()
 {
     char* prog = "proc { local a = 250u8; local b = a + 6u8; }";
@@ -364,7 +466,8 @@ end:
 
 static int test_add_wrap_u64()
 {
-    char* prog = "proc { local a = 0xffffffffffffffffu64; local b = a + 1u64; }";
+    char* prog =
+        "proc { local a = 0xffffffffffffffffu64; local b = a + 1u64; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -390,6 +493,76 @@ static int test_mul()
     int           r = 0;
     TEngineValue* v = Scope_get_local(e->proc_scope, "b");
     IS_TENGINE_SNUM_EQ(r, v, 40);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
+static int test_precedence_op_1()
+{
+    char* prog = "proc { local a = 4 + 3 * 8; }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r     = 0;
+    TEngineValue* v     = Scope_get_local(e->proc_scope, "a");
+    char*         str_v = TEngineValue_tostring(v, 0);
+    bhex_free(str_v);
+    IS_TENGINE_SNUM_EQ(r, v, 28);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
+static int test_precedence_op_2()
+{
+    char* prog = "proc { local a = 4 - 3 * 8; }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "a");
+    IS_TENGINE_SNUM_EQ(r, v, -20);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
+static int test_precedence_op_3()
+{
+    char* prog = "proc { local a = 4 - 3 + 3 * 2; }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "a");
+    IS_TENGINE_SNUM_EQ(r, v, 7);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
+static int test_precedence_op_4()
+{
+    char* prog = "proc { local a = 4 * 3 - 1; }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "a");
+    IS_TENGINE_SNUM_EQ(r, v, 11);
 
 end:
     delete_tengine(e);
@@ -452,6 +625,9 @@ end:
 
 static test_t tests[] = {
     {"const", &test_const},
+    {"const_s8", &test_const_s8},
+    {"const_s16", &test_const_s16},
+    {"const_s32", &test_const_s32},
     {"const_u8", &test_const_u8},
     {"const_u16", &test_const_u16},
     {"const_u32", &test_const_u32},
@@ -466,12 +642,19 @@ static test_t tests[] = {
     {"const_limit_2", &test_const_limit_2},
     {"add", &test_add},
     {"add_wrap", &test_add_wrap},
+    {"add_wrap_s8", &test_add_wrap_s8},
+    {"add_wrap_s16", &test_add_wrap_s16},
+    {"add_wrap_s32", &test_add_wrap_s32},
     {"add_wrap_u8", &test_add_wrap_u8},
     {"add_wrap_u16", &test_add_wrap_u16},
     {"add_wrap_u32", &test_add_wrap_u32},
     {"add_wrap_u64", &test_add_wrap_u64},
     {"sub", &test_sub},
     {"mul", &test_mul},
+    {"precedence_op_1", &test_precedence_op_1},
+    {"precedence_op_2", &test_precedence_op_2},
+    {"precedence_op_3", &test_precedence_op_3},
+    {"precedence_op_4", &test_precedence_op_4},
     {"if_1", &test_if_1},
     {"if_2", &test_if_2},
     {"while_1", &test_while_1},
