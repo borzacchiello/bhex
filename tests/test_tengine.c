@@ -311,6 +311,74 @@ end:
     return r;
 }
 
+static int test_add_wrap_u8()
+{
+    char* prog = "proc { local a = 250u8; local b = a + 6u8; }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "b");
+    IS_TENGINE_UNUM_EQ(r, v, 0);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
+static int test_add_wrap_u16()
+{
+    char* prog = "proc { local a = 0xffffu16; local b = a + 1u16; }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "b");
+    IS_TENGINE_UNUM_EQ(r, v, 0);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
+static int test_add_wrap_u32()
+{
+    char* prog = "proc { local a = 0xffffffffu32; local b = a + 1u32; }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "b");
+    IS_TENGINE_UNUM_EQ(r, v, 0);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
+static int test_add_wrap_u64()
+{
+    char* prog = "proc { local a = 0xffffffffffffffffu64; local b = a + 1u64; }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "b");
+    IS_TENGINE_UNUM_EQ(r, v, 0);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
 static int test_mul()
 {
     char* prog = "proc { local a = 4; local b = a * 10; }";
@@ -398,6 +466,10 @@ static test_t tests[] = {
     {"const_limit_2", &test_const_limit_2},
     {"add", &test_add},
     {"add_wrap", &test_add_wrap},
+    {"add_wrap_u8", &test_add_wrap_u8},
+    {"add_wrap_u16", &test_add_wrap_u16},
+    {"add_wrap_u32", &test_add_wrap_u32},
+    {"add_wrap_u64", &test_add_wrap_u64},
     {"sub", &test_sub},
     {"mul", &test_mul},
     {"if_1", &test_if_1},
