@@ -834,7 +834,7 @@ end:
 static int test_if_1()
 {
     char* prog =
-        "proc { local a = 4; local b = 3; if (a - 3 > 0) { b = b + 42; }; }";
+        "proc { local a = 4; local b = 3; if (a - 3 > 0) { b = b + 42; } }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -852,7 +852,7 @@ end:
 static int test_if_2()
 {
     char* prog =
-        "proc { local a = 4; local b = 3; if (a - 5 > 0) { b = b + 42; }; }";
+        "proc { local a = 4; local b = 3; if (a - 5 > 0) { b = b + 42; } }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -870,7 +870,7 @@ end:
 static int test_while_1()
 {
     char* prog = "proc { local a = 0; local b = 0; while (a < 10) { b = b + "
-                 "(2*a); a = a + 1; }; }";
+                 "(2*a); a = a + 1; } }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)

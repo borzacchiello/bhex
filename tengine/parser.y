@@ -103,23 +103,23 @@ enum_list  : ident TEQUAL TSNUM64                   {
                                                     }
     ;
 
-stmts       : stmt TSEMICOLON                       {
+stmts       : stmt                                 {
                                                         $$ = DList_new();
                                                         DList_add($$, $1);
                                                     }
-            | stmts stmt TSEMICOLON                 {
+            | stmts stmt                            {
                                                         DList_add($1, $2);
                                                     }
     ;
 
-stmt        : fvar_decl
-            | lvar_decl
-            | lvar_ass
-            | void_fcall
+stmt        : fvar_decl TSEMICOLON
+            | lvar_decl TSEMICOLON
+            | lvar_ass TSEMICOLON
+            | void_fcall TSEMICOLON
+            | break TSEMICOLON
             | if
             | if_else
             | while
-            | break
     ;
 
 fvar_decl   : ident ident                           {

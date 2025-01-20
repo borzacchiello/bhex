@@ -252,7 +252,7 @@ struct Elf_Ehdr
         uint32_t   e_entry;
         uint32_t   e_phoff;
         uint32_t   e_shoff;
-    };
+    }
     uint32_t   e_flags;
     uint16_t   e_ehsize;
     uint16_t   e_phentsize;
@@ -420,7 +420,7 @@ proc
     } else {
         Elf32_Shdr shdr;
         local str_off = shdr.sh_offset;
-    };
+    }
     seek(off);
     enable_print();
 
@@ -431,7 +431,7 @@ proc
             Elf64_Phdr phdr;
         } else {
             Elf32_Phdr phdr;
-        };
+        }
 
         local off = curroff();
         seek(phdr.p_offset);
@@ -439,7 +439,7 @@ proc
         seek(off);
 
         i = i + 1;
-    };
+    }
 
     seek(header.e_shoff);
     local i = 0;
@@ -448,12 +448,12 @@ proc
             Elf64_Shdr shdr;
         } else {
             Elf32_Shdr shdr;
-        };
+        }
         local off = curroff();
         seek(str_off + shdr.sh_name);
         string_t PrevShName;
         seek(off);
 
         i = i + 1;
-    };
+    }
 }
