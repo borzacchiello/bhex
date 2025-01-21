@@ -28,7 +28,8 @@ typedef enum ASTExprType {
     EXPR_BGT,
     EXPR_BGE,
     EXPR_BAND,
-    EXPR_BOR
+    EXPR_BOR,
+    EXPR_BNOT
 } ASTExprType;
 
 typedef struct Expr {
@@ -49,6 +50,8 @@ typedef struct Expr {
             u8_t* str;
             u32_t str_len;
         };
+        // EXPR_BNOT
+        struct Expr* child;
         // EXPR_VAR
         char* name;
         // EXPR_VARCHAIN
@@ -88,6 +91,7 @@ Expr* Expr_BGT_new(Expr* lhs, Expr* rhs);
 Expr* Expr_BGE_new(Expr* lhs, Expr* rhs);
 Expr* Expr_BAND_new(Expr* lhs, Expr* rhs);
 Expr* Expr_BOR_new(Expr* lhs, Expr* rhs);
+Expr* Expr_BNOT_new(Expr* e);
 Expr* Expr_dup(Expr* e);
 void  Expr_free(Expr* e);
 

@@ -396,6 +396,15 @@ static TEngineValue* evaluate_expr(ProcessContext* ctx, Scope* scope, Expr* e)
             TEngineValue_free(rhs);
             return res;
         }
+        case EXPR_BNOT: {
+            TEngineValue* child = evaluate_expr(ctx, scope, e->child);
+            if (!child)
+                return NULL;
+
+            TEngineValue* res = TEngineValue_bnot(child);
+            TEngineValue_free(child);
+            return res;
+        }
         default:
             break;
     }

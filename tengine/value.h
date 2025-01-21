@@ -87,6 +87,7 @@ TEngineValue* TEngineValue_band(const TEngineValue* lhs,
                                 const TEngineValue* rhs);
 TEngineValue* TEngineValue_bor(const TEngineValue* lhs,
                                const TEngineValue* rhs);
+TEngineValue* TEngineValue_bnot(const TEngineValue* child);
 
 int TEngineValue_as_u64(TEngineValue* v, u64_t* o);
 int TEngineValue_as_s64(TEngineValue* v, s64_t* o);

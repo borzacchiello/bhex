@@ -45,7 +45,7 @@ void yyerror(const char *s)
 %token TIDENTIFIER TUNUM8 TUNUM16 TUNUM32 TUNUM64 TSNUM8 TSNUM16 TSNUM32 TSNUM64 TSTR
 %token TCLBRACE TCRBRACE TLBRACE TRBRACE SQLBRACE SQRBRACE 
 %token TSEMICOLON TCOLON TCOMMA TDOT
-%token TADD TSUB TMUL TDIV TMOD TAND TOR TXOR TBAND TBOR TBEQ TBGT TBGE TBLT TBLE TEQUAL
+%token TADD TSUB TMUL TDIV TMOD TAND TOR TXOR TBAND TBOR TBEQ TBNEQ TBGT TBGE TBLT TBLE TEQUAL TBNOT
 
 // Non terminal tokens types
 %type <stmt>      stmt fvar_decl lvar_decl lvar_ass void_fcall if_elif else while break
@@ -58,10 +58,11 @@ void yyerror(const char *s)
 
 // Operator precedence
 %left TBAND TBOR
-%left TBEQ TBLT TBLE TBGT TBGE
+%left TBEQ TBNEQ TBLT TBLE TBGT TBGE
 %left TAND TOR TXOR
 %left TADD TSUB
 %left TMUL TDIV TMOD
+%left TBNOT
 
 // The grammar
 %%
@@ -237,6 +238,9 @@ expr        : num
             | expr TBEQ expr                        {
                                                         $$ = Expr_BEQ_new($1, $3);
                                                     }
+            | expr TBNEQ expr                       {
+                                                        $$ = Expr_BNOT_new(Expr_BEQ_new($1, $3));
+                                                    }
             | expr TBLT expr                        {
                                                         $$ = Expr_BLT_new($1, $3);
                                                     }
@@ -254,6 +258,9 @@ expr        : num
                                                     }
             | expr TBOR expr                        {
                                                         $$ = Expr_BOR_new($1, $3);
+                                                    }
+            | TBNOT expr                            {
+                                                        $$ = Expr_BNOT_new($2);
                                                     }
     ;
 

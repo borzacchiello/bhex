@@ -209,6 +209,7 @@ __attribute__((destructor)) static void delete_yyheapbuf(void) { if (yyheapbuf) 
 "&"                     { return TAND; }
 "|"                     { return TOR; }
 "^"                     { return TXOR; }
+"!="                    { return TBNEQ; }
 "=="                    { return TBEQ; }
 ">"                     { return TBGT; }
 "<"                     { return TBLT; }
@@ -216,6 +217,7 @@ __attribute__((destructor)) static void delete_yyheapbuf(void) { if (yyheapbuf) 
 "<="                    { return TBLE; }
 "&&"                    { return TBAND; }
 "||"                    { return TBOR; }
+"!"                     { return TBNOT; }
 "="                     { return TEQUAL; }
 "("                     { return TCLBRACE; }
 ")"                     { return TCRBRACE; }

@@ -283,6 +283,19 @@ TEngineValue* TEngineValue_beq(const TEngineValue* lhs, const TEngineValue* rhs)
     return NULL;
 }
 
+TEngineValue* TEngineValue_bnot(const TEngineValue* child)
+{
+    if (child->t == TENGINE_SNUM) {
+        return TEngineValue_UNUM_new(child->snum == 0 ? 1 : 0, 1);
+    }
+    if (child->t == TENGINE_UNUM) {
+        return TEngineValue_UNUM_new(child->unum == 0 ? 1 : 0, 1);
+    }
+
+    error("[tengine] beq undefined for type %s", type_to_string(child->t));
+    return NULL;
+}
+
 TEngineValue* TEngineValue_band(const TEngineValue* lhs,
                                 const TEngineValue* rhs)
 {

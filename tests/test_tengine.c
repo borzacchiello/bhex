@@ -794,6 +794,41 @@ end:
     return r;
 }
 
+static int test_bneq_1()
+{
+    char* prog = "proc { local a = 0; local b = 1; if (a != 42) { b = b + 41; } }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "b");
+    IS_TENGINE_SNUM_EQ(r, v, 42);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
+static int test_bnot_1()
+{
+    char* prog = "proc { local a = 0; local b = 1; if (!(a == 42)) { b = b + 41; } }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "b");
+    IS_TENGINE_SNUM_EQ(r, v, 42);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
+
 static int test_precedence_op_1()
 {
     char* prog = "proc { local a = 4 + 3 * 8; }";
@@ -1035,6 +1070,8 @@ static test_t tests[] = {
     {"band_2", &test_band_2},
     {"bor_1", &test_bor_1},
     {"bor_2", &test_bor_2},
+    {"bneq_1", &test_bneq_1},
+    {"bnot_1", &test_bnot_1},
     {"precedence_op_1", &test_precedence_op_1},
     {"precedence_op_2", &test_precedence_op_2},
     {"precedence_op_3", &test_precedence_op_3},

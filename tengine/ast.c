@@ -205,6 +205,14 @@ Expr* Expr_BOR_new(Expr* lhs, Expr* rhs)
     return e;
 }
 
+Expr* Expr_BNOT_new(Expr* v)
+{
+    Expr* e = bhex_calloc(sizeof(Expr));
+    e->t    = EXPR_BNOT;
+    e->child  = v;
+    return e;
+}
+
 Expr* Expr_dup(Expr* e)
 {
     if (!e)
@@ -258,6 +266,9 @@ Expr* Expr_dup(Expr* e)
             r->lhs = Expr_dup(e->lhs);
             r->rhs = Expr_dup(e->rhs);
             break;
+        case EXPR_BNOT:
+            r->child = Expr_dup(e->child);
+            break;
         default:
             panic("unknown expression type %d", e->t);
     }
@@ -309,6 +320,9 @@ void Expr_free(Expr* e)
         case EXPR_BOR:
             Expr_free(e->lhs);
             Expr_free(e->rhs);
+            break;
+        case EXPR_BNOT:
+            Expr_free(e->child);
             break;
         default:
             panic("unknown expression type %d", e->t);
@@ -462,6 +476,11 @@ void Expr_pp(Expr* e)
             printf(" || ");
             Expr_pp(e->rhs);
             printf(" )");
+            break;
+        case EXPR_BNOT:
+            printf("!(");
+            Expr_pp(e->child);
+            printf(")");
             break;
         default:
             panic("unknown expression type %d", e->t);
