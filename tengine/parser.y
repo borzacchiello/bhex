@@ -41,14 +41,14 @@ void yyerror(const char *s)
 }
 
 // Terminal tokens
-%token TPROC TLOCAL TSTRUCT TENUM TORENUM TIF TELSE TWHILE TBREAK
+%token TPROC TLOCAL TSTRUCT TENUM TORENUM TIF TELIF TELSE TWHILE TBREAK
 %token TIDENTIFIER TUNUM8 TUNUM16 TUNUM32 TUNUM64 TSNUM8 TSNUM16 TSNUM32 TSNUM64 TSTR
 %token TCLBRACE TCRBRACE TLBRACE TRBRACE SQLBRACE SQRBRACE 
 %token TSEMICOLON TCOLON TCOMMA TDOT
 %token TADD TSUB TMUL TAND TOR TXOR TBAND TBOR TBEQ TBGT TBGE TBLT TBLE TEQUAL
 
 // Non terminal tokens types
-%type <stmt>      stmt fvar_decl lvar_decl lvar_ass void_fcall if if_else while break
+%type <stmt>      stmt fvar_decl lvar_decl lvar_ass void_fcall if_elif else while break
 %type <stmts>     stmts
 %type <enum_list> enum_list
 %type <varchain>  varchain
@@ -117,8 +117,8 @@ stmt        : fvar_decl TSEMICOLON
             | lvar_ass TSEMICOLON
             | void_fcall TSEMICOLON
             | break TSEMICOLON
-            | if
-            | if_else
+            | if_elif
+            | else
             | while
     ;
 
@@ -156,15 +156,21 @@ void_fcall  : ident TCLBRACE TCRBRACE               {
                                                     }
     ;
 
-if          : TIF TCLBRACE expr TCRBRACE TLBRACE stmts TRBRACE
+if_elif     : TIF TCLBRACE expr TCRBRACE TLBRACE stmts TRBRACE
                                                     {
                                                         $$ = Stmt_STMT_IF_new($3, Block_new($6));
                                                     }
+            | if_elif TELIF TCLBRACE expr TCRBRACE TLBRACE stmts TRBRACE
+                                                    {
+                                                        Stmt_STMT_IF_add_cond($1, $4, Block_new($7));
+                                                        $$ = $1;
+                                                    }
     ;
 
-if_else     : TIF TCLBRACE expr TCRBRACE TLBRACE stmts TRBRACE TELSE TLBRACE stmts TRBRACE
+else        : if_elif TELSE TLBRACE stmts TRBRACE
                                                     {
-                                                        $$ = Stmt_STMT_IF_ELSE_new($3, Block_new($6), Block_new($10));
+                                                        Stmt_STMT_IF_add_else($1, Block_new($4));
+                                                        $$ = $1;
                                                     }
     ;
 

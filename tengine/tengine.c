@@ -1,5 +1,6 @@
 #include "tengine.h"
 #include "builtin.h"
+#include "defs.h"
 #include "local.h"
 #include "value.h"
 #include "scope.h"
@@ -573,43 +574,37 @@ static int process_VOID_FUNC_CALL(ProcessContext* ctx, Stmt* stmt, Scope* scope)
     return 0;
 }
 
-static int process_STMT_IF(ProcessContext* ctx, Stmt* stmt, Scope* scope)
+static int process_STMT_IF_ELIF_ELSE(ProcessContext* ctx, Stmt* stmt,
+                                     Scope* scope)
 {
-    u64_t cond;
-    if (eval_to_u64(ctx, scope, stmt->cond, &cond) != 0)
-        return 1;
+    // TODO: we are using the same context of the current block, to do the
+    // things correctly we should define a new var context and delete the
+    // new variables afterwards
+    // Ex, this is currently correct (for now it is fine though):
+    //   if (1) { uint8_t a; }
+    //   if (a) { uint8_t b; }
 
-    if (cond != 0) {
-        // TODO: we are using the same context of the current block, to do the
-        // things correctly we should define a new var context and delete the
-        // new variables afterwards
-        // Ex, this is currently correct (for now it is fine though):
-        //   if (1) { uint8_t a; }
-        //   if (a) { uint8_t b; }
-        DList* stmts = stmt->body->stmts;
-        for (u64_t i = 0; i < stmts->size; ++i) {
-            Stmt* stmt = (Stmt*)stmts->data[i];
-            if (process_stmt(ctx, stmt, scope) != 0)
-                return 1;
+    for (u64_t i = 0; i < stmt->if_conditions->size; ++i) {
+        IfCond* ic = stmt->if_conditions->data[i];
+        u64_t   cond;
+        if (eval_to_u64(ctx, scope, ic->cond, &cond) != 0)
+            return 1;
+        if (cond) {
+            for (u64_t i = 0; i < ic->block->stmts->size; ++i) {
+                Stmt* s = ic->block->stmts->data[i];
+                if (process_stmt(ctx, s, scope) != 0)
+                    return 1;
+            }
+            return 0;
         }
     }
-    return 0;
-}
-
-static int process_STMT_IF_ELSE(ProcessContext* ctx, Stmt* stmt, Scope* scope)
-{
-    u64_t cond;
-    if (eval_to_u64(ctx, scope, stmt->if_else_cond, &cond) != 0)
-        return 1;
-
-    // TODO: same problem WRT STMT_IF
-    DList* stmts = stmt->if_else_true_body->stmts;
-    if (cond == 0)
-        stmts = stmt->if_else_false_body->stmts;
-    for (u64_t i = 0; i < stmts->size; ++i) {
-        Stmt* stmt = (Stmt*)stmts->data[i];
-        if (process_stmt(ctx, stmt, scope) != 0)
-            return 1;
+    if (stmt->else_block) {
+        for (u64_t i = 0; i < stmt->else_block->stmts->size; ++i) {
+            Stmt* s = stmt->else_block->stmts->data[i];
+            if (process_stmt(ctx, s, scope) != 0)
+                return 1;
+        }
+        return 0;
     }
     return 0;
 }
@@ -655,10 +650,8 @@ static int process_stmt(ProcessContext* ctx, Stmt* stmt, Scope* scope)
             return process_LOCAL_VAR_ASS(ctx, stmt, scope);
         case VOID_FUNC_CALL:
             return process_VOID_FUNC_CALL(ctx, stmt, scope);
-        case STMT_IF:
-            return process_STMT_IF(ctx, stmt, scope);
-        case STMT_IF_ELSE:
-            return process_STMT_IF_ELSE(ctx, stmt, scope);
+        case STMT_IF_ELIF_ELSE:
+            return process_STMT_IF_ELIF_ELSE(ctx, stmt, scope);
         case STMT_WHILE:
             return process_STMT_WHILE(ctx, stmt, scope);
         case STMT_BREAK:

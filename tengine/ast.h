@@ -93,8 +93,7 @@ typedef enum ASTStmtType {
     LOCAL_VAR_DECL,
     LOCAL_VAR_ASS,
     VOID_FUNC_CALL, // Function call
-    STMT_IF,
-    STMT_IF_ELSE,
+    STMT_IF_ELIF_ELSE,
     STMT_WHILE,
     STMT_BREAK,
 } ASTStmtType;
@@ -125,10 +124,9 @@ typedef struct Stmt {
             struct Block* body;
         };
         struct {
-            // STMT_IF_ELSE
-            Expr*         if_else_cond;
-            struct Block* if_else_true_body;
-            struct Block* if_else_false_body;
+            // STMT_IF_ELIF_ELSE
+            DList*        if_conditions;
+            struct Block* else_block;
         };
     };
 } Stmt;
@@ -137,9 +135,9 @@ Stmt* Stmt_FILE_VAR_DECL_new(const char* type, const char* name, Expr* size);
 Stmt* Stmt_LOCAL_VAR_DECL_new(const char* name, Expr* value);
 Stmt* Stmt_LOCAL_VAR_ASS_new(const char* name, Expr* value);
 Stmt* Stmt_VOID_FUNC_CALL_new(const char* name, DList* params);
-Stmt* Stmt_STMT_IF_new(Expr* cond, struct Block* trueblock);
-Stmt* Stmt_STMT_IF_ELSE_new(Expr* cond, struct Block* trueblock,
-                            struct Block* falseblock);
+Stmt* Stmt_STMT_IF_new(Expr* cond, struct Block* block);
+void  Stmt_STMT_IF_add_cond(Stmt* stmt, Expr* cond, struct Block* block);
+void  Stmt_STMT_IF_add_else(Stmt* stmt, struct Block* block);
 Stmt* Stmt_WHILE_new(Expr* cond, struct Block* block);
 Stmt* Stmt_BREAK_new();
 void  Stmt_free(Stmt* stmt);
@@ -151,6 +149,14 @@ typedef struct Block {
 Block* Block_new(DList* stmts);
 void   Block_free(Block* b);
 void   Block_pp(Block* b);
+
+typedef struct IfCond {
+    Expr*  cond;
+    Block* block;
+} IfCond;
+
+IfCond* IfCond_new(Expr* cond, Block* block);
+void    IfCond_free(IfCond* c);
 
 typedef struct EnumEntry {
     char* name;

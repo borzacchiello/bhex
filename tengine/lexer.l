@@ -35,6 +35,7 @@ __attribute__((destructor)) static void delete_yyheapbuf(void) { if (yyheapbuf) 
 "enum"                  { return TENUM; }
 "orenum"                { return TORENUM; }
 "if"                    { return TIF; }
+"elif"                  { return TELIF; }
 "else"                  { return TELSE; }
 "while"                 { return TWHILE; }
 -?[0-9]+                {

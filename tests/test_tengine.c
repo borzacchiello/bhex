@@ -867,6 +867,60 @@ end:
     return r;
 }
 
+static int test_if_3()
+{
+    char* prog = "proc { local a = 4; local b = 3; if (a == 1) { b = b + 42; } "
+                 "elif (a == 4) { b = b + 43; } else { b = b + 44; } }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "b");
+    IS_TENGINE_SNUM_EQ(r, v, 46);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
+static int test_if_4()
+{
+    char* prog = "proc { local a = 8; local b = 3; if (a == 1) { b = b + 42; } "
+                 "elif (a == 4) { b = b + 43; } }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "b");
+    IS_TENGINE_SNUM_EQ(r, v, 3);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
+static int test_if_5()
+{
+    char* prog = "proc { local a = 8; local b = 3; if (a == 1) { b = b + 42; } "
+                 "elif (a == 4) { b = b + 43; } else { b = b + 44; } }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "b");
+    IS_TENGINE_SNUM_EQ(r, v, 47);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
 static int test_while_1()
 {
     char* prog = "proc { local a = 0; local b = 0; while (a < 10) { b = b + "
@@ -933,6 +987,9 @@ static test_t tests[] = {
     {"precedence_op_5", &test_precedence_op_5},
     {"if_1", &test_if_1},
     {"if_2", &test_if_2},
+    {"if_3", &test_if_3},
+    {"if_4", &test_if_4},
+    {"if_5", &test_if_5},
     {"while_1", &test_while_1},
 };
 

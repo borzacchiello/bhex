@@ -60,43 +60,44 @@ extern int yydebug;
     TENUM = 261,                   /* TENUM  */
     TORENUM = 262,                 /* TORENUM  */
     TIF = 263,                     /* TIF  */
-    TELSE = 264,                   /* TELSE  */
-    TWHILE = 265,                  /* TWHILE  */
-    TBREAK = 266,                  /* TBREAK  */
-    TIDENTIFIER = 267,             /* TIDENTIFIER  */
-    TUNUM8 = 268,                  /* TUNUM8  */
-    TUNUM16 = 269,                 /* TUNUM16  */
-    TUNUM32 = 270,                 /* TUNUM32  */
-    TUNUM64 = 271,                 /* TUNUM64  */
-    TSNUM8 = 272,                  /* TSNUM8  */
-    TSNUM16 = 273,                 /* TSNUM16  */
-    TSNUM32 = 274,                 /* TSNUM32  */
-    TSNUM64 = 275,                 /* TSNUM64  */
-    TSTR = 276,                    /* TSTR  */
-    TCLBRACE = 277,                /* TCLBRACE  */
-    TCRBRACE = 278,                /* TCRBRACE  */
-    TLBRACE = 279,                 /* TLBRACE  */
-    TRBRACE = 280,                 /* TRBRACE  */
-    SQLBRACE = 281,                /* SQLBRACE  */
-    SQRBRACE = 282,                /* SQRBRACE  */
-    TSEMICOLON = 283,              /* TSEMICOLON  */
-    TCOLON = 284,                  /* TCOLON  */
-    TCOMMA = 285,                  /* TCOMMA  */
-    TDOT = 286,                    /* TDOT  */
-    TADD = 287,                    /* TADD  */
-    TSUB = 288,                    /* TSUB  */
-    TMUL = 289,                    /* TMUL  */
-    TAND = 290,                    /* TAND  */
-    TOR = 291,                     /* TOR  */
-    TXOR = 292,                    /* TXOR  */
-    TBAND = 293,                   /* TBAND  */
-    TBOR = 294,                    /* TBOR  */
-    TBEQ = 295,                    /* TBEQ  */
-    TBGT = 296,                    /* TBGT  */
-    TBGE = 297,                    /* TBGE  */
-    TBLT = 298,                    /* TBLT  */
-    TBLE = 299,                    /* TBLE  */
-    TEQUAL = 300                   /* TEQUAL  */
+    TELIF = 264,                   /* TELIF  */
+    TELSE = 265,                   /* TELSE  */
+    TWHILE = 266,                  /* TWHILE  */
+    TBREAK = 267,                  /* TBREAK  */
+    TIDENTIFIER = 268,             /* TIDENTIFIER  */
+    TUNUM8 = 269,                  /* TUNUM8  */
+    TUNUM16 = 270,                 /* TUNUM16  */
+    TUNUM32 = 271,                 /* TUNUM32  */
+    TUNUM64 = 272,                 /* TUNUM64  */
+    TSNUM8 = 273,                  /* TSNUM8  */
+    TSNUM16 = 274,                 /* TSNUM16  */
+    TSNUM32 = 275,                 /* TSNUM32  */
+    TSNUM64 = 276,                 /* TSNUM64  */
+    TSTR = 277,                    /* TSTR  */
+    TCLBRACE = 278,                /* TCLBRACE  */
+    TCRBRACE = 279,                /* TCRBRACE  */
+    TLBRACE = 280,                 /* TLBRACE  */
+    TRBRACE = 281,                 /* TRBRACE  */
+    SQLBRACE = 282,                /* SQLBRACE  */
+    SQRBRACE = 283,                /* SQRBRACE  */
+    TSEMICOLON = 284,              /* TSEMICOLON  */
+    TCOLON = 285,                  /* TCOLON  */
+    TCOMMA = 286,                  /* TCOMMA  */
+    TDOT = 287,                    /* TDOT  */
+    TADD = 288,                    /* TADD  */
+    TSUB = 289,                    /* TSUB  */
+    TMUL = 290,                    /* TMUL  */
+    TAND = 291,                    /* TAND  */
+    TOR = 292,                     /* TOR  */
+    TXOR = 293,                    /* TXOR  */
+    TBAND = 294,                   /* TBAND  */
+    TBOR = 295,                    /* TBOR  */
+    TBEQ = 296,                    /* TBEQ  */
+    TBGT = 297,                    /* TBGT  */
+    TBGE = 298,                    /* TBGE  */
+    TBLT = 299,                    /* TBLT  */
+    TBLE = 300,                    /* TBLE  */
+    TEQUAL = 301                   /* TEQUAL  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -115,7 +116,7 @@ union YYSTYPE
     Expr*    expr;
     char*    ident;
 
-#line 119 "parser.h"
+#line 120 "parser.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

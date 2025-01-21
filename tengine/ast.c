@@ -434,6 +434,21 @@ void Expr_pp(Expr* e)
     }
 }
 
+IfCond* IfCond_new(Expr* cond, Block* block)
+{
+    IfCond* c = bhex_calloc(sizeof(IfCond));
+    c->cond   = cond;
+    c->block  = block;
+    return c;
+}
+
+void IfCond_free(IfCond* c)
+{
+    Expr_free(c->cond);
+    Block_free(c->block);
+    bhex_free(c);
+}
+
 Stmt* Stmt_FILE_VAR_DECL_new(const char* type, const char* name, Expr* size)
 {
     Stmt* stmt     = bhex_calloc(sizeof(Stmt));
@@ -469,24 +484,34 @@ Stmt* Stmt_VOID_FUNC_CALL_new(const char* name, DList* params)
     return stmt;
 }
 
-Stmt* Stmt_STMT_IF_new(Expr* cond, Block* b)
+Stmt* Stmt_STMT_IF_new(Expr* cond, Block* block)
 {
-    Stmt* stmt = bhex_calloc(sizeof(Stmt));
-    stmt->t    = STMT_IF;
-    stmt->cond = cond;
-    stmt->body = b;
+    Stmt* stmt          = bhex_calloc(sizeof(Stmt));
+    stmt->t             = STMT_IF_ELIF_ELSE;
+    stmt->if_conditions = DList_new();
+
+    IfCond* c = IfCond_new(cond, block);
+    DList_add(stmt->if_conditions, c);
     return stmt;
 }
 
-Stmt* Stmt_STMT_IF_ELSE_new(Expr* cond, struct Block* trueblock,
-                            struct Block* falseblock)
+void Stmt_STMT_IF_add_cond(Stmt* stmt, Expr* cond, struct Block* block)
 {
-    Stmt* stmt               = bhex_calloc(sizeof(Stmt));
-    stmt->t                  = STMT_IF_ELSE;
-    stmt->if_else_cond       = cond;
-    stmt->if_else_true_body  = trueblock;
-    stmt->if_else_false_body = falseblock;
-    return stmt;
+    if (stmt->t != STMT_IF_ELIF_ELSE)
+        panic("Stmt_STMT_IF_add_cond(): invalid stmt type");
+
+    IfCond* c = IfCond_new(cond, block);
+    DList_add(stmt->if_conditions, c);
+}
+
+void Stmt_STMT_IF_add_else(Stmt* stmt, struct Block* block)
+{
+    if (stmt->t != STMT_IF_ELIF_ELSE)
+        panic("Stmt_STMT_IF_add_else(): invalid stmt type");
+
+    if (stmt->else_block)
+        Block_free(stmt->else_block);
+    stmt->else_block = block;
 }
 
 Stmt* Stmt_WHILE_new(Expr* cond, struct Block* b)
@@ -535,11 +560,13 @@ static void STMT_IF_WHILE_free(Stmt* stmt)
     Block_free(stmt->body);
 }
 
-static void STMT_IF_ELSE_free(Stmt* stmt)
+static void STMT_IF_ELIF_ELSE_free(Stmt* stmt)
 {
-    Expr_free(stmt->if_else_cond);
-    Block_free(stmt->if_else_true_body);
-    Block_free(stmt->if_else_false_body);
+    DList_foreach(stmt->if_conditions, (void (*)(void*))&IfCond_free);
+    DList_deinit(stmt->if_conditions);
+    bhex_free(stmt->if_conditions);
+    if (stmt->else_block)
+        Block_free(stmt->else_block);
 }
 
 void Stmt_free(Stmt* stmt)
@@ -558,12 +585,11 @@ void Stmt_free(Stmt* stmt)
         case VOID_FUNC_CALL:
             VOID_FUNC_CALL_free(stmt);
             break;
-        case STMT_IF:
         case STMT_WHILE:
             STMT_IF_WHILE_free(stmt);
             break;
-        case STMT_IF_ELSE:
-            STMT_IF_ELSE_free(stmt);
+        case STMT_IF_ELIF_ELSE:
+            STMT_IF_ELIF_ELSE_free(stmt);
             break;
         case STMT_BREAK:
             break;
@@ -607,19 +633,30 @@ void Stmt_pp(Stmt* stmt)
             }
             printf(");\n");
             break;
-        case STMT_IF:
+        case STMT_IF_ELIF_ELSE: {
+            if (stmt->if_conditions->size == 0)
+                panic("Stmt_pp(): invalid STMT_IF_ELIF_ELSE");
+            IfCond* ic = stmt->if_conditions->data[0];
+            printf("if (");
+            Expr_pp(ic->cond);
+            printf(")\n");
+            Block_pp(ic->block);
+            for (u64_t i = 1; i < stmt->if_conditions->size; ++i) {
+                ic = stmt->if_conditions->data[i];
+                printf("elif (");
+                Expr_pp(ic->cond);
+                printf(")\n");
+                Block_pp(ic->block);
+            }
+            if (stmt->else_block) {
+                printf("else\n");
+                Block_pp(ic->block);
+            }
+        }
             printf("if (");
             Expr_pp(stmt->cond);
             printf(")\n");
             Block_pp(stmt->body);
-            break;
-        case STMT_IF_ELSE:
-            printf("if (");
-            Expr_pp(stmt->if_else_cond);
-            printf(")\n");
-            Block_pp(stmt->if_else_true_body);
-            printf("else");
-            Block_pp(stmt->if_else_false_body);
             break;
         case STMT_WHILE:
             printf("while (");
