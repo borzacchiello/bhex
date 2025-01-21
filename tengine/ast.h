@@ -17,6 +17,8 @@ typedef enum ASTExprType {
     EXPR_ADD,
     EXPR_SUB,
     EXPR_MUL,
+    EXPR_DIV,
+    EXPR_MOD,
     EXPR_AND,
     EXPR_OR,
     EXPR_XOR,
@@ -77,6 +79,8 @@ Expr* Expr_OR_new(Expr* lhs, Expr* rhs);
 Expr* Expr_XOR_new(Expr* lhs, Expr* rhs);
 Expr* Expr_SUB_new(Expr* lhs, Expr* rhs);
 Expr* Expr_MUL_new(Expr* lhs, Expr* rhs);
+Expr* Expr_DIV_new(Expr* lhs, Expr* rhs);
+Expr* Expr_MOD_new(Expr* lhs, Expr* rhs);
 Expr* Expr_BEQ_new(Expr* lhs, Expr* rhs);
 Expr* Expr_BLT_new(Expr* lhs, Expr* rhs);
 Expr* Expr_BLE_new(Expr* lhs, Expr* rhs);

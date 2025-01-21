@@ -124,6 +124,24 @@ Expr* Expr_MUL_new(Expr* lhs, Expr* rhs)
     return e;
 }
 
+Expr* Expr_DIV_new(Expr* lhs, Expr* rhs)
+{
+    Expr* e = bhex_calloc(sizeof(Expr));
+    e->t    = EXPR_DIV;
+    e->lhs  = lhs;
+    e->rhs  = rhs;
+    return e;
+}
+
+Expr* Expr_MOD_new(Expr* lhs, Expr* rhs)
+{
+    Expr* e = bhex_calloc(sizeof(Expr));
+    e->t    = EXPR_MOD;
+    e->lhs  = lhs;
+    e->rhs  = rhs;
+    return e;
+}
+
 Expr* Expr_BEQ_new(Expr* lhs, Expr* rhs)
 {
     Expr* e = bhex_calloc(sizeof(Expr));
@@ -277,6 +295,8 @@ void Expr_free(Expr* e)
         case EXPR_ADD:
         case EXPR_SUB:
         case EXPR_MUL:
+        case EXPR_DIV:
+        case EXPR_MOD:
         case EXPR_AND:
         case EXPR_OR:
         case EXPR_XOR:
@@ -356,6 +376,20 @@ void Expr_pp(Expr* e)
             printf("( ");
             Expr_pp(e->lhs);
             printf(" * ");
+            Expr_pp(e->rhs);
+            printf(" )");
+            break;
+        case EXPR_DIV:
+            printf("( ");
+            Expr_pp(e->lhs);
+            printf(" / ");
+            Expr_pp(e->rhs);
+            printf(" )");
+            break;
+        case EXPR_MOD:
+            printf("( ");
+            Expr_pp(e->lhs);
+            printf(" %% ");
             Expr_pp(e->rhs);
             printf(" )");
             break;

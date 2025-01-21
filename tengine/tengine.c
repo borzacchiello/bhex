@@ -276,6 +276,26 @@ static TEngineValue* evaluate_expr(ProcessContext* ctx, Scope* scope, Expr* e)
             TEngineValue_free(rhs);
             return res;
         }
+        case EXPR_DIV: {
+            TEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
+            TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
+            evaluate_check_null;
+
+            TEngineValue* res = TEngineValue_div(lhs, rhs);
+            TEngineValue_free(lhs);
+            TEngineValue_free(rhs);
+            return res;
+        }
+        case EXPR_MOD: {
+            TEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
+            TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
+            evaluate_check_null;
+
+            TEngineValue* res = TEngineValue_mod(lhs, rhs);
+            TEngineValue_free(lhs);
+            TEngineValue_free(rhs);
+            return res;
+        }
         case EXPR_AND: {
             TEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
             TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
@@ -697,6 +717,9 @@ ASTCtx* TEngine_parse_filename(const char* bhe)
 
 ASTCtx* TEngine_parse_file(FILE* f)
 {
+    // Register all the allocations, so that we can free them in case of errors.
+    // I did not find any other way to handle this scenario...
+    bhex_alloc_track_start();
     ASTCtx* ast = ASTCtx_new();
 
     yyset_in(f);
@@ -704,26 +727,35 @@ ASTCtx* TEngine_parse_file(FILE* f)
 
     if (yyparse() != 0) {
         error("parsing failed");
-        ASTCtx_delete(ast);
+        bhex_alloc_track_free_all();
+        bhex_alloc_track_stop();
         return NULL;
     }
+
+    bhex_alloc_track_stop();
     return ast;
 }
 
 ASTCtx* TEngine_parse_string(const char* str)
 {
+    // Register all the allocations, so that we can free them in case of errors.
+    // I did not find any other way to handle this scenario...
+    bhex_alloc_track_start();
     ASTCtx* ast = ASTCtx_new();
 
     yyset_ctx(ast);
     YY_BUFFER_STATE state = yy_scan_string(str);
+
     if (yyparse() != 0) {
         error("parsing failed");
-        ASTCtx_delete(ast);
+        bhex_alloc_track_free_all();
+        bhex_alloc_track_stop();
         yy_delete_buffer(state);
         return NULL;
     }
 
     yy_delete_buffer(state);
+    bhex_alloc_track_stop();
     return ast;
 }
 

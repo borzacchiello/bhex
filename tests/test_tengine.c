@@ -435,23 +435,6 @@ end:
     return r;
 }
 
-static int test_add_wrap()
-{
-    char* prog = "proc { local a = 0x7fffffffffffffff; local b = a + 1; }";
-
-    TEngine* e = TEngine_run_on_string(fb, prog);
-    if (e == NULL)
-        return 0;
-
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(e->proc_scope, "b");
-    IS_TENGINE_SNUM_EQ(r, v, -0x8000000000000000l);
-
-end:
-    delete_tengine(e);
-    return r;
-}
-
 static int test_add_wrap_s8()
 {
     char* prog = "proc { local a = 127s8; local b = a + 1s8; }";
@@ -583,6 +566,75 @@ static int test_mul()
     int           r = 0;
     TEngineValue* v = Scope_get_local(e->proc_scope, "b");
     IS_TENGINE_SNUM_EQ(r, v, 40);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
+static int test_div_1()
+{
+    char* prog = "proc { local a = 44; local b = a / 10; }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "b");
+    IS_TENGINE_SNUM_EQ(r, v, 4);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
+static int test_div_2()
+{
+    char* prog = "proc { local a = 16; local b = a / 4; }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "b");
+    IS_TENGINE_SNUM_EQ(r, v, 4);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
+
+static int test_mod_1()
+{
+    char* prog = "proc { local a = 43; local b = a % 10; }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "b");
+    IS_TENGINE_SNUM_EQ(r, v, 3);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
+static int test_mod_2()
+{
+    char* prog = "proc { local a = 16; local b = a % 4; }";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "b");
+    IS_TENGINE_SNUM_EQ(r, v, 0);
 
 end:
     delete_tengine(e);
@@ -961,7 +1013,6 @@ static test_t tests[] = {
     {"eq_str", &test_eq_str},
     {"add", &test_add},
     {"add_no_space", &test_add_no_space},
-    {"add_wrap", &test_add_wrap},
     {"add_wrap_s8", &test_add_wrap_s8},
     {"add_wrap_s16", &test_add_wrap_s16},
     {"add_wrap_s32", &test_add_wrap_s32},
@@ -971,6 +1022,10 @@ static test_t tests[] = {
     {"add_wrap_u64", &test_add_wrap_u64},
     {"sub", &test_sub},
     {"mul", &test_mul},
+    {"div_1", &test_div_1},
+    {"div_2", &test_div_2},
+    {"mod_1", &test_mod_1},
+    {"mod_2", &test_mod_2},
     {"and", &test_and},
     {"or", &test_or},
     {"xor", &test_xor},

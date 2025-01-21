@@ -147,6 +147,24 @@ TEngineValue* TEngineValue_mul(const TEngineValue* lhs, const TEngineValue* rhs)
     return NULL;
 }
 
+TEngineValue* TEngineValue_div(const TEngineValue* lhs, const TEngineValue* rhs)
+{
+    binop_num(/);
+
+    error("[tengine] div undefined for types %s and %s", type_to_string(lhs->t),
+          type_to_string(rhs->t));
+    return NULL;
+}
+
+TEngineValue* TEngineValue_mod(const TEngineValue* lhs, const TEngineValue* rhs)
+{
+    binop_num(%);
+
+    error("[tengine] mod undefined for types %s and %s", type_to_string(lhs->t),
+          type_to_string(rhs->t));
+    return NULL;
+}
+
 TEngineValue* TEngineValue_and(const TEngineValue* lhs, const TEngineValue* rhs)
 {
     binop_num(&);

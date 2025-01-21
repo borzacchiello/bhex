@@ -3,7 +3,7 @@
 Work in progress template engine
 
 [X] fix that p/r 100 prints 112 chars
-[ ] fix mem leak when syntax error occurs
+[X] fix mem leak when syntax error occurs
 [ ] find a way to test tengine through in-memory file buffers
 [ ] calls to non-existent non-void function leads to segfault (??? cannot reproduce)
 [X] make sure operator precedence is respected

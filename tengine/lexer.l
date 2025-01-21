@@ -204,6 +204,8 @@ __attribute__((destructor)) static void delete_yyheapbuf(void) { if (yyheapbuf) 
 "+"                     { return TADD; }
 "-"                     { return TSUB; }
 "*"                     { return TMUL; }
+"/"                     { return TDIV; }
+"%"                     { return TMOD; }
 "&"                     { return TAND; }
 "|"                     { return TOR; }
 "^"                     { return TXOR; }
