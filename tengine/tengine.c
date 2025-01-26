@@ -22,6 +22,8 @@
         }                                                                      \
     } while (0)
 
+#define min(x, y) ((x) < (y) ? (x) : (y))
+
 typedef struct yy_buffer_state* YY_BUFFER_STATE;
 extern YY_BUFFER_STATE          yy_scan_string(const char* str);
 extern void                     yy_delete_buffer(YY_BUFFER_STATE buffer);
@@ -202,34 +204,38 @@ static TEngineValue* evaluate_expr(ProcessContext* ctx, Scope* scope, Expr* e)
             }
             return TEngineValue_dup(value);
         }
-        case EXPR_VARCHAIN: {
-            if (e->chain->size == 0) {
-                panic("[tengine] varchain with size zero");
+        case EXPR_SUBSCR: {
+            TEngineValue* lhs = evaluate_expr(ctx, scope, e->subscr_e);
+            if (lhs->t != TENGINE_OBJ) {
+                TEngineValue_free(lhs);
+                error("[tengine] invalid subscription operator: e is not an "
+                      "object");
                 return NULL;
             }
 
-            // Only FILEVARS can have custom types
-            TEngineValue* val = Scope_get_filevar(scope, e->chain->data[0]);
-            u64_t         i   = 1;
-            if (val->t == TENGINE_OBJ) {
-                map* vars = val->subvals;
-                for (; i < e->chain->size; ++i) {
-                    char* n = e->chain->data[i];
-                    if (!map_contains(vars, n)) {
-                        error("[tengine] no such variable (in chain) '%s'", n);
-                        return NULL;
-                    }
-                    val = map_get(vars, n);
-                    if (val->t != TENGINE_OBJ)
-                        break;
-                    vars = val->subvals;
-                }
-            }
-            if (val == NULL || i != e->chain->size - 1) {
-                error("[tengine] invalid chain");
+            if (!map_contains(lhs->subvals, e->subscr_name)) {
+                TEngineValue_free(lhs);
+                error("[tengine] invalid subscription operator: e does not "
+                      "contain '%s'",
+                      e->subscr_name);
                 return NULL;
             }
-            return TEngineValue_dup(val);
+            TEngineValue* val = map_get(lhs->subvals, e->subscr_name);
+            if (val == NULL)
+                panic("[tengine] NULL during subscription operator");
+            TEngineValue* res = TEngineValue_dup(val);
+            TEngineValue_free(lhs);
+            return res;
+        }
+        case EXPR_ARRAY_SUB: {
+            TEngineValue* lhs = evaluate_expr(ctx, scope, e->array_sub_e);
+            TEngineValue* rhs = evaluate_expr(ctx, scope, e->array_sub_n);
+            evaluate_check_null;
+
+            TEngineValue* res = TEngineValue_array_sub(ctx->fb, lhs, rhs);
+            TEngineValue_free(lhs);
+            TEngineValue_free(rhs);
+            return res;
         }
         case EXPR_FUN_CALL: {
             const TEngineBuiltinFunc* func = get_builtin_func(e->fname);
@@ -461,8 +467,7 @@ static int process_array_type(ProcessContext* ctx, const char* varname,
 
     u64_t final_off = ctx->fb->off + size;
 
-    int is_char = strcmp(type, "char") == 0;
-    if (is_char) {
+    if (strcmp(type, "char") == 0) {
         // Special case, the output variable is a string
         u8_t*       tmp = bhex_calloc(size + 1);
         const u8_t* buf = fb_read(ctx->fb, size);
@@ -474,44 +479,48 @@ static int process_array_type(ProcessContext* ctx, const char* varname,
         fb_seek(ctx->fb, final_off);
         return 0;
     }
+    if (strcmp(type, "uint8_t") == 0) {
+        // Special case, buf
+        u64_t       size_to_print = min(MAX_ARR_PRINT_SIZE, size);
+        const u8_t* buf           = fb_read(ctx->fb, size_to_print);
+        for (u64_t i = 0; i < size_to_print; ++i)
+            engine_printf(ctx->engine, "%02x", buf[i]);
+        if (size_to_print < size)
+            engine_printf(ctx->engine, "...");
+        engine_printf(ctx->engine, "\n");
 
-    // Let's threat uint8_t arrays as byte arrays, we will print them in hex
-    int                       is_uint8 = strcmp(type, "uint8_t") == 0;
-    const TEngineBuiltinType* t        = get_builtin_type(type);
-    s64_t                     printed  = 0;
+        *oval = TEngineValue_BUF_new(ctx->fb->off, size);
+        fb_seek(ctx->fb, final_off);
+        return 0;
+    }
+    const TEngineBuiltinType* t = get_builtin_type(type);
     if (t != NULL) {
-        if (!is_uint8)
-            engine_printf(ctx->engine, "[ ");
+        // A builtin type
+        *oval = TEngineValue_ARRAY_new();
+
+        u64_t printed = 0;
+        engine_printf(ctx->engine, "[ ");
         while (printed < size) {
             TEngineValue* val = t->process(ctx->engine, ctx->fb);
             if (val == NULL)
                 return 1;
-            if (is_uint8) {
-                int tmp                   = ctx->engine->print_in_hex;
-                ctx->engine->print_in_hex = 1;
-                value_pp(ctx->engine, ctx->print_off, val);
-                ctx->engine->print_in_hex = tmp;
-            } else {
+            if (printed++ < MAX_ARR_PRINT_SIZE) {
                 value_pp(ctx->engine, ctx->print_off, val);
                 if (printed < size - 1)
                     engine_printf(ctx->engine, ", ");
-            }
-            // TODO save the value!
-            TEngineValue_free(val);
-            if (printed++ >= MAX_ARR_PRINT_SIZE) {
                 engine_printf(ctx->engine, "...");
-                break;
             }
+            TEngineValue_ARRAY_append(*oval, val);
         }
-        if (!is_uint8)
-            engine_printf(ctx->engine, " ]");
-        engine_printf(ctx->engine, "\n");
-
+        engine_printf(ctx->engine, " ]\n");
         fb_seek(ctx->fb, final_off);
         return 0;
     }
 
     // Array of custom type
+    u64_t printed = 0;
+    *oval         = TEngineValue_ARRAY_new();
+
     engine_printf(ctx->engine, "\n");
     for (int i = 0; i < ctx->print_off + 11 + yymax_ident_len; ++i)
         engine_printf(ctx->engine, " ");
@@ -527,8 +536,9 @@ static int process_array_type(ProcessContext* ctx, const char* varname,
                 engine_printf(ctx->engine, " ");
             engine_printf(ctx->engine, "[%lld]", printed + 1);
         }
-        // TODO save the array!
-        map_destroy(custom_type_vars);
+
+        TEngineValue* el = TEngineValue_OBJ_new(custom_type_vars);
+        TEngineValue_ARRAY_append(*oval, el);
     }
     return 0;
 }
@@ -552,9 +562,9 @@ static int process_FILE_VAR_DECL(ProcessContext* ctx, Stmt* stmt, Scope* scope)
         if (process_array_type(ctx, stmt->name, stmt->type, stmt->arr_size,
                                scope, &val) != 0)
             return 1;
-        // TODO: valorize always TEngineValue
-        if (val)
-            Scope_add_filevar(scope, stmt->name, val);
+        if (!val)
+            panic("[tengine] process_array_type did not valorize an array");
+        Scope_add_filevar(scope, stmt->name, val);
     }
     return 0;
 }

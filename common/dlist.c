@@ -12,6 +12,14 @@ DList* DList_new(void)
     return l;
 }
 
+void DList_destroy(DList* l, void (*dispose)(void*))
+{
+    if (dispose)
+        DList_foreach(l, dispose);
+    DList_deinit(l);
+    bhex_free(l);
+}
+
 void DList_init(DList* l)
 {
     l->size     = 0;

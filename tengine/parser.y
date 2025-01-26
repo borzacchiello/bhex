@@ -35,7 +35,6 @@ void yyerror(const char *s)
     DList*   stmts;
     DList*   params;
     DList*   enum_list;
-    DList*   varchain;
     Expr*    expr;
     char*    ident;
 }
@@ -51,7 +50,6 @@ void yyerror(const char *s)
 %type <stmt>      stmt fvar_decl lvar_decl lvar_ass void_fcall if_elif else while break
 %type <stmts>     stmts
 %type <enum_list> enum_list
-%type <varchain>  varchain
 %type <ident>     ident
 %type <expr>      expr num
 %type <params>    params
@@ -63,6 +61,8 @@ void yyerror(const char *s)
 %left TADD TSUB
 %left TMUL TDIV TMOD
 %left TBNOT
+%left SQLBRACE SQRBRACE
+%left TDOT
 
 // The grammar
 %%
@@ -194,8 +194,12 @@ expr        : num
                                                         $$ = Expr_VAR_new($1);
                                                         bhex_free($1);
                                                     }
-            | varchain                              {
-                                                        $$ = Expr_VARCHAIN_new($1);
+            | expr TDOT ident                       {
+                                                        $$ = Expr_SUBSCR_new($1, $3);
+                                                        bhex_free($3);
+                                                    }
+            | expr SQLBRACE expr SQRBRACE           {
+                                                        $$ = Expr_ARRAY_SUB_new($1, $3);
                                                     }
             | ident TCLBRACE TCRBRACE               {
                                                         $$ = Expr_FUN_CALL_new($1, NULL);
@@ -261,16 +265,6 @@ expr        : num
                                                     }
             | TBNOT expr                            {
                                                         $$ = Expr_BNOT_new($2);
-                                                    }
-    ;
-
-varchain    : ident TDOT ident                      {
-                                                        $$ = DList_new();
-                                                        DList_add($$, $1);
-                                                        DList_add($$, $3);
-                                                    }
-            | varchain TDOT ident                   {
-                                                        DList_add($1, $3);
                                                     }
     ;
 

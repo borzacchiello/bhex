@@ -12,7 +12,8 @@ typedef enum ASTExprType {
     EXPR_UCONST,
     EXPR_STRING,
     EXPR_VAR,
-    EXPR_VARCHAIN,
+    EXPR_SUBSCR,
+    EXPR_ARRAY_SUB,
     EXPR_FUN_CALL,
     EXPR_ADD,
     EXPR_SUB,
@@ -54,8 +55,16 @@ typedef struct Expr {
         struct Expr* child;
         // EXPR_VAR
         char* name;
-        // EXPR_VARCHAIN
-        DList* chain;
+        struct {
+            // EXPR_SUBSCR
+            struct Expr* subscr_e;
+            char*        subscr_name;
+        };
+        struct {
+            // EXPR_ARRAY_SUB
+            struct Expr* array_sub_e;
+            struct Expr* array_sub_n;
+        };
         struct {
             // EXPR_ADD, EXPR_SUB, EXPR_BEQ, EXPR_BLT, EXPR_BLE, EXPR_BGT,
             // EXPR_BGE, EXPR_AND, EXPR_OR, EXPR_XOR
@@ -74,7 +83,8 @@ Expr* Expr_SCONST_new(s64_t v, u8_t size);
 Expr* Expr_UCONST_new(u64_t v, u8_t size);
 Expr* Expr_STRING_new(const u8_t* str, u32_t size);
 Expr* Expr_VAR_new(const char* var);
-Expr* Expr_VARCHAIN_new(DList* chain);
+Expr* Expr_SUBSCR_new(Expr* e, const char* name);
+Expr* Expr_ARRAY_SUB_new(Expr* e, Expr* n);
 Expr* Expr_FUN_CALL_new(const char* fname, DList* params);
 Expr* Expr_ADD_new(Expr* lhs, Expr* rhs);
 Expr* Expr_AND_new(Expr* lhs, Expr* rhs);

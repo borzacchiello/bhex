@@ -46,15 +46,22 @@ Expr* Expr_VAR_new(const char* var)
     return e;
 }
 
-Expr* Expr_VARCHAIN_new(DList* chain)
+Expr* Expr_SUBSCR_new(Expr* ee, const char* name)
 {
-    if (chain->size < 2)
-        panic("invalid EXPR_VARCHAIN chain size (%llu)", chain->size);
-
-    Expr* e  = bhex_calloc(sizeof(Expr));
-    e->t     = EXPR_VARCHAIN;
-    e->chain = chain;
+    Expr* e        = bhex_calloc(sizeof(Expr));
+    e->t           = EXPR_SUBSCR;
+    e->subscr_e    = ee;
+    e->subscr_name = bhex_strdup(name);
     return e;
+}
+
+Expr* Expr_ARRAY_SUB_new(Expr* e, Expr* n)
+{
+    Expr* r        = bhex_calloc(sizeof(Expr));
+    r->t           = EXPR_ARRAY_SUB;
+    r->array_sub_e = e;
+    r->array_sub_n = n;
+    return r;
 }
 
 Expr* Expr_FUN_CALL_new(const char* fname, DList* params)
@@ -207,9 +214,9 @@ Expr* Expr_BOR_new(Expr* lhs, Expr* rhs)
 
 Expr* Expr_BNOT_new(Expr* v)
 {
-    Expr* e = bhex_calloc(sizeof(Expr));
-    e->t    = EXPR_BNOT;
-    e->child  = v;
+    Expr* e  = bhex_calloc(sizeof(Expr));
+    e->t     = EXPR_BNOT;
+    e->child = v;
     return e;
 }
 
@@ -245,10 +252,13 @@ Expr* Expr_dup(Expr* e)
                     DList_add(r->params, Expr_dup(e->params->data[i]));
             }
             break;
-        case EXPR_VARCHAIN:
-            r->chain = DList_new();
-            for (u64_t i = 0; i < e->chain->size; ++i)
-                DList_add(r->chain, bhex_strdup(e->chain->data[i]));
+        case EXPR_SUBSCR:
+            r->subscr_e    = Expr_dup(e->subscr_e);
+            r->subscr_name = bhex_strdup(e->subscr_name);
+            break;
+        case EXPR_ARRAY_SUB:
+            r->array_sub_e = Expr_dup(e->array_sub_e);
+            r->array_sub_n = Expr_dup(e->array_sub_n);
             break;
         case EXPR_ADD:
         case EXPR_SUB:
@@ -290,10 +300,13 @@ void Expr_free(Expr* e)
         case EXPR_VAR:
             bhex_free(e->name);
             break;
-        case EXPR_VARCHAIN:
-            DList_foreach(e->chain, (void (*)(void*))bhex_free);
-            DList_deinit(e->chain);
-            bhex_free(e->chain);
+        case EXPR_SUBSCR:
+            Expr_free(e->subscr_e);
+            bhex_free(e->subscr_name);
+            break;
+        case EXPR_ARRAY_SUB:
+            Expr_free(e->array_sub_e);
+            Expr_free(e->array_sub_n);
             break;
         case EXPR_FUN_CALL:
             if (e->params) {
@@ -353,16 +366,16 @@ void Expr_pp(Expr* e)
         case EXPR_VAR:
             printf("%s", e->name);
             break;
-        case EXPR_VARCHAIN: {
-            if (e->chain->size < 2)
-                panic("invalid EXPR_VARCHAIN chain size (%llu)",
-                      e->chain->size);
-
-            printf("%s", (char*)e->chain->data[0]);
-            for (u64_t i = 1; i < e->chain->size; ++i)
-                printf(".%s", (char*)e->chain->data[i]);
+        case EXPR_SUBSCR:
+            Expr_pp(e->subscr_e);
+            printf(".%s", e->subscr_name);
             break;
-        }
+        case EXPR_ARRAY_SUB:
+            Expr_pp(e->array_sub_e);
+            printf("[");
+            Expr_pp(e->array_sub_n);
+            printf("]");
+            break;
         case EXPR_FUN_CALL:
             printf("%s(", e->fname);
             if (e->params && e->params->size > 0) {

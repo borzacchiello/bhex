@@ -10,6 +10,7 @@ typedef struct DList {
 } DList;
 
 DList* DList_new();
+void   DList_destroy(DList* l, void (*dispose)(void*));
 void   DList_init(DList* l);
 void   DList_deinit(DList* l);
 

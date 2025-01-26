@@ -1,8 +1,10 @@
 #include "value.h"
 #include "defs.h"
+#include "dlist.h"
 #include "local.h"
 #include "util/byte_to_str.h"
 
+#include "../filebuffer.h"
 #include <strbuilder.h>
 #include <util/str.h>
 #include <string.h>
@@ -98,6 +100,80 @@ TEngineValue* TEngineValue_ENUM_VALUE_new(const char* ename, u64_t econst)
     r->enum_value   = bhex_strdup(ename);
     r->enum_const   = econst;
     return r;
+}
+
+TEngineValue* TEngineValue_BUF_new(u64_t off, u64_t size)
+{
+    TEngineValue* r = bhex_calloc(sizeof(TEngineValue));
+    r->t            = TENGINE_BUF;
+    r->buf_off      = off;
+    r->buf_size     = size;
+    return r;
+}
+
+TEngineValue* TEngineValue_ARRAY_new()
+{
+    TEngineValue* r = bhex_calloc(sizeof(TEngineValue));
+    r->t            = TENGINE_ARRAY;
+    r->array_data   = DList_new();
+    return r;
+}
+
+void TEngineValue_ARRAY_append(TEngineValue* arr, TEngineValue* v)
+{
+    if (arr->t != TENGINE_ARRAY)
+        panic("TEngineValue_ARRAY_append: not a TENGINE_ARRAY");
+
+    DList_add(arr->array_data, v);
+}
+
+TEngineValue* TEngineValue_array_sub(FileBuffer* fb, const TEngineValue* e,
+                                     const TEngineValue* n)
+{
+    u64_t n_val;
+    if (TEngineValue_as_u64(n, &n_val) != 0)
+        return NULL;
+
+    switch (e->t) {
+        case TENGINE_ARRAY: {
+            if (e->array_data->size <= n_val) {
+                error("[tengine] out of bound in array (size %llu, index %llu)",
+                      e->array_data->size, n_val);
+                return NULL;
+            }
+            return TEngineValue_dup(e->array_data->data[n_val]);
+        }
+        case TENGINE_BUF: {
+            if (e->buf_size <= n_val) {
+                error("[tengine] out of bound in buf (size %llu, index %llu)",
+                      e->buf_size, n_val);
+                return NULL;
+            }
+            u64_t orig_s = fb->off;
+            if (fb_seek(fb, e->buf_off + n_val) != 0) {
+                error("[tengine] invalid buffer, it spans outside the file");
+                return NULL;
+            }
+            const u8_t*   buf = fb_read(fb, 1);
+            TEngineValue* v   = TEngineValue_UNUM_new(buf[0], 1);
+            fb_seek(fb, orig_s);
+            return v;
+        }
+        case TENGINE_STRING: {
+            if (e->str_size <= n_val) {
+                error(
+                    "[tengine] out of bound in string (size %llu, index %llu)",
+                    e->str_size, n_val);
+                return NULL;
+            }
+            return TEngineValue_UNUM_new(e->str[n_val], 1);
+        }
+        default:
+            break;
+    }
+
+    error("[tengine] array_sub undefined for type %s", type_to_string(e->t));
+    return NULL;
 }
 
 #define binop_num(op)                                                          \
@@ -315,7 +391,7 @@ TEngineValue* TEngineValue_bor(const TEngineValue* lhs, const TEngineValue* rhs)
     return NULL;
 }
 
-int TEngineValue_as_u64(TEngineValue* v, u64_t* o)
+int TEngineValue_as_u64(const TEngineValue* v, u64_t* o)
 {
     switch (v->t) {
         case TENGINE_UNUM:
@@ -347,7 +423,7 @@ int TEngineValue_as_u64(TEngineValue* v, u64_t* o)
     return 1;
 }
 
-int TEngineValue_as_string(TEngineValue* v, const char** o)
+int TEngineValue_as_string(const TEngineValue* v, const char** o)
 {
     if (v->t == TENGINE_STRING) {
         *o = (char*)v->str;
@@ -359,7 +435,7 @@ int TEngineValue_as_string(TEngineValue* v, const char** o)
     return 1;
 }
 
-int TEngineValue_as_s64(TEngineValue* v, s64_t* o)
+int TEngineValue_as_s64(const TEngineValue* v, s64_t* o)
 {
     switch (v->t) {
         case TENGINE_UNUM:
@@ -400,6 +476,7 @@ void TEngineValue_free(TEngineValue* v)
         case TENGINE_UNUM:
         case TENGINE_SNUM:
         case TENGINE_CHAR:
+        case TENGINE_BUF:
             break;
         case TENGINE_STRING:
             bhex_free(v->str);
@@ -409,6 +486,9 @@ void TEngineValue_free(TEngineValue* v)
             break;
         case TENGINE_OBJ:
             map_destroy(v->subvals);
+            break;
+        case TENGINE_ARRAY:
+            DList_destroy(v->array_data, (void (*)(void*))TEngineValue_free);
             break;
         default:
             panic("invalid type in TEngineValue_free");
@@ -444,6 +524,18 @@ TEngineValue* TEngineValue_dup(TEngineValue* v)
             }
             return TEngineValue_OBJ_new(subvals);
         }
+        case TENGINE_BUF:
+            return TEngineValue_BUF_new(v->buf_off, v->buf_size);
+        case TENGINE_ARRAY: {
+            TEngineValue* newarr = TEngineValue_ARRAY_new();
+            for (u64_t i = 0; i < v->array_data->size; ++i) {
+                TEngineValue* dupel = TEngineValue_dup(v->array_data->data[i]);
+                if (dupel == NULL)
+                    panic("TEngineValue_dup: invalida arr value");
+                TEngineValue_ARRAY_append(newarr, dupel);
+            }
+            return newarr;
+        }
         default:
             panic("invalid type in TEngineValue_dup");
     }
@@ -457,7 +549,14 @@ static char ascii_or_space(char c)
     return ' ';
 }
 
-char* TEngineValue_tostring(TEngineValue* v, int hex)
+void TEngineValue_pp(const TEngineValue* v, int hex)
+{
+    char* str = TEngineValue_tostring(v, hex);
+    printf("%s\n", str);
+    bhex_free(str);
+}
+
+char* TEngineValue_tostring(const TEngineValue* v, int hex)
 {
     StringBuilder* sb = strbuilder_new();
 
@@ -508,7 +607,20 @@ char* TEngineValue_tostring(TEngineValue* v, int hex)
             sb            = strbuilder_new();
             strbuilder_append_char(sb, '\n');
             strbuilder_append(sb, str_indent(content, 4));
-            bhex_free(content);
+            break;
+        }
+        case TENGINE_BUF:
+            strbuilder_appendf(sb, "DATA@%llxh->%llxh", v->buf_off,
+                               v->buf_size);
+            break;
+        case TENGINE_ARRAY: {
+            strbuilder_append_char(sb, '\n');
+            for (u32_t i = 0; i < v->array_data->size; ++i) {
+                strbuilder_appendf(sb, "[%u]\n", i);
+                char* subel =
+                    TEngineValue_tostring(v->array_data->data[i], hex);
+                strbuilder_append(sb, str_indent(subel, 4));
+            }
             break;
         }
         default:

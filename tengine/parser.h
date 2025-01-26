@@ -116,11 +116,10 @@ union YYSTYPE
     DList*   stmts;
     DList*   params;
     DList*   enum_list;
-    DList*   varchain;
     Expr*    expr;
     char*    ident;
 
-#line 124 "parser.h"
+#line 123 "parser.h"
 
 };
 typedef union YYSTYPE YYSTYPE;
