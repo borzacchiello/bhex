@@ -117,6 +117,7 @@ add_executable(test_tengine
     ${common_src}
     ${tengine_src}
     filebuffer.c
+    tests/test_filebuffer.c
     tests/test_tengine.c)
 
 # Main executable

@@ -1,9 +1,12 @@
+#include "defs.h"
 #include "test.h"
 
 #include <string.h>
 #include <alloc.h>
 #include <log.h>
 
+#include "elf_not_kitty.h"
+#include "test_filebuffer.h"
 #include "../tengine/scope.h"
 #include "../tengine/tengine.h"
 
@@ -606,7 +609,6 @@ end:
     return r;
 }
 
-
 static int test_mod_1()
 {
     char* prog = "proc { local a = 43; local b = a % 10; }";
@@ -796,7 +798,8 @@ end:
 
 static int test_bneq_1()
 {
-    char* prog = "proc { local a = 0; local b = 1; if (a != 42) { b = b + 41; } }";
+    char* prog =
+        "proc { local a = 0; local b = 1; if (a != 42) { b = b + 41; } }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -813,7 +816,8 @@ end:
 
 static int test_bnot_1()
 {
-    char* prog = "proc { local a = 0; local b = 1; if (!(a == 42)) { b = b + 41; } }";
+    char* prog =
+        "proc { local a = 0; local b = 1; if (!(a == 42)) { b = b + 41; } }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -827,7 +831,6 @@ end:
     delete_tengine(e);
     return r;
 }
-
 
 static int test_precedence_op_1()
 {
@@ -1026,6 +1029,165 @@ end:
     return r;
 }
 
+static int test_array_1()
+{
+    int             r    = 0;
+    TestFilebuffer* tfb  = testfilebuffer_create((const u8_t*)"AAAAAAAAAB", 10);
+    char*           prog = "proc {"
+                           "    disable_print();"
+                           "    uint8_t buf[10];"
+                           "    local a = buf[9];"
+                           "}";
+
+    TEngine* e = TEngine_run_on_string(tfb->fb, prog);
+    if (e == NULL)
+        goto end;
+
+    TEngineValue* v = Scope_get_local(e->proc_scope, "a");
+    IS_TENGINE_UNUM_EQ(r, v, 'B');
+
+end:
+    if (e)
+        delete_tengine(e);
+    testfilebuffer_destroy(tfb);
+    return r;
+}
+
+static int test_array_2()
+{
+    int             r    = 0;
+    TestFilebuffer* tfb  = testfilebuffer_create((const u8_t*)"AAAAAAAAAB", 10);
+    char*           prog = "proc {"
+                           "    disable_print();"
+                           "    uint16_t buf[5];"
+                           "    local a = buf[4];"
+                           "}";
+
+    TEngine* e = TEngine_run_on_string(tfb->fb, prog);
+    if (e == NULL)
+        goto end;
+
+    TEngineValue* v = Scope_get_local(e->proc_scope, "a");
+    IS_TENGINE_UNUM_EQ(r, v, ((u32_t)'B' << 8) | 'A');
+
+end:
+    if (e)
+        delete_tengine(e);
+    testfilebuffer_destroy(tfb);
+    return r;
+}
+
+static int test_array_3()
+{
+    int             r    = 0;
+    TestFilebuffer* tfb  = testfilebuffer_create((const u8_t*)"AAAAAAAAAB", 10);
+    char*           prog = "proc {"
+                           "    disable_print();"
+                           "    endianess_be();"
+                           "    uint16_t buf[5];"
+                           "    local a = buf[4];"
+                           "}";
+
+    TEngine* e = TEngine_run_on_string(tfb->fb, prog);
+    if (e == NULL)
+        goto end;
+
+    TEngineValue* v = Scope_get_local(e->proc_scope, "a");
+    IS_TENGINE_UNUM_EQ(r, v, ((u32_t)'A' << 8) | 'B');
+
+end:
+    if (e)
+        delete_tengine(e);
+    testfilebuffer_destroy(tfb);
+    return r;
+}
+
+static int test_array_4()
+{
+    int             r    = 0;
+    TestFilebuffer* tfb  = testfilebuffer_create((const u8_t*)"ABCDEF", 6);
+    char*           prog = "struct Triple {"
+                           "   uint8_t n1;"
+                           "   uint8_t n2;"
+                           "   uint8_t n3;"
+                           "}\n"
+                           "proc {"
+                           "    disable_print();"
+                           "    Triple data[2];"
+                           "    local  a = data[1].n2;"
+                           "}";
+
+    TEngine* e = TEngine_run_on_string(tfb->fb, prog);
+    if (e == NULL)
+        goto end;
+
+    TEngineValue* v = Scope_get_local(e->proc_scope, "a");
+    IS_TENGINE_UNUM_EQ(r, v, 'E');
+
+end:
+    if (e)
+        delete_tengine(e);
+    testfilebuffer_destroy(tfb);
+    return r;
+}
+
+static int test_elf_1()
+{
+    int             r = 0;
+    TestFilebuffer* tfb =
+        testfilebuffer_create(elf_not_kitty, sizeof(elf_not_kitty));
+    char* prog = "struct ElfIdent {"
+                 "    uint8_t ei_mag[4];"
+                 "    uint8_t ei_class;"
+                 "    uint8_t ei_data;"
+                 "    uint8_t ei_version;"
+                 "    uint8_t ei_osabi;"
+                 "    uint8_t ei_abiversion;"
+                 "    uint8_t ei_pad[6];"
+                 "    uint8_t ei_nident;"
+                 "}\n"
+                 "struct Elf_Ehdr {"
+                 "    ElfIdent e_ident;"
+                 "    uint16_t e_type;"
+                 "    uint16_t e_machine;"
+                 "    uint32_t e_version;"
+                 "    if (e_ident.ei_class == 2) {"
+                 "        uint64_t e_entry;"
+                 "        uint64_t e_phoff;"
+                 "        uint64_t e_shoff;"
+                 "    } else {"
+                 "        uint32_t e_entry;"
+                 "        uint32_t e_phoff;"
+                 "        uint32_t e_shoff;"
+                 "    }"
+                 "    uint32_t e_flags;"
+                 "    uint16_t e_ehsize;"
+                 "    uint16_t e_phentsize;"
+                 "    uint16_t e_phnum;"
+                 "    uint16_t e_shentsize;"
+                 "    uint16_t e_shnum;"
+                 "    uint16_t e_shstrndx;"
+                 "}\n"
+                 "proc {"
+                 "    disable_print();"
+                 "    Elf_Ehdr header;"
+                 "    local    a = header.e_entry;"
+                 "}";
+
+    TEngine* e = TEngine_run_on_string(tfb->fb, prog);
+    if (e == NULL)
+        goto end;
+
+    TEngineValue* v = Scope_get_local(e->proc_scope, "a");
+    IS_TENGINE_UNUM_EQ(r, v, 0x08048074);
+
+end:
+    if (e)
+        delete_tengine(e);
+    testfilebuffer_destroy(tfb);
+    return r;
+}
+
 static test_t tests[] = {
     {"const", &test_const},
     {"const_s8", &test_const_s8},
@@ -1083,6 +1245,11 @@ static test_t tests[] = {
     {"if_4", &test_if_4},
     {"if_5", &test_if_5},
     {"while_1", &test_while_1},
+    {"array_1", &test_array_1},
+    {"array_2", &test_array_2},
+    {"array_3", &test_array_3},
+    {"array_4", &test_array_4},
+    {"elf_1", &test_elf_1},
 };
 
 int main(int argc, char const* argv[])
