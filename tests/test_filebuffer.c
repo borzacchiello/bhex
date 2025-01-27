@@ -12,7 +12,7 @@ static void fill_with_random(u8_t* buffer, u32_t size)
         panic("unable to generate random data");
 }
 
-TestFilebuffer* testfilebuffer_create(const uint8_t* data, size_t s)
+TestFilebuffer* testfilebuffer_create(const u8_t* data, size_t s)
 {
     u32_t rand_n = 0;
     fill_with_random((u8_t*)&rand_n, 4);

@@ -23,7 +23,7 @@ static void stringscmd_help(void* obj)
            "\n");
 }
 
-static int is_printable_ascii(uint8_t v) { return v >= 0x20 && v <= 0x7e; }
+static int is_printable_ascii(u8_t v) { return v >= 0x20 && v <= 0x7e; }
 
 static void print_strings(FileBuffer* fb, size_t min_length,
                           int null_terminated)
@@ -96,8 +96,8 @@ static int stringscmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 
     size_t min_length = 3;
     if (pc->args.size == 1) {
-        char*    arg = (char*)pc->args.head->data;
-        uint32_t s;
+        char* arg = (char*)pc->args.head->data;
+        u32_t s;
         if (!str_to_uint32(arg, &s) || s == 0)
             return COMMAND_INVALID_ARG;
         if (s >= 4096) {

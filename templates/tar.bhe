@@ -1,32 +1,32 @@
 struct TarHeader
 {
-    char    name[100];
-    char    mode[8];
-    char    uid[8];
-    char    gid[8];
-    char    size[12];
-    char    mtime[12];
-    char    chksum[8];
-    char    typeflag;
-    char    linkname[100];
-    char    magic[6];
-    char    version[2];
-    char    uname[32];
-    char    gname[32];
-    char    devmajor[8];
-    char    devminor[8];
-    char    prefix[155];
-    uint8_t padding[12];
+    char name[100];
+    char mode[8];
+    char uid[8];
+    char gid[8];
+    char size[12];
+    char mtime[12];
+    char chksum[8];
+    char typeflag;
+    char linkname[100];
+    char magic[6];
+    char version[2];
+    char uname[32];
+    char gname[32];
+    char devmajor[8];
+    char devminor[8];
+    char prefix[155];
+    u8   padding[12];
 }
 
 proc
 {
-    while (off()+0x200 < size()) {
+    while (off() + 0x200 < size()) {
         TarHeader header;
         if (strlen(header.size) == 0) {
             break;
         }
-        uint8_t data[atoi(strip(header.size))];
+        u8    data[atoi(strip(header.size))];
         local npad = off() % 0x200;
         if (npad != 0) {
             fwd(0x200 - npad);

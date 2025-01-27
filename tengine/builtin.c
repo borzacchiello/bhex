@@ -51,7 +51,7 @@ end:
 
 static TEngineValue* char_process(TEngine* e, FileBuffer* fb)
 {
-    const uint8_t* buf = fb_read(fb, 1);
+    const u8_t* buf = fb_read(fb, 1);
     if (buf == NULL)
         return NULL;
     if (fb_seek(fb, fb->off + 1) != 0)
@@ -111,21 +111,20 @@ static TEngineValue* int_process(TEngine* e, const u8_t* buf, u32_t size)
         return int_process(engine, buf, size);                                 \
     }
 
-GEN_INT_PRINT(uint64_t, 8, 0)
-GEN_INT_PRINT(uint32_t, 4, 0)
-GEN_INT_PRINT(uint16_t, 2, 0)
-GEN_INT_PRINT(uint8_t, 1, 0)
-GEN_INT_PRINT(int64_t, 8, 1)
-GEN_INT_PRINT(int32_t, 4, 1)
-GEN_INT_PRINT(int16_t, 2, 1)
-GEN_INT_PRINT(int8_t, 1, 1)
+GEN_INT_PRINT(u64, 8, 0)
+GEN_INT_PRINT(u32, 4, 0)
+GEN_INT_PRINT(u16, 2, 0)
+GEN_INT_PRINT(u8, 1, 0)
+GEN_INT_PRINT(i64, 8, 1)
+GEN_INT_PRINT(i32, 4, 1)
+GEN_INT_PRINT(i16, 2, 1)
+GEN_INT_PRINT(i8, 1, 1)
 
 static TEngineBuiltinType builtin_types[] = {
-    {"uint64_t", uint64_t_process}, {"uint32_t", uint32_t_process},
-    {"uint16_t", uint16_t_process}, {"uint8_t", uint8_t_process},
-    {"int64_t", int64_t_process},   {"int32_t", int32_t_process},
-    {"int16_t", int16_t_process},   {"int8_t", int8_t_process},
-    {"char", char_process},         {"string_t", string_process},
+    {"u64", u64_process},       {"u32", u32_process}, {"u16", u16_process},
+    {"u8", u8_process},         {"i64", i64_process}, {"i32", i32_process},
+    {"i16", i16_process},       {"i8", i8_process},   {"char", char_process},
+    {"string", string_process},
 };
 
 const TEngineBuiltinType* get_builtin_type(const char* type)

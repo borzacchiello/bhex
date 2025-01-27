@@ -242,7 +242,7 @@ __attribute__((destructor)) static void delete_yyheapbuf(void) { if (yyheapbuf) 
                                 bhex_free(tmp);
                                 return 1;
                             }
-                            yyheapbuf_len = (uint32_t)len;
+                            yyheapbuf_len = (u32_t)len;
                             bhex_free(tmp);
                             return TSTR;
                         }

@@ -3,6 +3,7 @@
 Work in progress template engine
 
 [ ] implement custom functions
+[ ] implement cast function (e.g., u8(42))
 [X] fix that p/r 100 prints 112 chars
 [X] fix mem leak when syntax error occurs
 [X] find a way to test tengine through in-memory file buffers

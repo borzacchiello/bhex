@@ -1275,7 +1275,7 @@ YY_RULE_SETUP
                                 bhex_free(tmp);
                                 return 1;
                             }
-                            yyheapbuf_len = (uint32_t)len;
+                            yyheapbuf_len = (u32_t)len;
                             bhex_free(tmp);
                             return TSTR;
                         }

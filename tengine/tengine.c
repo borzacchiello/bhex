@@ -479,7 +479,7 @@ static int process_array_type(ProcessContext* ctx, const char* varname,
         fb_seek(ctx->fb, final_off);
         return 0;
     }
-    if (strcmp(type, "uint8_t") == 0) {
+    if (strcmp(type, "u8") == 0) {
         // Special case, buf
         u64_t       size_to_print = min(MAX_ARR_PRINT_SIZE, size);
         const u8_t* buf           = fb_read(ctx->fb, size_to_print);
@@ -620,8 +620,8 @@ static int process_STMT_IF_ELIF_ELSE(ProcessContext* ctx, Stmt* stmt,
     // things correctly we should define a new var context and delete the
     // new variables afterwards
     // Ex, this is currently correct (for now it is fine though):
-    //   if (1) { uint8_t a; }
-    //   if (a) { uint8_t b; }
+    //   if (1) { u8 a; }
+    //   if (a) { u8 b; }
 
     for (u64_t i = 0; i < stmt->if_conditions->size; ++i) {
         IfCond* ic = stmt->if_conditions->data[i];

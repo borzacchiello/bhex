@@ -578,7 +578,7 @@ char* TEngineValue_tostring(const TEngineValue* v, int hex)
             break;
         case TENGINE_STRING: {
             strbuilder_append_char(sb, '\'');
-            for (uint32_t i = 0; i < v->str_size; ++i) {
+            for (u32_t i = 0; i < v->str_size; ++i) {
                 if (!v->str[i])
                     break;
                 if (is_printable_ascii(v->str[i]))
