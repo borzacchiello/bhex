@@ -411,7 +411,7 @@ proc
     local is_64bit = header.e_ident.ei_class == 2;
 
     disable_print();
-    local off = curroff();
+    local off = off();
     local strtab_off = header.e_shoff + (header.e_shstrndx * header.e_shentsize);
     seek(strtab_off);
     if (is_64bit) {
@@ -433,7 +433,7 @@ proc
             Elf32_Phdr phdr;
         }
 
-        local off = curroff();
+        local off = off();
         seek(phdr.p_offset);
         uint8_t PrevPhData[phdr.p_filesz];
         seek(off);
@@ -449,7 +449,7 @@ proc
         } else {
             Elf32_Shdr shdr;
         }
-        local off = curroff();
+        local off = off();
         seek(str_off + shdr.sh_name);
         string_t PrevShName;
         seek(off);

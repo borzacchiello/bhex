@@ -144,10 +144,10 @@ const TEngineBuiltinType* get_builtin_type(const char* type)
     Builtin Functions
 */
 
-static TEngineValue* builtin_curroff(TEngine* e, FileBuffer* fb, DList* params)
+static TEngineValue* builtin_off(TEngine* e, FileBuffer* fb, DList* params)
 {
     if (params && params->size > 0)
-        panic("[tengine] builtin_curroff invalid parameters");
+        panic("[tengine] builtin_off invalid parameters");
 
     return TEngineValue_UNUM_new(fb->off, 8);
 }
@@ -158,6 +158,15 @@ static TEngineValue* builtin_size(TEngine* e, FileBuffer* fb, DList* params)
         panic("[tengine] builtin_size invalid parameters");
 
     return TEngineValue_UNUM_new(fb->size, 8);
+}
+
+static TEngineValue* builtin_remaining_size(TEngine* e, FileBuffer* fb,
+                                            DList* params)
+{
+    if (params && params->size > 0)
+        panic("[tengine] builtin_remaining_size invalid parameters");
+
+    return TEngineValue_UNUM_new(fb->size - fb->off, 8);
 }
 
 static TEngineValue* builtin_atoi(TEngine* e, FileBuffer* fb, DList* params)
@@ -209,13 +218,13 @@ static TEngineValue* builtin_strip(TEngine* e, FileBuffer* fb, DList* params)
     size_t param_len = strlen(param_str);
 
     StringBuilder* sb = strbuilder_new();
-    for (size_t i=0; i<param_len; ++i) {
+    for (size_t i = 0; i < param_len; ++i) {
         if (param_str[i] != ' ' && param_str[i] != '\t' && param_str[i] != '\n')
             strbuilder_append_char(sb, param_str[i]);
     }
 
-    char* str = strbuilder_finalize(sb);
-    TEngineValue* r = TEngineValue_STRING_new((const u8_t*)str, strlen(str));
+    char*         str = strbuilder_finalize(sb);
+    TEngineValue* r   = TEngineValue_STRING_new((const u8_t*)str, strlen(str));
     bhex_free(str);
     return r;
 }
@@ -327,8 +336,9 @@ static TEngineBuiltinFunc builtin_funcs[] = {
     {"enable_print", 0, builtin_enable_print},
     {"seek", 1, builtin_seek},
     {"fwd", 1, builtin_fwd},
-    {"curroff", 0, builtin_curroff},
+    {"off", 0, builtin_off},
     {"size", 0, builtin_size},
+    {"remaining_size", 0, builtin_remaining_size},
     {"atoi", 1, builtin_atoi},
     {"strip", 1, builtin_strip},
     {"strlen", 1, builtin_strlen},

@@ -21,13 +21,13 @@ struct TarHeader
 
 proc
 {
-    while (curroff()+0x200 < size()) {
+    while (off()+0x200 < size()) {
         TarHeader header;
         if (strlen(header.size) == 0) {
             break;
         }
-        uint8_t data[atoi(header.size)];
-        local npad = curroff() % 0x200;
+        uint8_t data[atoi(strip(header.size))];
+        local npad = off() % 0x200;
         if (npad != 0) {
             fwd(0x200 - npad);
         }

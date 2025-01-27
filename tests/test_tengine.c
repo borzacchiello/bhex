@@ -1255,6 +1255,29 @@ end:
     return r;
 }
 
+static int test_strip()
+{
+    int             r    = 0;
+    TestFilebuffer* tfb  = testfilebuffer_create((const u8_t*)"ABCDEF", 6);
+    char*           prog = "proc {"
+                           "    disable_print();"
+                           "    local a = strip(\"  ciao  \t\n\");"
+                           "}";
+
+    TEngine* e = TEngine_run_on_string(tfb->fb, prog);
+    if (e == NULL)
+        goto end;
+
+    TEngineValue* v = Scope_get_local(e->proc_scope, "a");
+    IS_TENGINE_STRING_EQ(r, v, "ciao");
+
+end:
+    if (e)
+        delete_tengine(e);
+    testfilebuffer_destroy(tfb);
+    return r;
+}
+
 static test_t tests[] = {
     {"const", &test_const},
     {"const_s8", &test_const_s8},
@@ -1317,6 +1340,7 @@ static test_t tests[] = {
     {"array_3", &test_array_3},
     {"array_4", &test_array_4},
     {"elf_1", &test_elf_1},
+    {"strip", &test_strip},
 };
 
 int main(int argc, char const* argv[])
