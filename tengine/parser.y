@@ -8,6 +8,7 @@
 
 extern int   yylex();
 extern char* yytext;
+extern int   yylineno;
 extern char  yystrval[MAX_IDENT_SIZE];
 extern u8_t* yyheapbuf;
 extern u32_t yyheapbuf_len;
@@ -24,7 +25,7 @@ void yyset_ctx(ASTCtx* ctx)
 
 void yyerror(const char *s)
 {
-    error("[tengine parser] %s [near token '%s']", s, yytext);
+    error("[tengine parser] %s @ line %d [near token '%s']", s, yylineno, yytext);
 }
 
 %}
@@ -63,6 +64,9 @@ void yyerror(const char *s)
 %left TBNOT
 %left SQLBRACE SQRBRACE
 %left TDOT
+
+// Options
+%locations
 
 // The grammar
 %%

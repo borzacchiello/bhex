@@ -730,7 +730,11 @@ end:
 
 static int test_band_1()
 {
-    char* prog = "proc { local a = 1; local b = 0; local c = a && b; }";
+    char* prog = "proc {"
+                 "  local a = 1;"
+                 "  local b = 0;"
+                 "  local c = a && b;"
+                 "}";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -747,7 +751,11 @@ end:
 
 static int test_band_2()
 {
-    char* prog = "proc { local a = 1; local b = 1; local c = a && b; }";
+    char* prog = "proc {"
+                 "  local a = 1;"
+                 "  local b = 1;"
+                 "  local c = a && b;"
+                 "}";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -764,7 +772,11 @@ end:
 
 static int test_bor_1()
 {
-    char* prog = "proc { local a = 1; local b = 0; local c = a || b; }";
+    char* prog = "proc {"
+                 "  local a = 1;"
+                 "  local b = 0;"
+                 "  local c = a || b;"
+                 "}";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -781,7 +793,11 @@ end:
 
 static int test_bor_2()
 {
-    char* prog = "proc { local a = 0; local b = 0; local c = a && b; }";
+    char* prog = "proc {"
+                 "  local a = 0;"
+                 "  local b = 0;"
+                 "  local c = a || b;"
+                 "}";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -798,8 +814,13 @@ end:
 
 static int test_bneq_1()
 {
-    char* prog =
-        "proc { local a = 0; local b = 1; if (a != 42) { b = b + 41; } }";
+    char* prog = "proc {"
+                 "  local a = 0;"
+                 "  local b = 1;"
+                 "  if (a != 42) {"
+                 "    b = b + 41;"
+                 "  }"
+                 "}";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -816,8 +837,13 @@ end:
 
 static int test_bnot_1()
 {
-    char* prog =
-        "proc { local a = 0; local b = 1; if (!(a == 42)) { b = b + 41; } }";
+    char* prog = "proc {"
+                 "  local a = 0;"
+                 "  local b = 1;"
+                 "  if (!(a == 42)) {"
+                 "    b = b + 41;"
+                 "  }"
+                 "}";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -923,8 +949,13 @@ end:
 
 static int test_if_1()
 {
-    char* prog =
-        "proc { local a = 4; local b = 3; if (a - 3 > 0) { b = b + 42; } }";
+    char* prog = "proc {"
+                 "  local a = 4;"
+                 "  local b = 3;"
+                 "  if (a - 3 > 0) {"
+                 "    b = b + 42;"
+                 "  }"
+                 "}";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -941,8 +972,13 @@ end:
 
 static int test_if_2()
 {
-    char* prog =
-        "proc { local a = 4; local b = 3; if (a - 5 > 0) { b = b + 42; } }";
+    char* prog = "proc {"
+                 "  local a = 4;"
+                 "  local b = 3;"
+                 "  if (a - 5 > 0) {"
+                 "    b = b + 42;"
+                 "  }"
+                 "}";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -959,8 +995,17 @@ end:
 
 static int test_if_3()
 {
-    char* prog = "proc { local a = 4; local b = 3; if (a == 1) { b = b + 42; } "
-                 "elif (a == 4) { b = b + 43; } else { b = b + 44; } }";
+    char* prog = "proc {"
+                 "  local a = 4;"
+                 "  local b = 3;"
+                 "  if (a == 1) {"
+                 "    b = b + 42;"
+                 "  } elif (a == 4) {"
+                 "    b = b + 43;"
+                 "  } else {"
+                 "    b = b + 44;"
+                 "  }"
+                 "}";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -977,8 +1022,15 @@ end:
 
 static int test_if_4()
 {
-    char* prog = "proc { local a = 8; local b = 3; if (a == 1) { b = b + 42; } "
-                 "elif (a == 4) { b = b + 43; } }";
+    char* prog = "proc { "
+                 "  local a = 8;"
+                 "  local b = 3;"
+                 "  if (a == 1) {"
+                 "    b = b + 42;"
+                 "  } elif (a == 4) {"
+                 "    b = b + 43;"
+                 "  }"
+                 "}";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -995,8 +1047,17 @@ end:
 
 static int test_if_5()
 {
-    char* prog = "proc { local a = 8; local b = 3; if (a == 1) { b = b + 42; } "
-                 "elif (a == 4) { b = b + 43; } else { b = b + 44; } }";
+    char* prog = "proc { "
+                 "  local a = 8;"
+                 "  local b = 3;"
+                 "  if (a == 1) {"
+                 "    b = b + 42;"
+                 "  } elif (a == 4) {"
+                 "    b = b + 43;"
+                 "  } else {"
+                 "    b = b + 44;"
+                 "  }"
+                 "}";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -1013,8 +1074,14 @@ end:
 
 static int test_while_1()
 {
-    char* prog = "proc { local a = 0; local b = 0; while (a < 10) { b = b + "
-                 "(2*a); a = a + 1; } }";
+    char* prog = "proc { "
+                 "  local a = 0;"
+                 "  local b = 0;"
+                 "  while (a < 10) {"
+                 "    b = b + (2*a);"
+                 "    a = a + 1;"
+                 "  }"
+                 "}";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)

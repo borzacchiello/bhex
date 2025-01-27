@@ -1,8 +1,10 @@
 #include "builtin.h"
 #include "defs.h"
+#include "strbuilder.h"
 #include "tengine.h"
 #include "value.h"
 
+#include <stddef.h>
 #include <util/byte_to_num.h>
 #include <string.h>
 #include <alloc.h>
@@ -193,6 +195,31 @@ static TEngineValue* builtin_strlen(TEngine* e, FileBuffer* fb, DList* params)
     return TEngineValue_UNUM_new(strlen(param_str), 8);
 }
 
+static TEngineValue* builtin_strip(TEngine* e, FileBuffer* fb, DList* params)
+{
+    if (!params || params->size != 1)
+        panic("[tengine] builtin_strip missing required parameter");
+
+    TEngineValue* param = params->data[0];
+    const char*   param_str;
+    if (TEngineValue_as_string(param, &param_str) != 0) {
+        error("[tengine] strip: expected a string parameter");
+        return NULL;
+    }
+    size_t param_len = strlen(param_str);
+
+    StringBuilder* sb = strbuilder_new();
+    for (size_t i=0; i<param_len; ++i) {
+        if (param_str[i] != ' ' && param_str[i] != '\t' && param_str[i] != '\n')
+            strbuilder_append_char(sb, param_str[i]);
+    }
+
+    char* str = strbuilder_finalize(sb);
+    TEngineValue* r = TEngineValue_STRING_new((const u8_t*)str, strlen(str));
+    bhex_free(str);
+    return r;
+}
+
 static TEngineValue* builtin_endianess_le(TEngine* e, FileBuffer* fb,
                                           DList* params)
 {
@@ -292,10 +319,6 @@ static TEngineValue* builtin_fwd(TEngine* e, FileBuffer* fb, DList* params)
 }
 
 static TEngineBuiltinFunc builtin_funcs[] = {
-    {"curroff", 0, builtin_curroff},
-    {"size", 0, builtin_size},
-    {"atoi", 1, builtin_atoi},
-    {"strlen", 1, builtin_strlen},
     {"endianess_le", 0, builtin_endianess_le},
     {"endianess_be", 0, builtin_endianess_be},
     {"nums_in_hex", 0, builtin_nums_in_hex},
@@ -303,7 +326,13 @@ static TEngineBuiltinFunc builtin_funcs[] = {
     {"disable_print", 0, builtin_disable_print},
     {"enable_print", 0, builtin_enable_print},
     {"seek", 1, builtin_seek},
-    {"fwd", 1, builtin_fwd}};
+    {"fwd", 1, builtin_fwd},
+    {"curroff", 0, builtin_curroff},
+    {"size", 0, builtin_size},
+    {"atoi", 1, builtin_atoi},
+    {"strip", 1, builtin_strip},
+    {"strlen", 1, builtin_strlen},
+};
 
 const TEngineBuiltinFunc* get_builtin_func(const char* name)
 {

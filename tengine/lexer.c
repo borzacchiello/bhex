@@ -1,6 +1,6 @@
-#line 1 "lexer.c"
+#line 2 "lexer.c"
 
-#line 3 "lexer.c"
+#line 4 "lexer.c"
 
 #define  YY_INT_ALIGNED short int
 
@@ -553,8 +553,8 @@ int   yymax_ident_len;
 
 __attribute__((destructor)) static void delete_yyheapbuf(void) { if (yyheapbuf) bhex_free(yyheapbuf); }
 
-#line 556 "lexer.c"
 #line 557 "lexer.c"
+#line 558 "lexer.c"
 
 #define INITIAL 0
 
@@ -774,7 +774,7 @@ YY_DECL
 #line 28 "lexer.l"
 
 
-#line 777 "lexer.c"
+#line 778 "lexer.c"
 
 	while ( /*CONSTCOND*/1 )		/* loops until end-of-file is reached */
 		{
@@ -1293,7 +1293,7 @@ YY_RULE_SETUP
 #line 254 "lexer.l"
 ECHO;
 	YY_BREAK
-#line 1296 "lexer.c"
+#line 1297 "lexer.c"
 case YY_STATE_EOF(INITIAL):
 	yyterminate();
 
