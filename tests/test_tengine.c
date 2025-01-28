@@ -284,6 +284,46 @@ end:
     return r;
 }
 
+static int test_cast_u8()
+{
+    char* prog = "proc { "
+                 "  local a = 0xffff;"
+                 "  local b = u8(a);"
+                 "}";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "b");
+    IS_TENGINE_UNUM_EQ(r, v, 0xff);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
+static int test_cast_i8()
+{
+    char* prog = "proc { "
+                 "  local a = 0xffff;"
+                 "  local b = i8(a);"
+                 "}";
+
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(e->proc_scope, "b");
+    IS_TENGINE_SNUM_EQ(r, v, -1);
+
+end:
+    delete_tengine(e);
+    return r;
+}
+
 static int test_const_limit_1()
 {
     char* prog = "proc { local a = 0x7fffffffffffffff; }";
@@ -1292,6 +1332,8 @@ static test_t tests[] = {
     {"hex_const_u16", &test_hex_const_u16},
     {"hex_const_u32", &test_hex_const_u32},
     {"hex_const_u64", &test_hex_const_u64},
+    {"cast_u8", &test_cast_u8},
+    {"cast_i8", &test_cast_i8},
     {"const_limit_1", &test_const_limit_1},
     {"const_limit_2", &test_const_limit_2},
     {"neg_const", &test_neg_const},

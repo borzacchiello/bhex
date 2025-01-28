@@ -99,7 +99,7 @@ static TEngineValue* int_process(TEngine* e, const u8_t* buf, u32_t size)
     return TEngineValue_SNUM_new(sv, size);
 }
 
-#define GEN_INT_PRINT(name, size, signed)                                      \
+#define GEN_INT_PROCESS(name, size, signed)                                    \
     static TEngineValue* name##_process(TEngine* engine, FileBuffer* fb)       \
     {                                                                          \
         const u8_t* buf = fb_read(fb, size);                                   \
@@ -111,20 +111,25 @@ static TEngineValue* int_process(TEngine* e, const u8_t* buf, u32_t size)
         return int_process(engine, buf, size);                                 \
     }
 
-GEN_INT_PRINT(u64, 8, 0)
-GEN_INT_PRINT(u32, 4, 0)
-GEN_INT_PRINT(u16, 2, 0)
-GEN_INT_PRINT(u8, 1, 0)
-GEN_INT_PRINT(i64, 8, 1)
-GEN_INT_PRINT(i32, 4, 1)
-GEN_INT_PRINT(i16, 2, 1)
-GEN_INT_PRINT(i8, 1, 1)
+GEN_INT_PROCESS(u64, 8, 0)
+GEN_INT_PROCESS(u32, 4, 0)
+GEN_INT_PROCESS(u16, 2, 0)
+GEN_INT_PROCESS(u8, 1, 0)
+GEN_INT_PROCESS(i64, 8, 1)
+GEN_INT_PROCESS(i32, 4, 1)
+GEN_INT_PROCESS(i16, 2, 1)
+GEN_INT_PROCESS(i8, 1, 1)
 
 static TEngineBuiltinType builtin_types[] = {
-    {"u64", u64_process},       {"u32", u32_process}, {"u16", u16_process},
-    {"u8", u8_process},         {"i64", i64_process}, {"i32", i32_process},
-    {"i16", i16_process},       {"i8", i8_process},   {"char", char_process},
-    {"string", string_process},
+    {"u64", u64_process},      {"u32", u32_process},
+    {"u16", u16_process},      {"u8", u8_process},
+    {"i64", i64_process},      {"i32", i32_process},
+    {"i16", i16_process},      {"i8", i8_process},
+    {"uint64_t", u64_process}, {"uint32_t", u32_process},
+    {"uint16_t", u16_process}, {"uint8_t", u8_process},
+    {"int64_t", i64_process},  {"int32_t", i32_process},
+    {"int16_t", i16_process},  {"int8_t", i8_process},
+    {"char", char_process},    {"string", string_process},
 };
 
 const TEngineBuiltinType* get_builtin_type(const char* type)
@@ -142,6 +147,39 @@ const TEngineBuiltinType* get_builtin_type(const char* type)
 /*
     Builtin Functions
 */
+
+#define GEN_INT_CAST(name, sz, signed)                                         \
+    static TEngineValue* builtin_##name(TEngine* e, FileBuffer* fb,            \
+                                        DList* params)                         \
+    {                                                                          \
+        if (!params || params->size == 0)                                      \
+            panic("[tengine] " #name " invalid parameters");                   \
+        if (signed) {                                                          \
+            s64_t s;                                                           \
+            if (TEngineValue_as_s64(params->data[0], &s) != 0) {               \
+                error("[tengine] builtin_" #name                               \
+                      " parameter cannot be casted to s64");                   \
+                return NULL;                                                   \
+            }                                                                  \
+            return TEngineValue_SNUM_new(s, sz);                               \
+        }                                                                      \
+        u64_t u;                                                               \
+        if (TEngineValue_as_u64(params->data[0], &u) != 0) {                   \
+            error("[tengine] builtin_" #name                                   \
+                  " parameter cannot be casted to u64");                       \
+            return NULL;                                                       \
+        }                                                                      \
+        return TEngineValue_UNUM_new(u, sz);                                   \
+    }
+
+GEN_INT_CAST(u8, 1, 0)
+GEN_INT_CAST(u16, 2, 0)
+GEN_INT_CAST(u32, 4, 0)
+GEN_INT_CAST(u64, 8, 0)
+GEN_INT_CAST(i8, 1, 1)
+GEN_INT_CAST(i16, 2, 1)
+GEN_INT_CAST(i32, 4, 1)
+GEN_INT_CAST(i64, 8, 1)
 
 static TEngineValue* builtin_off(TEngine* e, FileBuffer* fb, DList* params)
 {
@@ -327,6 +365,14 @@ static TEngineValue* builtin_fwd(TEngine* e, FileBuffer* fb, DList* params)
 }
 
 static TEngineBuiltinFunc builtin_funcs[] = {
+    {"u8", 1, builtin_u8},
+    {"u16", 1, builtin_u16},
+    {"u32", 1, builtin_u32},
+    {"u64", 1, builtin_u64},
+    {"i8", 1, builtin_i8},
+    {"i16", 1, builtin_i16},
+    {"i32", 1, builtin_i32},
+    {"i64", 1, builtin_i64},
     {"endianess_le", 0, builtin_endianess_le},
     {"endianess_be", 0, builtin_endianess_be},
     {"nums_in_hex", 0, builtin_nums_in_hex},
