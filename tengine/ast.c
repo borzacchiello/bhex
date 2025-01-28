@@ -833,6 +833,24 @@ void Enum_free(Enum* e)
     bhex_free(e);
 }
 
+Function* Function_new(const char* name, DList* params, Block* block)
+{
+    Function* fn = bhex_calloc(sizeof(Function));
+    fn->name     = bhex_strdup(name);
+    fn->params   = params;
+    fn->block    = block;
+    return fn;
+}
+
+void Function_free(Function* fn)
+{
+    if (fn->params)
+        DList_destroy(fn->params, (void (*)(void*))bhex_free);
+    bhex_free(fn->name);
+    Block_free(fn->block);
+    bhex_free(fn);
+}
+
 ASTCtx* ASTCtx_new(void)
 {
     ASTCtx* ctx  = bhex_calloc(sizeof(ASTCtx));
@@ -841,6 +859,8 @@ ASTCtx* ASTCtx_new(void)
     map_set_dispose(ctx->structs, (void (*)(void*))Block_free);
     ctx->enums = map_create();
     map_set_dispose(ctx->enums, (void (*)(void*))Enum_free);
+    ctx->functions = map_create();
+    map_set_dispose(ctx->functions, (void (*)(void*))Function_free);
     return ctx;
 }
 
@@ -853,6 +873,7 @@ void ASTCtx_delete(ASTCtx* ctx)
         Block_free(ctx->proc);
     map_destroy(ctx->structs);
     map_destroy(ctx->enums);
+    map_destroy(ctx->functions);
     bhex_free(ctx);
 }
 

@@ -1,4 +1,5 @@
 #include "scope.h"
+#include "value.h"
 #include <alloc.h>
 
 Scope* Scope_new(void)
@@ -59,5 +60,15 @@ map* Scope_free_and_get_filevars(Scope* s)
     map_destroy(s->locals);
     map* r = s->filevars;
     bhex_free(s);
+    return r;
+}
+
+TEngineValue* Scope_free_and_get_result(Scope* s)
+{
+    TEngineValue* r = NULL;
+    if (map_contains(s->locals, "result"))
+        r = map_remove(s->locals, "result");
+
+    Scope_free(s);
     return r;
 }

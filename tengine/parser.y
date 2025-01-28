@@ -41,7 +41,7 @@ void yyerror(const char *s)
 }
 
 // Terminal tokens
-%token TPROC TLOCAL TSTRUCT TENUM TORENUM TIF TELIF TELSE TWHILE TBREAK
+%token TPROC TFN TLOCAL TSTRUCT TENUM TORENUM TIF TELIF TELSE TWHILE TBREAK
 %token TIDENTIFIER TUNUM8 TUNUM16 TUNUM32 TUNUM64 TSNUM8 TSNUM16 TSNUM32 TSNUM64 TSTR
 %token TCLBRACE TCRBRACE TLBRACE TRBRACE SQLBRACE SQRBRACE 
 %token TSEMICOLON TCOLON TCOMMA TDOT
@@ -53,7 +53,7 @@ void yyerror(const char *s)
 %type <enum_list> enum_list
 %type <ident>     ident
 %type <expr>      expr num
-%type <params>    params
+%type <params>    params name_params
 
 // Operator precedence
 %left TBAND TBOR
@@ -77,6 +77,16 @@ program     :
                                                             // You can only have one proc
                                                             YYABORT;
                                                         g_ctx->proc = Block_new($4);
+                                                    }
+            | program TFN ident TCLBRACE TCRBRACE TLBRACE stmts TRBRACE 
+                                                    {
+                                                        map_set(g_ctx->functions, $3, Function_new($3, NULL, Block_new($7)));
+                                                        bhex_free($3);
+                                                    }
+            | program TFN ident TCLBRACE name_params TCRBRACE TLBRACE stmts TRBRACE 
+                                                    {
+                                                        map_set(g_ctx->functions, $3, Function_new($3, $5, Block_new($8)));
+                                                        bhex_free($3);
                                                     }
             | program TSTRUCT ident TLBRACE stmts TRBRACE 
                                                     {
@@ -271,6 +281,14 @@ expr        : num
                                                         $$ = Expr_BNOT_new($2);
                                                     }
     ;
+
+name_params : ident                                 {
+                                                        $$ = DList_new();
+                                                        DList_add($$, $1);
+                                                    }
+            | name_params TCOMMA ident              {
+                                                        DList_add($$, $3);
+                                                    }
 
 params      : expr                                  {
                                                         $$ = DList_new();

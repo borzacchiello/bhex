@@ -37,6 +37,7 @@ __attribute__((destructor)) static void delete_yyheapbuf(void) { if (yyheapbuf) 
 "if"                    { return TIF; }
 "elif"                  { return TELIF; }
 "else"                  { return TELSE; }
+"fn"                    { return TFN; }
 "while"                 { return TWHILE; }
 -?[0-9]+                {
                             if (!str_to_int64(yytext, &yysnumval)) {

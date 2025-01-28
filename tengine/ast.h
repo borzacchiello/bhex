@@ -195,6 +195,15 @@ Enum*       Enum_new(const char* type, DList* entries, int isor);
 const char* Enum_find_const(Enum* e, u64_t c);
 void        Enum_free(Enum* ee);
 
+typedef struct Function {
+    char*  name;
+    DList* params;
+    Block* block;
+} Function;
+
+Function* Function_new(const char* name, DList* params, Block* block);
+void      Function_free(Function* fn);
+
 typedef struct ASTCtx {
     // proc { ... } => Block*
     Block* proc;
@@ -204,6 +213,9 @@ typedef struct ASTCtx {
 
     // enum XXX { ... } => Map of name to Enum*
     map* enums;
+
+    // fn XXX ( ... ) { ... } => Map of name to Function*
+    map* functions;
 } ASTCtx;
 
 ASTCtx* ASTCtx_new();

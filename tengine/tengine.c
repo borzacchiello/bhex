@@ -162,6 +162,42 @@ static TEngineValue* process_type(ProcessContext* ctx, const char* varname,
     return NULL;
 }
 
+static TEngineValue* handle_function_call(ProcessContext* ctx, Function* fn,
+                                          DList* params_exprs,
+                                          Scope* caller_scope)
+{
+    TEngineValue* result   = NULL;
+    Scope*        fn_scope = NULL;
+
+    u64_t nparams         = params_exprs ? params_exprs->size : 0;
+    u64_t expected_params = fn->params ? fn->params->size : 0;
+    if (nparams != expected_params) {
+        error("[tengine] invalid number of parameters while calling %s: "
+              "expected %llu, got %llu",
+              fn->name, expected_params, nparams);
+        goto end;
+    }
+
+    fn_scope = Scope_new();
+    Scope_add_local(fn_scope, "result", TEngineValue_UNUM_new(0, 8));
+    for (u64_t i = 0; i < nparams; ++i)
+        Scope_add_local(fn_scope, fn->params->data[i],
+                        TEngineValue_dup(params_exprs->data[i]));
+
+    for (u64_t i = 0; i < fn->block->stmts->size; ++i) {
+        Stmt* stmt = fn->block->stmts->data[i];
+        if (process_stmt(ctx, stmt, fn_scope) != 0)
+            goto end;
+    }
+    result   = Scope_free_and_get_result(fn_scope);
+    fn_scope = NULL;
+
+end:
+    if (fn_scope)
+        Scope_free(fn_scope);
+    return result;
+}
+
 static DList* evaluate_list_of_exprs(ProcessContext* ctx, Scope* scope,
                                      DList* l)
 {
@@ -238,16 +274,37 @@ static TEngineValue* evaluate_expr(ProcessContext* ctx, Scope* scope, Expr* e)
             return res;
         }
         case EXPR_FUN_CALL: {
-            const TEngineBuiltinFunc* func = get_builtin_func(e->fname);
-            if (func == NULL) {
-                error("[tengine] no such non-void function '%s'", e->fname);
-                return NULL;
+            const TEngineBuiltinFunc* builtin_func = get_builtin_func(e->fname);
+            if (builtin_func != NULL) {
+                DList* params_vals =
+                    evaluate_list_of_exprs(ctx, scope, e->params);
+                TEngineValue* r =
+                    builtin_func->process(ctx->engine, ctx->fb, params_vals);
+                if (params_vals)
+                    DList_destroy(params_vals,
+                                  (void (*)(void*))TEngineValue_free);
+                if (r == NULL)
+                    error("[tengine] called void call '%s' in expression",
+                          e->fname);
+                return r;
             }
-            DList* params_vals = evaluate_list_of_exprs(ctx, scope, e->params);
-            TEngineValue* r = func->process(ctx->engine, ctx->fb, params_vals);
-            if (params_vals)
-                DList_destroy(params_vals, (void (*)(void*))TEngineValue_free);
-            return r;
+            if (map_contains(ctx->engine->ast->functions, e->fname)) {
+                // Custom function
+                DList* params_vals =
+                    evaluate_list_of_exprs(ctx, scope, e->params);
+                Function* fn = map_get(ctx->engine->ast->functions, e->fname);
+                TEngineValue* result =
+                    handle_function_call(ctx, fn, params_vals, scope);
+                if (params_vals)
+                    DList_destroy(params_vals,
+                                  (void (*)(void*))TEngineValue_free);
+                if (!result)
+                    return NULL;
+                return result;
+            }
+
+            error("[tengine] no such non-void function '%s'", e->fname);
+            return NULL;
         }
         case EXPR_ADD: {
             TEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
@@ -593,18 +650,32 @@ static int process_LOCAL_VAR_ASS(ProcessContext* ctx, Stmt* stmt, Scope* scope)
 
 static int process_VOID_FUNC_CALL(ProcessContext* ctx, Stmt* stmt, Scope* scope)
 {
-    const TEngineBuiltinFunc* func = get_builtin_func(stmt->fname);
-    if (func == NULL) {
-        error("[tengine] no such function '%s'", stmt->fname);
-        return 1;
+    const TEngineBuiltinFunc* builtin_func = get_builtin_func(stmt->fname);
+    if (builtin_func != NULL) {
+        DList* params_vals = evaluate_list_of_exprs(ctx, scope, stmt->params);
+        TEngineValue* r =
+            builtin_func->process(ctx->engine, ctx->fb, params_vals);
+        if (params_vals)
+            DList_destroy(params_vals, (void (*)(void*))TEngineValue_free);
+        TEngineValue_free(r);
+        return 0;
+    }
+    if (map_contains(ctx->engine->ast->functions, stmt->fname)) {
+        // Custom function
+        DList* params_vals = evaluate_list_of_exprs(ctx, scope, stmt->params);
+        Function*     fn   = map_get(ctx->engine->ast->functions, stmt->fname);
+        TEngineValue* result =
+            handle_function_call(ctx, fn, params_vals, scope);
+        if (params_vals)
+            DList_destroy(params_vals, (void (*)(void*))TEngineValue_free);
+        if (!result)
+            return 1;
+        TEngineValue_free(result);
+        return 0;
     }
 
-    DList* params_vals = evaluate_list_of_exprs(ctx, scope, stmt->params);
-    TEngineValue* r    = func->process(ctx->engine, ctx->fb, params_vals);
-    if (params_vals)
-        DList_destroy(params_vals, (void (*)(void*))TEngineValue_free);
-    TEngineValue_free(r);
-    return 0;
+    error("[tengine] no such function '%s'", stmt->fname);
+    return 1;
 }
 
 static int process_STMT_IF_ELIF_ELSE(ProcessContext* ctx, Stmt* stmt,

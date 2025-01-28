@@ -1318,6 +1318,81 @@ end:
     return r;
 }
 
+static int test_fn_1()
+{
+
+    char* prog = "fn test() {"
+                 "    result = 42;"
+                 "}"
+                 "proc {"
+                 "    disable_print();"
+                 "    local a = test();"
+                 "}";
+
+    int      r = 0;
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        goto end;
+
+    TEngineValue* v = Scope_get_local(e->proc_scope, "a");
+    IS_TENGINE_SNUM_EQ(r, v, 42);
+
+end:
+    if (e)
+        delete_tengine(e);
+    return r;
+}
+
+static int test_fn_2()
+{
+
+    char* prog = "fn test(a) {"
+                 "    result = u32(42 + a);"
+                 "}"
+                 "proc {"
+                 "    disable_print();"
+                 "    local a = test(42);"
+                 "}";
+
+    int      r = 0;
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        goto end;
+
+    TEngineValue* v = Scope_get_local(e->proc_scope, "a");
+    IS_TENGINE_UNUM_EQ(r, v, 84);
+
+end:
+    if (e)
+        delete_tengine(e);
+    return r;
+}
+
+static int test_fn_3()
+{
+
+    char* prog = "fn test(a, b) {"
+                 "    result = u32(42 + a + b);"
+                 "}"
+                 "proc {"
+                 "    disable_print();"
+                 "    local a = test(42, 42);"
+                 "}";
+
+    int      r = 0;
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        goto end;
+
+    TEngineValue* v = Scope_get_local(e->proc_scope, "a");
+    IS_TENGINE_UNUM_EQ(r, v, 42*3);
+
+end:
+    if (e)
+        delete_tengine(e);
+    return r;
+}
+
 static test_t tests[] = {
     {"const", &test_const},
     {"const_s8", &test_const_s8},
@@ -1383,6 +1458,9 @@ static test_t tests[] = {
     {"array_4", &test_array_4},
     {"elf_1", &test_elf_1},
     {"strip", &test_strip},
+    {"fn_1", &test_fn_1},
+    {"fn_2", &test_fn_2},
+    {"fn_3", &test_fn_3},
 };
 
 int main(int argc, char const* argv[])

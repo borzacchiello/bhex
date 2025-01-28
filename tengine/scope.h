@@ -17,5 +17,6 @@ TEngineValue* Scope_get_anyvar(Scope* s, const char* name);
 void Scope_add_filevar(Scope* s, const char* name, TEngineValue* value);
 void Scope_add_local(Scope* s, const char* name, TEngineValue* value);
 map* Scope_free_and_get_filevars(Scope* s);
+TEngineValue* Scope_free_and_get_result(Scope* s);
 
 #endif
