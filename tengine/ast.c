@@ -309,11 +309,8 @@ void Expr_free(Expr* e)
             Expr_free(e->array_sub_n);
             break;
         case EXPR_FUN_CALL:
-            if (e->params) {
-                DList_foreach(e->params, (void (*)(void*))Expr_free);
-                DList_deinit(e->params);
-                bhex_free(e->params);
-            }
+            if (e->params)
+                DList_destroy(e->params, (void (*)(void*))Expr_free);
             bhex_free(e->fname);
             break;
         case EXPR_ADD:
@@ -613,11 +610,8 @@ static void LOCAL_VAR_DECL_free(Stmt* stmt)
 static void VOID_FUNC_CALL_free(Stmt* stmt)
 {
     bhex_free(stmt->fname);
-    if (stmt->params) {
-        DList_foreach(stmt->params, (void (*)(void*))Expr_free);
-        DList_deinit(stmt->params);
-        bhex_free(stmt->params);
-    }
+    if (stmt->params)
+        DList_destroy(stmt->params, (void (*)(void*))Expr_free);
 }
 
 static void STMT_IF_WHILE_free(Stmt* stmt)
@@ -628,9 +622,7 @@ static void STMT_IF_WHILE_free(Stmt* stmt)
 
 static void STMT_IF_ELIF_ELSE_free(Stmt* stmt)
 {
-    DList_foreach(stmt->if_conditions, (void (*)(void*))&IfCond_free);
-    DList_deinit(stmt->if_conditions);
-    bhex_free(stmt->if_conditions);
+    DList_destroy(stmt->if_conditions, (void (*)(void*))&IfCond_free);
     if (stmt->else_block)
         Block_free(stmt->else_block);
 }
@@ -749,9 +741,7 @@ void Block_free(Block* b)
 {
     if (!b)
         return;
-    DList_foreach(b->stmts, (void (*)(void*))Stmt_free);
-    DList_deinit(b->stmts);
-    bhex_free(b->stmts);
+    DList_destroy(b->stmts, (void (*)(void*))Stmt_free);
     bhex_free(b);
 }
 
@@ -839,9 +829,7 @@ void Enum_free(Enum* e)
     if (!e)
         return;
     bhex_free(e->type);
-    DList_foreach(e->entries, (void (*)(void*))EnumEntry_free);
-    DList_deinit(e->entries);
-    bhex_free(e->entries);
+    DList_destroy(e->entries, (void (*)(void*))EnumEntry_free);
     bhex_free(e);
 }
 

@@ -1,6 +1,7 @@
 #include "tengine.h"
 #include "builtin.h"
 #include "defs.h"
+#include "dlist.h"
 #include "local.h"
 #include "value.h"
 #include "scope.h"
@@ -170,8 +171,7 @@ static DList* evaluate_list_of_exprs(ProcessContext* ctx, Scope* scope,
         for (u64_t i = 0; i < l->size; ++i) {
             TEngineValue* el = evaluate_expr(ctx, scope, l->data[i]);
             if (el == NULL) {
-                DList_foreach(r, (void (*)(void*))TEngineValue_free);
-                DList_deinit(r);
+                DList_destroy(r, (void (*)(void*))TEngineValue_free);
                 return NULL;
             }
             DList_add(r, el);
@@ -245,11 +245,8 @@ static TEngineValue* evaluate_expr(ProcessContext* ctx, Scope* scope, Expr* e)
             }
             DList* params_vals = evaluate_list_of_exprs(ctx, scope, e->params);
             TEngineValue* r = func->process(ctx->engine, ctx->fb, params_vals);
-            if (params_vals) {
-                DList_foreach(params_vals, (void (*)(void*))TEngineValue_free);
-                DList_deinit(params_vals);
-                bhex_free(params_vals);
-            }
+            if (params_vals)
+                DList_destroy(params_vals, (void (*)(void*))TEngineValue_free);
             return r;
         }
         case EXPR_ADD: {
@@ -604,11 +601,8 @@ static int process_VOID_FUNC_CALL(ProcessContext* ctx, Stmt* stmt, Scope* scope)
 
     DList* params_vals = evaluate_list_of_exprs(ctx, scope, stmt->params);
     TEngineValue* r    = func->process(ctx->engine, ctx->fb, params_vals);
-    if (params_vals) {
-        DList_foreach(params_vals, (void (*)(void*))TEngineValue_free);
-        DList_deinit(params_vals);
-        bhex_free(params_vals);
-    }
+    if (params_vals)
+        DList_destroy(params_vals, (void (*)(void*))TEngineValue_free);
     TEngineValue_free(r);
     return 0;
 }
