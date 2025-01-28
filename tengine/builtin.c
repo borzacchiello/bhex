@@ -364,29 +364,48 @@ static TEngineValue* builtin_fwd(TEngine* e, FileBuffer* fb, DList* params)
     return NULL;
 }
 
+static TEngineValue* builtin_print(TEngine* e, FileBuffer* fb, DList* params)
+{
+    if (!params || params->size == 0)
+        panic("[tengine] builtin_print at least one parameter required");
+
+    for (u64_t i = 0; i < params->size; ++i) {
+        TEngineValue* p = params->data[i];
+        if (p->t == TENGINE_STRING) {
+            printf("%.*s", p->str_size, p->str);
+        } else {
+            char* p_str = TEngineValue_tostring(p, 0);
+            printf("%s", p_str);
+            bhex_free(p_str);
+        }
+    }
+    return NULL;
+}
+
 static TEngineBuiltinFunc builtin_funcs[] = {
-    {"u8", 1, builtin_u8},
-    {"u16", 1, builtin_u16},
-    {"u32", 1, builtin_u32},
-    {"u64", 1, builtin_u64},
-    {"i8", 1, builtin_i8},
-    {"i16", 1, builtin_i16},
-    {"i32", 1, builtin_i32},
-    {"i64", 1, builtin_i64},
-    {"endianess_le", 0, builtin_endianess_le},
-    {"endianess_be", 0, builtin_endianess_be},
-    {"nums_in_hex", 0, builtin_nums_in_hex},
-    {"nums_in_dec", 0, builtin_nums_in_dec},
-    {"disable_print", 0, builtin_disable_print},
-    {"enable_print", 0, builtin_enable_print},
-    {"seek", 1, builtin_seek},
-    {"fwd", 1, builtin_fwd},
-    {"off", 0, builtin_off},
-    {"size", 0, builtin_size},
-    {"remaining_size", 0, builtin_remaining_size},
-    {"atoi", 1, builtin_atoi},
-    {"strip", 1, builtin_strip},
-    {"strlen", 1, builtin_strlen},
+    {"u8", builtin_u8},
+    {"u16", builtin_u16},
+    {"u32", builtin_u32},
+    {"u64", builtin_u64},
+    {"i8", builtin_i8},
+    {"i16", builtin_i16},
+    {"i32", builtin_i32},
+    {"i64", builtin_i64},
+    {"endianess_le", builtin_endianess_le},
+    {"endianess_be", builtin_endianess_be},
+    {"nums_in_hex", builtin_nums_in_hex},
+    {"nums_in_dec", builtin_nums_in_dec},
+    {"disable_print", builtin_disable_print},
+    {"enable_print", builtin_enable_print},
+    {"seek", builtin_seek},
+    {"fwd", builtin_fwd},
+    {"off", builtin_off},
+    {"size", builtin_size},
+    {"remaining_size", builtin_remaining_size},
+    {"print", builtin_print},
+    {"atoi", builtin_atoi},
+    {"strip", builtin_strip},
+    {"strlen", builtin_strlen},
 };
 
 const TEngineBuiltinFunc* get_builtin_func(const char* name)

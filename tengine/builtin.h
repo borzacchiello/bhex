@@ -2,7 +2,6 @@
 #define TENGINE_BUILTIN_H
 
 #include "ast.h"
-#include "defs.h"
 
 struct TEngineValue;
 struct FileBuffer;
@@ -18,7 +17,6 @@ const TEngineBuiltinType* get_builtin_type(const char* type);
 
 typedef struct TEngineBuiltinFunc {
     char  name[MAX_IDENT_SIZE];
-    u16_t nparams;
     struct TEngineValue* (*process)(struct TEngine* e, struct FileBuffer* fb,
                                     struct DList* params);
 } TEngineBuiltinFunc;
