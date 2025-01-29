@@ -560,10 +560,11 @@ static int process_array_type(ProcessContext* ctx, const char* varname,
                 return 1;
             if (printed++ < MAX_ARR_PRINT_SIZE) {
                 value_pp(ctx->engine, ctx->print_off, val);
-                if (printed < size - 1)
+                if (printed <= size - 1)
                     engine_printf(ctx->engine, ", ");
-                engine_printf(ctx->engine, "...");
             }
+            if (printed == MAX_ARR_PRINT_SIZE && size < printed)
+                engine_printf(ctx->engine, "...");
             TEngineValue_ARRAY_append(*oval, val);
         }
         engine_printf(ctx->engine, " ]\n");
