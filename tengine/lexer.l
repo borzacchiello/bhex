@@ -247,6 +247,8 @@ __attribute__((destructor)) static void delete_yyheapbuf(void) { if (yyheapbuf) 
                             bhex_free(tmp);
                             return TSTR;
                         }
+"//".*                       { /* single line comment */ }
+"/*"([^*]|"*"+[^*/])*"*"+"/" { /* multi-line comment */  }
 .                       {
                             error("[tengine lexer] unknown token");
                             return 1;

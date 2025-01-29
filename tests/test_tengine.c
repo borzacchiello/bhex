@@ -1385,7 +1385,81 @@ static int test_fn_3()
         goto end;
 
     TEngineValue* v = Scope_get_local(e->proc_scope, "a");
-    IS_TENGINE_UNUM_EQ(r, v, 42*3);
+    IS_TENGINE_UNUM_EQ(r, v, 42 * 3);
+
+end:
+    if (e)
+        delete_tengine(e);
+    return r;
+}
+
+static int test_comment_line_1()
+{
+    char* prog = "fn test(a, b) {"
+                 "    // this is a comment and should be skipped\n"
+                 "    result = u32(42 + a + b);"
+                 "}"
+                 "proc {"
+                 "    disable_print();"
+                 "    local a = test(42, 42);"
+                 "}";
+
+    int      r = 0;
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        goto end;
+
+    TEngineValue* v = Scope_get_local(e->proc_scope, "a");
+    IS_TENGINE_UNUM_EQ(r, v, 42 * 3);
+
+end:
+    if (e)
+        delete_tengine(e);
+    return r;
+}
+
+static int test_comment_multiline_1()
+{
+    char* prog = "fn test(a, b) {"
+                 "    /* this is a comment and should be skipped */"
+                 "    result = u32(42 + a + b);"
+                 "}"
+                 "proc {"
+                 "    disable_print();"
+                 "    local a = test(42, 42);"
+                 "}";
+
+    int      r = 0;
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        goto end;
+
+    TEngineValue* v = Scope_get_local(e->proc_scope, "a");
+    IS_TENGINE_UNUM_EQ(r, v, 42 * 3);
+
+end:
+    if (e)
+        delete_tengine(e);
+    return r;
+}
+
+static int test_comment_multiline_2()
+{
+    char* prog = "fn test(a, b) {"
+                 "    result = u32(42 + a + b /* this is a comment and should be skipped */);"
+                 "}"
+                 "proc {"
+                 "    disable_print();"
+                 "    local a = /* this is a comment and should be skipped */ test(42, 42);"
+                 "}";
+
+    int      r = 0;
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        goto end;
+
+    TEngineValue* v = Scope_get_local(e->proc_scope, "a");
+    IS_TENGINE_UNUM_EQ(r, v, 42 * 3);
 
 end:
     if (e)
@@ -1461,6 +1535,9 @@ static test_t tests[] = {
     {"fn_1", &test_fn_1},
     {"fn_2", &test_fn_2},
     {"fn_3", &test_fn_3},
+    {"comment_line_1", &test_comment_line_1},
+    {"comment_multiline_1", &test_comment_multiline_1},
+    {"comment_multiline_2", &test_comment_multiline_2},
 };
 
 int main(int argc, char const* argv[])
