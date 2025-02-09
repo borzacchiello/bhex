@@ -302,6 +302,7 @@ int main(int argc, char* argv[])
     linenoiseSetCompletionCallback(bhex_shell_completion);
     linenoiseSetHintsCallback(bhex_shell_hint);
     linenoiseSetFreeHintsCallback(bhex_free);
+    linenoiseSetMultiLine(1);
 
     if (commands)
         command_loop(fb, cc, commands);
