@@ -84,11 +84,8 @@ void cmdctx_destroy(CmdContext* cmd)
     bhex_free(cmd);
 }
 
-static int cmd_help(CmdContext* cc, ParsedCommand* pc)
+int cmd_help(CmdContext* cc)
 {
-    if (pc->print_help || pc->args.size != 0 || pc->cmd_modifiers.size != 0)
-        return COMMAND_INVALID_HELP_COMMAND;
-
     printf("\nAvailable commands:\n");
     printf("    help [h]\n");
     printf("    interactive [int]\n");
@@ -104,8 +101,11 @@ static int cmd_help(CmdContext* cc, ParsedCommand* pc)
 
 int cmdctx_run(CmdContext* cc, ParsedCommand* pc, FileBuffer* fb)
 {
-    if (strcmp(pc->cmd, "help") == 0 || strcmp(pc->cmd, "h") == 0)
-        return cmd_help(cc, pc);
+    if (strcmp(pc->cmd, "help") == 0 || strcmp(pc->cmd, "h") == 0) {
+        if (pc->print_help || pc->args.size != 0 || pc->cmd_modifiers.size != 0)
+            return COMMAND_INVALID_HELP_COMMAND;
+        return cmd_help(cc);
+    }
 
     LLNode* curr = cc->commands.head;
     while (curr) {

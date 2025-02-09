@@ -123,6 +123,8 @@ ret:
 static void main_loop(FileBuffer* fb, CmdContext* cc)
 {
     static char prompt[256];
+    cmd_help(cc);
+    printf("Write '?' after a command to read the relative help\n\n");
 
     while (1) {
         snprintf(prompt, sizeof(prompt), "[0x%07llX] $ ", fb->off);

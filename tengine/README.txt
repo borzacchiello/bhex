@@ -17,7 +17,7 @@ Work in progress template engine
 	[X] string
 	[X] u8, u16, u32, i8, i16, i32
 	[X] raw_buffer
-[ ] implement print API
+[X] implement print API
 	* needs string literal
 [ ] implement a 'find_next' API (which returns the offset, or -1)
 	* needs string literal

@@ -38,6 +38,7 @@ CmdContext* cmdctx_init();
 void        cmdctx_destroy(CmdContext* cc);
 
 int cmdctx_run(CmdContext* cc, ParsedCommand* pc, FileBuffer* fb);
+int cmd_help(CmdContext* cc);
 
 const char* cmdctx_err_to_string(int err);
 

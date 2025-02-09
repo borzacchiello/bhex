@@ -193,7 +193,7 @@ Cmd* templatecmd_create(void)
             // Remove extension
             entry->d_name[d_namelen - 4] = '\0';
             map_set(ctx->templates, entry->d_name, ast);
-            info("loaded template '%s' from '%s'", entry->d_name, tmp);
+            // info("loaded template '%s' from '%s'", entry->d_name, tmp);
         }
         closedir(dir);
     }
