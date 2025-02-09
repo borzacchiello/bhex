@@ -37,7 +37,7 @@ Cmd* deletecmd_create(void)
     cmd->obj   = NULL;
     cmd->name  = "delete";
     cmd->alias = "d";
-    cmd->hint  = NULL;
+    cmd->hint  = " <nbytes>";
 
     cmd->dispose = deletecmd_dispose;
     cmd->help    = deletecmd_help;

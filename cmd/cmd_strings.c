@@ -118,7 +118,7 @@ Cmd* stringscmd_create(void)
     cmd->obj   = NULL;
     cmd->name  = "strings";
     cmd->alias = "str";
-    cmd->hint  = NULL;
+    cmd->hint  = " [/n] [<num>]";
 
     cmd->dispose = stringscmd_dispose;
     cmd->help    = stringscmd_help;

@@ -183,7 +183,7 @@ Cmd* assemblecmd_create(void)
     cmd->obj   = NULL;
     cmd->name  = "assemble";
     cmd->alias = "as";
-    cmd->hint  = " <arch> 'instr1; instr2; ...'";
+    cmd->hint  = " [/l/i/s] <arch> 'instr1; instr2; ...'";
 
     cmd->dispose = assemblecmd_dispose;
     cmd->help    = assemblecmd_help;
