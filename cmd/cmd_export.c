@@ -71,6 +71,7 @@ Cmd* exportcmd_create(void)
     cmd->obj   = NULL;
     cmd->name  = "export";
     cmd->alias = "e";
+    cmd->hint  = " <where> <nbytes>";
 
     cmd->dispose = exportcmd_dispose;
     cmd->help    = exportcmd_help;

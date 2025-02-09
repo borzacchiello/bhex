@@ -26,6 +26,7 @@ Cmd* undocmd_create(void)
     cmd->obj   = NULL;
     cmd->name  = "undo";
     cmd->alias = "u";
+    cmd->hint  = NULL;
 
     cmd->dispose = undocmd_dispose;
     cmd->help    = undocmd_help;

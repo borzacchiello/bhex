@@ -201,10 +201,12 @@ Cmd* disascmd_create(void)
     cmd->obj   = NULL;
     cmd->name  = "disas";
     cmd->alias = "ds";
+    cmd->hint  = " <arch> [<num_instr>]";
 
     cmd->dispose = disascmd_dispose;
     cmd->help    = disascmd_help;
     cmd->exec    = disascmd_exec;
+
     return cmd;
 }
 

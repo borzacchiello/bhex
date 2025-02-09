@@ -212,6 +212,7 @@ Cmd* printcmd_create(void)
     cmd->obj   = NULL;
     cmd->name  = "print";
     cmd->alias = "p";
+    cmd->hint  = "[/{x,w,d,q}/{le,be}] <nelements>";
 
     cmd->dispose = printcmd_dispose;
     cmd->help    = printcmd_help;

@@ -299,6 +299,7 @@ Cmd* searchcmd_create(void)
     cmd->obj   = ctx;
     cmd->name  = "search";
     cmd->alias = "src";
+    cmd->hint  = "[/{x for hex, s for string}] <what>";
 
     cmd->dispose = searchcmd_dispose;
     cmd->help    = searchcmd_help;

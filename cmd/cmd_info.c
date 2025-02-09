@@ -145,6 +145,7 @@ Cmd* infocmd_create(void)
     cmd->obj   = ctx;
     cmd->name  = "info";
     cmd->alias = "i";
+    cmd->hint  = NULL;
 
     cmd->dispose = infocmd_dispose;
     cmd->help    = infocmd_help;

@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <alloc.h>
+#include "completion.h"
 #include "tui.h"
 #include <log.h>
 
@@ -297,6 +298,11 @@ int main(int argc, char* argv[])
                 "the file in write mode)");
 
     CmdContext* cc = cmdctx_init();
+    set_commands_for_completion(cc);
+    linenoiseSetCompletionCallback(bhex_shell_completion);
+    linenoiseSetHintsCallback(bhex_shell_hint);
+    linenoiseSetFreeHintsCallback(bhex_free);
+
     if (commands)
         command_loop(fb, cc, commands);
     else if (script_mode)

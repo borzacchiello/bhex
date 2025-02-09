@@ -105,6 +105,7 @@ Cmd* diffcmd_create(void)
     cmd->obj   = NULL;
     cmd->name  = "diff";
     cmd->alias = "df";
+    cmd->hint  = "[/p] <file>";
 
     cmd->dispose = diffcmd_dispose;
     cmd->help    = diffcmd_help;

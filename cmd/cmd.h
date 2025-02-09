@@ -23,6 +23,7 @@ typedef struct Cmd {
     void*       obj;
     const char* name;
     const char* alias;
+    const char* hint;
 
     fptr_help_t    help;
     fptr_exec_t    exec;

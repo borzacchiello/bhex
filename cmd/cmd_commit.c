@@ -27,6 +27,7 @@ Cmd* commitcmd_create(void)
     cmd->obj   = NULL;
     cmd->name  = "commit";
     cmd->alias = "c";
+    cmd->hint  = NULL;
 
     cmd->dispose = commitcmd_dispose;
     cmd->help    = commitcmd_help;

@@ -129,6 +129,7 @@ add_executable(bhex
     filebuffer.c
     tui.c
     parser.c
+    completion.c
     main.c)
 
 if (STATIC_BUILD)
