@@ -1,10 +1,14 @@
 #include "cmd_diff.h"
+#include "defs.h"
 #include <alloc.h>
+#include <util/print.h>
 
 #include <stdio.h>
 #include <string.h>
 
-#define min(x, y) ((x) < (y) ? (x) : (y))
+#define min(x, y)  ((x) < (y) ? (x) : (y))
+#define bold_begin printf("\033[1m")
+#define bold_end   printf("\033[22m")
 
 static void diffcmd_dispose(void* obj) {}
 
@@ -18,10 +22,43 @@ static void diffcmd_help(void* obj)
            "  file: path to the file to compare\n\n");
 }
 
+static void print_diff(FileBuffer* self, FileBuffer* other, u64_t start,
+                       u64_t end)
+{
+    u64_t self_rst  = self->off;
+    u64_t other_rst = other->off;
+
+    u64_t addr = start;
+    while (addr < end) {
+        fb_seek(self, addr);
+        fb_seek(other, addr);
+        u64_t n = min(16, end - addr);
+
+        print_hex(fb_read(self, n), n, 0, 0, 0, addr);
+        bold_begin;
+        print_hex(fb_read(other, n), n, 0, 0, 0, addr);
+        bold_end;
+
+        addr += n;
+    }
+    printf(" ...\n");
+
+    // restore the read block buffer
+    fb_seek(self, self_rst);
+    fb_seek(other, other_rst);
+    u64_t size =
+        min(min(fb_block_size, self->size - self_rst), other->size - other_rst);
+    fb_read(self, size);
+    fb_read(other, size);
+}
+
 static void print_diffs(FileBuffer* self, FileBuffer* other, int print_diffs)
 {
     fb_seek(self, 0);
     fb_seek(other, 0);
+
+    if (print_diffs)
+        puts("");
 
     u64_t ndiffs     = 0;
     u64_t off        = 0;
@@ -37,19 +74,14 @@ static void print_diffs(FileBuffer* self, FileBuffer* other, int print_diffs)
         const u8_t* other_block = fb_read(other, size);
         for (u32_t i = 0; i < size; ++i) {
             if (self_block[i] == other_block[i]) {
-                if (end_diff != start_diff && print_diffs)
-                    printf("\n^\ndiff @ 0x%08llx -> 0x%08llx\n", start_diff,
-                           end_diff);
+                if (end_diff != start_diff && print_diffs) {
+                    print_diff(self, other, start_diff, end_diff);
+                }
 
                 end_diff = start_diff = 0;
             } else {
-                if (start_diff == 0) {
+                if (start_diff == 0)
                     end_diff = start_diff = off;
-                    if (print_diffs)
-                        printf("\n");
-                }
-                if (print_diffs)
-                    printf("%02x-%02x ", self_block[i], other_block[i]);
                 end_diff++;
                 ndiffs++;
             }
@@ -61,7 +93,7 @@ static void print_diffs(FileBuffer* self, FileBuffer* other, int print_diffs)
     }
 
     if (end_diff != start_diff && print_diffs)
-        printf("\n^\ndiff @ 0x%08llx -> 0x%08llx\n", start_diff, end_diff);
+        print_diff(self, other, start_diff, end_diff);
 
     printf("\n");
     if (off < self->size)
