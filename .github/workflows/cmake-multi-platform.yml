@@ -1,0 +1,50 @@
+# This starter workflow is for a CMake project running on multiple platforms. There is a different starter workflow if you just want a single platform.
+# See: https://github.com/actions/starter-workflows/blob/main/ci/cmake-single-platform.yml
+name: CMake on multiple platforms
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+
+      matrix:
+        name: [ linux-x64, linux-arm64 ]
+        os: [ ubuntu-24.04 ]
+        include:
+          - name: linux-x64
+            arch: x64
+            os: ubuntu-24.04
+            compiler: gcc
+            cmake_flags: -DCMAKE_BUILD_TYPE=Release
+          - name: linux-arm64
+            arch: arm64
+            os: ubuntu-24.04
+            compiler: aarch64-linux-gnu-gcc
+            cmake_flags: -DCMAKE_BUILD_TYPE=Release
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install dependencies
+        run: sudo apt-get --assume-yes install build-essential cmake
+
+      - name: install arm64 dependencies
+        if: matrix.arch == 'arm64'
+        run: sudo apt-get --assume-yes install gcc-aarch64-linux-gnu 
+
+      - name: configure CMake
+        run: >
+          cmake
+          -DCMAKE_C_COMPILER=${{ matrix.compiler }}
+          ${{ matrix.cmake_flags }}
+
+      - name: build
+        run: make
