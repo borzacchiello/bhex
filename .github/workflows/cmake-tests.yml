@@ -16,7 +16,7 @@ jobs:
       fail-fast: false
 
       matrix:
-        name: [ linux-x64, linux-i386, linux-arm64 ]
+        name: [ linux-x64, linux-i386, linux-arm64, linux-arm ]
         os: [ ubuntu-24.04 ]
         include:
           - name: linux-x64
@@ -37,12 +37,18 @@ jobs:
             c_compiler: aarch64-linux-gnu-gcc
             cmake_flags:
             test_cmdline: qemu-aarch64 -L /usr/aarch64-linux-gnu ./bhex_tests
+          - name: linux-arm
+            arch: arm
+            os: ubuntu-24.04
+            c_compiler: arm-linux-gnueabi-gcc
+            cmake_flags:
+            test_cmdline: qemu-arm -L /usr/arm-linux-gnueabi ./bhex_tests
 
     steps:
       - uses: actions/checkout@v4
 
       - name: install dependencies
-        run: sudo apt-get --assume-yes install build-essential cmake qemu-user gcc-aarch64-linux-gnu gcc-i686-linux-gnu
+        run: sudo apt-get --assume-yes install build-essential cmake qemu-user gcc-aarch64-linux-gnu gcc-i686-linux-gnu gcc-arm-linux-gnueabi
 
       - name: configure CMake
         run: >
