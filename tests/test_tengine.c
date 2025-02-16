@@ -195,7 +195,7 @@ int TEST(const_u64)()
 
     int           r = 0;
     TEngineValue* v = Scope_get_local(e->proc_scope, "a");
-    IS_TENGINE_UNUM_EQ(r, v, 1099511627537);
+    IS_TENGINE_UNUM_EQ(r, v, 1099511627537ull);
 
 end:
     delete_tengine(e);
@@ -280,7 +280,7 @@ int TEST(hex_const_u64)()
 
     int           r = 0;
     TEngineValue* v = Scope_get_local(e->proc_scope, "a");
-    IS_TENGINE_UNUM_EQ(r, v, 0xffffffffff);
+    IS_TENGINE_UNUM_EQ(r, v, 0xffffffffffull);
 
 end:
     delete_tengine(e);
@@ -525,7 +525,7 @@ int TEST(add_wrap_s32)()
 
     int           r = 0;
     TEngineValue* v = Scope_get_local(e->proc_scope, "b");
-    IS_TENGINE_SNUM_EQ(r, v, -0x80000000l);
+    IS_TENGINE_SNUM_EQ(r, v, -0x80000000ll);
 
 end:
     delete_tengine(e);

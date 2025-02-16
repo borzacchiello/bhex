@@ -91,7 +91,7 @@ static void calc_values(FileBuffer* fb, char** md5, float* entropy)
 static const char* size_string(u64_t size)
 {
     static char buf[512];
-    if (size / (1024ul * 1024 * 1024 * 1024) > 0)
+    if (size / (1024ull * 1024 * 1024 * 1024) > 0)
         snprintf((char*)buf, sizeof(buf) - 1, "%llu [ %.03Lf TiB ]", size,
                  (double)size / (1024.0l * 1024 * 1024 * 1024));
     else if (size / (1024ul * 1024 * 1024) > 0)

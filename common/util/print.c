@@ -7,7 +7,7 @@
 void print_ascii(const u8_t* bytes, size_t size, int print_header,
                  int print_footer)
 {
-    size_t last_newline_off = 0, off = 0, linenum = 0;
+    u64_t last_newline_off = 0, off = 0, linenum = 0;
     for (off = 0; off < size; off++) {
         if (bytes[off] == '\n')
             last_newline_off = off;
@@ -15,7 +15,7 @@ void print_ascii(const u8_t* bytes, size_t size, int print_header,
 
     if (print_header)
         puts("");
-    printf("%03lu: ", ++linenum);
+    printf("%03llu: ", ++linenum);
     off = 0;
     while (off < last_newline_off) {
         if (is_printable_ascii(bytes[off]) || bytes[off] == '\t' ||
@@ -24,7 +24,7 @@ void print_ascii(const u8_t* bytes, size_t size, int print_header,
         else
             printf(".");
         if (bytes[off] == '\n') {
-            printf("%03lu: ", ++linenum);
+            printf("%03llu: ", ++linenum);
         }
         off += 1;
     }

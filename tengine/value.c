@@ -39,8 +39,8 @@ TEngineValue* TEngineValue_SNUM_new(s64_t v, u32_t size)
     if (size == 0)
         panic("TEngineValue_SNUM_new() invalid size");
     if (size < 8) {
-        u64_t mask = (2ul << ((u64_t)size * 8 - 1ul)) - 1ul;
-        u64_t msb  = (1ul << ((u64_t)size * 8 - 1ul));
+        u64_t mask = (2ull << ((u64_t)size * 8 - 1ull)) - 1ull;
+        u64_t msb  = (1ull << ((u64_t)size * 8 - 1ull));
         u64_t vu   = (u64_t)v & mask;
         if (vu & msb)
             vu |= ~mask;
@@ -58,7 +58,7 @@ TEngineValue* TEngineValue_UNUM_new(u64_t v, u32_t size)
 {
     if (size == 0)
         panic("TEngineValue_UNUM_new() invalid size");
-    u64_t mask = (2ul << ((u64_t)size * 8 - 1ul)) - 1ul;
+    u64_t mask = (2ull << ((u64_t)size * 8 - 1ull)) - 1ull;
 
     TEngineValue* r = bhex_calloc(sizeof(TEngineValue));
     r->t            = TENGINE_UNUM;
