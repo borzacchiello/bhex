@@ -1,19 +1,16 @@
-#include "test.h"
-
 #include <string.h>
 #include <ll.h>
 
 #include "../parser.h"
 
+#ifndef TEST
+#define TEST(name) test_##name
+#endif
+
 int  tokenize(const char* str, LL* o_result);
 void destroy_token(uptr_t tptr);
 
-__attribute__((unused)) static void print_token(uptr_t token)
-{
-    printf("<%s>", (char*)token);
-}
-
-static int check_eq(LL* ll, const char** arr, size_t size)
+int check_eq(LL* ll, const char** arr, size_t size)
 {
     LLNode* curr = ll->head;
     u32_t   i    = 0;
@@ -28,7 +25,7 @@ static int check_eq(LL* ll, const char** arr, size_t size)
     return 1;
 }
 
-static int test_tokenize_simple()
+int TEST(tokenize_simple)()
 {
     LL  ll;
     int r = tokenize("ciao ciao come va\n", &ll);
@@ -42,7 +39,7 @@ static int test_tokenize_simple()
     return r;
 }
 
-static int test_tokenize_simple_spaces()
+int TEST(tokenize_simple_spaces)()
 {
     LL  ll;
     int r = tokenize("    ciao   ciao \t\tcome va    \n\n", &ll);
@@ -56,7 +53,7 @@ static int test_tokenize_simple_spaces()
     return r;
 }
 
-static int test_tokenize_quotation_ok()
+int TEST(tokenize_quotation_ok)()
 {
     LL  ll;
     int r = tokenize("ciao \"Mario Rossi\"\n", &ll);
@@ -70,14 +67,14 @@ static int test_tokenize_quotation_ok()
     return r;
 }
 
-static int test_tokenize_quotation_err()
+int TEST(tokenize_quotation_err)()
 {
     LL  ll;
     int r = tokenize("ciao \"Mario Rossi\n", &ll);
     return r == PARSER_ERR_UNCLOSED_QUOTATION;
 }
 
-static int test_tokenize_cmd_params()
+int TEST(tokenize_cmd_params)()
 {
     LL  ll;
     int r = tokenize("w/x/+16 aabbccdd\n", &ll);
@@ -91,7 +88,7 @@ static int test_tokenize_cmd_params()
     return r;
 }
 
-static int test_tokenize_cmd_help()
+int TEST(tokenize_cmd_help)()
 {
     LL  ll;
     int r = tokenize("w?\n", &ll);
@@ -105,7 +102,7 @@ static int test_tokenize_cmd_help()
     return r;
 }
 
-static int test_tokenize_cmd_params_slash_in_arg()
+int TEST(tokenize_cmd_params_slash_in_arg)()
 {
     LL  ll;
     int r = tokenize("w/x/+16 /ciao/ciao/ciao\n", &ll);
@@ -119,7 +116,7 @@ static int test_tokenize_cmd_params_slash_in_arg()
     return r;
 }
 
-static int test_parser_simple()
+int TEST(parser_simple)()
 {
     ParsedCommand* pc;
 
@@ -150,7 +147,7 @@ EXIT:
     return r;
 }
 
-static int test_parser_with_args()
+int TEST(parser_with_args)()
 {
     ParsedCommand* pc;
 
@@ -183,7 +180,7 @@ EXIT:
     return r;
 }
 
-static int test_parser_with_cmdmod()
+int TEST(parser_with_cmdmod)()
 {
     ParsedCommand* pc;
 
@@ -217,7 +214,7 @@ EXIT:
     return r;
 }
 
-static int test_parser_with_args_cmdmod()
+int TEST(parser_with_args_cmdmod)()
 {
     ParsedCommand* pc;
 
@@ -254,7 +251,7 @@ EXIT:
     return r;
 }
 
-static int test_parser_help_mod()
+int TEST(parser_help_mod)()
 {
     ParsedCommand* pc;
 
@@ -285,7 +282,7 @@ EXIT:
     return r;
 }
 
-static int test_parser_err_trailing_data()
+int TEST(parser_err_trailing_data)()
 {
     ParsedCommand* pc;
 
@@ -293,37 +290,10 @@ static int test_parser_err_trailing_data()
     return r == PARSER_ERR_UNEXPECTED_TRAILING_DATA;
 }
 
-static int test_parser_err_cmdmod_before_cmd()
+int TEST(parser_err_cmdmod_before_cmd)()
 {
     ParsedCommand* pc;
 
     int r = parse("/w", &pc);
     return r == PARSER_ERR_CMDMOD_BEFORE_CMD;
-}
-
-static test_t tests[] = {
-    {.name = "tokenize_simple", .fptr = &test_tokenize_simple},
-    {.name = "tokenize_simple_spaces", .fptr = &test_tokenize_simple_spaces},
-    {.name = "tokenize_quotation_ok", .fptr = &test_tokenize_quotation_ok},
-    {.name = "tokenize_quotation_err", .fptr = &test_tokenize_quotation_err},
-    {.name = "tokenize_cmd_params", .fptr = &test_tokenize_cmd_params},
-    {.name = "tokenize_cmd_help", .fptr = &test_tokenize_cmd_help},
-    {.name = "tokenize_cmd_params_slash_in_arg",
-     .fptr = &test_tokenize_cmd_params_slash_in_arg},
-
-    {.name = "parser_simple", .fptr = &test_parser_simple},
-    {.name = "parser_with_args", .fptr = &test_parser_with_args},
-    {.name = "parser_with_cmdmod", .fptr = &test_parser_with_cmdmod},
-    {.name = "parser_with_args_cmdmod", .fptr = &test_parser_with_args_cmdmod},
-    {.name = "parser_help_mod", .fptr = &test_parser_help_mod},
-    {.name = "parser_err_trailing_data",
-     .fptr = &test_parser_err_trailing_data},
-    {.name = "parser_err_cmdmod_before_cmd",
-     .fptr = &test_parser_err_cmdmod_before_cmd},
-};
-
-int main(int argc, char const* argv[])
-{
-    RUN_TESTS(tests);
-    return 0;
 }

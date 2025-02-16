@@ -10,6 +10,7 @@ project(bhex)
 option(ASAN "Compile with asan (only for debug builds)" OFF)
 option(ENABLE_CAPSTONE "Enable Capstone (disas command)" OFF)
 option(ENABLE_KEYSTONE "Enable Keystone (assemble command)" OFF)
+option(ENABLE_TESTS "Compile test binary" OFF)
 option(STATIC_BUILD "Statically link libc" OFF)
 
 set(CMAKE_C_STANDARD 99)
@@ -103,22 +104,23 @@ if(ASAN)
     set(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fsanitize=address,undefined")
 endif()
 
-# Tests
-add_executable(test_ll
-    ${common_src}
-    tests/test_ll.c)
+if (ENABLE_TESTS)
+    add_executable(bhex_tests
+        ${common_src}
+        ${tengine_src}
+        filebuffer.c
+        parser.c
+        tests/dummy_filebuffer.c
+        ${CMAKE_SOURCE_DIR}/tests/main.c)
 
-add_executable(test_parser
-    ${common_src}
-    parser.c
-    tests/test_parser.c)
+    add_custom_target(
+            always_run_target ALL
+            DEPENDS ${CMAKE_SOURCE_DIR}/tests/main.c)
 
-add_executable(test_tengine
-    ${common_src}
-    ${tengine_src}
-    filebuffer.c
-    tests/test_filebuffer.c
-    tests/test_tengine.c)
+    add_custom_command(
+            OUTPUT  ${CMAKE_SOURCE_DIR}/tests/main.c
+            COMMAND python ${CMAKE_SOURCE_DIR}/tests/gen_tests.py)
+endif()
 
 # Main executable
 add_executable(bhex

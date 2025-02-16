@@ -22,13 +22,15 @@ jobs:
           - name: linux-x64
             arch: x64
             os: ubuntu-24.04
-            compiler: gcc
-            cmake_flags: -DCMAKE_BUILD_TYPE=Release
+            c_compiler: gcc
+            cmake_flags: -DASAN=on
+            test_cmdline: ./bhex_tests
           - name: linux-arm64
             arch: arm64
             os: ubuntu-24.04
-            compiler: aarch64-linux-gnu-gcc
-            cmake_flags: -DCMAKE_BUILD_TYPE=Release
+            c_compiler: aarch64-linux-gnu-gcc
+            cmake_flags:
+            test_cmdline: qemu-aarch64 -L /usr/aarch64-linux-gnu ./bhex_tests
 
     steps:
       - uses: actions/checkout@v4
@@ -38,13 +40,18 @@ jobs:
 
       - name: install arm64 dependencies
         if: matrix.arch == 'arm64'
-        run: sudo apt-get --assume-yes install gcc-aarch64-linux-gnu 
+        run: sudo apt-get --assume-yes install gcc-aarch64-linux-gnu qemu-user
 
       - name: configure CMake
         run: >
           cmake
-          -DCMAKE_C_COMPILER=${{ matrix.compiler }}
+          -DENABLE_TESTS=on
+          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
           ${{ matrix.cmake_flags }}
 
       - name: build
         run: make
+
+      - name: run_tests
+        run: ${{ matrix.test_cmdline }}

@@ -1,14 +1,17 @@
 #include "defs.h"
-#include "test.h"
 
 #include <string.h>
 #include <alloc.h>
 #include <log.h>
 
 #include "elf_not_kitty.h"
-#include "test_filebuffer.h"
+#include "dummy_filebuffer.h"
 #include "../tengine/scope.h"
 #include "../tengine/tengine.h"
+
+#ifndef TEST
+#define TEST(name) test_##name
+#endif
 
 FileBuffer* fb;
 
@@ -63,7 +66,7 @@ static void delete_tengine(TEngine* e)
         goto end;                                                              \
     (r) = 1;
 
-static int test_const()
+int TEST(const)()
 {
     char* prog = "proc { local a = 0; }";
 
@@ -80,7 +83,7 @@ end:
     return r;
 }
 
-static int test_const_s8()
+int TEST(const_s8)()
 {
     char* prog = "proc { local a = 42s8; }";
 
@@ -97,7 +100,7 @@ end:
     return r;
 }
 
-static int test_const_s16()
+int TEST(const_s16)()
 {
     char* prog = "proc { local a = 42s16; }";
 
@@ -114,7 +117,7 @@ end:
     return r;
 }
 
-static int test_const_s32()
+int TEST(const_s32)()
 {
     char* prog = "proc { local a = 42s32; }";
 
@@ -131,7 +134,7 @@ end:
     return r;
 }
 
-static int test_const_u8()
+int TEST(const_u8)()
 {
     char* prog = "proc { local a = 16u8; }";
 
@@ -148,7 +151,7 @@ end:
     return r;
 }
 
-static int test_const_u16()
+int TEST(const_u16)()
 {
     char* prog = "proc { local a = 300u16; }";
 
@@ -165,7 +168,7 @@ end:
     return r;
 }
 
-static int test_const_u32()
+int TEST(const_u32)()
 {
     char* prog = "proc { local a = 100000u32; }";
 
@@ -182,7 +185,7 @@ end:
     return r;
 }
 
-static int test_const_u64()
+int TEST(const_u64)()
 {
     char* prog = "proc { local a = 1099511627537u64; }";
 
@@ -199,7 +202,7 @@ end:
     return r;
 }
 
-static int test_hex_const()
+int TEST(hex_const)()
 {
     char* prog = "proc { local a = 0xdeadbeef; }";
 
@@ -216,7 +219,7 @@ end:
     return r;
 }
 
-static int test_hex_const_u8()
+int TEST(hex_const_u8)()
 {
     char* prog = "proc { local a = 0xffu8; }";
 
@@ -233,7 +236,7 @@ end:
     return r;
 }
 
-static int test_hex_const_u16()
+int TEST(hex_const_u16)()
 {
     char* prog = "proc { local a = 0xfffu16; }";
 
@@ -250,7 +253,7 @@ end:
     return r;
 }
 
-static int test_hex_const_u32()
+int TEST(hex_const_u32)()
 {
     char* prog = "proc { local a = 0xffffffu32; }";
 
@@ -267,7 +270,7 @@ end:
     return r;
 }
 
-static int test_hex_const_u64()
+int TEST(hex_const_u64)()
 {
     char* prog = "proc { local a = 0xffffffffffu64; }";
 
@@ -284,7 +287,7 @@ end:
     return r;
 }
 
-static int test_cast_u8()
+int TEST(cast_u8)()
 {
     char* prog = "proc { "
                  "  local a = 0xffff;"
@@ -304,7 +307,7 @@ end:
     return r;
 }
 
-static int test_cast_i8()
+int TEST(cast_i8)()
 {
     char* prog = "proc { "
                  "  local a = 0xffff;"
@@ -324,7 +327,7 @@ end:
     return r;
 }
 
-static int test_const_limit_1()
+int TEST(const_limit_1)()
 {
     char* prog = "proc { local a = 0x7fffffffffffffff; }";
 
@@ -341,7 +344,7 @@ end:
     return r;
 }
 
-static int test_const_limit_2()
+int TEST(const_limit_2)()
 {
     char* prog = "proc { local a = -0x8000000000000000; }";
 
@@ -358,7 +361,7 @@ end:
     return r;
 }
 
-static int test_neg_const()
+int TEST(neg_const)()
 {
     char* prog = "proc { local a = -42; }";
 
@@ -375,7 +378,7 @@ end:
     return r;
 }
 
-static int test_str_const_1()
+int TEST(str_const_1)()
 {
     char* prog = "proc { local a = \"ciao\"; }";
 
@@ -392,7 +395,7 @@ end:
     return r;
 }
 
-static int test_str_const_2()
+int TEST(str_const_2)()
 {
     char* prog = "proc { local a = \"ciao\xde\xad\xbe\xef\"; }";
 
@@ -409,7 +412,7 @@ end:
     return r;
 }
 
-static int test_eq_str()
+int TEST(eq_str)()
 {
     char* prog =
         "proc { local a = \"ciao\"; local b = \"ciao\"; local c = a == b; }";
@@ -427,7 +430,7 @@ end:
     return r;
 }
 
-static int test_sub()
+int TEST(sub)()
 {
     char* prog = "proc { local a = 4; local b = a - 5; }";
 
@@ -444,7 +447,7 @@ end:
     return r;
 }
 
-static int test_add()
+int TEST(add)()
 {
     char* prog = "proc { local a = 4; local b = a + 10; }";
 
@@ -461,7 +464,7 @@ end:
     return r;
 }
 
-static int test_add_no_space()
+int TEST(add_no_space)()
 {
     char* prog = "proc { local a = 4; local b = a+10; }";
 
@@ -478,7 +481,7 @@ end:
     return r;
 }
 
-static int test_add_wrap_s8()
+int TEST(add_wrap_s8)()
 {
     char* prog = "proc { local a = 127s8; local b = a + 1s8; }";
 
@@ -495,7 +498,7 @@ end:
     return r;
 }
 
-static int test_add_wrap_s16()
+int TEST(add_wrap_s16)()
 {
     char* prog = "proc { local a = 0x7fffs16; local b = a + 1s16; }";
 
@@ -512,7 +515,7 @@ end:
     return r;
 }
 
-static int test_add_wrap_s32()
+int TEST(add_wrap_s32)()
 {
     char* prog = "proc { local a = 0x7fffffffs32; local b = a + 1s32; }";
 
@@ -529,7 +532,7 @@ end:
     return r;
 }
 
-static int test_add_wrap_u8()
+int TEST(add_wrap_u8)()
 {
     char* prog = "proc { local a = 250u8; local b = a + 6u8; }";
 
@@ -546,7 +549,7 @@ end:
     return r;
 }
 
-static int test_add_wrap_u16()
+int TEST(add_wrap_u16)()
 {
     char* prog = "proc { local a = 0xffffu16; local b = a + 1u16; }";
 
@@ -563,7 +566,7 @@ end:
     return r;
 }
 
-static int test_add_wrap_u32()
+int TEST(add_wrap_u32)()
 {
     char* prog = "proc { local a = 0xffffffffu32; local b = a + 1u32; }";
 
@@ -580,7 +583,7 @@ end:
     return r;
 }
 
-static int test_add_wrap_u64()
+int TEST(add_wrap_u64)()
 {
     char* prog =
         "proc { local a = 0xffffffffffffffffu64; local b = a + 1u64; }";
@@ -598,7 +601,7 @@ end:
     return r;
 }
 
-static int test_mul()
+int TEST(mul)()
 {
     char* prog = "proc { local a = 4; local b = a * 10; }";
 
@@ -615,7 +618,7 @@ end:
     return r;
 }
 
-static int test_div_1()
+int TEST(div_1)()
 {
     char* prog = "proc { local a = 44; local b = a / 10; }";
 
@@ -632,7 +635,7 @@ end:
     return r;
 }
 
-static int test_div_2()
+int TEST(div_2)()
 {
     char* prog = "proc { local a = 16; local b = a / 4; }";
 
@@ -649,7 +652,7 @@ end:
     return r;
 }
 
-static int test_mod_1()
+int TEST(mod_1)()
 {
     char* prog = "proc { local a = 43; local b = a % 10; }";
 
@@ -666,7 +669,7 @@ end:
     return r;
 }
 
-static int test_mod_2()
+int TEST(mod_2)()
 {
     char* prog = "proc { local a = 16; local b = a % 4; }";
 
@@ -683,7 +686,7 @@ end:
     return r;
 }
 
-static int test_and()
+int TEST(and)()
 {
     char* prog = "proc { local a = 0xffff; local b = a & 0xf0f0; }";
 
@@ -700,7 +703,7 @@ end:
     return r;
 }
 
-static int test_or()
+int TEST(or)()
 {
     char* prog = "proc { local a = 0xf0f0; local b = a | 0x0f0f; }";
 
@@ -717,7 +720,7 @@ end:
     return r;
 }
 
-static int test_xor()
+int TEST(xor)()
 {
     char* prog = "proc { local a = 0xff; local b = a ^ 0xf0; }";
 
@@ -734,7 +737,7 @@ end:
     return r;
 }
 
-static int test_neg_1()
+int TEST(neg_1)()
 {
     char* prog = "proc { local a = -(42+16); }";
 
@@ -751,7 +754,7 @@ end:
     return r;
 }
 
-static int test_neg_2()
+int TEST(neg_2)()
 {
     char* prog = "proc { local a = 43 + -(42+16); }";
 
@@ -768,7 +771,7 @@ end:
     return r;
 }
 
-static int test_band_1()
+int TEST(band_1)()
 {
     char* prog = "proc {"
                  "  local a = 1;"
@@ -789,7 +792,7 @@ end:
     return r;
 }
 
-static int test_band_2()
+int TEST(band_2)()
 {
     char* prog = "proc {"
                  "  local a = 1;"
@@ -810,7 +813,7 @@ end:
     return r;
 }
 
-static int test_bor_1()
+int TEST(bor_1)()
 {
     char* prog = "proc {"
                  "  local a = 1;"
@@ -831,7 +834,7 @@ end:
     return r;
 }
 
-static int test_bor_2()
+int TEST(bor_2)()
 {
     char* prog = "proc {"
                  "  local a = 0;"
@@ -852,7 +855,7 @@ end:
     return r;
 }
 
-static int test_bneq_1()
+int TEST(bneq_1)()
 {
     char* prog = "proc {"
                  "  local a = 0;"
@@ -875,7 +878,7 @@ end:
     return r;
 }
 
-static int test_bnot_1()
+int TEST(bnot_1)()
 {
     char* prog = "proc {"
                  "  local a = 0;"
@@ -898,7 +901,7 @@ end:
     return r;
 }
 
-static int test_precedence_op_1()
+int TEST(precedence_op_1)()
 {
     char* prog = "proc { local a = 4 + 3 * 8; }";
 
@@ -917,7 +920,7 @@ end:
     return r;
 }
 
-static int test_precedence_op_2()
+int TEST(precedence_op_2)()
 {
     char* prog = "proc { local a = 4 - 3 * 8; }";
 
@@ -934,7 +937,7 @@ end:
     return r;
 }
 
-static int test_precedence_op_3()
+int TEST(precedence_op_3)()
 {
     char* prog = "proc { local a = 4 - 3 + 3 * 2; }";
 
@@ -951,7 +954,7 @@ end:
     return r;
 }
 
-static int test_precedence_op_4()
+int TEST(precedence_op_4)()
 {
     char* prog = "proc { local a = 4 * 3 - 1; }";
 
@@ -968,7 +971,7 @@ end:
     return r;
 }
 
-static int test_precedence_op_5()
+int TEST(precedence_op_5)()
 {
     char* prog = "proc { local a = (4 + 3) * 8; }";
 
@@ -987,7 +990,7 @@ end:
     return r;
 }
 
-static int test_if_1()
+int TEST(if_1)()
 {
     char* prog = "proc {"
                  "  local a = 4;"
@@ -1010,7 +1013,7 @@ end:
     return r;
 }
 
-static int test_if_2()
+int TEST(if_2)()
 {
     char* prog = "proc {"
                  "  local a = 4;"
@@ -1033,7 +1036,7 @@ end:
     return r;
 }
 
-static int test_if_3()
+int TEST(if_3)()
 {
     char* prog = "proc {"
                  "  local a = 4;"
@@ -1060,7 +1063,7 @@ end:
     return r;
 }
 
-static int test_if_4()
+int TEST(if_4)()
 {
     char* prog = "proc { "
                  "  local a = 8;"
@@ -1085,7 +1088,7 @@ end:
     return r;
 }
 
-static int test_if_5()
+int TEST(if_5)()
 {
     char* prog = "proc { "
                  "  local a = 8;"
@@ -1112,7 +1115,7 @@ end:
     return r;
 }
 
-static int test_while_1()
+int TEST(while_1)()
 {
     char* prog = "proc { "
                  "  local a = 0;"
@@ -1136,7 +1139,7 @@ end:
     return r;
 }
 
-static int test_array_1()
+int TEST(array_1)()
 {
     int             r    = 0;
     TestFilebuffer* tfb  = testfilebuffer_create((const u8_t*)"AAAAAAAAAB", 10);
@@ -1160,7 +1163,7 @@ end:
     return r;
 }
 
-static int test_array_2()
+int TEST(array_2)()
 {
     int             r    = 0;
     TestFilebuffer* tfb  = testfilebuffer_create((const u8_t*)"AAAAAAAAAB", 10);
@@ -1184,7 +1187,7 @@ end:
     return r;
 }
 
-static int test_array_3()
+int TEST(array_3)()
 {
     int             r    = 0;
     TestFilebuffer* tfb  = testfilebuffer_create((const u8_t*)"AAAAAAAAAB", 10);
@@ -1209,7 +1212,7 @@ end:
     return r;
 }
 
-static int test_array_4()
+int TEST(array_4)()
 {
     int             r    = 0;
     TestFilebuffer* tfb  = testfilebuffer_create((const u8_t*)"ABCDEF", 6);
@@ -1238,7 +1241,7 @@ end:
     return r;
 }
 
-static int test_elf_1()
+int TEST(elf_1)()
 {
     int             r = 0;
     TestFilebuffer* tfb =
@@ -1295,7 +1298,7 @@ end:
     return r;
 }
 
-static int test_strip()
+int TEST(strip)()
 {
     int             r    = 0;
     TestFilebuffer* tfb  = testfilebuffer_create((const u8_t*)"ABCDEF", 6);
@@ -1318,7 +1321,7 @@ end:
     return r;
 }
 
-static int test_fn_1()
+int TEST(fn_1)()
 {
 
     char* prog = "fn test() {"
@@ -1343,7 +1346,7 @@ end:
     return r;
 }
 
-static int test_fn_2()
+int TEST(fn_2)()
 {
 
     char* prog = "fn test(a) {"
@@ -1368,7 +1371,7 @@ end:
     return r;
 }
 
-static int test_fn_3()
+int TEST(fn_3)()
 {
 
     char* prog = "fn test(a, b) {"
@@ -1393,7 +1396,7 @@ end:
     return r;
 }
 
-static int test_comment_line_1()
+int TEST(comment_line_1)()
 {
     char* prog = "fn test(a, b) {"
                  "    // this is a comment and should be skipped\n"
@@ -1418,7 +1421,7 @@ end:
     return r;
 }
 
-static int test_comment_multiline_1()
+int TEST(comment_multiline_1)()
 {
     char* prog = "fn test(a, b) {"
                  "    /* this is a comment and should be skipped */"
@@ -1443,14 +1446,16 @@ end:
     return r;
 }
 
-static int test_comment_multiline_2()
+int TEST(comment_multiline_2)()
 {
     char* prog = "fn test(a, b) {"
-                 "    result = u32(42 + a + b /* this is a comment and should be skipped */);"
+                 "    result = u32(42 + a + b /* this is a comment and should "
+                 "be skipped */);"
                  "}"
                  "proc {"
                  "    disable_print();"
-                 "    local a = /* this is a comment and should be skipped */ test(42, 42);"
+                 "    local a = /* this is a comment and should be skipped */ "
+                 "test(42, 42);"
                  "}";
 
     int      r = 0;
@@ -1465,83 +1470,4 @@ end:
     if (e)
         delete_tengine(e);
     return r;
-}
-
-static test_t tests[] = {
-    {"const", &test_const},
-    {"const_s8", &test_const_s8},
-    {"const_s16", &test_const_s16},
-    {"const_s32", &test_const_s32},
-    {"const_u8", &test_const_u8},
-    {"const_u16", &test_const_u16},
-    {"const_u32", &test_const_u32},
-    {"const_u64", &test_const_u64},
-    {"hex_const", &test_hex_const},
-    {"hex_const_u8", &test_hex_const_u8},
-    {"hex_const_u16", &test_hex_const_u16},
-    {"hex_const_u32", &test_hex_const_u32},
-    {"hex_const_u64", &test_hex_const_u64},
-    {"cast_u8", &test_cast_u8},
-    {"cast_i8", &test_cast_i8},
-    {"const_limit_1", &test_const_limit_1},
-    {"const_limit_2", &test_const_limit_2},
-    {"neg_const", &test_neg_const},
-    {"str_const_1", &test_str_const_1},
-    {"str_const_2", &test_str_const_2},
-    {"eq_str", &test_eq_str},
-    {"add", &test_add},
-    {"add_no_space", &test_add_no_space},
-    {"add_wrap_s8", &test_add_wrap_s8},
-    {"add_wrap_s16", &test_add_wrap_s16},
-    {"add_wrap_s32", &test_add_wrap_s32},
-    {"add_wrap_u8", &test_add_wrap_u8},
-    {"add_wrap_u16", &test_add_wrap_u16},
-    {"add_wrap_u32", &test_add_wrap_u32},
-    {"add_wrap_u64", &test_add_wrap_u64},
-    {"sub", &test_sub},
-    {"mul", &test_mul},
-    {"div_1", &test_div_1},
-    {"div_2", &test_div_2},
-    {"mod_1", &test_mod_1},
-    {"mod_2", &test_mod_2},
-    {"and", &test_and},
-    {"or", &test_or},
-    {"xor", &test_xor},
-    {"neg_1", &test_neg_1},
-    {"neg_2", &test_neg_2},
-    {"band_1", &test_band_1},
-    {"band_2", &test_band_2},
-    {"bor_1", &test_bor_1},
-    {"bor_2", &test_bor_2},
-    {"bneq_1", &test_bneq_1},
-    {"bnot_1", &test_bnot_1},
-    {"precedence_op_1", &test_precedence_op_1},
-    {"precedence_op_2", &test_precedence_op_2},
-    {"precedence_op_3", &test_precedence_op_3},
-    {"precedence_op_4", &test_precedence_op_4},
-    {"precedence_op_5", &test_precedence_op_5},
-    {"if_1", &test_if_1},
-    {"if_2", &test_if_2},
-    {"if_3", &test_if_3},
-    {"if_4", &test_if_4},
-    {"if_5", &test_if_5},
-    {"while_1", &test_while_1},
-    {"array_1", &test_array_1},
-    {"array_2", &test_array_2},
-    {"array_3", &test_array_3},
-    {"array_4", &test_array_4},
-    {"elf_1", &test_elf_1},
-    {"strip", &test_strip},
-    {"fn_1", &test_fn_1},
-    {"fn_2", &test_fn_2},
-    {"fn_3", &test_fn_3},
-    {"comment_line_1", &test_comment_line_1},
-    {"comment_multiline_1", &test_comment_multiline_1},
-    {"comment_multiline_2", &test_comment_multiline_2},
-};
-
-int main(int argc, char const* argv[])
-{
-    RUN_TESTS(tests);
-    return 0;
 }
