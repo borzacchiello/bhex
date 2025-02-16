@@ -16,7 +16,7 @@ jobs:
       fail-fast: false
 
       matrix:
-        name: [ linux-x64, linux-i386, linux-arm64, linux-arm ]
+        name: [ linux-x64, linux-i386, linux-arm64, linux-arm, linux-mips ]
         os: [ ubuntu-24.04 ]
         include:
           - name: linux-x64
@@ -43,12 +43,18 @@ jobs:
             c_compiler: arm-linux-gnueabi-gcc
             cmake_flags:
             test_cmdline: qemu-arm -L /usr/arm-linux-gnueabi ./bhex_tests
+          - name: linux-mips
+            arch: mips
+            os: ubuntu-24.04
+            c_compiler: mips-linux-gnu-gcc
+            cmake_flags:
+            test_cmdline: qemu-mips -L /usr/mips-linux-gnu ./bhex_tests
 
     steps:
       - uses: actions/checkout@v4
 
       - name: install dependencies
-        run: sudo apt-get --assume-yes install build-essential cmake qemu-user gcc-aarch64-linux-gnu gcc-i686-linux-gnu gcc-arm-linux-gnueabi
+        run: sudo apt-get --assume-yes install build-essential cmake qemu-user gcc-aarch64-linux-gnu gcc-i686-linux-gnu gcc-arm-linux-gnueabi gcc-mips-linux-gnu
 
       - name: configure CMake
         run: >
