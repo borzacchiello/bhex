@@ -128,9 +128,8 @@ static void cmd_completion(const char* word, linenoiseCompletions* lc)
     LLNode* curr     = g_cc->commands.head;
     while (curr) {
         Cmd* cmd = (Cmd*)curr->data;
-        if (word_len > strlen(cmd->name))
-            continue;
-        if (!word_len || strncmp(word, cmd->name, word_len) == 0) {
+        if (!word_len || (word_len < strlen(cmd->name) &&
+                          strncmp(word, cmd->name, word_len) == 0)) {
             linenoiseAddCompletion(lc, cmd->name);
             num++;
         }
@@ -168,7 +167,7 @@ char* bhex_shell_hint(const char* buf, int* color, int* bold)
     if (!buf)
         return NULL;
 
-    *bold = 1;
+    *bold   = 1;
     char* r = NULL;
 
     char* bufcp = bhex_strdup(buf);
