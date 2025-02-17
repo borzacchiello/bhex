@@ -1,0 +1,79 @@
+# This starter workflow is for a CMake project running on multiple platforms. There is a different starter workflow if you just want a single platform.
+# See: https://github.com/actions/starter-workflows/blob/main/ci/cmake-single-platform.yml
+name: CMake on multiple platforms
+
+on:
+  push:
+    branches: [ "main" ]
+    if: "startsWith(github.event.head_commit.message, 'Release: ')"
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+
+      matrix:
+        name: [ linux-x64, linux-i386, linux-arm64, linux-arm, linux-mips ]
+        os: [ ubuntu-24.04 ]
+        include:
+          - name: linux-x64
+            arch: x64
+            os: ubuntu-24.04
+            c_compiler: gcc
+            cmake_flags: -DASAN=on
+            test_cmdline: ./bhex_tests
+            dependencies: 
+          - name: linux-i386
+            arch: i386
+            os: ubuntu-24.04
+            c_compiler: i686-linux-gnu-gcc
+            cmake_flags:
+            test_cmdline: qemu-i386 -L /usr/i686-linux-gnu ./bhex_tests
+            dependencies: qemu-user gcc-i686-linux-gnu
+          - name: linux-arm64
+            arch: arm64
+            os: ubuntu-24.04
+            c_compiler: aarch64-linux-gnu-gcc
+            cmake_flags:
+            test_cmdline: qemu-aarch64 -L /usr/aarch64-linux-gnu ./bhex_tests
+            dependencies: qemu-user gcc-aarch64-linux-gnu
+          - name: linux-arm
+            arch: arm
+            os: ubuntu-24.04
+            c_compiler: arm-linux-gnueabi-gcc
+            cmake_flags:
+            test_cmdline: qemu-arm -L /usr/arm-linux-gnueabi ./bhex_tests
+            dependencies: qemu-user gcc-arm-linux-gnueabi
+          - name: linux-mips
+            arch: mips
+            os: ubuntu-24.04
+            c_compiler: mips-linux-gnu-gcc
+            cmake_flags:
+            test_cmdline: qemu-mips -L /usr/mips-linux-gnu ./bhex_tests
+            dependencies: qemu-user gcc-mips-linux-gnu
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: dependencies
+        run: sudo apt-get --assume-yes install build-essential cmake ${{ matrix.dependencies }}
+
+      - name: configure CMake
+        run: >
+          cmake
+          -DSTATIC_BUILD=on
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
+          ${{ matrix.cmake_flags }}
+
+      - name: build
+        run: make
+
+      - name: upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.arch }}
+          path: bhex
+          retention-days: 7
