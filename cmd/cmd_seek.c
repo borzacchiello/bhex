@@ -132,7 +132,7 @@ Cmd* seekcmd_create(void)
     cmd->obj   = state;
     cmd->name  = "seek";
     cmd->alias = "s";
-    cmd->hint  = " [/{+,-}] <addr>";
+    cmd->hint  = "[/{+,-}] <addr>";
 
     cmd->dispose = seekcmd_dispose;
     cmd->help    = seekcmd_help;

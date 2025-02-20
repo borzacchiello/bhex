@@ -244,7 +244,7 @@ Cmd* writecmd_create(void)
     cmd->obj   = NULL;
     cmd->name  = "write";
     cmd->alias = "w";
-    cmd->hint  = "/[{s,x,b,w,d,q}/{le,be}/u/i] <data>";
+    cmd->hint  = "[/{s,x,b,w,d,q}/{le,be}/u/i] <data>";
 
     cmd->dispose = writecmd_dispose;
     cmd->help    = writecmd_help;

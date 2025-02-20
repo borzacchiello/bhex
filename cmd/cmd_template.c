@@ -201,7 +201,7 @@ Cmd* templatecmd_create(void)
     cmd->obj   = ctx;
     cmd->name  = "template";
     cmd->alias = "t";
-    cmd->hint  = " [/l/ls] <name or file>";
+    cmd->hint  = "[/l/ls] <name or file>";
 
     cmd->dispose = (void (*)(void*))templatecmd_dispose;
     cmd->help    = templatecmd_help;

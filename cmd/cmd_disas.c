@@ -201,7 +201,7 @@ Cmd* disascmd_create(void)
     cmd->obj   = NULL;
     cmd->name  = "disas";
     cmd->alias = "ds";
-    cmd->hint  = " [/l] <arch> [<nbytes>]";
+    cmd->hint  = "[/l] <arch> [<nbytes>]";
 
     cmd->dispose = disascmd_dispose;
     cmd->help    = disascmd_help;

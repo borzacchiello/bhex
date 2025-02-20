@@ -14,7 +14,7 @@ static void exportcmd_help(void* obj)
     printf("\nexport: write <size> bytes of the file starting from current "
            "offset to <ofile>\n"
            "\n"
-           "  e <ofile> <size>\n"
+           "  ex <ofile> <size>\n"
            "\n"
            "  ofile: output file\n"
            "  size:  number of bytes to export\n\n");
@@ -70,7 +70,7 @@ Cmd* exportcmd_create(void)
 
     cmd->obj   = NULL;
     cmd->name  = "export";
-    cmd->alias = "e";
+    cmd->alias = "ex";
     cmd->hint  = " <where> <nbytes>";
 
     cmd->dispose = exportcmd_dispose;
