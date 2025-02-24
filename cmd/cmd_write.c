@@ -8,6 +8,8 @@
 #include <alloc.h>
 #include <string.h>
 
+#define HINT_STR "[/{s,x,b,w,d,q}/{le,be}/u/i] <data>"
+
 #define INPUT_TYPE_UNSET  -1
 #define INPUT_TYPE_STRING 0
 #define INPUT_TYPE_HEX    1
@@ -36,7 +38,7 @@ static void writecmd_help(void* obj)
 {
     printf("\nwrite: write data at current offset\n"
            "\n"
-           "  w[{s,x,b,w,d,q}/{le,be}/u/i] <data>\n"
+           "  w" HINT_STR "\n"
            "     s:   string input (default)\n"
            "     x:   hex input\n"
            "     b:   byte\n"
@@ -199,7 +201,7 @@ Cmd* writecmd_create(void)
     cmd->obj   = NULL;
     cmd->name  = "write";
     cmd->alias = "w";
-    cmd->hint  = "[/{s,x,b,w,d,q}/{le,be}/u/i] <data>";
+    cmd->hint  = HINT_STR;
 
     cmd->dispose = writecmd_dispose;
     cmd->help    = writecmd_help;
