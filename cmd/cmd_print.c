@@ -1,30 +1,37 @@
 #include "cmd_print.h"
+#include "cmd.h"
+#include "cmd_arg_handler.h"
+#include "defs.h"
+
 #include <util/byte_to_num.h>
 #include <util/print.h>
 #include <alloc.h>
 
 #include <string.h>
 
-#define WIDTH_UNSET   0x0000
-#define WIDTH_BYTE    0x0001
-#define WIDTH_WORD    0x0002
-#define WIDTH_DWORD   0x0004
-#define WIDTH_QWORD   0x0008
-#define WIDTH_ASCII   0x0101
-#define WIDTH_CBUFFER 0x0201
+#define WIDTH_UNSET   -1
+#define WIDTH_BYTE    0
+#define WIDTH_WORD    1
+#define WIDTH_DWORD   2
+#define WIDTH_QWORD   3
+#define WIDTH_ASCII   4
+#define WIDTH_CBUFFER 5
 
-#define ENDIANESS_UNSET  0
-#define ENDIANESS_LITTLE 1
-#define ENDIANESS_BIG    2
+#define ENDIANESS_UNSET  -1
+#define ENDIANESS_LITTLE 0
+#define ENDIANESS_BIG    1
 
-#define SEEK_UNSET    0
-#define SEEK_FORWARD  1
-#define SEEK_BACKWARD 2
+#define SEEK_UNSET    -1
+#define SEEK_FORWARD  0
+#define SEEK_BACKWARD 1
+
+#define RAW_UNSET -1
+#define RAW_SET   0
+
+#define HINT_CMDLINE "[/{x,w,d,q,a,C}/{le,be}/r/{+,-}] <nelements>"
 
 // must be lower than fb_block_size
 #define DEFAULT_PRINT_LEN 256
-
-#define get_width_bytes(w) ((w) & 0xff)
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 
@@ -36,13 +43,26 @@ typedef struct PrintCmdArgs {
     u64_t n_els;
 } PrintCmdArgs;
 
+static u32_t get_width_bytes(int w)
+{
+    switch (w) {
+        case WIDTH_WORD:
+            return 2;
+        case WIDTH_DWORD:
+            return 4;
+        case WIDTH_QWORD:
+            return 8;
+    }
+    return 1;
+}
+
 static void printcmd_dispose(void* obj) { return; }
 
 static void printcmd_help(void* obj)
 {
     printf("\nprint: display the data at current offset in various formats\n"
            "\n"
-           "  p[/{x,w,d,q}/{le,be}/r/{+,-}] <nelements>\n"
+           "  p" HINT_CMDLINE "\n"
            "     x:  hex output (default)\n"
            "     w:  words\n"
            "     d:  dwords\n"
@@ -60,83 +80,24 @@ static void printcmd_help(void* obj)
            DEFAULT_PRINT_LEN);
 }
 
-int printcmd_parse_args(ParsedCommand* pc, PrintCmdArgs* o_args)
+static int printcmd_parse_args(ParsedCommand* pc, PrintCmdArgs* o_args)
 {
-    o_args->width     = WIDTH_UNSET;
-    o_args->endianess = ENDIANESS_UNSET;
+    o_args->width     = WIDTH_BYTE;
+    o_args->endianess = ENDIANESS_LITTLE;
+    o_args->raw_mode  = RAW_UNSET;
     o_args->seek      = SEEK_UNSET;
     o_args->n_els     = 0;
-    o_args->raw_mode  = 0;
+    if (handle_mods(pc, "x,w,d,q,a,C|le,be|r|+,-", &o_args->width,
+                    &o_args->endianess, &o_args->raw_mode, &o_args->seek) != 0)
+        return COMMAND_INVALID_MOD;
+    o_args->raw_mode = o_args->raw_mode == RAW_UNSET ? 0 : 1;
 
-    LLNode* curr = pc->cmd_modifiers.head;
-    while (curr) {
-        if (strcmp((char*)curr->data, "x") == 0) {
-            if (o_args->width != WIDTH_UNSET)
-                return COMMAND_INVALID_MOD;
-            o_args->width = WIDTH_BYTE;
-        } else if (strcmp((char*)curr->data, "w") == 0) {
-            if (o_args->width != WIDTH_UNSET)
-                return COMMAND_INVALID_MOD;
-            o_args->width = WIDTH_WORD;
-        } else if (strcmp((char*)curr->data, "d") == 0) {
-            if (o_args->width != WIDTH_UNSET)
-                return COMMAND_INVALID_MOD;
-            o_args->width = WIDTH_DWORD;
-        } else if (strcmp((char*)curr->data, "q") == 0) {
-            if (o_args->width != WIDTH_UNSET)
-                return COMMAND_INVALID_MOD;
-            o_args->width = WIDTH_QWORD;
-        } else if (strcmp((char*)curr->data, "a") == 0) {
-            if (o_args->width != WIDTH_UNSET)
-                return COMMAND_INVALID_MOD;
-            o_args->width = WIDTH_ASCII;
-        } else if (strcmp((char*)curr->data, "C") == 0) {
-            if (o_args->width != WIDTH_UNSET)
-                return COMMAND_INVALID_MOD;
-            o_args->width = WIDTH_CBUFFER;
-        } else if (strcmp((char*)curr->data, "le") == 0) {
-            if (o_args->endianess != ENDIANESS_UNSET)
-                return COMMAND_INVALID_MOD;
-            o_args->endianess = ENDIANESS_LITTLE;
-        } else if (strcmp((char*)curr->data, "be") == 0) {
-            if (o_args->endianess != ENDIANESS_UNSET)
-                return COMMAND_INVALID_MOD;
-            o_args->endianess = ENDIANESS_BIG;
-        } else if (strcmp((char*)curr->data, "r") == 0) {
-            if (o_args->raw_mode)
-                return COMMAND_INVALID_MOD;
-            o_args->raw_mode = 1;
-        } else if (strcmp((char*)curr->data, "+") == 0) {
-            if (o_args->seek != SEEK_UNSET)
-                return COMMAND_INVALID_MOD;
-            o_args->seek = SEEK_FORWARD;
-        } else if (strcmp((char*)curr->data, "-") == 0) {
-            if (o_args->seek != SEEK_UNSET)
-                return COMMAND_INVALID_MOD;
-            o_args->seek = SEEK_BACKWARD;
-        } else {
-            return COMMAND_UNSUPPORTED_MOD;
-        }
-        curr = curr->next;
-    }
-
-    if (o_args->width == WIDTH_UNSET)
-        o_args->width = WIDTH_BYTE;
-    if (o_args->endianess == ENDIANESS_UNSET)
-        o_args->endianess = ENDIANESS_LITTLE;
-
-    if (pc->args.size > 1)
+    char* s = NULL;
+    if (handle_args(pc, 1, 0, &s) != 0)
         return COMMAND_INVALID_ARG;
-
-    if (o_args->n_els == 0)
+    if (s == NULL)
         o_args->n_els = DEFAULT_PRINT_LEN / get_width_bytes(o_args->width);
-
-    LLNode* arg = ll_getref(&pc->args, 0);
-    if (!arg)
-        return COMMAND_OK;
-
-    char* s = (char*)arg->data;
-    if (!str_to_uint64(s, &o_args->n_els))
+    else if (!str_to_uint64(s, &o_args->n_els))
         return COMMAND_INVALID_ARG;
     return COMMAND_OK;
 }
@@ -212,7 +173,7 @@ Cmd* printcmd_create(void)
     cmd->obj   = NULL;
     cmd->name  = "print";
     cmd->alias = "p";
-    cmd->hint  = "[/{x,w,d,q}/{le,be}/r/{+,-}] <nelements>";
+    cmd->hint  = HINT_CMDLINE;
 
     cmd->dispose = printcmd_dispose;
     cmd->help    = printcmd_help;

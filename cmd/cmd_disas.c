@@ -26,6 +26,8 @@
 #define MIPSEL32_ARCH    9
 #define MIPSEL64_ARCH    10
 
+#define HINT_STR "[/l] <arch> [<nbytes>]"
+
 typedef struct {
     cs_arch arch;
     cs_mode mode;
@@ -63,7 +65,7 @@ static void disascmd_help(void* obj)
 {
     printf("\ndisas: disassemble code at current offset\n"
            "\n"
-           "  ds[/l] <arch> [<nbytes>]\n"
+           "  ds" HINT_STR "\n"
            "     l:  list supported architectures\n"
            "\n"
            "  arch:   the architecture to use\n"
@@ -201,7 +203,7 @@ Cmd* disascmd_create(void)
     cmd->obj   = NULL;
     cmd->name  = "disas";
     cmd->alias = "ds";
-    cmd->hint  = "[/l] <arch> [<nbytes>]";
+    cmd->hint  = HINT_STR;
 
     cmd->dispose = disascmd_dispose;
     cmd->help    = disascmd_help;

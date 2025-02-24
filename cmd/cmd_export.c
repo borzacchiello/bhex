@@ -7,6 +7,8 @@
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 
+#define HINT_STR " <ofile> <size>"
+
 static void exportcmd_dispose(void* obj) { return; }
 
 static void exportcmd_help(void* obj)
@@ -14,7 +16,7 @@ static void exportcmd_help(void* obj)
     printf("\nexport: write <size> bytes of the file starting from current "
            "offset to <ofile>\n"
            "\n"
-           "  ex <ofile> <size>\n"
+           "  ex" HINT_STR "\n"
            "\n"
            "  ofile: output file\n"
            "  size:  number of bytes to export\n\n");
@@ -71,7 +73,7 @@ Cmd* exportcmd_create(void)
     cmd->obj   = NULL;
     cmd->name  = "export";
     cmd->alias = "ex";
-    cmd->hint  = " <where> <nbytes>";
+    cmd->hint  = HINT_STR;
 
     cmd->dispose = exportcmd_dispose;
     cmd->help    = exportcmd_help;

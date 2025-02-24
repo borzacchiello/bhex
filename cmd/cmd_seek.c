@@ -6,6 +6,8 @@
 #include <alloc.h>
 #include <log.h>
 
+#define HINT_STR "[/{+,-}] <addr>"
+
 #define OFF_ABSOLUTE 0
 #define OFF_SUM      1
 #define OFF_SUB      2
@@ -76,7 +78,7 @@ static void seekcmd_help(void* obj)
 {
     printf(
         "\nseek: change current offset\n"
-        "  s[/{+,-}] <off>\n"
+        "  s" HINT_STR "\n"
         "    +: sum 'off' to current offset (wrap if greater than filesize)\n"
         "    -: subtract 'off' to current offset (wrap if lower than zero)\n"
         "\n"
@@ -132,7 +134,7 @@ Cmd* seekcmd_create(void)
     cmd->obj   = state;
     cmd->name  = "seek";
     cmd->alias = "s";
-    cmd->hint  = "[/{+,-}] <addr>";
+    cmd->hint  = HINT_STR;
 
     cmd->dispose = seekcmd_dispose;
     cmd->help    = seekcmd_help;

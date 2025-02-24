@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#define HINT_STR "[/p] <file>"
+
 #define min(x, y)  ((x) < (y) ? (x) : (y))
 #define bold_begin printf("\033[1m")
 #define bold_end   printf("\033[22m")
@@ -16,7 +18,7 @@ static void diffcmd_help(void* obj)
 {
     printf("\ndiff: prints the differences with another file\n"
            "\n"
-           "  df[/p] <file>\n"
+           "  df" HINT_STR "\n"
            "     p:  print different bytes\n"
            "\n"
            "  file: path to the file to compare\n\n");
@@ -137,7 +139,7 @@ Cmd* diffcmd_create(void)
     cmd->obj   = NULL;
     cmd->name  = "diff";
     cmd->alias = "df";
-    cmd->hint  = "[/p] <file>";
+    cmd->hint  = HINT_STR;
 
     cmd->dispose = diffcmd_dispose;
     cmd->help    = diffcmd_help;

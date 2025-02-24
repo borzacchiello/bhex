@@ -3,13 +3,15 @@
 #include <util/byte_to_num.h>
 #include <alloc.h>
 
+#define HINT_STR " <nbytes>"
+
 static void deletecmd_dispose(void* obj) { return; }
 
 static void deletecmd_help(void* obj)
 {
     printf("\ndelete: delete bytes at current offset\n"
            "\n"
-           "  d <len>\n"
+           "  d " HINT_STR "\n"
            "\n");
 }
 
@@ -37,7 +39,7 @@ Cmd* deletecmd_create(void)
     cmd->obj   = NULL;
     cmd->name  = "delete";
     cmd->alias = "d";
-    cmd->hint  = " <nbytes>";
+    cmd->hint  = HINT_STR;
 
     cmd->dispose = deletecmd_dispose;
     cmd->help    = deletecmd_help;

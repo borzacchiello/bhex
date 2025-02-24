@@ -9,6 +9,8 @@
 #include <log.h>
 #include "cmd.h"
 
+#define HINT_STR "[/l/ls] <name or file>"
+
 static const char* search_folders[] = {"/usr/local/share/bhex/templates",
                                        "../templates", "."};
 
@@ -28,7 +30,7 @@ static void templatecmd_help(void* obj)
     printf("\ntemplate: parse the file at current offset using a 'bhe' "
            "template file\n"
            "\n"
-           "  t[/l/ls] <name>\n"
+           "  t" HINT_STR "\n"
            "     l:  list available templates\n"
            "     ls: list available structs\n"
            "\n"
@@ -201,7 +203,7 @@ Cmd* templatecmd_create(void)
     cmd->obj   = ctx;
     cmd->name  = "template";
     cmd->alias = "t";
-    cmd->hint  = "[/l/ls] <name or file>";
+    cmd->hint  = HINT_STR;
 
     cmd->dispose = (void (*)(void*))templatecmd_dispose;
     cmd->help    = templatecmd_help;

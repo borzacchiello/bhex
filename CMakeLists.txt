@@ -68,6 +68,7 @@ set(common_src
     common/hash/md5.c)
 
 set(command_src
+    cmd/cmd_arg_handler.c
     cmd/cmd.c
     cmd/cmd_template.c
     cmd/cmd_search.c

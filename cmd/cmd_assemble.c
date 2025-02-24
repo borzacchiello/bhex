@@ -3,9 +3,14 @@
 #include <keystone/keystone.h>
 #include <string.h>
 
+#include "cmd_arg_handler.h"
 #include "cmd.h"
 #include <alloc.h>
 #include <log.h>
+
+#define LIST_SET   0
+#define INSERT_SET 0
+#define SEEL_SET   0
 
 #define X86_64_ARCH      0
 #define X86_ARCH         1
@@ -18,6 +23,8 @@
 #define MIPS64_ARCH      8
 #define MIPSEL32_ARCH    9
 #define MIPSEL64_ARCH    10
+
+#define HINT_STR "[/l/i/s] <arch> 'instr1; instr2; ...'"
 
 typedef struct {
     ks_arch arch;
@@ -56,7 +63,7 @@ static void assemblecmd_help(void* obj)
 {
     printf("\nassemble: assemble code and write it at current offset\n"
            "\n"
-           "  as[/l/i/s] <arch> \"<code>\"\n"
+           "  as" HINT_STR "\n"
            "     l:  list supported architectures\n"
            "     i:  insert instead of overwrite\n"
            "     s:  seek to the end of the write\n"
@@ -112,11 +119,13 @@ static int do_assemble(int arch, const char* code_str, u8_t** code,
 
 static int assemblecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 {
-    if (pc->cmd_modifiers.size == 1 &&
-        strcmp((char*)pc->cmd_modifiers.head->data, "l") == 0) {
-        if (pc->args.size != 0)
-            return COMMAND_INVALID_MOD;
+    int insert      = -1;
+    int seek_to_end = -1;
+    int list        = -1;
+    if (handle_mods(pc, "l|i|s", &list, &insert, &seek_to_end) != 0)
+        return COMMAND_INVALID_MOD;
 
+    if (list == LIST_SET) {
         // list the supported architectures
         printf("\nSupported architectures:\n");
         size_t i;
@@ -127,40 +136,17 @@ static int assemblecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
         return COMMAND_OK;
     }
 
-    int     overwrite = 1, seek_to_end = 0;
-    LLNode* curr = pc->cmd_modifiers.head;
-    while (curr) {
-        if (strcmp((char*)curr->data, "i") == 0) {
-            if (!overwrite)
-                return COMMAND_INVALID_MOD;
-            overwrite = 0;
-        } else if (strcmp((char*)curr->data, "s") == 0) {
-            if (seek_to_end)
-                return COMMAND_INVALID_MOD;
-            seek_to_end = 1;
-        } else {
-            return COMMAND_UNSUPPORTED_MOD;
-        }
-        curr = curr->next;
-    }
-
-    if (pc->args.size != 2)
+    char* arch_str;
+    char* code_str;
+    if (handle_args(pc, 2, 2, &arch_str, &code_str) != 0)
         return COMMAND_INVALID_ARG;
-
-    int         arch     = 0;
-    const char* arch_str = (const char*)pc->args.head->data;
-    if (!parse_arch(arch_str, &arch)) {
-        return COMMAND_INVALID_ARG;
-    }
-
-    const char* code_str = (const char*)pc->args.head->next->data;
 
     u8_t*  code_bytes;
     size_t code_size;
     if (!do_assemble(arch, code_str, &code_bytes, &code_size))
         return COMMAND_INVALID_ARG;
 
-    if (overwrite) {
+    if (insert != INSERT_SET) {
         if (!fb_write(fb, code_bytes, code_size)) {
             bhex_free(code_bytes);
             return COMMAND_INVALID_ARG;
@@ -172,7 +158,7 @@ static int assemblecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
         }
     }
 
-    if (seek_to_end)
+    if (seek_to_end == SEEK_TO_END_SET)
         fb_seek(fb, fb->off + code_size);
     return COMMAND_OK;
 }
@@ -183,7 +169,7 @@ Cmd* assemblecmd_create(void)
     cmd->obj   = NULL;
     cmd->name  = "assemble";
     cmd->alias = "as";
-    cmd->hint  = "[/l/i/s] <arch> 'instr1; instr2; ...'";
+    cmd->hint  = HINT_STR;
 
     cmd->dispose = assemblecmd_dispose;
     cmd->help    = assemblecmd_help;

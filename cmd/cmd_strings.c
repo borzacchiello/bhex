@@ -6,6 +6,8 @@
 #include <alloc.h>
 #include <log.h>
 
+#define HINT_STR "[/n] [<num>]"
+
 #define min(x, y) ((x) < (y) ? (x) : (y))
 
 static void stringscmd_dispose(void* obj) { return; }
@@ -16,7 +18,7 @@ static void stringscmd_help(void* obj)
            "enumerate the strings in the file (i.e., sequences of printable "
            "ascii characters)\n"
            "\n"
-           "  str[/n] [<num>]\n"
+           "  str" HINT_STR "\n"
            "     n: look for null-terminated strings\n"
            "\n"
            "  num: minimum length (default: 3)\n"
@@ -118,7 +120,7 @@ Cmd* stringscmd_create(void)
     cmd->obj   = NULL;
     cmd->name  = "strings";
     cmd->alias = "str";
-    cmd->hint  = "[/n] [<num>]";
+    cmd->hint  = HINT_STR;
 
     cmd->dispose = stringscmd_dispose;
     cmd->help    = stringscmd_help;

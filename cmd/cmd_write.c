@@ -1,23 +1,30 @@
 #include "cmd_write.h"
+#include "cmd.h"
+#include "cmd_arg_handler.h"
+
 #include <util/str.h>
 #include <util/endian.h>
 #include <util/byte_to_num.h>
-
 #include <alloc.h>
-
 #include <string.h>
 
-#define INPUT_TYPE_UNSET  0
-#define INPUT_TYPE_STRING 1
-#define INPUT_TYPE_HEX    2
-#define INPUT_TYPE_BYTE   3
-#define INPUT_TYPE_WORD   4
-#define INPUT_TYPE_DWORD  5
-#define INPUT_TYPE_QWORD  6
+#define INPUT_TYPE_UNSET  -1
+#define INPUT_TYPE_STRING 0
+#define INPUT_TYPE_HEX    1
+#define INPUT_TYPE_BYTE   2
+#define INPUT_TYPE_WORD   3
+#define INPUT_TYPE_DWORD  4
+#define INPUT_TYPE_QWORD  5
 
-#define ENDIANESS_UNSET  0
-#define ENDIANESS_LITTLE 1
-#define ENDIANESS_BIG    2
+#define ENDIANESS_UNSET  -1
+#define ENDIANESS_LITTLE 0
+#define ENDIANESS_BIG    1
+
+#define UNSIGN_UNSET -1
+#define UNSIGN_SET   0
+
+#define INSERT_UNSET -1
+#define INSERT_SET   0
 
 typedef struct WriteArg {
     u8_t*  data;
@@ -51,74 +58,22 @@ static void writecmd_help(void* obj)
 
 static int parse_write_arg(ParsedCommand* pc, WriteArg* o_arg)
 {
-    int input_type = INPUT_TYPE_UNSET;
-    int endiness   = ENDIANESS_UNSET;
-    int unsign     = 0;
-    int insert     = 0;
+    int input_type = INPUT_TYPE_STRING;
+    int endianess  = ENDIANESS_LITTLE;
+    int unsign     = UNSIGN_UNSET;
+    int insert     = INSERT_UNSET;
+
+    if (handle_mods(pc, "s,x,b,w,d,q|le,be|u|i", &input_type, &endianess,
+                    &unsign, &insert) != 0)
+        return COMMAND_INVALID_MOD;
+    unsign = unsign == UNSIGN_SET ? 1 : 0;
+    insert = insert == UNSIGN_SET ? 1 : 0;
 
     o_arg->data = NULL;
-
-    LLNode* curr = pc->cmd_modifiers.head;
-    while (curr) {
-        if (strcmp((char*)curr->data, "s") == 0) {
-            if (input_type != INPUT_TYPE_UNSET)
-                return COMMAND_INVALID_MOD;
-            input_type = INPUT_TYPE_STRING;
-        } else if (strcmp((char*)curr->data, "x") == 0) {
-            if (input_type != INPUT_TYPE_UNSET)
-                return COMMAND_INVALID_MOD;
-            input_type = INPUT_TYPE_HEX;
-        } else if (strcmp((char*)curr->data, "b") == 0) {
-            if (input_type != INPUT_TYPE_UNSET)
-                return COMMAND_INVALID_MOD;
-            input_type = INPUT_TYPE_BYTE;
-        } else if (strcmp((char*)curr->data, "w") == 0) {
-            if (input_type != INPUT_TYPE_UNSET)
-                return COMMAND_INVALID_MOD;
-            input_type = INPUT_TYPE_WORD;
-        } else if (strcmp((char*)curr->data, "d") == 0) {
-            if (input_type != INPUT_TYPE_UNSET)
-                return COMMAND_INVALID_MOD;
-            input_type = INPUT_TYPE_DWORD;
-        } else if (strcmp((char*)curr->data, "q") == 0) {
-            if (input_type != INPUT_TYPE_UNSET)
-                return COMMAND_INVALID_MOD;
-            input_type = INPUT_TYPE_QWORD;
-        } else if (strcmp((char*)curr->data, "le") == 0) {
-            if (endiness != ENDIANESS_UNSET)
-                return COMMAND_INVALID_MOD;
-            endiness = ENDIANESS_LITTLE;
-        } else if (strcmp((char*)curr->data, "be") == 0) {
-            if (endiness != ENDIANESS_UNSET)
-                return COMMAND_INVALID_MOD;
-            endiness = ENDIANESS_BIG;
-        } else if (strcmp((char*)curr->data, "u") == 0) {
-            if (unsign)
-                return COMMAND_INVALID_MOD;
-            unsign = 1;
-        } else if (strcmp((char*)curr->data, "i") == 0) {
-            if (insert)
-                return COMMAND_INVALID_MOD;
-            insert = 1;
-        } else {
-            return COMMAND_UNSUPPORTED_MOD;
-        }
-        curr = curr->next;
-    }
-
-    if (input_type == INPUT_TYPE_UNSET)
-        input_type = INPUT_TYPE_STRING;
-
-    if (endiness == ENDIANESS_UNSET)
-        endiness = ENDIANESS_LITTLE;
-
-    if (pc->args.size != 1)
-        return COMMAND_INVALID_ARG;
-    LLNode* arg = ll_getref(&pc->args, 0);
-    if (!arg)
+    if (handle_args(pc, 1, 1, &o_arg->data) != 0)
         return COMMAND_INVALID_ARG;
 
-    char* data_str = (char*)arg->data;
+    char* data_str = (char*)o_arg->data;
     switch (input_type) {
         case INPUT_TYPE_STRING:
             if (!unescape_ascii_string(data_str, &o_arg->data, &o_arg->size))
@@ -150,7 +105,7 @@ static int parse_write_arg(ParsedCommand* pc, WriteArg* o_arg)
                 u16_t w;
                 if (!str_to_uint16(data_str, &w))
                     return COMMAND_INVALID_ARG;
-                if (endiness == ENDIANESS_LITTLE)
+                if (endianess == ENDIANESS_LITTLE)
                     write_le16(o_arg->data, w);
                 else
                     write_be16(o_arg->data, w);
@@ -158,7 +113,7 @@ static int parse_write_arg(ParsedCommand* pc, WriteArg* o_arg)
                 s16_t w;
                 if (!str_to_int16(data_str, &w))
                     return COMMAND_INVALID_ARG;
-                if (endiness == ENDIANESS_LITTLE)
+                if (endianess == ENDIANESS_LITTLE)
                     write_le16(o_arg->data, w);
                 else
                     write_be16(o_arg->data, w);
@@ -171,7 +126,7 @@ static int parse_write_arg(ParsedCommand* pc, WriteArg* o_arg)
                 u32_t d;
                 if (!str_to_uint32(data_str, &d))
                     return COMMAND_INVALID_ARG;
-                if (endiness == ENDIANESS_LITTLE)
+                if (endianess == ENDIANESS_LITTLE)
                     write_le32(o_arg->data, d);
                 else
                     write_be32(o_arg->data, d);
@@ -179,7 +134,7 @@ static int parse_write_arg(ParsedCommand* pc, WriteArg* o_arg)
                 s32_t d;
                 if (!str_to_int32(data_str, &d))
                     return COMMAND_INVALID_ARG;
-                if (endiness == ENDIANESS_LITTLE)
+                if (endianess == ENDIANESS_LITTLE)
                     write_le32(o_arg->data, d);
                 else
                     write_be32(o_arg->data, d);
@@ -192,7 +147,7 @@ static int parse_write_arg(ParsedCommand* pc, WriteArg* o_arg)
                 u64_t q;
                 if (!str_to_uint64(data_str, &q))
                     return COMMAND_INVALID_ARG;
-                if (endiness == ENDIANESS_LITTLE)
+                if (endianess == ENDIANESS_LITTLE)
                     write_le64(o_arg->data, q);
                 else
                     write_be64(o_arg->data, q);
@@ -200,7 +155,7 @@ static int parse_write_arg(ParsedCommand* pc, WriteArg* o_arg)
                 s64_t q;
                 if (!str_to_int64(data_str, &q))
                     return COMMAND_INVALID_ARG;
-                if (endiness == ENDIANESS_LITTLE)
+                if (endianess == ENDIANESS_LITTLE)
                     write_le64(o_arg->data, q);
                 else
                     write_be64(o_arg->data, q);

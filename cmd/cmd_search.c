@@ -1,11 +1,14 @@
 #include "cmd_search.h"
-
-#include <string.h>
+#include "cmd.h"
+#include "cmd_arg_handler.h"
 
 #include <util/str.h>
 #include <util/print.h>
+#include <string.h>
 #include <alloc.h>
 #include <log.h>
+
+#define HINT_STR "[/{x, s}/sk/p] <what>"
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define max(x, y) ((x) > (y) ? (x) : (y))
@@ -16,15 +19,15 @@
     ((((block_n) < N_BLOCKS - 1) && ((block_off) < (block_size))) ||           \
      ((block_n) == N_BLOCKS - 1))
 
-#define DATA_TYPE_UNSET  0
-#define DATA_TYPE_STRING 1
-#define DATA_TYPE_HEX    2
+#define DATA_TYPE_UNSET  -1
+#define DATA_TYPE_STRING 0
+#define DATA_TYPE_HEX    1
 
-#define SEEK_TO_MATCH_UNSET 0
-#define SEEK_TO_MATCH_SET   1
+#define SEEK_TO_MATCH_UNSET -1
+#define SEEK_TO_MATCH_SET   0
 
-#define PRINT_CTX_UNSET 0
-#define PRINT_CTX_SET   1
+#define PRINT_CTX_UNSET -1
+#define PRINT_CTX_SET   0
 
 typedef struct {
     u8_t min;
@@ -52,7 +55,7 @@ static void searchcmd_help(void* obj)
 {
     printf("\nsearch: search a string or a sequence of bytes in the file\n"
            "\n"
-           "  src[/{x, s}/sk/p] <data>\n"
+           "  src" HINT_STR "\n"
            "     x:  data is an hex string\n"
            "     s:  data is a string (default)\n"
            "     sk: seek to first match\n"
@@ -109,7 +112,8 @@ static void populate_index(SearchCtx* ctx, FileBuffer* fb)
     fb_seek(fb, orig_off);
 }
 
-static void print_block_info(SearchCtx* ctx, FileBuffer* fb)
+__attribute__((unused)) static void print_block_info(SearchCtx*  ctx,
+                                                     FileBuffer* fb)
 {
     populate_index(ctx, fb);
     if (!ctx->has_index) {
@@ -228,49 +232,19 @@ static int searchcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 {
     SearchCtx* ctx = (SearchCtx*)obj;
 
-    if (pc->cmd_modifiers.size == 1 &&
-        strcmp((const char*)pc->cmd_modifiers.head->data, "p") == 0) {
-        if (pc->args.size != 0)
-            return COMMAND_INVALID_ARG;
-        print_block_info(ctx, fb);
-        return COMMAND_OK;
-    }
+    int data_type     = DATA_TYPE_STRING;
+    int seek_to_match = SEEK_TO_MATCH_UNSET;
+    int print_context = PRINT_CTX_UNSET;
+    if (handle_mods(pc, "x,s|sk|p", &data_type, &seek_to_match,
+                    &print_context) == 0)
+        return COMMAND_INVALID_MOD;
 
-    int     data_type     = DATA_TYPE_UNSET;
-    int     seek_to_match = SEEK_TO_MATCH_UNSET;
-    int     print_context = PRINT_CTX_UNSET;
-    LLNode* curr          = pc->cmd_modifiers.head;
-    while (curr) {
-        if (strcmp((char*)curr->data, "s") == 0) {
-            if (data_type != DATA_TYPE_UNSET)
-                return COMMAND_INVALID_MOD;
-            data_type = DATA_TYPE_STRING;
-        } else if (strcmp((char*)curr->data, "c") == 0) {
-            if (print_context == PRINT_CTX_SET)
-                return COMMAND_INVALID_MOD;
-            print_context = PRINT_CTX_SET;
-        } else if (strcmp((char*)curr->data, "x") == 0) {
-            if (data_type != DATA_TYPE_UNSET)
-                return COMMAND_INVALID_MOD;
-            data_type = DATA_TYPE_HEX;
-        } else if (strcmp((char*)curr->data, "sk") == 0) {
-            if (seek_to_match != SEEK_TO_MATCH_UNSET)
-                return COMMAND_INVALID_MOD;
-            seek_to_match = SEEK_TO_MATCH_SET;
-        } else
-            return COMMAND_INVALID_MOD;
-        curr = curr->next;
-    }
-
-    if (data_type == DATA_TYPE_UNSET)
-        data_type = DATA_TYPE_STRING;
-
-    if (pc->args.size != 1)
+    char* data_str;
+    if (handle_args(pc, 1, 1, &data_str) != 0)
         return COMMAND_INVALID_ARG;
 
     u8_t*  data      = NULL;
     size_t data_size = 0;
-    char*  data_str  = (char*)pc->args.head->data;
     switch (data_type) {
         case DATA_TYPE_STRING:
             if (!unescape_ascii_string(data_str, &data, &data_size))
@@ -299,7 +273,7 @@ Cmd* searchcmd_create(void)
     cmd->obj   = ctx;
     cmd->name  = "search";
     cmd->alias = "src";
-    cmd->hint  = "[/{x, s}/sk/p] <what>";
+    cmd->hint  = HINT_STR;
 
     cmd->dispose = searchcmd_dispose;
     cmd->help    = searchcmd_help;
