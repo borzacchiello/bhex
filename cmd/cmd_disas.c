@@ -8,6 +8,7 @@
 #include <log.h>
 
 #include <capstone/capstone.h>
+#include <display.h>
 #include <string.h>
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
@@ -63,15 +64,16 @@ static const char* map_arch_names[] = {
 
 static void disascmd_help(void* obj)
 {
-    printf("\ndisas: disassemble code at current offset\n"
-           "\n"
-           "  ds" HINT_STR "\n"
-           "     l:  list supported architectures\n"
-           "\n"
-           "  arch:   the architecture to use\n"
-           "  nbytes: the number of opcodes to disassemble, default value: %d\n"
-           "\n",
-           DEFAULT_DISAS_OPCODES);
+    display_printf(
+        "\ndisas: disassemble code at current offset\n"
+        "\n"
+        "  ds" HINT_STR "\n"
+        "     l:  list supported architectures\n"
+        "\n"
+        "  arch:   the architecture to use\n"
+        "  nbytes: the number of opcodes to disassemble, default value: %d\n"
+        "\n",
+        DEFAULT_DISAS_OPCODES);
 }
 
 static void disascmd_dispose(void* obj) {}
@@ -137,13 +139,14 @@ static void do_disas(int arch, u64_t addr, const u8_t* code, size_t code_size,
         puts("");
         size_t j;
         for (j = 0; j < min(count, nopcodes); j++) {
-            printf("0x%08llx: %s %s\t\t%s\n", (u64_t)insn[j].address,
-                   bytes_str(&insn[j], 21), insn[j].mnemonic, insn[j].op_str);
+            display_printf("0x%08llx: %s %s\t\t%s\n", (u64_t)insn[j].address,
+                           bytes_str(&insn[j], 21), insn[j].mnemonic,
+                           insn[j].op_str);
         }
         puts("");
         cs_free(insn, count);
     } else
-        printf("invalid\n");
+        display_printf("invalid\n");
 
     cs_close(&handle);
 }
@@ -159,12 +162,12 @@ static int disascmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
             return COMMAND_INVALID_ARG;
 
         // list the supported architectures
-        printf("\nSupported architectures:\n");
+        display_printf("\nSupported architectures:\n");
         size_t i;
         for (i = 0; i < sizeof(map_arch_names) / sizeof(void*); ++i) {
-            printf("    %s\n", map_arch_names[i]);
+            display_printf("    %s\n", map_arch_names[i]);
         }
-        printf("\n");
+        display_printf("\n");
         return COMMAND_OK;
     }
 

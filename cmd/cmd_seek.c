@@ -1,8 +1,8 @@
 #include "cmd_seek.h"
+
 #include <util/byte_to_num.h>
-
+#include <display.h>
 #include <string.h>
-
 #include <alloc.h>
 #include <log.h>
 
@@ -76,7 +76,7 @@ static void seekcmd_dispose(void* obj)
 
 static void seekcmd_help(void* obj)
 {
-    printf(
+    display_printf(
         "\nseek: change current offset\n"
         "  s" HINT_STR "\n"
         "    +: sum 'off' to current offset (wrap if greater than filesize)\n"
@@ -99,7 +99,7 @@ static int seekcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
         return r;
 
     if (a.print_off) {
-        printf("0x%llx\n", fb->off);
+        display_printf("0x%llx\n", fb->off);
         return COMMAND_OK;
     }
 

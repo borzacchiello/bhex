@@ -60,6 +60,7 @@ set(common_src
     common/log.c
     common/map.c
     common/strbuilder.c
+    common/display.c
     common/util/byte_to_num.c
     common/util/byte_to_str.c
     common/util/endian.c

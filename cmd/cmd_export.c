@@ -2,6 +2,7 @@
 #include "cmd.h"
 #include <util/byte_to_num.h>
 
+#include <display.h>
 #include <alloc.h>
 #include <log.h>
 
@@ -13,13 +14,14 @@ static void exportcmd_dispose(void* obj) { return; }
 
 static void exportcmd_help(void* obj)
 {
-    printf("\nexport: write <size> bytes of the file starting from current "
-           "offset to <ofile>\n"
-           "\n"
-           "  ex" HINT_STR "\n"
-           "\n"
-           "  ofile: output file\n"
-           "  size:  number of bytes to export\n\n");
+    display_printf(
+        "\nexport: write <size> bytes of the file starting from current "
+        "offset to <ofile>\n"
+        "\n"
+        "  ex" HINT_STR "\n"
+        "\n"
+        "  ofile: output file\n"
+        "  size:  number of bytes to export\n\n");
 }
 
 static int exportcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)

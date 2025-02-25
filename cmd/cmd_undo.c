@@ -1,11 +1,15 @@
 #include "cmd_undo.h"
 
+#include <display.h>
 #include <alloc.h>
 #include <log.h>
 
 static void undocmd_dispose(void* obj) { return; }
 
-static void undocmd_help(void* obj) { printf("undo the last write\n\n"); }
+static void undocmd_help(void* obj)
+{
+    display_printf("undo the last write\n\n");
+}
 
 static int undocmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 {

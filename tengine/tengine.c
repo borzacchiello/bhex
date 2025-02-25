@@ -7,9 +7,9 @@
 #include "scope.h"
 #include "ast.h"
 
-#include <string.h>
-
 #include <util/str.h>
+#include <display.h>
+#include <string.h>
 #include <alloc.h>
 #include <log.h>
 #include <map.h>
@@ -19,7 +19,7 @@
 #define engine_printf(e, ...)                                                  \
     do {                                                                       \
         if (!e->quiet_mode) {                                                  \
-            printf(__VA_ARGS__);                                               \
+            display_printf(__VA_ARGS__);                                       \
         }                                                                      \
     } while (0)
 

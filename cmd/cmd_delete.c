@@ -1,6 +1,7 @@
 #include "cmd_delete.h"
 
 #include <util/byte_to_num.h>
+#include <display.h>
 #include <alloc.h>
 
 #define HINT_STR " <nbytes>"
@@ -9,10 +10,10 @@ static void deletecmd_dispose(void* obj) { return; }
 
 static void deletecmd_help(void* obj)
 {
-    printf("\ndelete: delete bytes at current offset\n"
-           "\n"
-           "  d " HINT_STR "\n"
-           "\n");
+    display_printf("\ndelete: delete bytes at current offset\n"
+                   "\n"
+                   "  d " HINT_STR "\n"
+                   "\n");
 }
 
 static int deletecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)

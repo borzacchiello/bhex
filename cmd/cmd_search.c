@@ -2,8 +2,9 @@
 #include "cmd.h"
 #include "cmd_arg_handler.h"
 
-#include <util/str.h>
 #include <util/print.h>
+#include <util/str.h>
+#include <display.h>
 #include <string.h>
 #include <alloc.h>
 #include <log.h>
@@ -53,16 +54,17 @@ static void searchcmd_dispose(void* obj) { bhex_free(obj); }
 
 static void searchcmd_help(void* obj)
 {
-    printf("\nsearch: search a string or a sequence of bytes in the file\n"
-           "\n"
-           "  src" HINT_STR "\n"
-           "     x:  data is an hex string\n"
-           "     s:  data is a string (default)\n"
-           "     sk: seek to first match\n"
-           "     c:  print context\n"
-           "\n"
-           "  data: either a string or an hex string\n"
-           "\n");
+    display_printf(
+        "\nsearch: search a string or a sequence of bytes in the file\n"
+        "\n"
+        "  src" HINT_STR "\n"
+        "     x:  data is an hex string\n"
+        "     s:  data is a string (default)\n"
+        "     sk: seek to first match\n"
+        "     c:  print context\n"
+        "\n"
+        "  data: either a string or an hex string\n"
+        "\n");
 }
 
 static void populate_index(SearchCtx* ctx, FileBuffer* fb)
@@ -127,8 +129,8 @@ __attribute__((unused)) static void print_block_info(SearchCtx*  ctx,
         u64_t      min_addr = i * ctx->block_size;
         u64_t      max_addr = i == N_BLOCKS - 1 ? (fb->size - 1)
                                                 : (min_addr + ctx->block_size - 1);
-        printf(" 0x%08llx - 0x%08llx : [min %3u, max %3u]\n", min_addr,
-               max_addr, binfo->min, binfo->max);
+        display_printf(" 0x%08llx - 0x%08llx : [min %3u, max %3u]\n", min_addr,
+                       max_addr, binfo->min, binfo->max);
     }
 }
 
@@ -193,7 +195,7 @@ static void search(SearchCtx* ctx, FileBuffer* fb, const u8_t* data,
                 break;
         }
         if (eq) {
-            printf(" >> Match @ 0x%07llX\n", begin_addr);
+            display_printf(" >> Match @ 0x%07llX\n", begin_addr);
             if (seek_to_match) {
                 seek_to_match = 0;
                 orig_off      = begin_addr;

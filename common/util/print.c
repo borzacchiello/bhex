@@ -2,7 +2,7 @@
 #include "endian.h"
 #include "byte_to_str.h"
 
-#include <stdio.h>
+#include <display.h>
 
 void print_ascii(const u8_t* bytes, size_t size, int print_header,
                  int print_footer)
@@ -14,22 +14,23 @@ void print_ascii(const u8_t* bytes, size_t size, int print_header,
     }
 
     if (print_header)
-        puts("");
-    printf("%03llu: ", ++linenum);
+        display_puts("");
+    display_printf("%03llu: ", ++linenum);
     off = 0;
     while (off < last_newline_off) {
         if (is_printable_ascii(bytes[off]) || bytes[off] == '\t' ||
-            bytes[off] == '\n')
-            printf("%c", bytes[off]);
-        else
-            printf(".");
+            bytes[off] == '\n') {
+            display_printf("%c", bytes[off]);
+        } else {
+            display_printf(".");
+        }
         if (bytes[off] == '\n') {
-            printf("%03llu: ", ++linenum);
+            display_printf("%03llu: ", ++linenum);
         }
         off += 1;
     }
     if (print_footer)
-        printf("\n\n");
+        display_printf("\n\n");
 }
 
 void print_c_buffer(const u8_t* bytes, size_t size, int print_header,
@@ -40,13 +41,13 @@ void print_c_buffer(const u8_t* bytes, size_t size, int print_header,
 
     size_t i = 0;
     if (print_header) {
-        printf("{ 0x%02x", bytes[0]);
+        display_printf("{ 0x%02x", bytes[0]);
         i = 1;
     }
     for (; i < size; ++i)
-        printf(", 0x%02x", bytes[i]);
+        display_printf(", 0x%02x", bytes[i]);
     if (print_footer)
-        printf(" }\n");
+        display_printf(" }\n");
 }
 
 void print_hex(const u8_t* bytes, size_t size, int raw_mode, int print_header,
@@ -56,40 +57,42 @@ void print_hex(const u8_t* bytes, size_t size, int raw_mode, int print_header,
     size_t off        = 0;
 
     if (!raw_mode && print_header)
-        printf("\n"
-               "       00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F\n"
-               "       -----------------------------------------------\n");
+        display_printf(
+            "\n"
+            "       00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F\n"
+            "       -----------------------------------------------\n");
     while (off < size) {
         if (!raw_mode)
-            printf(" %04llx: ", (u64_t)off + addr);
+            display_printf(" %04llx: ", (u64_t)off + addr);
         int i;
         for (i = 0; i < block_size; ++i) {
             if (!raw_mode) {
                 if (off + i >= size) {
                     for (; i < block_size; ++i)
-                        printf("   ");
+                        display_printf("   ");
                     break;
                 }
-                printf("%02X ", bytes[off + i]);
+                display_printf("%02X ", bytes[off + i]);
             } else {
                 if (off + i >= size)
                     break;
-                printf("%02X", bytes[off + i]);
+                display_printf("%02X", bytes[off + i]);
             }
         }
         if (!raw_mode) {
-            printf("  ");
+            display_printf("  ");
             for (i = 0; i < block_size; ++i) {
                 if (off + i >= size)
                     break;
-                printf("%c", get_printable_ascii_or_dot((u8_t)bytes[off + i]));
+                display_printf(
+                    "%c", get_printable_ascii_or_dot((u8_t)bytes[off + i]));
             }
-            printf("\n");
+            display_printf("\n");
         }
         off += block_size;
     }
     if (print_footer)
-        printf("\n");
+        display_printf("\n");
 }
 
 void print_words(const u8_t* bytes, size_t size, int little_endian,
@@ -99,12 +102,13 @@ void print_words(const u8_t* bytes, size_t size, int little_endian,
     size_t off        = 0;
 
     if (!raw_mode && print_header)
-        printf("\n"
-               "       00    02    04    06    08    0A    0C    0E   \n"
-               "       -----------------------------------------------\n");
+        display_printf(
+            "\n"
+            "       00    02    04    06    08    0A    0C    0E   \n"
+            "       -----------------------------------------------\n");
     while (off < size) {
         if (!raw_mode)
-            printf(" %04llx: ", (u64_t)off + addr);
+            display_printf(" %04llx: ", (u64_t)off + addr);
         int i;
         for (i = 0; i < block_size; i += 2) {
             if (off + i + 1 >= size)
@@ -112,16 +116,16 @@ void print_words(const u8_t* bytes, size_t size, int little_endian,
             u16_t w = little_endian ? read_at_le16(bytes + off, i)
                                     : read_at_be16(bytes + off, i);
             if (!raw_mode)
-                printf("%04Xh ", w);
+                display_printf("%04Xh ", w);
             else
-                printf("0x%04X ", w);
+                display_printf("0x%04X ", w);
         }
         if (!raw_mode)
-            printf("\n");
+            display_printf("\n");
         off += block_size;
     }
     if (print_footer)
-        printf("\n");
+        display_printf("\n");
 }
 
 void print_dwords(const u8_t* bytes, size_t size, int little_endian,
@@ -131,12 +135,12 @@ void print_dwords(const u8_t* bytes, size_t size, int little_endian,
     size_t off        = 0;
 
     if (!raw_mode && print_header)
-        printf("\n"
-               "       00        04        08        0C       \n"
-               "       ---------------------------------------\n");
+        display_printf("\n"
+                       "       00        04        08        0C       \n"
+                       "       ---------------------------------------\n");
     while (off < size) {
         if (!raw_mode)
-            printf(" %04llx: ", (u64_t)off + addr);
+            display_printf(" %04llx: ", (u64_t)off + addr);
         int i;
         for (i = 0; i < block_size; i += 4) {
             if (off + i + 3 >= size)
@@ -144,16 +148,16 @@ void print_dwords(const u8_t* bytes, size_t size, int little_endian,
             u32_t dw = little_endian ? read_at_le32(bytes + off, i)
                                      : read_at_be32(bytes + off, i);
             if (!raw_mode)
-                printf("%08Xh ", dw);
+                display_printf("%08Xh ", dw);
             else
-                printf("0x%08X ", dw);
+                display_printf("0x%08X ", dw);
         }
         if (!raw_mode)
-            printf("\n");
+            display_printf("\n");
         off += block_size;
     }
     if (print_footer)
-        printf("\n");
+        display_printf("\n");
 }
 
 void print_qwords(const u8_t* bytes, size_t size, int little_endian,
@@ -163,12 +167,12 @@ void print_qwords(const u8_t* bytes, size_t size, int little_endian,
     size_t off        = 0;
 
     if (!raw_mode && print_header)
-        printf("\n"
-               "       00                08               \n"
-               "       -----------------------------------\n");
+        display_printf("\n"
+                       "       00                08               \n"
+                       "       -----------------------------------\n");
     while (off < size) {
         if (!raw_mode)
-            printf(" %04llx: ", (u64_t)off + addr);
+            display_printf(" %04llx: ", (u64_t)off + addr);
         int i;
         for (i = 0; i < block_size; i += 8) {
             if (off + i + 7 >= size)
@@ -176,14 +180,14 @@ void print_qwords(const u8_t* bytes, size_t size, int little_endian,
             u64_t dw = little_endian ? read_at_le64(bytes + off, i)
                                      : read_at_be64(bytes + off, i);
             if (!raw_mode)
-                printf("%016llXh ", dw);
+                display_printf("%016llXh ", dw);
             else
-                printf("0x%016llX ", dw);
+                display_printf("0x%016llX ", dw);
         }
         if (!raw_mode)
-            printf("\n");
+            display_printf("\n");
         off += block_size;
     }
     if (print_footer)
-        printf("\n");
+        display_printf("\n");
 }

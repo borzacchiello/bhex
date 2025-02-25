@@ -1,9 +1,9 @@
 #include "cmd_info.h"
-#include "hash/md5.h"
+
 #include <util/byte_to_str.h>
-
+#include <hash/md5.h>
+#include <display.h>
 #include <string.h>
-
 #include <alloc.h>
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
@@ -23,7 +23,7 @@ static void infocmd_dispose(void* obj)
 
 static void infocmd_help(void* obj)
 {
-    printf("\ninfo: prints information about the opened binary\n\n");
+    display_printf("\ninfo: prints information about the opened binary\n\n");
 }
 
 static float _log2(float val)
@@ -122,13 +122,13 @@ static int infocmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
         ctx->version = fb->version;
     }
 
-    printf("\n"
-           "  path:    %s\n"
-           "  size:    %s\n"
-           "  entropy: %.03f / 8.000\n"
-           "  md5:     %s\n"
-           "\n",
-           fb->path, size_string(fb->size), ctx->entropy, ctx->md5);
+    display_printf("\n"
+                   "  path:    %s\n"
+                   "  size:    %s\n"
+                   "  entropy: %.03f / 8.000\n"
+                   "  md5:     %s\n"
+                   "\n",
+                   fb->path, size_string(fb->size), ctx->entropy, ctx->md5);
 
     return COMMAND_OK;
 }

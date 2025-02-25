@@ -1,6 +1,7 @@
-#include <string.h>
-
 #include "cmd.h"
+
+#include <display.h>
+#include <string.h>
 #include <alloc.h>
 
 #include "cmd_info.h"
@@ -86,16 +87,16 @@ void cmdctx_destroy(CmdContext* cmd)
 
 int cmd_help(CmdContext* cc)
 {
-    printf("\nAvailable commands:\n");
-    printf("    help [h]\n");
-    printf("    interactive [int]\n");
+    display_printf("\nAvailable commands:\n");
+    display_printf("    help [h]\n");
+    display_printf("    interactive [int]\n");
     LLNode* curr = cc->commands.head;
     while (curr) {
         Cmd* cmd = (Cmd*)curr->data;
-        printf("    %s [%s]\n", cmd->name, cmd->alias);
+        display_printf("    %s [%s]\n", cmd->name, cmd->alias);
         curr = curr->next;
     }
-    printf("\n");
+    display_printf("\n");
     return COMMAND_OK;
 }
 

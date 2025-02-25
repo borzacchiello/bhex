@@ -3,25 +3,26 @@
 #include <alloc.h>
 #include <util/print.h>
 
-#include <stdio.h>
+#include <display.h>
 #include <string.h>
+#include <stdio.h>
 
 #define HINT_STR "[/p] <file>"
 
 #define min(x, y)  ((x) < (y) ? (x) : (y))
-#define bold_begin printf("\033[1m")
-#define bold_end   printf("\033[22m")
+#define bold_begin display_printf("\033[1m")
+#define bold_end   display_printf("\033[22m")
 
 static void diffcmd_dispose(void* obj) {}
 
 static void diffcmd_help(void* obj)
 {
-    printf("\ndiff: prints the differences with another file\n"
-           "\n"
-           "  df" HINT_STR "\n"
-           "     p:  print different bytes\n"
-           "\n"
-           "  file: path to the file to compare\n\n");
+    display_printf("\ndiff: prints the differences with another file\n"
+                   "\n"
+                   "  df" HINT_STR "\n"
+                   "     p:  print different bytes\n"
+                   "\n"
+                   "  file: path to the file to compare\n\n");
 }
 
 static void print_diff(FileBuffer* self, FileBuffer* other, u64_t start,
@@ -43,7 +44,7 @@ static void print_diff(FileBuffer* self, FileBuffer* other, u64_t start,
 
         addr += n;
     }
-    printf(" ...\n");
+    display_printf(" ...\n");
 
     // restore the read block buffer
     fb_seek(self, self_rst);
@@ -97,14 +98,14 @@ static void print_diffs(FileBuffer* self, FileBuffer* other, int print_diffs)
     if (end_diff != start_diff && print_diffs)
         print_diff(self, other, start_diff, end_diff);
 
-    printf("\n");
+    display_printf("\n");
     if (off < self->size)
-        printf("current file is bigger\n");
+        display_printf("current file is bigger\n");
     if (off < other->size)
-        printf("other file is bigger\n");
+        display_printf("other file is bigger\n");
 
-    printf("%.03lf%% of current file is different\n\n",
-           (double)ndiffs / (double)min(self->size, other->size) * 100);
+    display_printf("%.03lf%% of current file is different\n\n",
+                   (double)ndiffs / (double)min(self->size, other->size) * 100);
 }
 
 static int diffcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)

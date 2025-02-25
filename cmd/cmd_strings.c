@@ -1,8 +1,8 @@
 #include "cmd_strings.h"
+
 #include <util/byte_to_num.h>
-
+#include <display.h>
 #include <string.h>
-
 #include <alloc.h>
 #include <log.h>
 
@@ -14,15 +14,16 @@ static void stringscmd_dispose(void* obj) { return; }
 
 static void stringscmd_help(void* obj)
 {
-    printf("\n"
-           "enumerate the strings in the file (i.e., sequences of printable "
-           "ascii characters)\n"
-           "\n"
-           "  str" HINT_STR "\n"
-           "     n: look for null-terminated strings\n"
-           "\n"
-           "  num: minimum length (default: 3)\n"
-           "\n");
+    display_printf(
+        "\n"
+        "enumerate the strings in the file (i.e., sequences of printable "
+        "ascii characters)\n"
+        "\n"
+        "  str" HINT_STR "\n"
+        "     n: look for null-terminated strings\n"
+        "\n"
+        "  num: minimum length (default: 3)\n"
+        "\n");
 }
 
 static int is_printable_ascii(u8_t v) { return v >= 0x20 && v <= 0x7e; }
@@ -71,7 +72,7 @@ static void print_strings(FileBuffer* fb, size_t min_length,
             if (!null_terminated ||
                 (null_terminated && buf[addr % buf_size] == 0)) {
                 app[app_off] = 0;
-                printf(" 0x%07llX @ %s\n", begin_addr, (char*)app);
+                display_printf(" 0x%07llX @ %s\n", begin_addr, (char*)app);
             }
         }
     }

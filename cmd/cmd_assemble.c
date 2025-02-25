@@ -5,6 +5,8 @@
 
 #include "cmd_arg_handler.h"
 #include "cmd.h"
+
+#include <display.h>
 #include <alloc.h>
 #include <log.h>
 
@@ -61,16 +63,17 @@ static const char* map_arch_names[] = {
 
 static void assemblecmd_help(void* obj)
 {
-    printf("\nassemble: assemble code and write it at current offset\n"
-           "\n"
-           "  as" HINT_STR "\n"
-           "     l:  list supported architectures\n"
-           "     i:  insert instead of overwrite\n"
-           "     s:  seek to the end of the write\n"
-           "\n"
-           "  arch: the architecture to use\n"
-           "  code: assembly code string (e.g., \"inc eax; inc ecx; ret\")\n"
-           "\n");
+    display_printf(
+        "\nassemble: assemble code and write it at current offset\n"
+        "\n"
+        "  as" HINT_STR "\n"
+        "     l:  list supported architectures\n"
+        "     i:  insert instead of overwrite\n"
+        "     s:  seek to the end of the write\n"
+        "\n"
+        "  arch: the architecture to use\n"
+        "  code: assembly code string (e.g., \"inc eax; inc ecx; ret\")\n"
+        "\n");
 }
 
 static void assemblecmd_dispose(void* obj) {}
@@ -127,12 +130,12 @@ static int assemblecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 
     if (list == LIST_SET) {
         // list the supported architectures
-        printf("\nSupported architectures:\n");
+        display_printf("\nSupported architectures:\n");
         size_t i;
         for (i = 0; i < sizeof(map_arch_names) / sizeof(void*); ++i) {
-            printf("    %s\n", map_arch_names[i]);
+            display_printf("    %s\n", map_arch_names[i]);
         }
-        printf("\n");
+        display_printf("\n");
         return COMMAND_OK;
     }
 

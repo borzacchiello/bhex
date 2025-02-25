@@ -2,11 +2,12 @@
 #include "cmd.h"
 #include "cmd_arg_handler.h"
 
-#include <util/str.h>
-#include <util/endian.h>
 #include <util/byte_to_num.h>
-#include <alloc.h>
+#include <util/endian.h>
+#include <util/str.h>
+#include <display.h>
 #include <string.h>
+#include <alloc.h>
 
 #define HINT_STR "[/{s,x,b,w,d,q}/{le,be}/u/i] <data>"
 
@@ -36,26 +37,27 @@ typedef struct WriteArg {
 
 static void writecmd_help(void* obj)
 {
-    printf("\nwrite: write data at current offset\n"
-           "\n"
-           "  w" HINT_STR "\n"
-           "     s:   string input (default)\n"
-           "     x:   hex input\n"
-           "     b:   byte\n"
-           "     w:   word\n"
-           "     d:   dword\n"
-           "     q:   qword\n"
-           "     le:  little-endian (default)\n"
-           "     be:  big-endian\n"
-           "     u:   unsigned\n"
-           "     i:   insert\n"
-           "\n"
-           "  data: the data to write. The format depends on the type of \n"
-           "        write. Here there are some examples:\n"
-           "            w/x \"00 01 02 03\"\n"
-           "            w/s \"a string\"\n"
-           "            w/q/be 0x1234\n"
-           "\n");
+    display_printf(
+        "\nwrite: write data at current offset\n"
+        "\n"
+        "  w" HINT_STR "\n"
+        "     s:   string input (default)\n"
+        "     x:   hex input\n"
+        "     b:   byte\n"
+        "     w:   word\n"
+        "     d:   dword\n"
+        "     q:   qword\n"
+        "     le:  little-endian (default)\n"
+        "     be:  big-endian\n"
+        "     u:   unsigned\n"
+        "     i:   insert\n"
+        "\n"
+        "  data: the data to write. The format depends on the type of \n"
+        "        write. Here there are some examples:\n"
+        "            w/x \"00 01 02 03\"\n"
+        "            w/s \"a string\"\n"
+        "            w/q/be 0x1234\n"
+        "\n");
 }
 
 static int parse_write_arg(ParsedCommand* pc, WriteArg* o_arg)

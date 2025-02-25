@@ -1,12 +1,13 @@
 #include "cmd_commit.h"
 
+#include <display.h>
 #include <alloc.h>
 
 static void commitcmd_dispose(void* obj) { return; }
 
 static void commitcmd_help(void* obj)
 {
-    printf("commit all the writes to file\n\n");
+    display_printf("commit all the writes to file\n\n");
 }
 
 static int commitcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)

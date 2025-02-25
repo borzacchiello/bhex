@@ -1,13 +1,13 @@
+#include "cmd_arg_handler.h"
 #include "cmd_print.h"
 #include "cmd.h"
-#include "cmd_arg_handler.h"
-#include "defs.h"
 
 #include <util/byte_to_num.h>
 #include <util/print.h>
-#include <alloc.h>
-
+#include <display.h>
 #include <string.h>
+#include <alloc.h>
+#include <defs.h>
 
 #define WIDTH_UNSET   -1
 #define WIDTH_BYTE    0
@@ -60,24 +60,25 @@ static void printcmd_dispose(void* obj) { return; }
 
 static void printcmd_help(void* obj)
 {
-    printf("\nprint: display the data at current offset in various formats\n"
-           "\n"
-           "  p" HINT_CMDLINE "\n"
-           "     x:  hex output (default)\n"
-           "     w:  words\n"
-           "     d:  dwords\n"
-           "     q:  qwords\n"
-           "     a:  as ascii\n"
-           "     C:  as C buffer\n"
-           "     le: little-endian (default)\n"
-           "     be: big-endian\n"
-           "     r:  raw mode (no ascii, no header and no addresses)\n"
-           "     +:  seek forward after printing\n"
-           "     -:  seek backwards after printing\n"
-           "\n"
-           "  nelements: the number of elements to display\n"
-           "  (default: enough to display %d bytes)\n\n",
-           DEFAULT_PRINT_LEN);
+    display_printf(
+        "\nprint: display the data at current offset in various formats\n"
+        "\n"
+        "  p" HINT_CMDLINE "\n"
+        "     x:  hex output (default)\n"
+        "     w:  words\n"
+        "     d:  dwords\n"
+        "     q:  qwords\n"
+        "     a:  as ascii\n"
+        "     C:  as C buffer\n"
+        "     le: little-endian (default)\n"
+        "     be: big-endian\n"
+        "     r:  raw mode (no ascii, no header and no addresses)\n"
+        "     +:  seek forward after printing\n"
+        "     -:  seek backwards after printing\n"
+        "\n"
+        "  nelements: the number of elements to display\n"
+        "  (default: enough to display %d bytes)\n\n",
+        DEFAULT_PRINT_LEN);
 }
 
 static int printcmd_parse_args(ParsedCommand* pc, PrintCmdArgs* o_args)

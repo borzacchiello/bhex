@@ -1,10 +1,10 @@
 #include "cmd_template.h"
+#include "../tengine/tengine.h"
 
 #include <sys/stat.h>
+#include <display.h>
 #include <dirent.h>
 #include <string.h>
-
-#include "../tengine/tengine.h"
 #include <alloc.h>
 #include <log.h>
 #include "cmd.h"
@@ -27,16 +27,17 @@ static void templatecmd_dispose(TemplateCtx* ctx)
 
 static void templatecmd_help(void* obj)
 {
-    printf("\ntemplate: parse the file at current offset using a 'bhe' "
-           "template file\n"
-           "\n"
-           "  t" HINT_STR "\n"
-           "     l:  list available templates\n"
-           "     ls: list available structs\n"
-           "\n"
-           "  name: the name of the pre-loaded template/struct to use, of a "
-           "path to a template file\n"
-           "\n");
+    display_printf(
+        "\ntemplate: parse the file at current offset using a 'bhe' "
+        "template file\n"
+        "\n"
+        "  t" HINT_STR "\n"
+        "     l:  list available templates\n"
+        "     ls: list available structs\n"
+        "\n"
+        "  name: the name of the pre-loaded template/struct to use, of a "
+        "path to a template file\n"
+        "\n");
 }
 
 static int file_exists(const char* path)
@@ -59,23 +60,23 @@ static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
                 error("l modifier is specified two times");
                 return 1;
             }
-            printf("\nAvailable templates:\n");
+            display_printf("\nAvailable templates:\n");
             for (const char* key = map_first(ctx->templates); key != NULL;
                  key             = map_next(ctx->templates, key))
-                printf("  %s\n", key);
+                display_printf("  %s\n", key);
             listed_templates = 1;
         } else if (strcmp(mod, "ls") == 0) {
             if (listed_structs) {
                 error("lh modifier is specified two times");
                 return 1;
             }
-            printf("\nAvailable template structs:\n");
+            display_printf("\nAvailable template structs:\n");
             for (const char* key = map_first(ctx->templates); key != NULL;
                  key             = map_next(ctx->templates, key)) {
                 ASTCtx* ast = map_get(ctx->templates, key);
                 for (const char* str = map_first(ast->structs); str != NULL;
                      str             = map_next(ast->structs, str)) {
-                    printf("  %s.%s\n", key, str);
+                    display_printf("  %s.%s\n", key, str);
                 }
             }
             listed_structs = 1;
@@ -85,7 +86,7 @@ static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
     if (listed_templates || listed_structs) {
         if (pc->args.size != 0)
             return COMMAND_INVALID_ARG;
-        printf("\n");
+        display_printf("\n");
         return COMMAND_OK;
     }
 
@@ -102,16 +103,16 @@ static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
             error("template execution failed");
             goto end;
         }
-        printf("\n");
+        display_printf("\n");
         r = COMMAND_OK;
         goto end;
     }
     if (map_contains(ctx->templates, bhe)) {
         // Pre-loaded template
-        printf("\n");
+        display_printf("\n");
         ASTCtx* ast = map_get(ctx->templates, bhe);
         if (TEngine_process_ast(fb, ast) == 0) {
-            printf("\n");
+            display_printf("\n");
             r = COMMAND_OK;
         }
         goto end;
@@ -131,11 +132,11 @@ static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
     if (strtok(NULL, ".") != NULL)
         goto err;
 
-    printf("\n");
+    display_printf("\n");
     ASTCtx* ast = map_get(ctx->templates, tname);
     if (TEngine_process_ast_struct(fb, ast, sname) != 0)
         goto err;
-    printf("\n");
+    display_printf("\n");
 
     r = COMMAND_OK;
 
