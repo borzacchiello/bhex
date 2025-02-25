@@ -13,7 +13,7 @@
 #define TEST(name) test_##name
 #endif
 
-FileBuffer* fb;
+static FileBuffer* fb;
 
 __attribute__((constructor)) static void init_fb()
 {

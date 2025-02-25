@@ -1,7 +1,6 @@
 #include "strbuilder.h"
 
 #include <string.h>
-#include <stdarg.h>
 #include <stdio.h>
 #include <alloc.h>
 #include <log.h>
@@ -24,6 +23,16 @@ char* strbuilder_finalize(StringBuilder* sb)
     return r;
 }
 
+char* strbuilder_reset(StringBuilder* sb)
+{
+    char* r = sb->str;
+
+    sb->size     = 0;
+    sb->capacity = INITIAL_CAP;
+    sb->str      = bhex_calloc(sb->capacity);
+    return r;
+}
+
 void strbuilder_append(StringBuilder* sb, const char* str)
 {
     u64_t l = strlen(str);
@@ -36,30 +45,30 @@ void strbuilder_append(StringBuilder* sb, const char* str)
     sb->str[sb->size] = '\0';
 }
 
-void strbuilder_appendf(StringBuilder* sb, const char* fmt, ...)
+void strbuilder_appendvsf(StringBuilder* sb, const char* fmt, va_list argp)
 {
-    va_list argp;
-    u64_t   cap = strlen(fmt) * 2;
-    char*   tmp = bhex_calloc(cap + 1);
+    u64_t cap = strlen(fmt) * 2;
+    char* tmp = bhex_calloc(cap + 1);
 
-    va_start(argp, fmt);
     int n = vsnprintf(tmp, cap, fmt, argp);
-    va_end(argp);
-
     if (n < 0)
         panic("vsnprintf failed");
     if (n >= cap) {
         cap = n + 1;
         tmp = bhex_realloc(tmp, cap);
-        va_start(argp, fmt);
-        n = vsnprintf(tmp, cap, fmt, argp);
-        va_end(argp);
+        n   = vsnprintf(tmp, cap, fmt, argp);
         if (n < 0 || n >= cap)
             panic("vsnprintf failed");
     }
     strbuilder_append(sb, tmp);
     bhex_free(tmp);
+}
 
+void strbuilder_appendf(StringBuilder* sb, const char* fmt, ...)
+{
+    va_list argp;
+    va_start(argp, fmt);
+    strbuilder_appendvsf(sb, fmt, argp);
     va_end(argp);
 }
 

@@ -110,6 +110,7 @@ if (ENABLE_TESTS)
     add_executable(bhex_tests
         ${common_src}
         ${tengine_src}
+        ${command_src}
         filebuffer.c
         parser.c
         tests/dummy_filebuffer.c

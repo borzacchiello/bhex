@@ -26,4 +26,7 @@ typedef struct test_t {
     printf("[+] %u/%u tests succeeded\n", nsucc, ntests);                      \
     return nsucc != ntests;
 
+#define TEST_FAILED    0
+#define TEST_SUCCEEDED 1
+
 #endif
