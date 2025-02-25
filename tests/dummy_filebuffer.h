@@ -4,12 +4,12 @@
 #include <defs.h>
 #include "../filebuffer.h"
 
-typedef struct TestFilebuffer {
+typedef struct DummyFilebuffer {
     FileBuffer* fb;
     char*       fname;
-} TestFilebuffer;
+} DummyFilebuffer;
 
-TestFilebuffer* testfilebuffer_create(const u8_t* data, size_t s);
-void            testfilebuffer_destroy(TestFilebuffer* tfs);
+DummyFilebuffer* dummyfilebuffer_create(const u8_t* data, size_t s);
+void             dummyfilebuffer_destroy(DummyFilebuffer* tfs);
 
 #endif

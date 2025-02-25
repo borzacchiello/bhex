@@ -686,7 +686,7 @@ end:
     return r;
 }
 
-int TEST(and)()
+int TEST (and)()
 {
     char* prog = "proc { local a = 0xffff; local b = a & 0xf0f0; }";
 
@@ -720,7 +720,7 @@ end:
     return r;
 }
 
-int TEST(xor)()
+int TEST (xor)()
 {
     char* prog = "proc { local a = 0xff; local b = a ^ 0xf0; }";
 
@@ -1141,13 +1141,14 @@ end:
 
 int TEST(array_1)()
 {
-    int             r    = 0;
-    TestFilebuffer* tfb  = testfilebuffer_create((const u8_t*)"AAAAAAAAAB", 10);
-    char*           prog = "proc {"
-                           "    disable_print();"
-                           "    u8 buf[10];"
-                           "    local a = buf[9];"
-                           "}";
+    int              r = 0;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create((const u8_t*)"AAAAAAAAAB", 10);
+    char* prog = "proc {"
+                 "    disable_print();"
+                 "    u8 buf[10];"
+                 "    local a = buf[9];"
+                 "}";
 
     TEngine* e = TEngine_run_on_string(tfb->fb, prog);
     if (e == NULL)
@@ -1159,19 +1160,20 @@ int TEST(array_1)()
 end:
     if (e)
         delete_tengine(e);
-    testfilebuffer_destroy(tfb);
+    dummyfilebuffer_destroy(tfb);
     return r;
 }
 
 int TEST(array_2)()
 {
-    int             r    = 0;
-    TestFilebuffer* tfb  = testfilebuffer_create((const u8_t*)"AAAAAAAAAB", 10);
-    char*           prog = "proc {"
-                           "    disable_print();"
-                           "    u16 buf[5];"
-                           "    local a = buf[4];"
-                           "}";
+    int              r = 0;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create((const u8_t*)"AAAAAAAAAB", 10);
+    char* prog = "proc {"
+                 "    disable_print();"
+                 "    u16 buf[5];"
+                 "    local a = buf[4];"
+                 "}";
 
     TEngine* e = TEngine_run_on_string(tfb->fb, prog);
     if (e == NULL)
@@ -1183,20 +1185,21 @@ int TEST(array_2)()
 end:
     if (e)
         delete_tengine(e);
-    testfilebuffer_destroy(tfb);
+    dummyfilebuffer_destroy(tfb);
     return r;
 }
 
 int TEST(array_3)()
 {
-    int             r    = 0;
-    TestFilebuffer* tfb  = testfilebuffer_create((const u8_t*)"AAAAAAAAAB", 10);
-    char*           prog = "proc {"
-                           "    disable_print();"
-                           "    endianess_be();"
-                           "    u16 buf[5];"
-                           "    local a = buf[4];"
-                           "}";
+    int              r = 0;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create((const u8_t*)"AAAAAAAAAB", 10);
+    char* prog = "proc {"
+                 "    disable_print();"
+                 "    endianess_be();"
+                 "    u16 buf[5];"
+                 "    local a = buf[4];"
+                 "}";
 
     TEngine* e = TEngine_run_on_string(tfb->fb, prog);
     if (e == NULL)
@@ -1208,24 +1211,24 @@ int TEST(array_3)()
 end:
     if (e)
         delete_tengine(e);
-    testfilebuffer_destroy(tfb);
+    dummyfilebuffer_destroy(tfb);
     return r;
 }
 
 int TEST(array_4)()
 {
-    int             r    = 0;
-    TestFilebuffer* tfb  = testfilebuffer_create((const u8_t*)"ABCDEF", 6);
-    char*           prog = "struct Triple {"
-                           "   u8 n1;"
-                           "   u8 n2;"
-                           "   u8 n3;"
-                           "}\n"
-                           "proc {"
-                           "    disable_print();"
-                           "    Triple data[2];"
-                           "    local  a = data[1].n2;"
-                           "}";
+    int              r    = 0;
+    DummyFilebuffer* tfb  = dummyfilebuffer_create((const u8_t*)"ABCDEF", 6);
+    char*            prog = "struct Triple {"
+                            "   u8 n1;"
+                            "   u8 n2;"
+                            "   u8 n3;"
+                            "}\n"
+                            "proc {"
+                            "    disable_print();"
+                            "    Triple data[2];"
+                            "    local  a = data[1].n2;"
+                            "}";
 
     TEngine* e = TEngine_run_on_string(tfb->fb, prog);
     if (e == NULL)
@@ -1237,15 +1240,15 @@ int TEST(array_4)()
 end:
     if (e)
         delete_tengine(e);
-    testfilebuffer_destroy(tfb);
+    dummyfilebuffer_destroy(tfb);
     return r;
 }
 
 int TEST(elf_1)()
 {
-    int             r = 0;
-    TestFilebuffer* tfb =
-        testfilebuffer_create(elf_not_kitty, sizeof(elf_not_kitty));
+    int              r = 0;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(elf_not_kitty, sizeof(elf_not_kitty));
     char* prog = "struct ElfIdent {"
                  "    u8 ei_mag[4];"
                  "    u8 ei_class;"
@@ -1294,18 +1297,18 @@ int TEST(elf_1)()
 end:
     if (e)
         delete_tengine(e);
-    testfilebuffer_destroy(tfb);
+    dummyfilebuffer_destroy(tfb);
     return r;
 }
 
 int TEST(strip)()
 {
-    int             r    = 0;
-    TestFilebuffer* tfb  = testfilebuffer_create((const u8_t*)"ABCDEF", 6);
-    char*           prog = "proc {"
-                           "    disable_print();"
-                           "    local a = strip(\"  ciao  \t\n\");"
-                           "}";
+    int              r    = 0;
+    DummyFilebuffer* tfb  = dummyfilebuffer_create((const u8_t*)"ABCDEF", 6);
+    char*            prog = "proc {"
+                            "    disable_print();"
+                            "    local a = strip(\"  ciao  \t\n\");"
+                            "}";
 
     TEngine* e = TEngine_run_on_string(tfb->fb, prog);
     if (e == NULL)
@@ -1317,7 +1320,7 @@ int TEST(strip)()
 end:
     if (e)
         delete_tengine(e);
-    testfilebuffer_destroy(tfb);
+    dummyfilebuffer_destroy(tfb);
     return r;
 }
 

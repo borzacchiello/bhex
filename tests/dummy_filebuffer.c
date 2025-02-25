@@ -12,34 +12,34 @@ static void fill_with_random(u8_t* buffer, u32_t size)
         panic("unable to generate random data");
 }
 
-TestFilebuffer* testfilebuffer_create(const u8_t* data, size_t s)
+DummyFilebuffer* dummyfilebuffer_create(const u8_t* data, size_t s)
 {
     u32_t rand_n = 0;
     fill_with_random((u8_t*)&rand_n, 4);
 
     char* fname = bhex_calloc(22);
     if (snprintf(fname, 21, "/tmp/testfb_%08x", rand_n) < 0)
-        panic("testfilebuffer_create(): snprintf failed");
+        panic("dummyfilebuffer_create(): snprintf failed");
 
     FILE* f = fopen(fname, "wb");
     if (f == NULL)
-        panic("testfilebuffer_create(): fopen failed");
+        panic("dummyfilebuffer_create(): fopen failed");
     if (fwrite(data, 1, s, f) != s)
-        panic("testfilebuffer_create(): fwrite failed");
+        panic("dummyfilebuffer_create(): fwrite failed");
     if (fclose(f) != 0)
-        panic("testfilebuffer_create(): fclose failed");
+        panic("dummyfilebuffer_create(): fclose failed");
 
     FileBuffer* fb = filebuffer_create(fname, 0);
     if (fb == NULL)
-        panic("testfilebuffer_create(): filebuffer_create failed");
+        panic("dummyfilebuffer_create(): filebuffer_create failed");
 
-    TestFilebuffer* tfb = bhex_calloc(sizeof(TestFilebuffer));
-    tfb->fb             = fb;
-    tfb->fname          = fname;
+    DummyFilebuffer* tfb = bhex_calloc(sizeof(DummyFilebuffer));
+    tfb->fb              = fb;
+    tfb->fname           = fname;
     return tfb;
 }
 
-void testfilebuffer_destroy(TestFilebuffer* tfs)
+void dummyfilebuffer_destroy(DummyFilebuffer* tfs)
 {
     filebuffer_destroy(tfs->fb);
     unlink(tfs->fname);
