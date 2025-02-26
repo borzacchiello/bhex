@@ -67,6 +67,7 @@ __attribute__((unused)) static int exec_commands(const char* s)
             parsed_command_destroy(pc);
             return 1;
         }
+        parsed_command_destroy(pc);
         cmd = strtok(NULL, ";");
     }
     return 0;
