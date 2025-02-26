@@ -45,8 +45,11 @@ void strbuilder_append(StringBuilder* sb, const char* str)
     sb->str[sb->size] = '\0';
 }
 
-void strbuilder_appendvsf(StringBuilder* sb, const char* fmt, va_list argp)
+void strbuilder_appendvs(StringBuilder* sb, const char* fmt, va_list argp)
 {
+    va_list argp_copy;
+    va_copy(argp_copy, argp);
+
     u64_t cap = strlen(fmt) * 2;
     char* tmp = bhex_calloc(cap + 1);
 
@@ -56,19 +59,21 @@ void strbuilder_appendvsf(StringBuilder* sb, const char* fmt, va_list argp)
     if (n >= cap) {
         cap = n + 1;
         tmp = bhex_realloc(tmp, cap);
-        n   = vsnprintf(tmp, cap, fmt, argp);
+        n   = vsnprintf(tmp, cap, fmt, argp_copy);
         if (n < 0 || n >= cap)
             panic("vsnprintf failed");
     }
     strbuilder_append(sb, tmp);
     bhex_free(tmp);
+
+    va_end(argp_copy);
 }
 
 void strbuilder_appendf(StringBuilder* sb, const char* fmt, ...)
 {
     va_list argp;
     va_start(argp, fmt);
-    strbuilder_appendvsf(sb, fmt, argp);
+    strbuilder_appendvs(sb, fmt, argp);
     va_end(argp);
 }
 

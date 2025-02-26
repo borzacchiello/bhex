@@ -19,7 +19,7 @@ static void print_on_strbuilder(const char* fmt, ...)
 {
     va_list argp;
     va_start(argp, fmt);
-    strbuilder_appendvsf(sb, fmt, argp);
+    strbuilder_appendvs(sb, fmt, argp);
     va_end(argp);
 }
 

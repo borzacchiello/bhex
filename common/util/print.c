@@ -165,12 +165,12 @@ void print_qwords(const u8_t* bytes, size_t size, int little_endian,
         for (i = 0; i < block_size; i += 8) {
             if (off + i + 7 >= size)
                 break;
-            u64_t dw = little_endian ? read_at_le64(bytes + off, i)
+            u64_t qw = little_endian ? read_at_le64(bytes + off, i)
                                      : read_at_be64(bytes + off, i);
             if (!raw_mode)
-                display_printf("%016llXh ", dw);
+                display_printf("%016llXh ", qw);
             else
-                display_printf("0x%016llX ", dw);
+                display_printf("0x%016llX ", qw);
         }
         if (!raw_mode)
             display_printf("\n");

@@ -25,7 +25,7 @@ jobs:
             c_compiler: gcc
             cmake_flags: -DASAN=on
             test_cmdline: ./bhex_tests
-            dependencies: 
+            dependencies:
           - name: linux-i386
             arch: i386
             os: ubuntu-24.04

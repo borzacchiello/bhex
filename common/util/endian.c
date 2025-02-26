@@ -1,6 +1,7 @@
 // Based on Rizin https://github.com/rizinorg/rizin
 
 #include "endian.h"
+#include "display.h"
 
 u8_t read8(const void* src) { return *(const u8_t*)src; }
 

@@ -193,7 +193,7 @@ int TEST(qword_1)()
     // clang-format on
 
     int r = TEST_FAILED;
-    if (exec_commands("s 0 ; print/q/le 1") != 0)
+    if (exec_commands("s 0 ; p/q/le 1") != 0)
         goto end;
 
     char* out = strbuilder_reset(sb);
@@ -216,7 +216,7 @@ int TEST(qword_2)()
     // clang-format on
 
     int r = TEST_FAILED;
-    if (exec_commands("s 0 ; print/q/be 1") != 0)
+    if (exec_commands("s 0 ; p/q/be 1") != 0)
         goto end;
 
     char* out = strbuilder_reset(sb);
