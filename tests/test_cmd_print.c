@@ -1,64 +1,9 @@
-#include "dummy_filebuffer.h"
-#include "elf_not_kitty.h"
-#include "../cmd/cmd.h"
+#include "t_cmd_common.h"
 #include "t.h"
-
-#include <strbuilder.h>
-#include <display.h>
-#include <string.h>
-#include <alloc.h>
-#include <log.h>
 
 #ifndef TEST
 #define TEST(name) test_##name
 #endif
-
-static CmdContext*      cc;
-static DummyFilebuffer* dfb;
-static StringBuilder*   sb;
-
-static void print_on_strbuilder(const char* fmt, ...)
-{
-    va_list argp;
-    va_start(argp, fmt);
-    strbuilder_appendvsf(sb, fmt, argp);
-    va_end(argp);
-}
-
-__attribute__((constructor)) static void __init(void)
-{
-    disable_warning = 1;
-
-    cc = cmdctx_init();
-    if (!cc)
-        panic("unable to create cmd ctx");
-    dfb = dummyfilebuffer_create(elf_not_kitty, sizeof(elf_not_kitty));
-    if (!dfb)
-        panic("unable to create dummy fb");
-    sb = strbuilder_new();
-    if (!sb)
-        panic("unable to create string builder");
-
-    display_set_print_callback(print_on_strbuilder);
-}
-
-__attribute__((destructor)) static void __deinit(void)
-{
-    if (cc)
-        cmdctx_destroy(cc);
-    if (dfb)
-        dummyfilebuffer_destroy(dfb);
-    if (sb)
-        bhex_free(strbuilder_finalize(sb));
-}
-
-static ParsedCommand* parse_or_die(const char* s)
-{
-    ParsedCommand* pc;
-    if (parse(s, &pc) != 0)
-        panic("parse failed");
-    return pc;
-}
 
 int TEST(hex_1)()
 {
@@ -86,10 +31,8 @@ int TEST(hex_1)()
     "\n";
     // clang-format on
 
-    int            r  = TEST_FAILED;
-    ParsedCommand* pc = parse_or_die("print");
-
-    if (cmdctx_run(cc, pc, dfb->fb) != 0)
+    int r = TEST_FAILED;
+    if (exec_commands("s 0 ; print") != 0)
         goto end;
 
     char* out = strbuilder_reset(sb);
@@ -97,7 +40,6 @@ int TEST(hex_1)()
     bhex_free(out);
 
 end:
-    parsed_command_destroy(pc);
     return r;
 }
 
@@ -112,10 +54,8 @@ int TEST(hex_2)()
     "\n";
     // clang-format on
 
-    int            r  = TEST_FAILED;
-    ParsedCommand* pc = parse_or_die("print 1");
-
-    if (cmdctx_run(cc, pc, dfb->fb) != 0)
+    int r = TEST_FAILED;
+    if (exec_commands("s 0 ; print 1") != 0)
         goto end;
 
     char* out = strbuilder_reset(sb);
@@ -123,6 +63,214 @@ int TEST(hex_2)()
     bhex_free(out);
 
 end:
-    parsed_command_destroy(pc);
+    return r;
+}
+
+int TEST(word_1)()
+{
+    // clang-format off
+    const char* expected =
+    "\n"
+    "       00    02    04    06    08    0A    0C    0E   \n"
+    "       -----------------------------------------------\n"
+    " 0000: 457Fh \n"
+    "\n";
+    // clang-format on
+
+    int r = TEST_FAILED;
+    if (exec_commands("s 0 ; print/w 1") != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = strcmp(out, expected) == 0 ? TEST_SUCCEEDED : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    return r;
+}
+
+int TEST(word_2)()
+{
+    // clang-format off
+    const char* expected =
+    "\n"
+    "       00    02    04    06    08    0A    0C    0E   \n"
+    "       -----------------------------------------------\n"
+    " 0000: 7F45h \n"
+    "\n";
+    // clang-format on
+
+    int r = TEST_FAILED;
+    if (exec_commands("s 0 ; print/w/be 1") != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = strcmp(out, expected) == 0 ? TEST_SUCCEEDED : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    return r;
+}
+
+int TEST(word_3)()
+{
+    // clang-format off
+    const char* expected =
+    "\n"
+    "       00    02    04    06    08    0A    0C    0E   \n"
+    "       -----------------------------------------------\n"
+    " 0000: 457Fh 464Ch \n"
+    "\n";
+    // clang-format on
+
+    int r = TEST_FAILED;
+    if (exec_commands("s 0 ; print/w/le 2") != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = strcmp(out, expected) == 0 ? TEST_SUCCEEDED : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    return r;
+}
+
+int TEST(dword_1)()
+{
+    // clang-format off
+    const char* expected =
+    "\n"
+    "       00        04        08        0C       \n"
+    "       ---------------------------------------\n"
+    " 0000: 464C457Fh \n"
+    "\n";
+    // clang-format on
+
+    int r = TEST_FAILED;
+    if (exec_commands("s 0 ; print/d/le 1") != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = strcmp(out, expected) == 0 ? TEST_SUCCEEDED : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    return r;
+}
+
+int TEST(dword_2)()
+{
+    // clang-format off
+    const char* expected =
+    "\n"
+    "       00        04        08        0C       \n"
+    "       ---------------------------------------\n"
+    " 0000: 7F454C46h \n"
+    "\n";
+    // clang-format on
+
+    int r = TEST_FAILED;
+    if (exec_commands("s 0 ; print/d/be 1") != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = strcmp(out, expected) == 0 ? TEST_SUCCEEDED : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    return r;
+}
+
+int TEST(qword_1)()
+{
+    // clang-format off
+    const char* expected =
+    "\n"
+    "       00                08               \n"
+    "       -----------------------------------\n"
+    " 0000: 00010101464C457Fh \n"
+    "\n";
+    // clang-format on
+
+    int r = TEST_FAILED;
+    if (exec_commands("s 0 ; print/q/le 1") != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = strcmp(out, expected) == 0 ? TEST_SUCCEEDED : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    return r;
+}
+
+int TEST(qword_2)()
+{
+    // clang-format off
+    const char* expected =
+    "\n"
+    "       00                08               \n"
+    "       -----------------------------------\n"
+    " 0000: 7F454C4601010100h \n"
+    "\n";
+    // clang-format on
+
+    int r = TEST_FAILED;
+    if (exec_commands("s 0 ; print/q/be 1") != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = strcmp(out, expected) == 0 ? TEST_SUCCEEDED : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    return r;
+}
+
+int TEST(raw_1)()
+{
+    const char* expected = "7F454C4601010100\n";
+
+    int r = TEST_FAILED;
+    if (exec_commands("s 0 ; print/r 8") != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = strcmp(out, expected) == 0 ? TEST_SUCCEEDED : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    return r;
+}
+
+int TEST(C_1)()
+{
+    const char* expected = "{ 0x7f, 0x45, 0x4c }\n";
+
+    int r = TEST_FAILED;
+    if (exec_commands("s 0 ; print/C 3") != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = strcmp(out, expected) == 0 ? TEST_SUCCEEDED : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    return r;
+}
+
+int TEST(ascii_1)()
+{
+    const char* expected = "hello world\n";
+
+    int r = TEST_FAILED;
+    if (exec_commands("s 0x80 ; p/a") != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = strcmp(out, expected) == 0 ? TEST_SUCCEEDED : TEST_FAILED;
+    bhex_free(out);
+
+end:
     return r;
 }

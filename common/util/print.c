@@ -4,33 +4,21 @@
 
 #include <display.h>
 
-void print_ascii(const u8_t* bytes, size_t size, int print_header,
-                 int print_footer)
+void print_ascii(const u8_t* bytes, size_t size)
 {
-    u64_t last_newline_off = 0, off = 0, linenum = 0;
-    for (off = 0; off < size; off++) {
-        if (bytes[off] == '\n')
-            last_newline_off = off;
-    }
-
-    if (print_header)
-        display_puts("");
-    display_printf("%03llu: ", ++linenum);
-    off = 0;
-    while (off < last_newline_off) {
+    u64_t off = 0;
+    while (off < size) {
+        if (bytes[off] == 0)
+            break;
         if (is_printable_ascii(bytes[off]) || bytes[off] == '\t' ||
             bytes[off] == '\n') {
             display_printf("%c", bytes[off]);
         } else {
             display_printf(".");
         }
-        if (bytes[off] == '\n') {
-            display_printf("%03llu: ", ++linenum);
-        }
         off += 1;
     }
-    if (print_footer)
-        display_printf("\n\n");
+    display_printf("\n");
 }
 
 void print_c_buffer(const u8_t* bytes, size_t size, int print_header,

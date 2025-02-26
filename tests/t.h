@@ -2,7 +2,6 @@
 #define TEST_H
 
 #include <defs.h>
-#include <stdio.h>
 
 typedef int (*test_uptr_t)();
 

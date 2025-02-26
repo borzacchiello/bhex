@@ -112,11 +112,6 @@ static int printcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 
     size_t size =
         min(args.n_els * get_width_bytes(args.width), fb->size - fb->off);
-    if (args.width == WIDTH_ASCII)
-        // FIXME: ASCII does not support the size argument
-        //        but it should take the number of raws to be printed as
-        //        parameter
-        size = fb_block_size;
 
     u64_t  addr           = 0;
     size_t remaining_size = size;
@@ -153,7 +148,7 @@ static int printcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
                 print_c_buffer(bytes, read_size, print_header, print_footer);
                 break;
             case WIDTH_ASCII:
-                print_ascii(bytes, read_size, print_header, print_footer);
+                print_ascii(bytes, read_size);
                 break;
         }
         remaining_size -= read_size;
