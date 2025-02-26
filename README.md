@@ -20,7 +20,7 @@ Supported features:
 - undo writes until _committed_
 - enumerate (ascii) strings
 - search strings or binary data
-- execute template files using a custom language (look in the _templates_ subdirectory to see examples)
+- execute template files using a custom language (look in the _templates_ subdirectory to see some example)
 - disassemble opcodes (using Capstone)
 - assemble opcodes (using Keystone)
 
@@ -73,7 +73,7 @@ The documentation of a each command can be accessed typing "?" after the name of
 
 # Commands
 
-Typing "help" prints the list of commands:
+If you type "help" (or "h"), you get the list of commands:
 
 ```
 [0x0000000] $ h
@@ -141,25 +141,28 @@ enumerate the strings in the file (i.e., sequences of printable ascii characters
 ```
 [0x0000000] $ t?
 
-template: parse a struct template at current offset
+template: parse the file at current offset using a 'bhe' template file
 
-  t[/l/{le,be}] <template_name>
+  t[/l/ls] <name or file>
      l:  list available templates
-     le: interpret numbers as little-endian (default)
-     be: interpret numbers as big-endian
+     ls: list available structs
 
-  template_name: the name of the template to use
+  name: the name of the pre-loaded template/struct to use, of a path to a template file
 
-[0x0000000] $ t/l
+[0x0000000] $ t/l/ls
 
 Available templates:
-    ZipHeader
-    TarHeader
-    Elf32_Ehdr
-    Elf64_Ehdr
-    IMAGE_DOS_HEADER
-    IMAGE_NT_HEADERS64
-    IMAGE_NT_HEADERS32
+  elf
+  tar
+
+Available template structs:
+  elf.Elf64_Shdr
+  elf.Elf64_Phdr
+  elf.Elf32_Phdr
+  elf.Elf_Ehdr
+  elf.ElfIdent
+  elf.Elf32_Shdr
+  tar.TarHeader
 ```
 
 ### Seek
@@ -248,11 +251,11 @@ diff: prints the differences with another file
 ### Export
 
 ```
-[0x0000000] $ e?
+[0x0000000] $ ex?
 
 export: write <size> bytes of the file starting from current offset to <ofile>
 
-  e <ofile> <size>
+  ex <ofile> <size>
 
   ofile: output file
   size:  number of bytes to export
