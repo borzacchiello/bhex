@@ -20,6 +20,7 @@ Supported features:
 - undo writes until _committed_
 - enumerate (ascii) strings
 - search strings or binary data
+- execute template files using a custom language (look in the _templates_ subdirectory to see examples)
 - disassemble opcodes (using Capstone)
 - assemble opcodes (using Keystone)
 
@@ -28,15 +29,16 @@ Just run `bhex <file>` to start the shell.
 Supported flags:
 
 ```
-Usage:  bhex [ options ] inputfile
-  -h  --help        Display this usage information
+Usage:  ./bhex [ options ] inputfile
+  -h  --help        Print help
   -w  --write       Open the file in write mode
   -b  --backup      Backup original file in "filename.bk"
   -2  --no_warning  Disable warnings
   -n  --no_history  Do not save command history
-  -c  "c1; c2; ..." Execute the commands given as arguments and exit
+  -c  "c1; c2; ..." Execute the commands given as argument and exit
+  -s  --script      Script mode (commands from raw stdin)
 
-command history is saved in "$HOME/.bhex_history", but it can be changed setting BHEX_HISTORY_FILE env variable
+command history is saved in "$HOME/.bhex_history", it can be changed setting BHEX_HISTORY_FILE environment variable
 ```
 
 # Compilation
@@ -53,6 +55,10 @@ $ make
 To enable the disassembler command, use "-DENABLE_CAPSTONE=on".
 
 To enable the assembler command, use "-DENABLE_KEYSTONE=on".
+
+To enable an ASAN build, use "-DASAN=on -DCMAKE_BUILD_TYPE=Debug".
+
+To enable tests, use "-DENABLE_TESTS=on".
 
 # Command Format
 
@@ -82,9 +88,7 @@ Available commands:
     seek [s]
     print [p]
     diff [df]
-    export [e]
-    assemble [as]
-    disas [ds]
+    export [ex]
     write [w]
     delete [d]
     undo [u]

@@ -12,7 +12,7 @@
 
 #define LIST_SET   0
 #define INSERT_SET 0
-#define SEEL_SET   0
+#define SEEK_SET   0
 
 #define X86_64_ARCH      0
 #define X86_ARCH         1
@@ -144,6 +144,10 @@ static int assemblecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     if (handle_args(pc, 2, 2, &arch_str, &code_str) != 0)
         return COMMAND_INVALID_ARG;
 
+    int arch;
+    if (!parse_arch(arch_str, &arch))
+        return COMMAND_INVALID_ARG;
+
     u8_t*  code_bytes;
     size_t code_size;
     if (!do_assemble(arch, code_str, &code_bytes, &code_size))
@@ -161,7 +165,7 @@ static int assemblecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
         }
     }
 
-    if (seek_to_end == SEEK_TO_END_SET)
+    if (seek_to_end == SEEK_SET)
         fb_seek(fb, fb->off + code_size);
     return COMMAND_OK;
 }
