@@ -238,7 +238,7 @@ static int searchcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     int seek_to_match = SEEK_TO_MATCH_UNSET;
     int print_context = PRINT_CTX_UNSET;
     if (handle_mods(pc, "x,s|sk|p", &data_type, &seek_to_match,
-                    &print_context) == 0)
+                    &print_context) != 0)
         return COMMAND_INVALID_MOD;
 
     char* data_str;
