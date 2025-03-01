@@ -82,6 +82,7 @@ Available commands:
     help [h]
     interactive [int]
     info [i]
+    entropy [e]
     search [src]
     strings [str]
     template [t]
@@ -89,6 +90,8 @@ Available commands:
     print [p]
     diff [df]
     export [ex]
+    assemble [as]
+    disas [ds]
     write [w]
     delete [d]
     undo [u]
@@ -101,6 +104,29 @@ Available commands:
 [0x0000000] $ i?
 
 info: prints information about the opened binary
+```
+
+### Entropy
+
+```
+[0x0000000] $ e?
+
+entropy: display an entropy graph
+
+  e <len> <rows>
+
+  len:  number of bytes to include starting from the current offset (if omitted or '-', the whole file)
+  rows: number of points in the graph (if omitted, defaults to 32)
+
+[0x0000000] $ e - 8
+[ 00000000 - 000277c8 ] (5.980) ---------------------------------+
+[ 000277c8 - 0004ef90 ] (6.398) -----------------------------------+
+[ 0004ef90 - 00076758 ] (6.492) ------------------------------------+
+[ 00076758 - 0009df20 ] (4.491) -------------------------+
+[ 0009df20 - 000c56e8 ] (6.441) ------------------------------------+
+[ 000c56e8 - 000eceb0 ] (6.477) ------------------------------------+
+[ 000eceb0 - 00114678 ] (6.495) ------------------------------------+
+[ 00114678 - 0013be40 ] (4.388) ------------------------+
 ```
 
 ### Interactive
