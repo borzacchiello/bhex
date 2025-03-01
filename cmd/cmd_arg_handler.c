@@ -92,24 +92,18 @@ int handle_mods(ParsedCommand* pcmd, const char* modsfmt, ...)
 
 int handle_args(ParsedCommand* pcmd, u32_t max, u32_t required, ...)
 {
+    if (pcmd->args.size < required || pcmd->args.size > max)
+        return 1;
+
     va_list ap;
     va_start(ap, required);
-
-    u32_t   idx = 0;
     LLNode* arg = pcmd->args.head;
     while (arg != NULL) {
         char** vptr = va_arg(ap, char**);
         *vptr       = (char*)arg->data;
-        idx += 1;
-        arg = arg->next;
+        arg         = arg->next;
     }
 
-    int r = 0;
-    if (idx < required)
-        r = 1;
-    if (idx > max)
-        r = 1;
-
     va_end(ap);
-    return r;
+    return 0;
 }

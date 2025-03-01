@@ -56,6 +56,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      - uses: ncipollo/release-action@v1
+        with:
+          artifacts: "build-*"
 
       - name: dependencies
         run: sudo apt-get update -y && sudo apt-get --assume-yes install build-essential cmake ${{ matrix.dependencies }}
@@ -74,6 +77,6 @@ jobs:
       - name: upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: build-${{ matrix.arch }}
+          name: build-${{ matrix.arch }}.tar.gz
           path: bhex
           retention-days: 7
