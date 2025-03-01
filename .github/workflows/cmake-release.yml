@@ -4,11 +4,11 @@ name: Release action
 
 on:
   push:
-    branches: [ "main" ]
+    tags:
+      - '*'
 
 jobs:
   build:
-    if: "startsWith(github.event.head_commit.message, 'Release: ')"
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -22,6 +22,7 @@ jobs:
             arch: x64
             os: ubuntu-24.04
             c_compiler: gcc
+            cxx_compiler: g++
             cmake_flags: -DASAN=on
             test_cmdline: ./bhex_tests
             dependencies: 
@@ -29,36 +30,37 @@ jobs:
             arch: i386
             os: ubuntu-24.04
             c_compiler: i686-linux-gnu-gcc
+            cxx_compiler: i686-linux-gnu-g++
             cmake_flags:
             test_cmdline: qemu-i386 -L /usr/i686-linux-gnu ./bhex_tests
-            dependencies: qemu-user gcc-i686-linux-gnu
+            dependencies: qemu-user gcc-i686-linux-gnu g++-i686-linux-gnu
           - name: linux-arm64
             arch: arm64
             os: ubuntu-24.04
             c_compiler: aarch64-linux-gnu-gcc
+            cxx_compiler: aarch64-linux-gnu-g++
             cmake_flags:
             test_cmdline: qemu-aarch64 -L /usr/aarch64-linux-gnu ./bhex_tests
-            dependencies: qemu-user gcc-aarch64-linux-gnu
+            dependencies: qemu-user gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
           - name: linux-arm
             arch: arm
             os: ubuntu-24.04
             c_compiler: arm-linux-gnueabi-gcc
+            cxx_compiler: arm-linux-gnueabi-g++
             cmake_flags:
             test_cmdline: qemu-arm -L /usr/arm-linux-gnueabi ./bhex_tests
-            dependencies: qemu-user gcc-arm-linux-gnueabi
+            dependencies: qemu-user gcc-arm-linux-gnueabi g++-arm-linux-gnueabi
           - name: linux-mips
             arch: mips
             os: ubuntu-24.04
             c_compiler: mips-linux-gnu-gcc
+            cxx_compiler: mips-linux-gnu-g++
             cmake_flags:
             test_cmdline: qemu-mips -L /usr/mips-linux-gnu ./bhex_tests
-            dependencies: qemu-user gcc-mips-linux-gnu
+            dependencies: qemu-user gcc-mips-linux-gnu g++-mips-linux-gnu
 
     steps:
       - uses: actions/checkout@v4
-      - uses: ncipollo/release-action@v1
-        with:
-          artifacts: "build-*"
 
       - name: submodules
         run: git submodule update --init
@@ -68,29 +70,37 @@ jobs:
 
       - name: build
         run: >
-          mkdir release && cd release &&
-          cmake
-            -DSTATIC_BUILD=on
-            -DCMAKE_BUILD_TYPE=Release
-            -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
-            ${{ matrix.cmake_flags }}
-          && make
+          mkdir release &&
+          cd release &&
+          cmake -DSTATIC_BUILD=on -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} ${{ matrix.cmake_flags }} .. &&
+          make
 
       - name: build full
         run: >
-          mkdir release-full && cd release-full &&
-          cmake
-            -DSTATIC_BUILD=on
-            -DCMAKE_BUILD_TYPE=Release
-            -DCMAKE_ENABLE_CAPSTONE=on
-            -DCMAKE_ENABLE_KEYSTONE=on
-            -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
-            ${{ matrix.cmake_flags }}
-          && make
+          mkdir release-full &&
+          cd release-full &&
+          cmake -DSTATIC_BUILD=on -DCMAKE_BUILD_TYPE=Release -DENABLE_CAPSTONE=on -DENABLE_KEYSTONE=on -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} -DCMAKE_CXX_COMPILER=${{ matrix.cxx_compiler }} ${{ matrix.cmake_flags }} .. &&
+          make
+
+      - name: copy executable
+        run: >
+          cp release/bhex bhex-${{ matrix.name }} &&
+          cp release-full/bhex bhex-full-${{ matrix.name }}
 
       - name: upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: build-${{ matrix.arch }}.tar.gz
-          path: release*/bhex
+          name: build-${{ matrix.arch }}
+          path: bhex-*
           retention-days: 7
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+      - uses: ncipollo/release-action@v1
+        with:
+          artifacts: "build-*/bhex-*"
