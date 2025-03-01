@@ -24,40 +24,72 @@ jobs:
             c_compiler: gcc
             cxx_compiler: g++
             cmake_flags: -DASAN=on
-            test_cmdline: ./bhex_tests
             dependencies: 
+            strip: strip
           - name: linux-i386
             arch: i386
             os: ubuntu-24.04
             c_compiler: i686-linux-gnu-gcc
             cxx_compiler: i686-linux-gnu-g++
             cmake_flags:
-            test_cmdline: qemu-i386 -L /usr/i686-linux-gnu ./bhex_tests
-            dependencies: qemu-user gcc-i686-linux-gnu g++-i686-linux-gnu
+            dependencies: gcc-i686-linux-gnu g++-i686-linux-gnu
+            strip: i686-linux-gnu-strip
           - name: linux-arm64
             arch: arm64
             os: ubuntu-24.04
             c_compiler: aarch64-linux-gnu-gcc
             cxx_compiler: aarch64-linux-gnu-g++
             cmake_flags:
-            test_cmdline: qemu-aarch64 -L /usr/aarch64-linux-gnu ./bhex_tests
-            dependencies: qemu-user gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+            dependencies: gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+            strip: aarch64-linux-gnu-strip
           - name: linux-arm
             arch: arm
             os: ubuntu-24.04
             c_compiler: arm-linux-gnueabi-gcc
             cxx_compiler: arm-linux-gnueabi-g++
             cmake_flags:
-            test_cmdline: qemu-arm -L /usr/arm-linux-gnueabi ./bhex_tests
-            dependencies: qemu-user gcc-arm-linux-gnueabi g++-arm-linux-gnueabi
+            dependencies: gcc-arm-linux-gnueabi g++-arm-linux-gnueabi
+            strip: arm-linux-gnueabi-strip
           - name: linux-mips
             arch: mips
             os: ubuntu-24.04
             c_compiler: mips-linux-gnu-gcc
             cxx_compiler: mips-linux-gnu-g++
             cmake_flags:
-            test_cmdline: qemu-mips -L /usr/mips-linux-gnu ./bhex_tests
-            dependencies: qemu-user gcc-mips-linux-gnu g++-mips-linux-gnu
+            dependencies: gcc-mips-linux-gnu g++-mips-linux-gnu
+            strip: mips-linux-gnu-strip
+          - name: linux-mipsel
+            arch: mipsel
+            os: ubuntu-24.04
+            c_compiler: mipsel-linux-gnu-gcc
+            cxx_compiler: mipsel-linux-gnu-g++
+            cmake_flags:
+            dependencies: gcc-mipsel-linux-gnu g++-mipsel-linux-gnu
+            strip: mipsel-linux-gnu-strip
+          - name: linux-mips64
+            arch: mips64
+            os: ubuntu-24.04
+            c_compiler: mips64-linux-gnuabi64-gcc
+            cxx_compiler: mips64-linux-gnuabi64-g++
+            cmake_flags:
+            dependencies: gcc-mips64-linux-gnuabi64 g++-mips64-linux-gnuabi64
+            strip: mips64-linux-gnuabi64-strip
+          - name: linux-mips64el
+            arch: mips64el
+            os: ubuntu-24.04
+            c_compiler: mips64el-linux-gnuabi64-gcc
+            cxx_compiler: mips64el-linux-gnuabi64-g++
+            cmake_flags:
+            dependencies: gcc-mips64el-linux-gnuabi64 g++-mips64el-linux-gnuabi64
+            strip: mips64el-linux-gnuabi64-strip
+          - name: linux-powerpc
+            arch: powerpc
+            os: ubuntu-24.04
+            c_compiler: powerpc-linux-gnu-gcc
+            cxx_compiler: powerpc-linux-gnu-g++
+            cmake_flags:
+            dependencies: gcc-powerpc-linux-gnu g++-powerpc-linux-gnu
+            strip: powerpc-linux-gnu-strip
 
     steps:
       - uses: actions/checkout@v4
@@ -82,10 +114,15 @@ jobs:
           cmake -DSTATIC_BUILD=on -DCMAKE_BUILD_TYPE=Release -DENABLE_CAPSTONE=on -DENABLE_KEYSTONE=on -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} -DCMAKE_CXX_COMPILER=${{ matrix.cxx_compiler }} ${{ matrix.cmake_flags }} .. &&
           make
 
-      - name: copy executable
+      - name: copy executables
         run: >
           cp release/bhex bhex-${{ matrix.name }} &&
           cp release-full/bhex bhex-full-${{ matrix.name }}
+
+      - name: strip executables
+        run: >
+          ${{ matrix.strip }} --strip-all bhex-${{ matrix.name }} &&
+          ${{ matrix.strip }} --strip-all bhex-full-${{ matrix.name }}
 
       - name: upload build artifacts
         uses: actions/upload-artifact@v4
