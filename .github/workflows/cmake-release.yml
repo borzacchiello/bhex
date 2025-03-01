@@ -58,7 +58,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: dependencies
-        run: sudo apt-get --assume-yes install build-essential cmake ${{ matrix.dependencies }}
+        run: sudo apt-get update -y && sudo apt-get --assume-yes install build-essential cmake ${{ matrix.dependencies }}
 
       - name: configure CMake
         run: >
