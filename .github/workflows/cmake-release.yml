@@ -60,23 +60,37 @@ jobs:
         with:
           artifacts: "build-*"
 
+      - name: submodules
+        run: git submodule update --init
+
       - name: dependencies
         run: sudo apt-get update -y && sudo apt-get --assume-yes install build-essential cmake ${{ matrix.dependencies }}
 
-      - name: configure CMake
-        run: >
-          cmake
-          -DSTATIC_BUILD=on
-          -DCMAKE_BUILD_TYPE=Release
-          -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
-          ${{ matrix.cmake_flags }}
-
       - name: build
-        run: make
+        run: >
+          mkdir release && cd release &&
+          cmake
+            -DSTATIC_BUILD=on
+            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
+            ${{ matrix.cmake_flags }}
+          && make
+
+      - name: build full
+        run: >
+          mkdir release-full && cd release-full &&
+          cmake
+            -DSTATIC_BUILD=on
+            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_ENABLE_CAPSTONE=on
+            -DCMAKE_ENABLE_KEYSTONE=on
+            -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
+            ${{ matrix.cmake_flags }}
+          && make
 
       - name: upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: build-${{ matrix.arch }}.tar.gz
-          path: bhex
+          path: release*/bhex
           retention-days: 7

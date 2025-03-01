@@ -252,7 +252,7 @@ int TEST(insert_1)()
     const char* expected = "ABAD7F\n";
 
     int r = TEST_FAILED;
-    if (exec_commands("w/i/x ABAD ; p/r 3 ; u") != 0)
+    if (exec_commands("s 0; w/i/x ABAD ; p/r 3 ; u") != 0)
         goto end;
 
     char* out = strbuilder_reset(sb);
