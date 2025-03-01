@@ -9,10 +9,11 @@
 
 #include "dummy_filebuffer.h"
 #include "elf_not_kitty.h"
+#include "elf_truncated.h"
 #include "../cmd/cmd.h"
 
 static CmdContext*      cc;
-static DummyFilebuffer* dfb;
+static DummyFilebuffer *dfb, *dfb_alt_1, *dfb_alt_2;
 static StringBuilder*   sb;
 
 static void print_on_strbuilder(const char* fmt, ...)
@@ -33,6 +34,14 @@ __attribute__((constructor)) static void __init(void)
     dfb = dummyfilebuffer_create(elf_not_kitty, sizeof(elf_not_kitty));
     if (!dfb)
         panic("unable to create dummy fb");
+    dfb_alt_1 =
+        dummyfilebuffer_create(elf_truncated_1, sizeof(elf_truncated_1));
+    if (!dfb_alt_1)
+        panic("unable to create dummy fb alt 1");
+    dfb_alt_2 =
+        dummyfilebuffer_create(elf_truncated_2, sizeof(elf_truncated_2));
+    if (!dfb_alt_2)
+        panic("unable to create dummy fb alt 2");
     sb = strbuilder_new();
     if (!sb)
         panic("unable to create string builder");
@@ -46,6 +55,10 @@ __attribute__((destructor)) static void __deinit(void)
         cmdctx_destroy(cc);
     if (dfb)
         dummyfilebuffer_destroy(dfb);
+    if (dfb_alt_1)
+        dummyfilebuffer_destroy(dfb_alt_1);
+    if (dfb_alt_2)
+        dummyfilebuffer_destroy(dfb_alt_2);
     if (sb)
         bhex_free(strbuilder_finalize(sb));
 }

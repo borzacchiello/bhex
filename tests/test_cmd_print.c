@@ -66,6 +66,45 @@ end:
     return r;
 }
 
+int TEST(near_end_1)()
+{
+    const char* expected = "";
+
+    int r = TEST_FAILED;
+    if (exec_commands("s 0 ; s/- 1 ; print ; s 0") != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = strcmp(out, expected) == 0 ? TEST_SUCCEEDED : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    return r;
+}
+
+int TEST(near_end_2)()
+{
+    // clang-format off
+    const char* expected =
+        "\n"
+        "       00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F\n"
+        "       -----------------------------------------------\n"
+        " 0000: 00                                                .\n"
+        "\n";
+    // clang-format on
+
+    int r = TEST_FAILED;
+    if (exec_commands("s 0 ; s/- 2 ; print ; s 0") != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = strcmp(out, expected) == 0 ? TEST_SUCCEEDED : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    return r;
+}
+
 int TEST(word_1)()
 {
     // clang-format off
