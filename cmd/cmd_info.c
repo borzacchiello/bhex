@@ -1,6 +1,7 @@
 #include "cmd_info.h"
 
 #include <util/byte_to_str.h>
+#include <util/math.h>
 #include <hash/md5.h>
 #include <display.h>
 #include <string.h>
@@ -24,19 +25,6 @@ static void infocmd_dispose(void* obj)
 static void infocmd_help(void* obj)
 {
     display_printf("\ninfo: prints information about the opened binary\n\n");
-}
-
-static float _log2(float val)
-{
-    union {
-        float val;
-        s32_t x;
-    } u                  = {val};
-    register float log_2 = (float)(((u.x >> 23) & 255) - 128);
-    u.x &= ~(255 << 23);
-    u.x += 127 << 23;
-    log_2 += ((-0.3358287811f) * u.val + 2.0f) * u.val - 0.65871759316667f;
-    return (log_2);
 }
 
 static void calc_values(FileBuffer* fb, char** md5, float* entropy)

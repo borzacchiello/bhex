@@ -42,14 +42,12 @@ int TEST(empty)()
     // clang-format on
 
     int r = TEST_FAILED;
-    if (exec_commands("s 0; d 324 ; info") != 0)
+    if (exec_commands("s 0; d 324 ; info; u") != 0)
         goto end;
 
     char* out = strbuilder_reset(sb);
     r         = compare_strings_ignoring_X(expected, out);
     bhex_free(out);
-
-    exec_commands("u");
 
 end:
     return r;

@@ -18,6 +18,7 @@
 #include "cmd_strings.h"
 #include "cmd_diff.h"
 #include "cmd_export.h"
+#include "cmd_entropy.h"
 
 const char* cmdctx_err_to_string(int err)
 {
@@ -68,6 +69,7 @@ CmdContext* cmdctx_init(void)
     ll_add(&cc->commands, (uptr_t)templatecmd_create());
     ll_add(&cc->commands, (uptr_t)stringscmd_create());
     ll_add(&cc->commands, (uptr_t)searchcmd_create());
+    ll_add(&cc->commands, (uptr_t)entropycmd_create());
     ll_add(&cc->commands, (uptr_t)infocmd_create());
     return cc;
 }

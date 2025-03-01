@@ -66,6 +66,7 @@ set(common_src
     common/util/endian.c
     common/util/print.c
     common/util/str.c
+    common/util/math.c
     common/hash/md5.c)
 
 set(command_src
@@ -84,7 +85,8 @@ set(command_src
     cmd/cmd_undo.c
     cmd/cmd_commit.c
     cmd/cmd_diff.c
-    cmd/cmd_export.c)
+    cmd/cmd_export.c
+    cmd/cmd_entropy.c)
 
 set(tengine_src
     tengine/ast.c
