@@ -16,7 +16,7 @@ jobs:
       fail-fast: false
 
       matrix:
-        name: [ linux-x64, linux-i386, linux-arm64, linux-arm, linux-mips ]
+        name: [ linux-x64, linux-i386, linux-arm64, linux-arm, linux-mips, linux-mipsel, linux-mips64, linux-mips64el, linux-powerpc ]
         os: [ ubuntu-24.04 ]
         include:
           - name: linux-x64
@@ -54,6 +54,34 @@ jobs:
             cmake_flags:
             test_cmdline: qemu-mips -L /usr/mips-linux-gnu ./bhex_tests
             dependencies: qemu-user gcc-mips-linux-gnu
+          - name: linux-mipsel
+            arch: mipsel
+            os: ubuntu-24.04
+            c_compiler: mipsel-linux-gnu-gcc
+            cmake_flags:
+            test_cmdline: qemu-mipsel -L /usr/mipsel-linux-gnu ./bhex_tests
+            dependencies: qemu-user gcc-mipsel-linux-gnu
+          - name: linux-mips64
+            arch: mips64
+            os: ubuntu-24.04
+            c_compiler: mips64-linux-gnuabi64-gcc
+            cmake_flags:
+            test_cmdline: qemu-mips64 -L /usr/mips64-linux-gnuabi64 ./bhex_tests
+            dependencies: qemu-user gcc-mips64-linux-gnuabi64
+          - name: linux-mips64el
+            arch: mips64el
+            os: ubuntu-24.04
+            c_compiler: mips64el-linux-gnuabi64-gcc
+            cmake_flags:
+            test_cmdline: qemu-mips64el -L /usr/mips64el-linux-gnuabi64 ./bhex_tests
+            dependencies: qemu-user gcc-mips64el-linux-gnuabi64
+          - name: linux-powerpc
+            arch: powerpc
+            os: ubuntu-24.04
+            c_compiler: powerpc-linux-gnu-gcc
+            cmake_flags:
+            test_cmdline: qemu-powerpc -L /usr/powerpc-linux-gnu ./bhex_tests
+            dependencies: qemu-user gcc-powerpc-linux-gnu
 
     steps:
       - uses: actions/checkout@v4
