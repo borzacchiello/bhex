@@ -5,7 +5,7 @@
 #define TEST(name) test_##name
 #endif
 
-int TEST(hex_1)()
+int TEST(hex_1)(void)
 {
     // clang-format off
     const char* expected =
@@ -43,7 +43,7 @@ end:
     return r;
 }
 
-int TEST(hex_2)()
+int TEST(hex_2)(void)
 {
     // clang-format off
     const char* expected =
@@ -66,7 +66,7 @@ end:
     return r;
 }
 
-int TEST(near_end_1)()
+int TEST(near_end_1)(void)
 {
     const char* expected = "";
 
@@ -82,7 +82,7 @@ end:
     return r;
 }
 
-int TEST(near_end_2)()
+int TEST(near_end_2)(void)
 {
     // clang-format off
     const char* expected =
@@ -105,7 +105,7 @@ end:
     return r;
 }
 
-int TEST(word_1)()
+int TEST(word_1)(void)
 {
     // clang-format off
     const char* expected =
@@ -128,7 +128,7 @@ end:
     return r;
 }
 
-int TEST(word_2)()
+int TEST(word_2)(void)
 {
     // clang-format off
     const char* expected =
@@ -151,7 +151,7 @@ end:
     return r;
 }
 
-int TEST(word_3)()
+int TEST(word_3)(void)
 {
     // clang-format off
     const char* expected =
@@ -174,7 +174,7 @@ end:
     return r;
 }
 
-int TEST(dword_1)()
+int TEST(dword_1)(void)
 {
     // clang-format off
     const char* expected =
@@ -197,7 +197,7 @@ end:
     return r;
 }
 
-int TEST(dword_2)()
+int TEST(dword_2)(void)
 {
     // clang-format off
     const char* expected =
@@ -220,7 +220,7 @@ end:
     return r;
 }
 
-int TEST(qword_1)()
+int TEST(qword_1)(void)
 {
     // clang-format off
     const char* expected =
@@ -243,7 +243,7 @@ end:
     return r;
 }
 
-int TEST(qword_2)()
+int TEST(qword_2)(void)
 {
     // clang-format off
     const char* expected =
@@ -266,7 +266,7 @@ end:
     return r;
 }
 
-int TEST(raw_1)()
+int TEST(raw_1)(void)
 {
     const char* expected = "7F454C4601010100\n";
 
@@ -282,7 +282,7 @@ end:
     return r;
 }
 
-int TEST(C_1)()
+int TEST(C_1)(void)
 {
     const char* expected = "{ 0x7f, 0x45, 0x4c }\n";
 
@@ -298,7 +298,7 @@ end:
     return r;
 }
 
-int TEST(ascii_1)()
+int TEST(ascii_1)(void)
 {
     const char* expected = "hello world\n";
 

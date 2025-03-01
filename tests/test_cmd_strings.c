@@ -5,7 +5,7 @@
 #define TEST(name) test_##name
 #endif
 
-int TEST(no_param_1)()
+int TEST(no_param_1)(void)
 {
     // clang-format off
     const char* expected =
@@ -28,7 +28,7 @@ end:
     return r;
 }
 
-int TEST(min_len_1)()
+int TEST(min_len_1)(void)
 {
     // clang-format off
     const char* expected =
@@ -48,7 +48,7 @@ end:
     return r;
 }
 
-int TEST(null_terminated_1)()
+int TEST(null_terminated_1)(void)
 {
     // clang-format off
     const char* expected =

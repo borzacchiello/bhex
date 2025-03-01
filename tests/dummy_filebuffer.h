@@ -1,8 +1,8 @@
 #ifndef TEST_FILEBUFFER_H
 #define TEST_FILEBUFFER_H
 
+#include <filebuffer.h>
 #include <defs.h>
-#include "../filebuffer.h"
 
 typedef struct DummyFilebuffer {
     FileBuffer* fb;

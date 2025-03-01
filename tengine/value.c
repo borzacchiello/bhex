@@ -4,7 +4,7 @@
 #include "local.h"
 #include "util/byte_to_str.h"
 
-#include "../filebuffer.h"
+#include <filebuffer.h>
 #include <strbuilder.h>
 #include <util/str.h>
 #include <string.h>

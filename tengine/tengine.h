@@ -1,7 +1,7 @@
 #ifndef TENGINE_H
 #define TENGINE_H
 
-#include "../filebuffer.h"
+#include <filebuffer.h>
 #include "ast.h"
 
 typedef enum Endianess { TE_LITTLE_ENDIAN = 40, TE_BIG_ENDIAN } Endianess;

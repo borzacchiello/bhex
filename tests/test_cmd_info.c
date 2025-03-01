@@ -5,7 +5,7 @@
 #define TEST(name) test_##name
 #endif
 
-int TEST(notkitty)()
+int TEST(notkitty)(void)
 {
     // clang-format off
     const char* expected =
@@ -29,7 +29,7 @@ end:
     return r;
 }
 
-int TEST(empty)()
+int TEST(empty)(void)
 {
     // clang-format off
     const char* expected =

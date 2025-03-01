@@ -1,4 +1,5 @@
 #include "strbuilder.h"
+#include "defs.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -7,7 +8,7 @@
 
 #define INITIAL_CAP 16
 
-StringBuilder* strbuilder_new()
+StringBuilder* strbuilder_new(void)
 {
     StringBuilder* sb = bhex_calloc(sizeof(StringBuilder));
     sb->size          = 0;
@@ -56,11 +57,11 @@ void strbuilder_appendvs(StringBuilder* sb, const char* fmt, va_list argp)
     int n = vsnprintf(tmp, cap, fmt, argp);
     if (n < 0)
         panic("vsnprintf failed");
-    if (n >= cap) {
+    if ((u64_t)n >= cap) {
         cap = n + 1;
         tmp = bhex_realloc(tmp, cap);
         n   = vsnprintf(tmp, cap, fmt, argp_copy);
-        if (n < 0 || n >= cap)
+        if (n < 0 || (u64_t)n >= cap)
             panic("vsnprintf failed");
     }
     strbuilder_append(sb, tmp);

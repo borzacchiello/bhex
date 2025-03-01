@@ -2,7 +2,7 @@
 #define CMD_H
 
 #include <ll.h>
-#include "../filebuffer.h"
+#include <filebuffer.h>
 #include "../parser.h"
 
 #define COMMAND_OK                   0

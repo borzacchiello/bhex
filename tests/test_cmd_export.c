@@ -27,7 +27,7 @@ static int read_and_unlink_file(const char* path, u8_t** o_data, u64_t* o_size)
 
     *o_size = s;
     *o_data = bhex_calloc(s);
-    if (fread(*o_data, 1, s, f) != s)
+    if (fread(*o_data, 1, s, f) != (unsigned long)s)
         goto end;
     r = 0;
 
@@ -38,7 +38,7 @@ end:
     return r;
 }
 
-int TEST(small_chunk)()
+int TEST(small_chunk)(void)
 {
     int   r           = TEST_FAILED;
     u8_t* out_content = NULL;
@@ -66,7 +66,7 @@ end:
     return r;
 }
 
-int TEST(big_chunk)()
+int TEST(big_chunk)(void)
 {
     int   r           = TEST_FAILED;
     u8_t* out_content = NULL;
@@ -91,7 +91,7 @@ end:
     return r;
 }
 
-int TEST(not_zero_off)()
+int TEST(not_zero_off)(void)
 {
     int   r           = TEST_FAILED;
     u8_t* out_content = NULL;

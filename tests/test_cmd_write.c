@@ -5,9 +5,9 @@
 #define TEST(name) test_##name
 #endif
 
-int TEST(invalid_number_of_args)() { return exec_commands("w a b") != 0; }
+int TEST(invalid_number_of_args)(void) { return exec_commands("w a b") != 0; }
 
-int TEST(byte_1)()
+int TEST(byte_1)(void)
 {
     const char* expected = "2A\n";
 
@@ -23,7 +23,7 @@ end:
     return r;
 }
 
-int TEST(byte_2)()
+int TEST(byte_2)(void)
 {
     const char* expected = "12\n";
 
@@ -39,7 +39,7 @@ end:
     return r;
 }
 
-int TEST(byte_3)()
+int TEST(byte_3)(void)
 {
     const char* expected = "FF\n";
 
@@ -55,7 +55,7 @@ end:
     return r;
 }
 
-int TEST(word_1)()
+int TEST(word_1)(void)
 {
     const char* expected = "4342\n";
 
@@ -71,7 +71,7 @@ end:
     return r;
 }
 
-int TEST(word_2)()
+int TEST(word_2)(void)
 {
     const char* expected = "4243\n";
 
@@ -87,7 +87,7 @@ end:
     return r;
 }
 
-int TEST(word_3)()
+int TEST(word_3)(void)
 {
     const char* expected = "FFFF\n";
 
@@ -103,7 +103,7 @@ end:
     return r;
 }
 
-int TEST(word_4)()
+int TEST(word_4)(void)
 {
     const char* expected = "FFFF\n";
 
@@ -119,7 +119,7 @@ end:
     return r;
 }
 
-int TEST(dword_1)()
+int TEST(dword_1)(void)
 {
     const char* expected = "0000ABAD\n";
 
@@ -135,7 +135,7 @@ end:
     return r;
 }
 
-int TEST(dword_2)()
+int TEST(dword_2)(void)
 {
     const char* expected = "ADAB0000\n";
 
@@ -151,7 +151,7 @@ end:
     return r;
 }
 
-int TEST(dword_3)()
+int TEST(dword_3)(void)
 {
     const char* expected = "FFFFFFFF\n";
 
@@ -167,7 +167,7 @@ end:
     return r;
 }
 
-int TEST(qword_1)()
+int TEST(qword_1)(void)
 {
     const char* expected = "FFFFFFFFFFFFFFFF\n";
 
@@ -183,7 +183,7 @@ end:
     return r;
 }
 
-int TEST(qword_2)()
+int TEST(qword_2)(void)
 {
     const char* expected = "CAFEBABE00000000\n";
 
@@ -199,7 +199,7 @@ end:
     return r;
 }
 
-int TEST(qword_3)()
+int TEST(qword_3)(void)
 {
     const char* expected = "CAFEBABE00000000\n";
 
@@ -215,7 +215,7 @@ end:
     return r;
 }
 
-int TEST(hex_1)()
+int TEST(hex_1)(void)
 {
     const char* expected = "CAFEBABEABADCAFE1234\n";
 
@@ -231,7 +231,7 @@ end:
     return r;
 }
 
-int TEST(string_1)()
+int TEST(string_1)(void)
 {
     const char* expected = "hello world\n";
 
@@ -247,7 +247,7 @@ end:
     return r;
 }
 
-int TEST(insert_1)()
+int TEST(insert_1)(void)
 {
     const char* expected = "ABAD7F\n";
 

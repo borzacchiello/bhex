@@ -5,7 +5,7 @@
 #define TEST(name) test_##name
 #endif
 
-int TEST(hello)()
+int TEST(hello)(void)
 {
     const char* expected = " >> Match @ 0x0000080\n";
 
@@ -21,7 +21,7 @@ end:
     return r;
 }
 
-int TEST(hello_p)()
+int TEST(hello_p)(void)
 {
     // clang-format off
     const char* expected =
@@ -48,7 +48,7 @@ end:
     return r;
 }
 
-int TEST(hex)()
+int TEST(hex)(void)
 {
     const char* expected = " >> Match @ 0x0000074\n";
 
@@ -64,7 +64,7 @@ end:
     return r;
 }
 
-int TEST(hex_seek)()
+int TEST(hex_seek)(void)
 {
     const char* expected = " >> Match @ 0x0000074\n0x74\n";
 

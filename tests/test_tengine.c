@@ -1,13 +1,12 @@
-#include "defs.h"
-
 #include <string.h>
 #include <alloc.h>
 #include <log.h>
+#include <defs.h>
 
-#include "elf_not_kitty.h"
 #include "dummy_filebuffer.h"
-#include "../tengine/scope.h"
 #include "../tengine/tengine.h"
+#include "../tengine/scope.h"
+#include "elf_not_kitty.h"
 
 #ifndef TEST
 #define TEST(name) test_##name
@@ -66,9 +65,9 @@ static void delete_tengine(TEngine* e)
         goto end;                                                              \
     (r) = 1;
 
-int TEST(const)()
+int TEST(const)(void)
 {
-    char* prog = "proc { local a = 0; }";
+    const char* prog = "proc { local a = 0; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -83,9 +82,9 @@ end:
     return r;
 }
 
-int TEST(const_s8)()
+int TEST(const_s8)(void)
 {
-    char* prog = "proc { local a = 42s8; }";
+    const char* prog = "proc { local a = 42s8; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -100,9 +99,9 @@ end:
     return r;
 }
 
-int TEST(const_s16)()
+int TEST(const_s16)(void)
 {
-    char* prog = "proc { local a = 42s16; }";
+    const char* prog = "proc { local a = 42s16; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -117,9 +116,9 @@ end:
     return r;
 }
 
-int TEST(const_s32)()
+int TEST(const_s32)(void)
 {
-    char* prog = "proc { local a = 42s32; }";
+    const char* prog = "proc { local a = 42s32; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -134,9 +133,9 @@ end:
     return r;
 }
 
-int TEST(const_u8)()
+int TEST(const_u8)(void)
 {
-    char* prog = "proc { local a = 16u8; }";
+    const char* prog = "proc { local a = 16u8; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -151,9 +150,9 @@ end:
     return r;
 }
 
-int TEST(const_u16)()
+int TEST(const_u16)(void)
 {
-    char* prog = "proc { local a = 300u16; }";
+    const char* prog = "proc { local a = 300u16; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -168,9 +167,9 @@ end:
     return r;
 }
 
-int TEST(const_u32)()
+int TEST(const_u32)(void)
 {
-    char* prog = "proc { local a = 100000u32; }";
+    const char* prog = "proc { local a = 100000u32; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -185,9 +184,9 @@ end:
     return r;
 }
 
-int TEST(const_u64)()
+int TEST(const_u64)(void)
 {
-    char* prog = "proc { local a = 1099511627537u64; }";
+    const char* prog = "proc { local a = 1099511627537u64; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -202,9 +201,9 @@ end:
     return r;
 }
 
-int TEST(hex_const)()
+int TEST(hex_const)(void)
 {
-    char* prog = "proc { local a = 0xdeadbeef; }";
+    const char* prog = "proc { local a = 0xdeadbeef; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -219,9 +218,9 @@ end:
     return r;
 }
 
-int TEST(hex_const_u8)()
+int TEST(hex_const_u8)(void)
 {
-    char* prog = "proc { local a = 0xffu8; }";
+    const char* prog = "proc { local a = 0xffu8; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -236,9 +235,9 @@ end:
     return r;
 }
 
-int TEST(hex_const_u16)()
+int TEST(hex_const_u16)(void)
 {
-    char* prog = "proc { local a = 0xfffu16; }";
+    const char* prog = "proc { local a = 0xfffu16; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -253,9 +252,9 @@ end:
     return r;
 }
 
-int TEST(hex_const_u32)()
+int TEST(hex_const_u32)(void)
 {
-    char* prog = "proc { local a = 0xffffffu32; }";
+    const char* prog = "proc { local a = 0xffffffu32; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -270,9 +269,9 @@ end:
     return r;
 }
 
-int TEST(hex_const_u64)()
+int TEST(hex_const_u64)(void)
 {
-    char* prog = "proc { local a = 0xffffffffffu64; }";
+    const char* prog = "proc { local a = 0xffffffffffu64; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -287,12 +286,12 @@ end:
     return r;
 }
 
-int TEST(cast_u8)()
+int TEST(cast_u8)(void)
 {
-    char* prog = "proc { "
-                 "  local a = 0xffff;"
-                 "  local b = u8(a);"
-                 "}";
+    const char* prog = "proc { "
+                       "  local a = 0xffff;"
+                       "  local b = u8(a);"
+                       "}";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -307,12 +306,12 @@ end:
     return r;
 }
 
-int TEST(cast_i8)()
+int TEST(cast_i8)(void)
 {
-    char* prog = "proc { "
-                 "  local a = 0xffff;"
-                 "  local b = i8(a);"
-                 "}";
+    const char* prog = "proc { "
+                       "  local a = 0xffff;"
+                       "  local b = i8(a);"
+                       "}";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -327,9 +326,9 @@ end:
     return r;
 }
 
-int TEST(const_limit_1)()
+int TEST(const_limit_1)(void)
 {
-    char* prog = "proc { local a = 0x7fffffffffffffff; }";
+    const char* prog = "proc { local a = 0x7fffffffffffffff; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -344,9 +343,9 @@ end:
     return r;
 }
 
-int TEST(const_limit_2)()
+int TEST(const_limit_2)(void)
 {
-    char* prog = "proc { local a = -0x8000000000000000; }";
+    const char* prog = "proc { local a = -0x8000000000000000; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -361,9 +360,9 @@ end:
     return r;
 }
 
-int TEST(neg_const)()
+int TEST(neg_const)(void)
 {
-    char* prog = "proc { local a = -42; }";
+    const char* prog = "proc { local a = -42; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -378,9 +377,9 @@ end:
     return r;
 }
 
-int TEST(str_const_1)()
+int TEST(str_const_1)(void)
 {
-    char* prog = "proc { local a = \"ciao\"; }";
+    const char* prog = "proc { local a = \"ciao\"; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -395,9 +394,9 @@ end:
     return r;
 }
 
-int TEST(str_const_2)()
+int TEST(str_const_2)(void)
 {
-    char* prog = "proc { local a = \"ciao\xde\xad\xbe\xef\"; }";
+    const char* prog = "proc { local a = \"ciao\xde\xad\xbe\xef\"; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -412,9 +411,9 @@ end:
     return r;
 }
 
-int TEST(eq_str)()
+int TEST(eq_str)(void)
 {
-    char* prog =
+    const char* prog =
         "proc { local a = \"ciao\"; local b = \"ciao\"; local c = a == b; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
@@ -430,9 +429,9 @@ end:
     return r;
 }
 
-int TEST(sub)()
+int TEST(sub)(void)
 {
-    char* prog = "proc { local a = 4; local b = a - 5; }";
+    const char* prog = "proc { local a = 4; local b = a - 5; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -447,9 +446,9 @@ end:
     return r;
 }
 
-int TEST(add)()
+int TEST(add)(void)
 {
-    char* prog = "proc { local a = 4; local b = a + 10; }";
+    const char* prog = "proc { local a = 4; local b = a + 10; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -464,9 +463,9 @@ end:
     return r;
 }
 
-int TEST(add_no_space)()
+int TEST(add_no_space)(void)
 {
-    char* prog = "proc { local a = 4; local b = a+10; }";
+    const char* prog = "proc { local a = 4; local b = a+10; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -481,9 +480,9 @@ end:
     return r;
 }
 
-int TEST(add_wrap_s8)()
+int TEST(add_wrap_s8)(void)
 {
-    char* prog = "proc { local a = 127s8; local b = a + 1s8; }";
+    const char* prog = "proc { local a = 127s8; local b = a + 1s8; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -498,9 +497,9 @@ end:
     return r;
 }
 
-int TEST(add_wrap_s16)()
+int TEST(add_wrap_s16)(void)
 {
-    char* prog = "proc { local a = 0x7fffs16; local b = a + 1s16; }";
+    const char* prog = "proc { local a = 0x7fffs16; local b = a + 1s16; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -515,9 +514,9 @@ end:
     return r;
 }
 
-int TEST(add_wrap_s32)()
+int TEST(add_wrap_s32)(void)
 {
-    char* prog = "proc { local a = 0x7fffffffs32; local b = a + 1s32; }";
+    const char* prog = "proc { local a = 0x7fffffffs32; local b = a + 1s32; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -532,9 +531,9 @@ end:
     return r;
 }
 
-int TEST(add_wrap_u8)()
+int TEST(add_wrap_u8)(void)
 {
-    char* prog = "proc { local a = 250u8; local b = a + 6u8; }";
+    const char* prog = "proc { local a = 250u8; local b = a + 6u8; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -549,9 +548,9 @@ end:
     return r;
 }
 
-int TEST(add_wrap_u16)()
+int TEST(add_wrap_u16)(void)
 {
-    char* prog = "proc { local a = 0xffffu16; local b = a + 1u16; }";
+    const char* prog = "proc { local a = 0xffffu16; local b = a + 1u16; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -566,9 +565,9 @@ end:
     return r;
 }
 
-int TEST(add_wrap_u32)()
+int TEST(add_wrap_u32)(void)
 {
-    char* prog = "proc { local a = 0xffffffffu32; local b = a + 1u32; }";
+    const char* prog = "proc { local a = 0xffffffffu32; local b = a + 1u32; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -583,9 +582,9 @@ end:
     return r;
 }
 
-int TEST(add_wrap_u64)()
+int TEST(add_wrap_u64)(void)
 {
-    char* prog =
+    const char* prog =
         "proc { local a = 0xffffffffffffffffu64; local b = a + 1u64; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
@@ -601,9 +600,9 @@ end:
     return r;
 }
 
-int TEST(mul)()
+int TEST(mul)(void)
 {
-    char* prog = "proc { local a = 4; local b = a * 10; }";
+    const char* prog = "proc { local a = 4; local b = a * 10; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -618,9 +617,9 @@ end:
     return r;
 }
 
-int TEST(div_1)()
+int TEST(div_1)(void)
 {
-    char* prog = "proc { local a = 44; local b = a / 10; }";
+    const char* prog = "proc { local a = 44; local b = a / 10; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -635,9 +634,9 @@ end:
     return r;
 }
 
-int TEST(div_2)()
+int TEST(div_2)(void)
 {
-    char* prog = "proc { local a = 16; local b = a / 4; }";
+    const char* prog = "proc { local a = 16; local b = a / 4; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -652,9 +651,9 @@ end:
     return r;
 }
 
-int TEST(mod_1)()
+int TEST(mod_1)(void)
 {
-    char* prog = "proc { local a = 43; local b = a % 10; }";
+    const char* prog = "proc { local a = 43; local b = a % 10; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -669,9 +668,9 @@ end:
     return r;
 }
 
-int TEST(mod_2)()
+int TEST(mod_2)(void)
 {
-    char* prog = "proc { local a = 16; local b = a % 4; }";
+    const char* prog = "proc { local a = 16; local b = a % 4; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -686,9 +685,9 @@ end:
     return r;
 }
 
-int TEST (and)()
+int TEST (and)(void)
 {
-    char* prog = "proc { local a = 0xffff; local b = a & 0xf0f0; }";
+    const char* prog = "proc { local a = 0xffff; local b = a & 0xf0f0; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -703,9 +702,9 @@ end:
     return r;
 }
 
-int TEST(or)()
+int TEST(or)(void)
 {
-    char* prog = "proc { local a = 0xf0f0; local b = a | 0x0f0f; }";
+    const char* prog = "proc { local a = 0xf0f0; local b = a | 0x0f0f; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -720,9 +719,9 @@ end:
     return r;
 }
 
-int TEST (xor)()
+int TEST (xor)(void)
 {
-    char* prog = "proc { local a = 0xff; local b = a ^ 0xf0; }";
+    const char* prog = "proc { local a = 0xff; local b = a ^ 0xf0; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -737,9 +736,9 @@ end:
     return r;
 }
 
-int TEST(neg_1)()
+int TEST(neg_1)(void)
 {
-    char* prog = "proc { local a = -(42+16); }";
+    const char* prog = "proc { local a = -(42+16); }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -754,9 +753,9 @@ end:
     return r;
 }
 
-int TEST(neg_2)()
+int TEST(neg_2)(void)
 {
-    char* prog = "proc { local a = 43 + -(42+16); }";
+    const char* prog = "proc { local a = 43 + -(42+16); }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -771,13 +770,13 @@ end:
     return r;
 }
 
-int TEST(band_1)()
+int TEST(band_1)(void)
 {
-    char* prog = "proc {"
-                 "  local a = 1;"
-                 "  local b = 0;"
-                 "  local c = a && b;"
-                 "}";
+    const char* prog = "proc {"
+                       "  local a = 1;"
+                       "  local b = 0;"
+                       "  local c = a && b;"
+                       "}";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -792,13 +791,13 @@ end:
     return r;
 }
 
-int TEST(band_2)()
+int TEST(band_2)(void)
 {
-    char* prog = "proc {"
-                 "  local a = 1;"
-                 "  local b = 1;"
-                 "  local c = a && b;"
-                 "}";
+    const char* prog = "proc {"
+                       "  local a = 1;"
+                       "  local b = 1;"
+                       "  local c = a && b;"
+                       "}";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -813,13 +812,13 @@ end:
     return r;
 }
 
-int TEST(bor_1)()
+int TEST(bor_1)(void)
 {
-    char* prog = "proc {"
-                 "  local a = 1;"
-                 "  local b = 0;"
-                 "  local c = a || b;"
-                 "}";
+    const char* prog = "proc {"
+                       "  local a = 1;"
+                       "  local b = 0;"
+                       "  local c = a || b;"
+                       "}";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -834,13 +833,13 @@ end:
     return r;
 }
 
-int TEST(bor_2)()
+int TEST(bor_2)(void)
 {
-    char* prog = "proc {"
-                 "  local a = 0;"
-                 "  local b = 0;"
-                 "  local c = a || b;"
-                 "}";
+    const char* prog = "proc {"
+                       "  local a = 0;"
+                       "  local b = 0;"
+                       "  local c = a || b;"
+                       "}";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -855,15 +854,15 @@ end:
     return r;
 }
 
-int TEST(bneq_1)()
+int TEST(bneq_1)(void)
 {
-    char* prog = "proc {"
-                 "  local a = 0;"
-                 "  local b = 1;"
-                 "  if (a != 42) {"
-                 "    b = b + 41;"
-                 "  }"
-                 "}";
+    const char* prog = "proc {"
+                       "  local a = 0;"
+                       "  local b = 1;"
+                       "  if (a != 42) {"
+                       "    b = b + 41;"
+                       "  }"
+                       "}";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -878,15 +877,15 @@ end:
     return r;
 }
 
-int TEST(bnot_1)()
+int TEST(bnot_1)(void)
 {
-    char* prog = "proc {"
-                 "  local a = 0;"
-                 "  local b = 1;"
-                 "  if (!(a == 42)) {"
-                 "    b = b + 41;"
-                 "  }"
-                 "}";
+    const char* prog = "proc {"
+                       "  local a = 0;"
+                       "  local b = 1;"
+                       "  if (!(a == 42)) {"
+                       "    b = b + 41;"
+                       "  }"
+                       "}";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -901,9 +900,9 @@ end:
     return r;
 }
 
-int TEST(precedence_op_1)()
+int TEST(precedence_op_1)(void)
 {
-    char* prog = "proc { local a = 4 + 3 * 8; }";
+    const char* prog = "proc { local a = 4 + 3 * 8; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -920,9 +919,9 @@ end:
     return r;
 }
 
-int TEST(precedence_op_2)()
+int TEST(precedence_op_2)(void)
 {
-    char* prog = "proc { local a = 4 - 3 * 8; }";
+    const char* prog = "proc { local a = 4 - 3 * 8; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -937,9 +936,9 @@ end:
     return r;
 }
 
-int TEST(precedence_op_3)()
+int TEST(precedence_op_3)(void)
 {
-    char* prog = "proc { local a = 4 - 3 + 3 * 2; }";
+    const char* prog = "proc { local a = 4 - 3 + 3 * 2; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -954,9 +953,9 @@ end:
     return r;
 }
 
-int TEST(precedence_op_4)()
+int TEST(precedence_op_4)(void)
 {
-    char* prog = "proc { local a = 4 * 3 - 1; }";
+    const char* prog = "proc { local a = 4 * 3 - 1; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -971,9 +970,9 @@ end:
     return r;
 }
 
-int TEST(precedence_op_5)()
+int TEST(precedence_op_5)(void)
 {
-    char* prog = "proc { local a = (4 + 3) * 8; }";
+    const char* prog = "proc { local a = (4 + 3) * 8; }";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -990,15 +989,15 @@ end:
     return r;
 }
 
-int TEST(if_1)()
+int TEST(if_1)(void)
 {
-    char* prog = "proc {"
-                 "  local a = 4;"
-                 "  local b = 3;"
-                 "  if (a - 3 > 0) {"
-                 "    b = b + 42;"
-                 "  }"
-                 "}";
+    const char* prog = "proc {"
+                       "  local a = 4;"
+                       "  local b = 3;"
+                       "  if (a - 3 > 0) {"
+                       "    b = b + 42;"
+                       "  }"
+                       "}";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -1013,15 +1012,15 @@ end:
     return r;
 }
 
-int TEST(if_2)()
+int TEST(if_2)(void)
 {
-    char* prog = "proc {"
-                 "  local a = 4;"
-                 "  local b = 3;"
-                 "  if (a - 5 > 0) {"
-                 "    b = b + 42;"
-                 "  }"
-                 "}";
+    const char* prog = "proc {"
+                       "  local a = 4;"
+                       "  local b = 3;"
+                       "  if (a - 5 > 0) {"
+                       "    b = b + 42;"
+                       "  }"
+                       "}";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -1036,19 +1035,19 @@ end:
     return r;
 }
 
-int TEST(if_3)()
+int TEST(if_3)(void)
 {
-    char* prog = "proc {"
-                 "  local a = 4;"
-                 "  local b = 3;"
-                 "  if (a == 1) {"
-                 "    b = b + 42;"
-                 "  } elif (a == 4) {"
-                 "    b = b + 43;"
-                 "  } else {"
-                 "    b = b + 44;"
-                 "  }"
-                 "}";
+    const char* prog = "proc {"
+                       "  local a = 4;"
+                       "  local b = 3;"
+                       "  if (a == 1) {"
+                       "    b = b + 42;"
+                       "  } elif (a == 4) {"
+                       "    b = b + 43;"
+                       "  } else {"
+                       "    b = b + 44;"
+                       "  }"
+                       "}";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -1063,17 +1062,17 @@ end:
     return r;
 }
 
-int TEST(if_4)()
+int TEST(if_4)(void)
 {
-    char* prog = "proc { "
-                 "  local a = 8;"
-                 "  local b = 3;"
-                 "  if (a == 1) {"
-                 "    b = b + 42;"
-                 "  } elif (a == 4) {"
-                 "    b = b + 43;"
-                 "  }"
-                 "}";
+    const char* prog = "proc { "
+                       "  local a = 8;"
+                       "  local b = 3;"
+                       "  if (a == 1) {"
+                       "    b = b + 42;"
+                       "  } elif (a == 4) {"
+                       "    b = b + 43;"
+                       "  }"
+                       "}";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -1088,19 +1087,19 @@ end:
     return r;
 }
 
-int TEST(if_5)()
+int TEST(if_5)(void)
 {
-    char* prog = "proc { "
-                 "  local a = 8;"
-                 "  local b = 3;"
-                 "  if (a == 1) {"
-                 "    b = b + 42;"
-                 "  } elif (a == 4) {"
-                 "    b = b + 43;"
-                 "  } else {"
-                 "    b = b + 44;"
-                 "  }"
-                 "}";
+    const char* prog = "proc { "
+                       "  local a = 8;"
+                       "  local b = 3;"
+                       "  if (a == 1) {"
+                       "    b = b + 42;"
+                       "  } elif (a == 4) {"
+                       "    b = b + 43;"
+                       "  } else {"
+                       "    b = b + 44;"
+                       "  }"
+                       "}";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -1115,16 +1114,16 @@ end:
     return r;
 }
 
-int TEST(while_1)()
+int TEST(while_1)(void)
 {
-    char* prog = "proc { "
-                 "  local a = 0;"
-                 "  local b = 0;"
-                 "  while (a < 10) {"
-                 "    b = b + (2*a);"
-                 "    a = a + 1;"
-                 "  }"
-                 "}";
+    const char* prog = "proc { "
+                       "  local a = 0;"
+                       "  local b = 0;"
+                       "  while (a < 10) {"
+                       "    b = b + (2*a);"
+                       "    a = a + 1;"
+                       "  }"
+                       "}";
 
     TEngine* e = TEngine_run_on_string(fb, prog);
     if (e == NULL)
@@ -1139,16 +1138,16 @@ end:
     return r;
 }
 
-int TEST(array_1)()
+int TEST(array_1)(void)
 {
     int              r = 0;
     DummyFilebuffer* tfb =
         dummyfilebuffer_create((const u8_t*)"AAAAAAAAAB", 10);
-    char* prog = "proc {"
-                 "    disable_print();"
-                 "    u8 buf[10];"
-                 "    local a = buf[9];"
-                 "}";
+    const char* prog = "proc {"
+                       "    disable_print();"
+                       "    u8 buf[10];"
+                       "    local a = buf[9];"
+                       "}";
 
     TEngine* e = TEngine_run_on_string(tfb->fb, prog);
     if (e == NULL)
@@ -1164,16 +1163,16 @@ end:
     return r;
 }
 
-int TEST(array_2)()
+int TEST(array_2)(void)
 {
     int              r = 0;
     DummyFilebuffer* tfb =
         dummyfilebuffer_create((const u8_t*)"AAAAAAAAAB", 10);
-    char* prog = "proc {"
-                 "    disable_print();"
-                 "    u16 buf[5];"
-                 "    local a = buf[4];"
-                 "}";
+    const char* prog = "proc {"
+                       "    disable_print();"
+                       "    u16 buf[5];"
+                       "    local a = buf[4];"
+                       "}";
 
     TEngine* e = TEngine_run_on_string(tfb->fb, prog);
     if (e == NULL)
@@ -1189,17 +1188,17 @@ end:
     return r;
 }
 
-int TEST(array_3)()
+int TEST(array_3)(void)
 {
     int              r = 0;
     DummyFilebuffer* tfb =
         dummyfilebuffer_create((const u8_t*)"AAAAAAAAAB", 10);
-    char* prog = "proc {"
-                 "    disable_print();"
-                 "    endianess_be();"
-                 "    u16 buf[5];"
-                 "    local a = buf[4];"
-                 "}";
+    const char* prog = "proc {"
+                       "    disable_print();"
+                       "    endianess_be();"
+                       "    u16 buf[5];"
+                       "    local a = buf[4];"
+                       "}";
 
     TEngine* e = TEngine_run_on_string(tfb->fb, prog);
     if (e == NULL)
@@ -1215,11 +1214,11 @@ end:
     return r;
 }
 
-int TEST(array_4)()
+int TEST(array_4)(void)
 {
     int              r    = 0;
     DummyFilebuffer* tfb  = dummyfilebuffer_create((const u8_t*)"ABCDEF", 6);
-    char*            prog = "struct Triple {"
+    const char*      prog = "struct Triple {"
                             "   u8 n1;"
                             "   u8 n2;"
                             "   u8 n3;"
@@ -1244,48 +1243,48 @@ end:
     return r;
 }
 
-int TEST(elf_1)()
+int TEST(elf_1)(void)
 {
     int              r = 0;
     DummyFilebuffer* tfb =
         dummyfilebuffer_create(elf_not_kitty, sizeof(elf_not_kitty));
-    char* prog = "struct ElfIdent {"
-                 "    u8 ei_mag[4];"
-                 "    u8 ei_class;"
-                 "    u8 ei_data;"
-                 "    u8 ei_version;"
-                 "    u8 ei_osabi;"
-                 "    u8 ei_abiversion;"
-                 "    u8 ei_pad[6];"
-                 "    u8 ei_nident;"
-                 "}\n"
-                 "struct Elf_Ehdr {"
-                 "    ElfIdent e_ident;"
-                 "    u16 e_type;"
-                 "    u16 e_machine;"
-                 "    u32 e_version;"
-                 "    if (e_ident.ei_class == 2) {"
-                 "        u64 e_entry;"
-                 "        u64 e_phoff;"
-                 "        u64 e_shoff;"
-                 "    } else {"
-                 "        u32 e_entry;"
-                 "        u32 e_phoff;"
-                 "        u32 e_shoff;"
-                 "    }"
-                 "    u32 e_flags;"
-                 "    u16 e_ehsize;"
-                 "    u16 e_phentsize;"
-                 "    u16 e_phnum;"
-                 "    u16 e_shentsize;"
-                 "    u16 e_shnum;"
-                 "    u16 e_shstrndx;"
-                 "}\n"
-                 "proc {"
-                 "    disable_print();"
-                 "    Elf_Ehdr header;"
-                 "    local    a = header.e_entry;"
-                 "}";
+    const char* prog = "struct ElfIdent {"
+                       "    u8 ei_mag[4];"
+                       "    u8 ei_class;"
+                       "    u8 ei_data;"
+                       "    u8 ei_version;"
+                       "    u8 ei_osabi;"
+                       "    u8 ei_abiversion;"
+                       "    u8 ei_pad[6];"
+                       "    u8 ei_nident;"
+                       "}\n"
+                       "struct Elf_Ehdr {"
+                       "    ElfIdent e_ident;"
+                       "    u16 e_type;"
+                       "    u16 e_machine;"
+                       "    u32 e_version;"
+                       "    if (e_ident.ei_class == 2) {"
+                       "        u64 e_entry;"
+                       "        u64 e_phoff;"
+                       "        u64 e_shoff;"
+                       "    } else {"
+                       "        u32 e_entry;"
+                       "        u32 e_phoff;"
+                       "        u32 e_shoff;"
+                       "    }"
+                       "    u32 e_flags;"
+                       "    u16 e_ehsize;"
+                       "    u16 e_phentsize;"
+                       "    u16 e_phnum;"
+                       "    u16 e_shentsize;"
+                       "    u16 e_shnum;"
+                       "    u16 e_shstrndx;"
+                       "}\n"
+                       "proc {"
+                       "    disable_print();"
+                       "    Elf_Ehdr header;"
+                       "    local    a = header.e_entry;"
+                       "}";
 
     TEngine* e = TEngine_run_on_string(tfb->fb, prog);
     if (e == NULL)
@@ -1301,11 +1300,11 @@ end:
     return r;
 }
 
-int TEST(strip)()
+int TEST(strip)(void)
 {
     int              r    = 0;
     DummyFilebuffer* tfb  = dummyfilebuffer_create((const u8_t*)"ABCDEF", 6);
-    char*            prog = "proc {"
+    const char*      prog = "proc {"
                             "    disable_print();"
                             "    local a = strip(\"  ciao  \t\n\");"
                             "}";
@@ -1324,16 +1323,16 @@ end:
     return r;
 }
 
-int TEST(fn_1)()
+int TEST(fn_1)(void)
 {
 
-    char* prog = "fn test() {"
-                 "    result = 42;"
-                 "}"
-                 "proc {"
-                 "    disable_print();"
-                 "    local a = test();"
-                 "}";
+    const char* prog = "fn test() {"
+                       "    result = 42;"
+                       "}"
+                       "proc {"
+                       "    disable_print();"
+                       "    local a = test();"
+                       "}";
 
     int      r = 0;
     TEngine* e = TEngine_run_on_string(fb, prog);
@@ -1349,16 +1348,16 @@ end:
     return r;
 }
 
-int TEST(fn_2)()
+int TEST(fn_2)(void)
 {
 
-    char* prog = "fn test(a) {"
-                 "    result = u32(42 + a);"
-                 "}"
-                 "proc {"
-                 "    disable_print();"
-                 "    local a = test(42);"
-                 "}";
+    const char* prog = "fn test(a) {"
+                       "    result = u32(42 + a);"
+                       "}"
+                       "proc {"
+                       "    disable_print();"
+                       "    local a = test(42);"
+                       "}";
 
     int      r = 0;
     TEngine* e = TEngine_run_on_string(fb, prog);
@@ -1374,16 +1373,16 @@ end:
     return r;
 }
 
-int TEST(fn_3)()
+int TEST(fn_3)(void)
 {
 
-    char* prog = "fn test(a, b) {"
-                 "    result = u32(42 + a + b);"
-                 "}"
-                 "proc {"
-                 "    disable_print();"
-                 "    local a = test(42, 42);"
-                 "}";
+    const char* prog = "fn test(a, b) {"
+                       "    result = u32(42 + a + b);"
+                       "}"
+                       "proc {"
+                       "    disable_print();"
+                       "    local a = test(42, 42);"
+                       "}";
 
     int      r = 0;
     TEngine* e = TEngine_run_on_string(fb, prog);
@@ -1399,16 +1398,16 @@ end:
     return r;
 }
 
-int TEST(comment_line_1)()
+int TEST(comment_line_1)(void)
 {
-    char* prog = "fn test(a, b) {"
-                 "    // this is a comment and should be skipped\n"
-                 "    result = u32(42 + a + b);"
-                 "}"
-                 "proc {"
-                 "    disable_print();"
-                 "    local a = test(42, 42);"
-                 "}";
+    const char* prog = "fn test(a, b) {"
+                       "    // this is a comment and should be skipped\n"
+                       "    result = u32(42 + a + b);"
+                       "}"
+                       "proc {"
+                       "    disable_print();"
+                       "    local a = test(42, 42);"
+                       "}";
 
     int      r = 0;
     TEngine* e = TEngine_run_on_string(fb, prog);
@@ -1424,16 +1423,16 @@ end:
     return r;
 }
 
-int TEST(comment_multiline_1)()
+int TEST(comment_multiline_1)(void)
 {
-    char* prog = "fn test(a, b) {"
-                 "    /* this is a comment and should be skipped */"
-                 "    result = u32(42 + a + b);"
-                 "}"
-                 "proc {"
-                 "    disable_print();"
-                 "    local a = test(42, 42);"
-                 "}";
+    const char* prog = "fn test(a, b) {"
+                       "    /* this is a comment and should be skipped */"
+                       "    result = u32(42 + a + b);"
+                       "}"
+                       "proc {"
+                       "    disable_print();"
+                       "    local a = test(42, 42);"
+                       "}";
 
     int      r = 0;
     TEngine* e = TEngine_run_on_string(fb, prog);
@@ -1449,17 +1448,18 @@ end:
     return r;
 }
 
-int TEST(comment_multiline_2)()
+int TEST(comment_multiline_2)(void)
 {
-    char* prog = "fn test(a, b) {"
-                 "    result = u32(42 + a + b /* this is a comment and should "
-                 "be skipped */);"
-                 "}"
-                 "proc {"
-                 "    disable_print();"
-                 "    local a = /* this is a comment and should be skipped */ "
-                 "test(42, 42);"
-                 "}";
+    const char* prog =
+        "fn test(a, b) {"
+        "    result = u32(42 + a + b /* this is a comment and should "
+        "be skipped */);"
+        "}"
+        "proc {"
+        "    disable_print();"
+        "    local a = /* this is a comment and should be skipped */ "
+        "test(42, 42);"
+        "}";
 
     int      r = 0;
     TEngine* e = TEngine_run_on_string(fb, prog);

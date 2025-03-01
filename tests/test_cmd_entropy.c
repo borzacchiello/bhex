@@ -5,7 +5,7 @@
 #define TEST(name) test_##name
 #endif
 
-int TEST(notkitty)()
+int TEST(notkitty)(void)
 {
     // clang-format off
     const char* expected =
@@ -55,7 +55,7 @@ end:
     return r;
 }
 
-int TEST(notkitty_rows_2)()
+int TEST(notkitty_rows_2)(void)
 {
     // clang-format off
     const char* expected =
@@ -75,7 +75,7 @@ end:
     return r;
 }
 
-int TEST(notkitty_len_8)()
+int TEST(notkitty_len_8)(void)
 {
     // clang-format off
     const char* expected =
@@ -101,7 +101,7 @@ end:
     return r;
 }
 
-int TEST(notkitty_len_8_rows_2)()
+int TEST(notkitty_len_8_rows_2)(void)
 {
     // clang-format off
     const char* expected =
@@ -121,7 +121,7 @@ end:
     return r;
 }
 
-int TEST(empty)()
+int TEST(empty)(void)
 {
     int r = TEST_FAILED;
     if (exec_commands("s 0 ; d 324 ; entropy ; u") != 0)

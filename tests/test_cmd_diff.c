@@ -8,7 +8,7 @@
 #define bold_begin "\033[1m"
 #define bold_end   "\033[22m"
 
-int TEST(equal_smaller)()
+int TEST(equal_smaller)(void)
 {
     // clang-format off
     const char* expected =
@@ -34,7 +34,7 @@ end:
     return r;
 }
 
-int TEST(different_smaller)()
+int TEST(different_smaller)(void)
 {
     // clang-format off
     const char* expected =
@@ -60,7 +60,7 @@ end:
     return r;
 }
 
-int TEST(different_smaller_print)()
+int TEST(different_smaller_print)(void)
 {
     // clang-format off
     const char* expected =

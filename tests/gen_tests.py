@@ -13,7 +13,7 @@ def iterate_files(path: str, recursive=False):
 def get_all_tests(fullpath):
     result = list()
 
-    pattern = r"int TEST\((.*)\)\(\)"
+    pattern = r"int TEST\((.*)\)\(.*\)"
     with open(fullpath, "r") as fin:
         for line in fin:
             data = re.findall(pattern, line)

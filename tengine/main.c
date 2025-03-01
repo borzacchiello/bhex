@@ -1,6 +1,6 @@
 #include "tengine.h"
 
-#include "../filebuffer.h"
+#include <filebuffer.h>
 #include <log.h>
 
 #include <stdlib.h>
