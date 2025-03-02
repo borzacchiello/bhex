@@ -90,6 +90,7 @@ Available commands:
     print [p]
     diff [df]
     export [ex]
+    import [im]
     assemble [as]
     disas [ds]
     write [w]
@@ -285,6 +286,22 @@ export: write <size> bytes of the file starting from current offset to <ofile>
 
   ofile: output file
   size:  number of bytes to export
+```
+
+### Import
+
+```
+[0x0000000] $ im?
+
+import: import the content of <file> at current offset
+
+  im[/{ovw,i}] <file> [<size> <offset>]
+     i:   insert in current file (default)
+     ovw: overwrite current file
+
+  file:   input file
+  size:   number of bytes to import (if omitted or zero, import the whole file)
+  offset: starting offset of the imported file (if omitted, import from offset 0)
 ```
 
 ### Write
