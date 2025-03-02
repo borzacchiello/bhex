@@ -14,7 +14,7 @@
 #define min(x, y) ((x) < (y) ? (x) : (y))
 
 #define DEFAULT_ROWS 32
-#define HINT_CMDLINE " <len> <rows>"
+#define HINT_CMDLINE " [<len> <rows>]"
 
 static void entropycmd_dispose(void* obj) {}
 
@@ -93,6 +93,7 @@ static int entropycmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
         warning("len is too high, trimming it to %llu", fb->size - fb->off);
         len = fb->size - fb->off;
     }
+    u64_t last_addr = fb->off + len;
 
     if (rows > len)
         rows = len;
@@ -102,6 +103,10 @@ static int entropycmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 
     u64_t addr = fb->off;
     for (u32_t i = 0; i < rows; ++i) {
+        if (i == rows - 1)
+            // if we have remaining bytes, include them in the last point
+            bytes_per_raw = last_addr - addr;
+
         float entropy = calc_entropy(fb, addr, bytes_per_raw);
 
         display_printf("[ %08llx - %08llx ] (%.03f) ", addr,
@@ -112,8 +117,6 @@ static int entropycmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
         display_printf("+\n");
 
         addr += bytes_per_raw;
-        if (fb->size - addr < bytes_per_raw)
-            bytes_per_raw = fb->size - addr;
     }
     return COMMAND_OK;
 }
