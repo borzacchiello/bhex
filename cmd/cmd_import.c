@@ -4,7 +4,6 @@
 #include "defs.h"
 #include "filebuffer.h"
 
-#include <sys/_types/_seek_set.h>
 #include <util/byte_to_num.h>
 #include <display.h>
 #include <alloc.h>
