@@ -1,7 +1,7 @@
 #include "cmd_export.h"
 #include "cmd.h"
-#include <util/byte_to_num.h>
 
+#include <util/byte_to_num.h>
 #include <display.h>
 #include <alloc.h>
 #include <log.h>

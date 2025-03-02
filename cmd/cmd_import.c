@@ -1,12 +1,12 @@
 #include "cmd_arg_handler.h"
 #include "cmd_import.h"
 #include "cmd.h"
-#include "defs.h"
-#include "filebuffer.h"
 
 #include <util/byte_to_num.h>
+#include <filebuffer.h>
 #include <display.h>
 #include <alloc.h>
+#include <defs.h>
 #include <log.h>
 
 #define min(x, y) ((x) < (y) ? (x) : (y))

@@ -1,11 +1,11 @@
 #include "cmd_diff.h"
-#include "defs.h"
-#include <alloc.h>
-#include <util/print.h>
 
+#include <util/print.h>
 #include <display.h>
 #include <string.h>
 #include <stdio.h>
+#include <alloc.h>
+#include <defs.h>
 
 #define HINT_STR "[/p] <file>"
 

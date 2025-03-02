@@ -1,6 +1,6 @@
+#include "cmd_arg_handler.h"
 #include "cmd_write.h"
 #include "cmd.h"
-#include "cmd_arg_handler.h"
 
 #include <util/byte_to_num.h>
 #include <util/endian.h>

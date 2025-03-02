@@ -1,6 +1,6 @@
+#include "cmd_arg_handler.h"
 #include "cmd_search.h"
 #include "cmd.h"
-#include "cmd_arg_handler.h"
 
 #include <util/print.h>
 #include <util/str.h>

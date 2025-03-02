@@ -4,12 +4,12 @@
 
 #include <util/byte_to_num.h>
 #include <util/byte_to_str.h>
+#include <display.h>
+#include <string.h>
 #include <alloc.h>
 #include <log.h>
 
 #include <capstone/capstone.h>
-#include <display.h>
-#include <string.h>
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 

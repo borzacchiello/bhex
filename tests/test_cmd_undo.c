@@ -14,7 +14,7 @@ int TEST(undo_write)(void)
     // clang-format on
 
     int r = TEST_FAILED;
-    if (exec_commands("w/x aabb ; p/r 2 ; u ; p/r 2") != 0)
+    if (exec_commands("s 0; w/x aabb ; p/r 2 ; u ; p/r 2") != 0)
         goto end;
 
     char* out = strbuilder_reset(sb);
@@ -34,7 +34,7 @@ int TEST(undo_insert)(void)
     // clang-format on
 
     int r = TEST_FAILED;
-    if (exec_commands("w/i/x aa ; p/r 2 ; u ; p/r 2") != 0)
+    if (exec_commands("s 0; w/i/x aa ; p/r 2 ; u ; p/r 2") != 0)
         goto end;
 
     char* out = strbuilder_reset(sb);
@@ -55,7 +55,7 @@ int TEST(undo_write_insert)(void)
     // clang-format on
 
     int r = TEST_FAILED;
-    if (exec_commands("w/x/i aa ; w/x bbcc ; p/r 3 ; u ; p/r 3 ; u ; p/r 3") !=
+    if (exec_commands("s 0; w/x/i aa ; w/x bbcc ; p/r 3 ; u ; p/r 3 ; u ; p/r 3") !=
         0)
         goto end;
 

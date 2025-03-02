@@ -1,12 +1,11 @@
 #ifndef DISABLE_KEYSTONE
 
-#include <keystone/keystone.h>
-#include <string.h>
-
 #include "cmd_arg_handler.h"
 #include "cmd.h"
 
+#include <keystone/keystone.h>
 #include <display.h>
+#include <string.h>
 #include <alloc.h>
 #include <log.h>
 
