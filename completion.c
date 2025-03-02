@@ -15,7 +15,8 @@ CmdContext* g_cc = NULL;
 
 void set_commands_for_completion(CmdContext* cc) { g_cc = cc; }
 
-static int split_last_word(char* inp, char** prefix, char** last_word)
+static int split_last_word(char* inp, const char** prefix,
+                           const char** last_word)
 {
     if (!inp)
         return 1;
@@ -43,7 +44,7 @@ static int split_last_word(char* inp, char** prefix, char** last_word)
     return 0;
 }
 
-static int split_dir_file(char* path, char** dir, char** file)
+static int split_dir_file(char* path, const char** dir, const char** file)
 {
     if (!path)
         return 1;
@@ -77,9 +78,9 @@ static void file_completion(const char* prefix, const char* word,
     if (word == NULL)
         return;
 
-    char* wordcp = bhex_strdup(word);
-    char* dir;
-    char* file;
+    char*       wordcp = bhex_strdup(word);
+    const char* dir;
+    const char* file;
     if (split_dir_file(wordcp, &dir, &file) != 0)
         return;
     if (strlen(dir) == 0)
@@ -144,9 +145,9 @@ void bhex_shell_completion(const char* buf, linenoiseCompletions* lc)
     if (!buf)
         return;
 
-    char* bufcp = bhex_strdup(buf);
-    char* prefix;
-    char* last_word;
+    char*       bufcp = bhex_strdup(buf);
+    const char* prefix;
+    const char* last_word;
     if (split_last_word(bufcp, &prefix, &last_word) != 0)
         goto end;
 
@@ -170,9 +171,9 @@ char* bhex_shell_hint(const char* buf, int* color, int* bold)
     *bold   = 1;
     char* r = NULL;
 
-    char* bufcp = bhex_strdup(buf);
-    char* prefix;
-    char* last_word;
+    char*       bufcp = bhex_strdup(buf);
+    const char* prefix;
+    const char* last_word;
     if (split_last_word(bufcp, &prefix, &last_word) != 0)
         goto end;
     if (prefix != NULL)
