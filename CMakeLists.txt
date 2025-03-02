@@ -87,6 +87,7 @@ set(command_src
     cmd/cmd_commit.c
     cmd/cmd_diff.c
     cmd/cmd_export.c
+    cmd/cmd_import.c
     cmd/cmd_entropy.c)
 
 set(tengine_src

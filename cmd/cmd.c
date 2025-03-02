@@ -18,6 +18,7 @@
 #include "cmd_strings.h"
 #include "cmd_diff.h"
 #include "cmd_export.h"
+#include "cmd_import.h"
 #include "cmd_entropy.h"
 
 const char* cmdctx_err_to_string(int err)
@@ -62,6 +63,7 @@ CmdContext* cmdctx_init(void)
 #ifndef DISABLE_KEYSTONE
     ll_add(&cc->commands, (uptr_t)assemblecmd_create());
 #endif
+    ll_add(&cc->commands, (uptr_t)importcmd_create());
     ll_add(&cc->commands, (uptr_t)exportcmd_create());
     ll_add(&cc->commands, (uptr_t)diffcmd_create());
     ll_add(&cc->commands, (uptr_t)printcmd_create());
