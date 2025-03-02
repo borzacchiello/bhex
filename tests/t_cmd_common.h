@@ -11,6 +11,7 @@
 #include "elf_not_kitty.h"
 #include "elf_truncated.h"
 #include "../cmd/cmd.h"
+#include "filebuffer.h"
 
 static CmdContext*      cc;
 static DummyFilebuffer *dfb, *dfb_alt_1, *dfb_alt_2;
@@ -69,6 +70,10 @@ __attribute__((unused)) static int exec_commands(const char* s)
     if (strlen(s) > sizeof(tmp) - 1)
         panic("exec_commands: s is too long");
     strcpy(tmp, s);
+
+    // reset the state, just in case
+    fb_seek(dfb->fb, 0);
+    fb_undo_all(dfb->fb);
 
     char* cmd = strtok(tmp, ";");
     while (cmd) {
