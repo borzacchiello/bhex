@@ -8,7 +8,7 @@
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 
-#define HINT_STR " <ofile> <size>"
+#define HINT_STR " [<ofile> <size>]"
 
 static void exportcmd_dispose(void* obj) { return; }
 
