@@ -99,8 +99,9 @@ static int entropycmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
         rows = len;
     if (rows == 0)
         return COMMAND_OK;
-    u32_t bytes_per_raw = len / rows;
 
+    display_printf("\n");
+    u32_t bytes_per_raw = len / rows;
     u64_t addr = fb->off;
     for (u32_t i = 0; i < rows; ++i) {
         if (i == rows - 1)
@@ -118,6 +119,8 @@ static int entropycmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 
         addr += bytes_per_raw;
     }
+    display_printf("\n");
+
     return COMMAND_OK;
 }
 
