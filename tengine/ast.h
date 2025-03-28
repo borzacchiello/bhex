@@ -13,6 +13,7 @@ typedef enum ASTExprType {
     EXPR_STRING,
     EXPR_VAR,
     EXPR_SUBSCR,
+    EXPR_ENUM_CONST,
     EXPR_ARRAY_SUB,
     EXPR_FUN_CALL,
     EXPR_ADD,
@@ -36,15 +37,20 @@ typedef enum ASTExprType {
 typedef struct Expr {
     ASTExprType t;
     union {
-        // EXPR_SCONST
         struct {
+            // EXPR_SCONST
             s64_t sconst_value;
             u8_t  sconst_size;
         };
-        // EXPR_UCONST
         struct {
+            // EXPR_UCONST
             u64_t uconst_value;
             u8_t  uconst_size;
+        };
+        struct {
+            // EXPR_ENUM_CONST
+            char* enum_name;
+            char* enum_field;
         };
         struct {
             // EXPR_STRING
@@ -81,6 +87,7 @@ typedef struct Expr {
 
 Expr* Expr_SCONST_new(s64_t v, u8_t size);
 Expr* Expr_UCONST_new(u64_t v, u8_t size);
+Expr* Expr_ENUM_CONST_new(const char* enum_name, const char* enum_field);
 Expr* Expr_STRING_new(const u8_t* str, u32_t size);
 Expr* Expr_VAR_new(const char* var);
 Expr* Expr_SUBSCR_new(Expr* e, const char* name);
@@ -192,6 +199,7 @@ void       EnumEntry_free(EnumEntry* ee);
 void       EnumEntry_pp(EnumEntry* ee);
 
 Enum*       Enum_new(const char* type, DList* entries, int isor);
+int         Enum_find_value(Enum* e, const char* name, u64_t* o_value);
 const char* Enum_find_const(Enum* e, u64_t c);
 void        Enum_free(Enum* ee);
 

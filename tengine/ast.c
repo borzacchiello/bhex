@@ -28,6 +28,15 @@ Expr* Expr_UCONST_new(u64_t v, u8_t size)
     return e;
 }
 
+Expr* Expr_ENUM_CONST_new(const char* enum_name, const char* enum_field)
+{
+    Expr* e       = bhex_calloc(sizeof(Expr));
+    e->t          = EXPR_ENUM_CONST;
+    e->enum_name  = bhex_strdup(enum_name);
+    e->enum_field = bhex_strdup(enum_field);
+    return e;
+}
+
 Expr* Expr_STRING_new(const u8_t* str, u32_t size)
 {
     Expr* e    = bhex_calloc(sizeof(Expr));
@@ -236,6 +245,10 @@ Expr* Expr_dup(Expr* e)
             r->uconst_value = e->uconst_value;
             r->uconst_size  = e->uconst_size;
             break;
+        case EXPR_ENUM_CONST:
+            r->enum_name  = bhex_strdup(r->enum_name);
+            r->enum_field = bhex_strdup(r->enum_field);
+            break;
         case EXPR_STRING:
             r->str     = bhex_calloc(e->str_len + 1);
             r->str_len = r->str_len;
@@ -293,6 +306,10 @@ void Expr_free(Expr* e)
     switch (e->t) {
         case EXPR_SCONST:
         case EXPR_UCONST:
+            break;
+        case EXPR_ENUM_CONST:
+            bhex_free(e->enum_name);
+            bhex_free(e->enum_field);
             break;
         case EXPR_STRING:
             bhex_free(e->str);
@@ -780,6 +797,18 @@ Enum* Enum_new(const char* type, DList* entries, int isor)
     e->entries = entries;
     e->isor    = isor;
     return e;
+}
+
+int Enum_find_value(Enum* e, const char* name, u64_t* o_value)
+{
+    for (u64_t i = 0; i < e->entries->size; ++i) {
+        EnumEntry* ee = e->entries->data[i];
+        if (strcmp(ee->name, name) == 0) {
+            *o_value = ee->value;
+            return 0;
+        }
+    }
+    return 1;
 }
 
 const char* Enum_find_const(Enum* e, u64_t c)

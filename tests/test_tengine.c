@@ -1474,3 +1474,30 @@ end:
         delete_tengine(e);
     return r;
 }
+
+int TEST(enum_const)(void)
+{
+    const char* prog =
+        "enum MyEnum : u8"
+        "{"
+        "    A = 42,"
+        "    B = 44"
+        "}"
+        "proc {"
+        "    disable_print();"
+        "    local a = MyEnum::A + MyEnum::B + 16u8;"
+        "}";
+
+    int      r = 0;
+    TEngine* e = TEngine_run_on_string(fb, prog);
+    if (e == NULL)
+        goto end;
+
+    TEngineValue* v = Scope_get_local(e->proc_scope, "a");
+    IS_TENGINE_UNUM_EQ(r, v, 42 + 44 + 16);
+
+end:
+    if (e)
+        delete_tengine(e);
+    return r;
+}

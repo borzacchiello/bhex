@@ -231,6 +231,20 @@ static TEngineValue* evaluate_expr(ProcessContext* ctx, Scope* scope, Expr* e)
             return TEngineValue_SNUM_new(e->sconst_value, e->sconst_size);
         case EXPR_UCONST:
             return TEngineValue_UNUM_new(e->uconst_value, e->uconst_size);
+        case EXPR_ENUM_CONST: {
+            if (!map_contains(ctx->engine->ast->enums, e->enum_name)) {
+                error("[tengine] no such enum '%s'", e->enum_name);
+                return NULL;
+            }
+            u64_t v;
+            Enum* enumptr = map_get(ctx->engine->ast->enums, e->enum_name);
+            if (Enum_find_value(enumptr, e->enum_field, &v) != 0) {
+                error("[tengine] enum '%s' has no such field '%s'",
+                      e->enum_name, e->enum_field);
+                return NULL;
+            }
+            return TEngineValue_UNUM_new(v, 8);
+        }
         case EXPR_STRING:
             return TEngineValue_STRING_new(e->str, e->str_len);
         case EXPR_VAR: {

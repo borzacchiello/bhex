@@ -85,24 +85,25 @@ extern int yydebug;
     TCOLON = 286,                  /* TCOLON  */
     TCOMMA = 287,                  /* TCOMMA  */
     TDOT = 288,                    /* TDOT  */
-    TADD = 289,                    /* TADD  */
-    TSUB = 290,                    /* TSUB  */
-    TMUL = 291,                    /* TMUL  */
-    TDIV = 292,                    /* TDIV  */
-    TMOD = 293,                    /* TMOD  */
-    TAND = 294,                    /* TAND  */
-    TOR = 295,                     /* TOR  */
-    TXOR = 296,                    /* TXOR  */
-    TBAND = 297,                   /* TBAND  */
-    TBOR = 298,                    /* TBOR  */
-    TBEQ = 299,                    /* TBEQ  */
-    TBNEQ = 300,                   /* TBNEQ  */
-    TBGT = 301,                    /* TBGT  */
-    TBGE = 302,                    /* TBGE  */
-    TBLT = 303,                    /* TBLT  */
-    TBLE = 304,                    /* TBLE  */
-    TEQUAL = 305,                  /* TEQUAL  */
-    TBNOT = 306                    /* TBNOT  */
+    TCOLCOL = 289,                 /* TCOLCOL  */
+    TADD = 290,                    /* TADD  */
+    TSUB = 291,                    /* TSUB  */
+    TMUL = 292,                    /* TMUL  */
+    TDIV = 293,                    /* TDIV  */
+    TMOD = 294,                    /* TMOD  */
+    TAND = 295,                    /* TAND  */
+    TOR = 296,                     /* TOR  */
+    TXOR = 297,                    /* TXOR  */
+    TBAND = 298,                   /* TBAND  */
+    TBOR = 299,                    /* TBOR  */
+    TBEQ = 300,                    /* TBEQ  */
+    TBNEQ = 301,                   /* TBNEQ  */
+    TBGT = 302,                    /* TBGT  */
+    TBGE = 303,                    /* TBGE  */
+    TBLT = 304,                    /* TBLT  */
+    TBLE = 305,                    /* TBLE  */
+    TEQUAL = 306,                  /* TEQUAL  */
+    TBNOT = 307                    /* TBNOT  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -120,7 +121,7 @@ union YYSTYPE
     Expr*    expr;
     char*    ident;
 
-#line 124 "parser.h"
+#line 125 "parser.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

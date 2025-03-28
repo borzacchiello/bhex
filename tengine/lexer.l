@@ -24,6 +24,7 @@ __attribute__((destructor)) static void delete_yyheapbuf(void) { if (yyheapbuf) 
 %}
 
 %option noyywrap
+%option yylineno
 
 %%
 
@@ -202,6 +203,7 @@ __attribute__((destructor)) static void delete_yyheapbuf(void) { if (yyheapbuf) 
                             memcpy(yystrval, yytext, l);
                             return TIDENTIFIER;
                         }
+"::"                    { return TCOLCOL; }
 "+"                     { return TADD; }
 "-"                     { return TSUB; }
 "*"                     { return TMUL; }

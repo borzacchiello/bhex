@@ -44,7 +44,7 @@ void yyerror(const char *s)
 %token TPROC TFN TLOCAL TSTRUCT TENUM TORENUM TIF TELIF TELSE TWHILE TBREAK
 %token TIDENTIFIER TUNUM8 TUNUM16 TUNUM32 TUNUM64 TSNUM8 TSNUM16 TSNUM32 TSNUM64 TSTR
 %token TCLBRACE TCRBRACE TLBRACE TRBRACE SQLBRACE SQRBRACE 
-%token TSEMICOLON TCOLON TCOMMA TDOT
+%token TSEMICOLON TCOLON TCOMMA TDOT TCOLCOL
 %token TADD TSUB TMUL TDIV TMOD TAND TOR TXOR TBAND TBOR TBEQ TBNEQ TBGT TBGE TBLT TBLE TEQUAL TBNOT
 
 // Non terminal tokens types
@@ -207,6 +207,11 @@ expr        : num
             | ident                                 {
                                                         $$ = Expr_VAR_new($1);
                                                         bhex_free($1);
+                                                    }
+            | ident TCOLCOL ident                   {
+                                                        $$ = Expr_ENUM_CONST_new($1, $3);
+                                                        bhex_free($1);
+                                                        bhex_free($3);
                                                     }
             | expr TDOT ident                       {
                                                         $$ = Expr_SUBSCR_new($1, $3);

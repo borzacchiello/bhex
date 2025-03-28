@@ -244,7 +244,7 @@ struct Elf_Ehdr
     ElfType    e_type;
     ElfMachine e_machine;
     u32        e_version;
-    if (e_ident.ei_class == 2) {
+    if (e_ident.ei_class == ElfIdentClass::ELFCLASS64) {
         u64 e_entry;
         u64 e_phoff;
         u64 e_shoff;
@@ -403,31 +403,40 @@ struct Elf64_Shdr {
     u64      sh_entsize;
 }
 
-proc
+fn is64Bit(header)
 {
-    Elf_Ehdr header;
+    result =
+        header.e_ident.ei_class == ElfIdentClass::ELFCLASS64;
+}
 
-    local is_64bit = header.e_ident.ei_class == 2;
-
+fn getStringsOffset(header)
+{
     disable_print();
     local off = off();
+
     local strtab_off =
         header.e_shoff + (header.e_shstrndx * header.e_shentsize);
     seek(strtab_off);
-    if (is_64bit) {
+    if (is64Bit(header)) {
         Elf64_Shdr shdr;
         local      str_off = shdr.sh_offset;
     } else {
         Elf32_Shdr shdr;
         local      str_off = shdr.sh_offset;
     }
+
     seek(off);
     enable_print();
 
+    result = str_off;
+}
+
+fn processPhdr(header)
+{
     seek(header.e_phoff);
     local i = 0;
     while (i < header.e_phnum) {
-        if (is_64bit) {
+        if (is64Bit(header)) {
             Elf64_Phdr phdr;
         } else {
             Elf32_Phdr phdr;
@@ -440,11 +449,16 @@ proc
 
         i = i + 1;
     }
+}
+
+fn processShdr(header)
+{
+    local str_off = getStringsOffset(header);
 
     seek(header.e_shoff);
     local i = 0;
     while (i < header.e_shnum) {
-        if (is_64bit) {
+        if (is64Bit(header)) {
             Elf64_Shdr shdr;
         } else {
             Elf32_Shdr shdr;
@@ -456,4 +470,12 @@ proc
 
         i = i + 1;
     }
+}
+
+proc
+{
+    Elf_Ehdr header;
+
+    processPhdr(header);
+    processShdr(header);
 }
