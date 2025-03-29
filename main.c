@@ -7,10 +7,9 @@
 #include <log.h>
 
 #include "linenoise/linenoise.h"
-#include "cmd/cmd.h"
 #include "completion.h"
+#include "cmd/cmd.h"
 #include "parser.h"
-#include "tui.h"
 
 const char* const   short_options  = "hw2bnsc:";
 const struct option long_options[] = {
@@ -132,12 +131,6 @@ static void main_loop(FileBuffer* fb, CmdContext* cc)
         if (!inp || strcmp(inp, "exit") == 0) {
             bhex_free(inp);
             break;
-        }
-        if (strcmp(inp, "int") == 0 || strcmp(inp, "interactive") == 0) {
-            tui_enter_loop(fb);
-            puts("");
-            bhex_free(inp);
-            continue;
         }
         linenoiseHistoryAdd(inp);
 

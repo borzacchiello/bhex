@@ -124,9 +124,20 @@ static void cmd_completion(const char* word, linenoiseCompletions* lc)
     if (!g_cc)
         return;
 
-    u64_t   num      = 0;
-    size_t  word_len = strlen(word);
-    LLNode* curr     = g_cc->commands.head;
+    u64_t  num      = 0;
+    size_t word_len = strlen(word);
+
+#define static_cmd_completion(str)                                             \
+    do {                                                                       \
+        if (!word_len ||                                                       \
+            (word_len < strlen(str) && strncmp(word, str, word_len) == 0)) {   \
+            linenoiseAddCompletion(lc, str);                                   \
+            num++;                                                             \
+        }                                                                      \
+    } while (0)
+    static_cmd_completion("help");
+
+    LLNode* curr = g_cc->commands.head;
     while (curr) {
         Cmd* cmd = (Cmd*)curr->data;
         if (!word_len || (word_len < strlen(cmd->name) &&
@@ -136,6 +147,7 @@ static void cmd_completion(const char* word, linenoiseCompletions* lc)
         }
         curr = curr->next;
     }
+
     if (num == 0)
         linenoiseAddCompletion(lc, word);
 }

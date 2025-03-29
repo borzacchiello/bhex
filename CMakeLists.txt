@@ -88,7 +88,9 @@ set(command_src
     cmd/cmd_diff.c
     cmd/cmd_export.c
     cmd/cmd_import.c
-    cmd/cmd_entropy.c)
+    cmd/cmd_entropy.c
+    cmd/cmd_interactive.c
+    cmd/tui.c)
 
 set(tengine_src
     tengine/ast.c
@@ -135,7 +137,6 @@ add_executable(bhex
     ${command_src}
     ${tengine_src}
     linenoise/linenoise.c
-    tui.c
     parser.c
     completion.c
     main.c)
