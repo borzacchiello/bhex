@@ -26,6 +26,8 @@
 #define MIPS64_ARCH      8
 #define MIPSEL32_ARCH    9
 #define MIPSEL64_ARCH    10
+#define BPF_ARCH         11
+#define eBPF_ARCH        12
 
 #define HINT_STR "[/l] <arch> [<nbytes>]"
 
@@ -46,6 +48,8 @@ static CapstoneArchInfo map_arch[] = {
     {CS_ARCH_MIPS, CS_MODE_MIPS64 + CS_MODE_BIG_ENDIAN},    // MIPS64_ARCH
     {CS_ARCH_MIPS, CS_MODE_MIPS32 + CS_MODE_LITTLE_ENDIAN}, // MIPSEL32_ARCH
     {CS_ARCH_MIPS, CS_MODE_MIPS64 + CS_MODE_LITTLE_ENDIAN}, // MIPSEL64_ARCH
+    {CS_ARCH_BPF, CS_MODE_BPF_CLASSIC},                     // BPF_ARCH
+    {CS_ARCH_BPF, CS_MODE_BPF_EXTENDED},                    // eBPF_ARCH
 };
 
 static const char* map_arch_names[] = {
@@ -60,6 +64,8 @@ static const char* map_arch_names[] = {
     "mips64",      // MIPS64_ARCH
     "mipsel32",    // MIPSEL32_ARCH
     "mipsel64",    // MIPSEL64_ARCH
+    "bpf",         // BPF_ARCH
+    "ebpf",        // eBPF_ARCH
 };
 
 static void disascmd_help(void* obj)
