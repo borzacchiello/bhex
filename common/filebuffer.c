@@ -1,3 +1,4 @@
+#include "defs.h"
 #include <filebuffer.h>
 
 #include <sys/stat.h>
@@ -542,8 +543,11 @@ static int fb_read_internal(FileBuffer* fb, u64_t addr, u64_t fsize, u64_t idx,
     return 1;
 }
 
-const u8_t* fb_read(FileBuffer* fb, size_t size)
+const u8_t* fb_read_ex(FileBuffer* fb, size_t size, u32_t mod_idx)
 {
+    if (mod_idx > fb->modifications.size)
+        return NULL;
+
     fb_modified_check(fb);
     if (size > fb_block_size) {
         // FIXME: this case could be useful, maybe implement it using a dynamic
@@ -556,16 +560,43 @@ const u8_t* fb_read(FileBuffer* fb, size_t size)
         return NULL;
     }
 
+    size_t fsize = fb->size;
+    if (mod_idx != 0) {
+        fb->block_dirty = 1;
+        // we should adjust fsize according to the skipped modifications
+        u32_t   nmod = 0;
+        LLNode* curr = fb->modifications.head;
+        while (curr && nmod < mod_idx) {
+            Modification* mod = (Modification*)curr->data;
+            switch (mod->type) {
+                case MOD_TYPE_DELETE:
+                    fsize += mod->size;
+                    break;
+                case MOD_TYPE_INSERT:
+                    fsize -= mod->size;
+                    break;
+            }
+            curr = curr->next;
+            nmod += 1;
+        }
+    }
+
     if (fb->block_dirty) {
-        if (!fb_read_internal(fb, fb->off, fb->size, 0, 0)) {
+        if (!fb_read_internal(fb, fb->off, fsize, 0, mod_idx)) {
             error("something went wrong while reading the file. Reloading it");
             fb->version += 1 + fb->modifications.size;
             if (!fb_reload(fb))
                 panic("unable to reload the file");
         }
     }
-    fb->block_dirty = 0;
+    if (mod_idx == 0)
+        fb->block_dirty = 0;
     return (const u8_t*)fb->block;
+}
+
+const u8_t* fb_read(FileBuffer* fb, size_t size)
+{
+    return fb_read_ex(fb, size, 0);
 }
 
 void filebuffer_destroy(FileBuffer* fb)

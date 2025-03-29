@@ -51,7 +51,8 @@ int  fb_undo_last(FileBuffer* fb);
 void fb_undo_all(FileBuffer* fb);
 void fb_commit(FileBuffer* fb);
 
-// Calling this API two times will invalidate the old buffer
+// Calling this APIs two times will invalidate the old buffer
 const u8_t* fb_read(FileBuffer* fb, size_t size);
+const u8_t* fb_read_ex(FileBuffer* fb, size_t size, u32_t mod_idx);
 
 #endif

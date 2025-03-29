@@ -5,16 +5,18 @@
 #define TEST(name) test_##name
 #endif
 
-int TEST(undo_write)(void)
+int TEST(commit_list_one_overwrite)(void)
 {
     // clang-format off
     const char* expected =
-        "AABB\n"
-        "7F45\n";
+        "\n"
+        " ~ overwrite @ 0x0000000 [ 4 ]\n"
+        "      7f 45 4c 46 -> 63 69 61 6f \n"
+        "\n";
     // clang-format on
 
     int r = TEST_FAILED;
-    if (exec_commands("s 0; w/x aabb ; p/r 2 ; u ; p/r 2") != 0)
+    if (exec_commands("w ciao; c/l") != 0)
         goto end;
 
     char* out = strbuilder_reset(sb);
@@ -25,16 +27,18 @@ end:
     return r;
 }
 
-int TEST(undo_insert)(void)
+int TEST(commit_list_one_insert)(void)
 {
     // clang-format off
     const char* expected =
-        "AA7F\n"
-        "7F45\n";
+        "\n"
+        " ~ insert    @ 0x0000000 [ 4 ]\n"
+        "      63 69 61 6f \n"
+        "\n";
     // clang-format on
 
     int r = TEST_FAILED;
-    if (exec_commands("s 0; w/i/x aa ; p/r 2 ; u ; p/r 2") != 0)
+    if (exec_commands("w/i ciao; c/l") != 0)
         goto end;
 
     char* out = strbuilder_reset(sb);
@@ -45,18 +49,18 @@ end:
     return r;
 }
 
-int TEST(undo_write_insert)(void)
+int TEST(commit_list_one_delete)(void)
 {
     // clang-format off
     const char* expected =
-        "BBCC45\n"
-        "AA7F45\n"
-        "7F454C\n";
+        "\n"
+        " ~ delete    @ 0x0000000 [ 4 ]\n"
+        "      7f 45 4c 46 \n"
+        "\n";
     // clang-format on
 
     int r = TEST_FAILED;
-    if (exec_commands(
-            "s 0; w/x/i aa ; w/x bbcc ; p/r 3 ; u ; p/r 3 ; u ; p/r 3") != 0)
+    if (exec_commands("d 4; c/l") != 0)
         goto end;
 
     char* out = strbuilder_reset(sb);
@@ -67,16 +71,18 @@ end:
     return r;
 }
 
-int TEST(undo_delete)(void)
+int TEST(commit_list_one_more_than_8)(void)
 {
     // clang-format off
     const char* expected =
-        "454C\n"
-        "7F45\n";
+        "\n"
+        " ~ overwrite @ 0x0000000 [ 18 ]\n"
+        "      7f 45 4c 46 01 01 01 00 ... -> 76 65 72 79 6c 6f 6e 67 ... \n"
+        "\n";
     // clang-format on
 
     int r = TEST_FAILED;
-    if (exec_commands("d 1 ; p/r 2 ; u ; p/r 2") != 0)
+    if (exec_commands("w verylongword......; c/l") != 0)
         goto end;
 
     char* out = strbuilder_reset(sb);
@@ -87,17 +93,23 @@ end:
     return r;
 }
 
-int TEST(undo_all)(void)
+int TEST(commit_list_multiple)(void)
 {
     // clang-format off
     const char* expected =
-        "BB45\n"
-        "AABB\n"
-        "7F45\n";
+        "\n"
+        " ~ delete    @ 0x0000000 [ 2 ]\n"
+        "      2b 2b \n"
+        " ~ insert    @ 0x0000000 [ 7 ]\n"
+        "      2b 2b 68 65 79 2c 20 \n"
+        " ~ overwrite @ 0x0000000 [ 4 ]\n"
+        "      7f 45 4c 46 -> 63 69 61 6f \n"
+        "\n"
+        "hey, ciao...\n";
     // clang-format on
 
     int r = TEST_FAILED;
-    if (exec_commands("w/x bb ; p/r 2 ; w/i/x aa ; p/r 2 ; u/a ; p/r 2") != 0)
+    if (exec_commands("w ciao ; w/i \"++hey, \" ; d 2 ; c/l ; p/a") != 0)
         goto end;
 
     char* out = strbuilder_reset(sb);

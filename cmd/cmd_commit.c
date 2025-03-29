@@ -1,20 +1,18 @@
-#include "cmd.h"
 #include "cmd_arg_handler.h"
-#include "defs.h"
-#include "filebuffer.h"
-#include "ll.h"
 #include "cmd_commit.h"
+#include "filebuffer.h"
+#include "defs.h"
+#include "ll.h"
 
 #include <display.h>
 #include <alloc.h>
 
-#define LIST_SET 0
-
+#define min(x, y)          ((x) < (y) ? (x) : (y))
+#define HINT_STR           "[/l]"
+#define LIST_SET           0
 #define MOD_TYPE_OVERWRITE 1
 #define MOD_TYPE_INSERT    2
 #define MOD_TYPE_DELETE    3
-
-#define HINT_STR "/l"
 
 static void commitcmd_dispose(void* obj) { return; }
 
@@ -23,8 +21,67 @@ static void commitcmd_help(void* obj)
     display_printf("\ncommit: commit all writes to file\n"
                    "\n"
                    "  c" HINT_STR "\n"
-                   "     l:  list uncommited changes\n"
+                   "     l: list uncommited changes\n"
                    "\n");
+}
+
+static void print_overwrite(FileBuffer* fb, Modification* mod, u32_t nmod)
+{
+    display_printf(" ~ overwrite @ 0x%07llx [ %lu ]\n", mod->off, mod->size);
+
+    const uint8_t* data;
+    u64_t          off = fb->off;
+    fb_seek(fb, mod->off);
+
+    display_printf("      ");
+    u32_t n = min(mod->size, 8);
+    data    = fb_read_ex(fb, n, nmod + 1);
+    for (u32_t i = 0; i < n; ++i)
+        display_printf("%02x ", data[i]);
+    if (n != mod->size)
+        display_printf("... ");
+    display_printf("-> ");
+    data = fb_read_ex(fb, n, nmod);
+    for (u32_t i = 0; i < n; ++i)
+        display_printf("%02x ", data[i]);
+    if (n != mod->size)
+        display_printf("... ");
+    display_printf("\n");
+
+    fb_seek(fb, off);
+}
+
+static void print_insert(FileBuffer* fb, Modification* mod, u32_t nmod)
+{
+    display_printf(" ~ insert    @ 0x%07llx [ %lu ]\n", mod->off, mod->size);
+
+    display_printf("      ");
+    u32_t n = min(mod->size, 8);
+    for (u32_t i = 0; i < n; ++i)
+        display_printf("%02x ", mod->data[i]);
+    if (n != mod->size)
+        display_printf("... ");
+    display_printf("\n");
+}
+
+static void print_delete(FileBuffer* fb, Modification* mod, u32_t nmod)
+{
+    display_printf(" ~ delete    @ 0x%07llx [ %lu ]\n", mod->off, mod->size);
+
+    const uint8_t* data;
+    u64_t          off = fb->off;
+    fb_seek(fb, mod->off);
+
+    display_printf("      ");
+    u32_t n = min(mod->size, 8);
+    data    = fb_read_ex(fb, n, nmod + 1);
+    for (u32_t i = 0; i < n; ++i)
+        display_printf("%02x ", data[i]);
+    if (n != mod->size)
+        display_printf("... ");
+    display_printf("\n");
+
+    fb_seek(fb, off);
 }
 
 static int commitcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
@@ -39,25 +96,24 @@ static int commitcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     if (list == LIST_SET) {
         if (fb->modifications.size)
             display_printf("\n");
+
+        u32_t   nmod = 0;
         LLNode* node = fb->modifications.head;
         while (node != NULL) {
             Modification* mod = (Modification*)node->data;
             switch (mod->type) {
-                case MOD_TYPE_OVERWRITE: {
-                    display_printf(" > overwrite @ 0x%llx -> 0x%llx\n",
-                                   mod->off, mod->end);
+                case MOD_TYPE_OVERWRITE:
+                    print_overwrite(fb, mod, nmod);
                     break;
-                }
                 case MOD_TYPE_INSERT:
-                    display_printf(" > insert    @ 0x%llx [ %lu ]\n", mod->off,
-                                   mod->size);
+                    print_insert(fb, mod, nmod);
                     break;
                 case MOD_TYPE_DELETE:
-                    display_printf(" > delete    @ 0x%llx [ %lu ]\n", mod->off,
-                                   mod->size);
+                    print_delete(fb, mod, nmod);
                     break;
             }
             node = node->next;
+            nmod++;
         }
         if (fb->modifications.size)
             display_printf("\n");
