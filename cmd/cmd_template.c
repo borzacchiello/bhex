@@ -1,3 +1,4 @@
+#include "cmd_arg_handler.h"
 #include "cmd_template.h"
 #include "../tengine/tengine.h"
 
@@ -9,7 +10,8 @@
 #include <log.h>
 #include "cmd.h"
 
-#define HINT_STR "[/l/ls] <name or file>"
+#define HINT_STR "[/l] <name or file>"
+#define LIST_SET 0
 
 static const char* search_folders[] = {"/usr/local/share/bhex/templates",
                                        "../templates", "."};
@@ -32,11 +34,10 @@ static void templatecmd_help(void* obj)
         "template file\n"
         "\n"
         "  t" HINT_STR "\n"
-        "     l:  list available templates\n"
-        "     ls: list available structs\n"
+        "     l: list available templates and structs\n"
         "\n"
-        "  name: the name of the pre-loaded template/struct to use, of a "
-        "path to a template file\n"
+        "  name: the name of the pre-loaded template/struct to use, or a "
+        "path to a template file, or a filter if in list mode\n"
         "\n");
 }
 
@@ -49,52 +50,47 @@ static int file_exists(const char* path)
 
 static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
 {
-    int listed_templates = 0;
-    int listed_structs   = 0;
+    char* arg_str = NULL;
+    if (handle_args(pc, 1, 0, &arg_str) != 0)
+        return COMMAND_INVALID_ARG;
 
-    LLNode* curr = pc->cmd_modifiers.head;
-    while (curr) {
-        const char* mod = (const char*)curr->data;
-        if (strcmp(mod, "l") == 0) {
-            if (listed_templates) {
-                error("l modifier is specified two times");
-                return 1;
-            }
-            display_printf("\nAvailable templates:\n");
-            for (const char* key = map_first(ctx->templates); key != NULL;
-                 key             = map_next(ctx->templates, key))
+    int list = -1;
+    if (handle_mods(pc, "l", &list) != 0)
+        return COMMAND_INVALID_MOD;
+
+    if (list == LIST_SET) {
+        if (arg_str)
+            display_printf("\n > Filtering using '%s' <\n", arg_str);
+
+        display_printf("\nAvailable templates:\n");
+        for (const char* key = map_first(ctx->templates); key != NULL;
+             key             = map_next(ctx->templates, key)) {
+            if (!arg_str || strstr(key, arg_str) != NULL) {
                 display_printf("  %s\n", key);
-            listed_templates = 1;
-        } else if (strcmp(mod, "ls") == 0) {
-            if (listed_structs) {
-                error("lh modifier is specified two times");
-                return 1;
             }
-            display_printf("\nAvailable template structs:\n");
-            for (const char* key = map_first(ctx->templates); key != NULL;
-                 key             = map_next(ctx->templates, key)) {
-                ASTCtx* ast = map_get(ctx->templates, key);
-                for (const char* str = map_first(ast->structs); str != NULL;
-                     str             = map_next(ast->structs, str)) {
+        }
+
+        display_printf("\nAvailable template structs:\n");
+        for (const char* key = map_first(ctx->templates); key != NULL;
+             key             = map_next(ctx->templates, key)) {
+            ASTCtx* ast = map_get(ctx->templates, key);
+            for (const char* str = map_first(ast->structs); str != NULL;
+                 str             = map_next(ast->structs, str)) {
+                if (!arg_str || strstr(key, arg_str) != NULL ||
+                    strstr(str, arg_str) != NULL) {
                     display_printf("  %s.%s\n", key, str);
                 }
             }
-            listed_structs = 1;
         }
-        curr = curr->next;
-    }
-    if (listed_templates || listed_structs) {
-        if (pc->args.size != 0)
-            return COMMAND_INVALID_ARG;
         display_printf("\n");
         return COMMAND_OK;
     }
 
-    if (pc->args.size != 1)
+    if (arg_str == NULL)
         return COMMAND_INVALID_ARG;
 
     u64_t initial_off = fb->off;
-    char* bhe         = (char*)pc->args.head->data;
+    char* bhe         = arg_str;
     int   r           = COMMAND_INVALID_ARG;
 
     if (file_exists(bhe)) {
