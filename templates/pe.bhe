@@ -1,0 +1,213 @@
+struct IMAGE_DOS_HEADER
+{
+    u16 e_magic;    // Magic number
+    u16 e_cblp;     // Bytes on last page of file
+    u16 e_cp;       // Pages in file
+    u16 e_crlc;     // Relocations
+    u16 e_cparhdr;  // Size of header in paragraphs
+    u16 e_minalloc; // Minimum extra paragraphs needed
+    u16 e_maxalloc; // Maximum extra paragraphs needed
+    u16 e_ss;       // Initial (relative) SS value
+    u16 e_sp;       // Initial SP value
+    u16 e_csum;     // Checksum
+    u16 e_ip;       // Initial IP value
+    u16 e_cs;       // Initial (relative) CS value
+    u16 e_lfarlc;   // File address of relocation table
+    u16 e_ovno;     // Overlay number
+    u16 e_res[4];   // Reserved words
+    u16 e_oemid;    // OEM identifier (for e_oeminfo)
+    u16 e_oeminfo;  // OEM information; e_oemid specific
+    u16 e_res2[10]; // Reserved words
+    i32 e_lfanew;   // File address of new exe header
+}
+
+enum IMAGE_MACHINE_TYPE : u16
+{
+    UNKNOWN     = 0x0,    // The content of this field is assumed to be applicable to any machine type
+    ALPHA       = 0x184,  // Alpha AXP, 32-bit address space
+    ALPHA64     = 0x284,  // Alpha 64, 64-bit address space
+    AM33        = 0x1d3,  // Matsushita AM33
+    AMD64       = 0x8664, // x64
+    ARM         = 0x1c0,  // ARM little endian
+    ARM64       = 0xaa64, // ARM64 little endian
+    ARMNT       = 0x1c4,  // ARM Thumb-2 little endian
+    AXP64       = 0x284,  // AXP 64 (Same as Alpha 64)
+    EBC         = 0xebc,  // EFI byte code
+    I386        = 0x14c,  // Intel 386 or later processors and compatible processors
+    IA64        = 0x200,  // Intel Itanium processor family
+    LOONGARCH32 = 0x6232, // LoongArch 32-bit processor family
+    LOONGARCH64 = 0x6264, // LoongArch 64-bit processor family
+    M32R        = 0x9041, // Mitsubishi M32R little endian
+    MIPS16      = 0x266,  // MIPS16
+    MIPSFPU     = 0x366,  // MIPS with FPU
+    MIPSFPU16   = 0x466,  // MIPS16 with FPU
+    POWERPC     = 0x1f0,  // Power PC little endian
+    POWERPCFP   = 0x1f1,  // Power PC with floating point support
+    R4000       = 0x166,  // MIPS little endian
+    RISCV32     = 0x5032, // RISC-V 32-bit address space
+    RISCV64     = 0x5064, // RISC-V 64-bit address space
+    RISCV128    = 0x5128, // RISC-V 128-bit address space
+    SH3         = 0x1a2,  // Hitachi SH3
+    SH3DSP      = 0x1a3,  // Hitachi SH3 DSP
+    SH4         = 0x1a6,  // Hitachi SH4
+    SH5         = 0x1a8,  // Hitachi SH5
+    THUMB       = 0x1c2,  // Thumb
+    WCEMIPSV2   = 0x169   // MIPS little-endian WCE v2
+}
+
+orenum IMAGE_FILE_CHARACTERISTICS : u16
+{
+    RELOCS_STRIPPED         = 0x0001, // Relocation information was stripped from the file. The file must be loaded at its preferred base address. If the base address is not available, the loader reports an error.
+    EXECUTABLE_IMAGE        = 0x0002, // The file is executable (there are no unresolved external references).
+    LINE_NUMS_STRIPPED      = 0x0004, // COFF line numbers were stripped from the file.
+    LOCAL_SYMS_STRIPPED     = 0x0008, // COFF symbol table entries were stripped from file.
+    AGGRESIVE_WS_TRIM       = 0x0010, // Aggressively trim the working set. This value is obsolete.
+    LARGE_ADDRESS_AWARE     = 0x0020, // The application can handle addresses larger than 2 GB.
+    BYTES_REVERSED_LO       = 0x0080, // The bytes of the word are reversed. This flag is obsolete.
+    _32BIT_MACHINE          = 0x0100, // The computer supports 32-bit words.
+    DEBUG_STRIPPED          = 0x0200, // Debugging information was removed and stored separately in another file.
+    REMOVABLE_RUN_FROM_SWAP = 0x0400, // If the image is on removable media, copy it to and run it from the swap file.
+    NET_RUN_FROM_SWAP       = 0x0800, // If the image is on the network, copy it to and run it from the swap file.
+    SYSTEM                  = 0x1000, // The image is a system file.
+    DLL                     = 0x2000, // The image is a DLL file. While it is an executable file, it cannot be run directly.
+    UP_SYSTEM_ONLY          = 0x4000, // The file should be run only on a uniprocessor computer.
+    BYTES_REVERSED_HI       = 0x8000  // The bytes of the word are reversed. This flag is obsolete.
+}
+
+struct IMAGE_FILE_HEADER
+{
+    IMAGE_MACHINE_TYPE         Machine;
+    u16                        NumberOfSections;
+    u32                        TimeDateStamp;
+    u32                        PointerToSymbolTable;
+    u32                        NumberOfSymbols;
+    u16                        SizeOfOptionalHeader;
+    IMAGE_FILE_CHARACTERISTICS Characteristics;
+}
+
+orenum IMAGE_DLLCHARACTERISTICS : u16 
+{
+    HIGH_ENTROPY_VA       = 0x0020, // Image can handle a high entropy 64-bit virtual address space.
+    DYNAMIC_BASE          = 0x0040, // DLL can be relocated at load time.
+    FORCE_INTEGRITY       = 0x0080, // Code Integrity checks are enforced.
+    NX_COMPAT             = 0x0100, // Image is NX compatible.
+    NO_ISOLATION          = 0x0200, // Isolation aware, but do not isolate the image.
+    NO_SEH                = 0x0400, // Does not use structured exception (SE) handling. No SE handler may be called in this image.
+    NO_BIND               = 0x0800, // Do not bind the image.
+    APPCONTAINER          = 0x1000, // Image must execute in an AppContainer.
+    WDM_DRIVER            = 0x2000, // A WDM driver.
+    GUARD_CF              = 0x4000, // Image supports Control Flow Guard.
+    TERMINAL_SERVER_AWARE = 0x8000  // Terminal Server aware.
+}
+
+struct IMAGE_OPTIONAL_HEADER64
+{
+    u16 Magic;
+    u8  MajorLinkerVersion;
+    u8  MinorLinkerVersion;
+    u32 SizeOfCode;
+    u32 SizeOfInitializedData;
+    u32 SizeOfUninitializedData;
+    u32 AddressOfEntryPoint;
+    u32 BaseOfCode;
+    u64 ImageBase;
+    u32 SectionAlignment;
+    u32 FileAlignment;
+    u16 MajorOperatingSystemVersion;
+    u16 MinorOperatingSystemVersion;
+    u16 MajorImageVersion;
+    u16 MinorImageVersion;
+    u16 MajorSubsystemVersion;
+    u16 MinorSubsystemVersion;
+    u32 Win32VersionValue;
+    u32 SizeOfImage;
+    u32 SizeOfHeaders;
+    u32 CheckSum;
+    u16 Subsystem;
+    IMAGE_DLLCHARACTERISTICS DllCharacteristics;
+    u64 SizeOfStackReserve;
+    u64 SizeOfStackCommit;
+    u64 SizeOfHeapReserve;
+    u64 SizeOfHeapCommit;
+    u32 LoaderFlags;
+    u32 NumberOfRvaAndSizes;
+}
+
+struct IMAGE_OPTIONAL_HEADER32
+{
+    u16 Magic;
+    u8  MajorLinkerVersion;
+    u8  MinorLinkerVersion;
+    u32 SizeOfCode;
+    u32 SizeOfInitializedData;
+    u32 SizeOfUninitializedData;
+    u32 AddressOfEntryPoint;
+    u32 BaseOfCode;
+    u32 BaseOfData;
+    u32 ImageBase;
+    u32 SectionAlignment;
+    u32 FileAlignment;
+    u16 MajorOperatingSystemVersion;
+    u16 MinorOperatingSystemVersion;
+    u16 MajorImageVersion;
+    u16 MinorImageVersion;
+    u16 MajorSubsystemVersion;
+    u16 MinorSubsystemVersion;
+    u32 Win32VersionValue;
+    u32 SizeOfImage;
+    u32 SizeOfHeaders;
+    u32 CheckSum;
+    u16 Subsystem;
+    IMAGE_DLLCHARACTERISTICS DllCharacteristics;
+    u32 SizeOfStackReserve;
+    u32 SizeOfStackCommit;
+    u32 SizeOfHeapReserve;
+    u32 SizeOfHeapCommit;
+    u32 LoaderFlags;
+    u32 NumberOfRvaAndSizes;
+}
+
+fn is64bit(header)
+{
+    result = 0;
+    if (header.Machine == IMAGE_MACHINE_TYPE::ALPHA64) {
+        result = 1;
+    }
+    elif (header.Machine == IMAGE_MACHINE_TYPE::AMD64) {
+        result = 1;
+    }
+    elif (header.Machine == IMAGE_MACHINE_TYPE::ARM64) {
+        result = 1;
+    }
+    elif (header.Machine == IMAGE_MACHINE_TYPE::AXP64) {
+        result = 1;
+    }
+    elif (header.Machine == IMAGE_MACHINE_TYPE::IA64) {
+        result = 1;
+    }
+    elif (header.Machine == IMAGE_MACHINE_TYPE::LOONGARCH64) {
+        result = 1;
+    }
+    elif (header.Machine == IMAGE_MACHINE_TYPE::RISCV64) {
+        result = 1;
+    }
+}
+
+struct IMAGE_NT_HEADERS
+{
+    u32                     Signature;
+    IMAGE_FILE_HEADER       FileHeader;
+    if (is64bit(FileHeader)) {
+        IMAGE_OPTIONAL_HEADER64 ImageOptionalHeader;
+    } else {
+        IMAGE_OPTIONAL_HEADER32 ImageOptionalHeader;
+    }
+}
+
+proc
+{
+    IMAGE_DOS_HEADER DosHeader;
+    seek(DosHeader.e_lfanew);
+
+    IMAGE_NT_HEADERS NTHeader;
+}
