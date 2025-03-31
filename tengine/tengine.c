@@ -534,12 +534,11 @@ static int process_array_type(ProcessContext* ctx, const char* varname,
         return 1;
     }
 
-    u64_t final_off = ctx->fb->off + size;
-
     if (strcmp(type, "char") == 0) {
         // Special case, the output variable is a string
-        u8_t*       tmp = bhex_calloc(size + 1);
-        const u8_t* buf = fb_read(ctx->fb, size);
+        u64_t       final_off = ctx->fb->off + size;
+        u8_t*       tmp       = bhex_calloc(size + 1);
+        const u8_t* buf       = fb_read(ctx->fb, size);
         memcpy(tmp, buf, size);
         *oval = TEngineValue_STRING_new(tmp, size);
         value_pp(ctx->engine, ctx->print_off, *oval);
@@ -550,6 +549,7 @@ static int process_array_type(ProcessContext* ctx, const char* varname,
     }
     if (strcmp(type, "u8") == 0) {
         // Special case, buf
+        u64_t       final_off     = ctx->fb->off + size;
         u64_t       size_to_print = min(MAX_ARR_PRINT_SIZE, size);
         const u8_t* buf           = fb_read(ctx->fb, size_to_print);
         for (u64_t i = 0; i < size_to_print; ++i)
@@ -583,7 +583,6 @@ static int process_array_type(ProcessContext* ctx, const char* varname,
             TEngineValue_ARRAY_append(*oval, val);
         }
         engine_printf(ctx->engine, " ]\n");
-        fb_seek(ctx->fb, final_off);
         return 0;
     }
 

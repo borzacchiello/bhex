@@ -1167,10 +1167,11 @@ int TEST(array_2)(void)
 {
     int              r = 0;
     DummyFilebuffer* tfb =
-        dummyfilebuffer_create((const u8_t*)"AAAAAAAAAB", 10);
+        dummyfilebuffer_create((const u8_t*)"AAAAAAAAABC", 11);
     const char* prog = "proc {"
                        "    disable_print();"
                        "    u16 buf[5];"
+                       "    u8  b;"
                        "    local a = buf[4];"
                        "}";
 
@@ -1178,8 +1179,11 @@ int TEST(array_2)(void)
     if (e == NULL)
         goto end;
 
-    TEngineValue* v = Scope_get_local(e->proc_scope, "a");
-    IS_TENGINE_UNUM_EQ(r, v, ((u32_t)'B' << 8) | 'A');
+    TEngineValue* va = Scope_get_local(e->proc_scope, "a");
+    IS_TENGINE_UNUM_EQ(r, va, ((u32_t)'B' << 8) | 'A');
+
+    TEngineValue* vb = Scope_get_local(e->proc_scope, "b");
+    IS_TENGINE_UNUM_EQ(r, vb, 'C');
 
 end:
     if (e)
@@ -1235,6 +1239,36 @@ int TEST(array_4)(void)
 
     TEngineValue* v = Scope_get_local(e->proc_scope, "a");
     IS_TENGINE_UNUM_EQ(r, v, 'E');
+
+end:
+    if (e)
+        delete_tengine(e);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+}
+
+int TEST(array_5)(void)
+{
+    int              r    = 0;
+    DummyFilebuffer* tfb  = dummyfilebuffer_create((const u8_t*)"ABCDEFGHIJK", 11);
+    const char*      prog = "struct AStruct {"
+                            "   u8  n1;"
+                            "   u8  n2;"
+                            "   u16 n3[4];"
+                            "   u8  n4;"
+                            "}\n"
+                            "proc {"
+                            "    disable_print();"
+                            "    AStruct v;"
+                            "    local   a = v.n4;"
+                            "}";
+
+    TEngine* e = TEngine_run_on_string(tfb->fb, prog);
+    if (e == NULL)
+        goto end;
+
+    TEngineValue* v = Scope_get_local(e->proc_scope, "a");
+    IS_TENGINE_UNUM_EQ(r, v, 'K');
 
 end:
     if (e)
