@@ -100,6 +100,23 @@ orenum IMAGE_DLLCHARACTERISTICS : u16
     TERMINAL_SERVER_AWARE = 0x8000  // Terminal Server aware.
 }
 
+enum IMAGE_SUBSYSTEM : u16
+{
+    UNKNOWN                  = 0,
+    NATIVE                   = 1,
+    WINDOWS_GUI              = 2,
+    WINDOWS_CUI              = 3,
+    OS2_CUI                  = 5,
+    POSIX_CUI                = 7,
+    WINDOWS_CE_GUI           = 9,
+    EFI_APPLICATION          = 10,
+    EFI_BOOT_SERVICE_DRIVER  = 11,
+    EFI_RUNTIME_DRIVER       = 12,
+    EFI_ROM                  = 13,
+    XBOX                     = 14,
+    WINDOWS_BOOT_APPLICATION = 16
+}
+
 orenum IMAGE_SECTION_CHARACTERISTIC : u32
 {
     TYPE_NO_PAD          = 0x00000008,
@@ -162,7 +179,7 @@ struct IMAGE_OPTIONAL_HEADER64
     u32 SizeOfImage;
     u32 SizeOfHeaders;
     u32 CheckSum;
-    u16 Subsystem;
+    IMAGE_SUBSYSTEM          Subsystem;
     IMAGE_DLLCHARACTERISTICS DllCharacteristics;
     u64 SizeOfStackReserve;
     u64 SizeOfStackCommit;
@@ -196,7 +213,7 @@ struct IMAGE_OPTIONAL_HEADER32
     u32 SizeOfImage;
     u32 SizeOfHeaders;
     u32 CheckSum;
-    u16 Subsystem;
+    IMAGE_SUBSYSTEM          Subsystem;
     IMAGE_DLLCHARACTERISTICS DllCharacteristics;
     u32 SizeOfStackReserve;
     u32 SizeOfStackCommit;
