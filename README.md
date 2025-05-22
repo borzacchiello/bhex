@@ -208,6 +208,21 @@ seek: change current offset
   NOTE: if called without arguments, print current offset
 ```
 
+### Crc
+
+```
+[0x0000000] $ crc?
+
+import: calculate the CRC <name> at current offset + <off>
+
+  crc[/l] <name> [<size> <off>]
+     l:   list the supported crc names
+
+  name:   name of the CRC (or a partial name)
+  size:   number of bytes to include in the crc (if omitted or zero, import the whole file starting from current offset)
+  offset: starting offset of the imported file (if omitted, import from current offset)
+```
+
 ### Assemble
 
 ```

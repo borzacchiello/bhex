@@ -54,6 +54,7 @@ endif()
 
 set(common_src
     common/alloc.c
+    common/crc.c
     common/dlist.c
     common/ll.c
     common/log.c
@@ -72,6 +73,7 @@ set(common_src
 set(command_src
     cmd/cmd_arg_handler.c
     cmd/cmd.c
+    cmd/cmd_crc.c
     cmd/cmd_template.c
     cmd/cmd_search.c
     cmd/cmd_strings.c
