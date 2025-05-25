@@ -8,6 +8,7 @@
 #include "../tengine/scope.h"
 #include "elf_not_kitty.h"
 #include "strbuilder.h"
+#include "t.h"
 #include "t_cmd_common.h"
 
 #ifndef TEST
@@ -1523,6 +1524,35 @@ int TEST(enum_const)(void)
     TEngineValue* v = Scope_get_local(e->proc_scope, "a");
     IS_TENGINE_UNUM_EQ(r, v, 42 + 44 + 16);
 
+end:
+    if (e)
+        delete_tengine(e);
+    return r;
+}
+
+int TEST(syntax_error)(void)
+{
+    // clang-format off
+    const char* expected =
+        "[  ERROR  ] [tengine lexer] unknown token\n"
+        "[  ERROR  ] [tengine parser] syntax error @ line 7 [near token '@']\n"
+        "[  ERROR  ] parsing failed\n";
+    // clang-format on
+
+    // just in case
+    bhex_free(strbuilder_reset(err_sb));
+
+    const char* prog = "@,,";
+
+    int      r = TEST_FAILED;
+    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    if (e != NULL)
+        goto end;
+
+    char* out = strbuilder_reset(err_sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+    
 end:
     if (e)
         delete_tengine(e);

@@ -29,6 +29,7 @@ static void print_on_strbuilder(const char* fmt, ...)
 static void log_on_err_strbuilder(const char* str)
 {
     strbuilder_append(err_sb, str);
+    strbuilder_append_char(err_sb, '\n');
 }
 
 __attribute__((constructor)) static void __init(void)

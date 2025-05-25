@@ -27,19 +27,20 @@ static inline void track_add(void* ptr)
     g_track_ptr[g_track_size++] = ptr;
 }
 
-static inline void track_remove(void* ptr)
+static inline int track_remove(void* ptr)
 {
     if (likely(!g_tracking))
-        return;
+        return 0;
 
     for (u64_t i = 0; i < g_track_size; ++i) {
         if (g_track_ptr[i] == ptr) {
             if (i != g_track_size - 1)
                 g_track_ptr[i] = g_track_ptr[g_track_size - 1];
             g_track_size--;
-            break;
+            return 1;
         }
     }
+    return 0;
 }
 
 static inline void track_start()
@@ -100,12 +101,14 @@ void* bhex_realloc(void* b, size_t size)
     if (size == 0)
         panic("realloc size is zero");
 
-    track_remove(b);
+    int was_removed = track_remove(b);
     void* r = realloc(b, size);
     if (r == NULL)
         panic("realloc failed");
 
-    track_add(r);
+    if (was_removed)
+        // realloc needs to be tracked only if the previous malloc was tracked
+        track_add(r);
     return r;
 }
 
