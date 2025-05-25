@@ -115,6 +115,22 @@ if(ASAN)
 endif()
 
 if (ENABLE_TESTS)
+    add_custom_command(
+            OUTPUT ${CMAKE_SOURCE_DIR}/tests/main.c
+            COMMAND ${CMAKE_COMMAND} -E remove -f ${CMAKE_SOURCE_DIR}/tests/main.c
+            COMMAND python ${CMAKE_SOURCE_DIR}/tests/gen_tests.py
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+            COMMENT "Generating test main")
+
+    add_custom_target(gen_test_main ALL
+        DEPENDS ${CMAKE_SOURCE_DIR}/tests/main.c)
+
+    add_custom_target(copy_templates_to_build ALL
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_SOURCE_DIR}/templates
+            ${CMAKE_CURRENT_BINARY_DIR}/templates
+            COMMENT "Copying templates to build")
+
     add_executable(bhex_tests
         ${common_src}
         ${tengine_src}
@@ -123,13 +139,8 @@ if (ENABLE_TESTS)
         tests/dummy_filebuffer.c
         ${CMAKE_SOURCE_DIR}/tests/main.c)
 
-    add_custom_target(
-            always_run_target ALL
-            DEPENDS ${CMAKE_SOURCE_DIR}/tests/main.c)
-
-    add_custom_command(
-            OUTPUT  ${CMAKE_SOURCE_DIR}/tests/main.c
-            COMMAND python ${CMAKE_SOURCE_DIR}/tests/gen_tests.py)
+    add_dependencies(bhex_tests gen_test_main)
+    add_dependencies(bhex_tests copy_templates_to_build)
 endif()
 
 # Main executable

@@ -54,6 +54,7 @@ int TEST(notkitty)(void)
     bhex_free(out);
 
 end:
+    bhex_free(strbuilder_reset(sb));
     return r;
 }
 
@@ -76,6 +77,7 @@ int TEST(notkitty_rows_2)(void)
     bhex_free(out);
 
 end:
+    bhex_free(strbuilder_reset(sb));
     return r;
 }
 
@@ -104,6 +106,7 @@ int TEST(notkitty_len_8)(void)
     bhex_free(out);
 
 end:
+    bhex_free(strbuilder_reset(sb));
     return r;
 }
 
@@ -126,6 +129,7 @@ int TEST(notkitty_len_8_rows_2)(void)
     bhex_free(out);
 
 end:
+    bhex_free(strbuilder_reset(sb));
     return r;
 }
 
@@ -140,5 +144,6 @@ int TEST(empty)(void)
     bhex_free(out);
 
 end:
+    bhex_free(strbuilder_reset(sb));
     return r;
 }

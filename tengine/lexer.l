@@ -19,7 +19,7 @@ s64_t yysnumval;
 u64_t yyunumval;
 int   yymax_ident_len;
 
-__attribute__((destructor)) static void delete_yyheapbuf(void) { if (yyheapbuf) bhex_free(yyheapbuf); }
+__attribute__((destructor)) static void delete_yyheapbuf(void) { if (yyheapbuf) yyfree(yyheapbuf); }
 
 %}
 
@@ -233,19 +233,23 @@ __attribute__((destructor)) static void delete_yyheapbuf(void) { if (yyheapbuf) 
 ":"                     { return TCOLON; }
 ";"                     { return TSEMICOLON; }
 \"[^"]*\"               {
-                            if (yyheapbuf) bhex_free(yyheapbuf);
+                            if (yyheapbuf) yyfree(yyheapbuf);
+                            yyheapbuf = NULL;
 
                             char* tmp = bhex_calloc(yyleng-1);
                             memcpy(tmp, yytext+1, yyleng-2);
 
                             size_t len;
-                            if (!unescape_ascii_string(tmp, &yyheapbuf, &len)) {
+                            u8_t*  unescaped;
+                            if (!unescape_ascii_string(tmp, &unescaped, &len)) {
                                 error("[tengine lexer] invalid string '%s'", tmp);
-                                yyheapbuf = NULL;
                                 bhex_free(tmp);
                                 return 1;
                             }
                             yyheapbuf_len = (u32_t)len;
+                            yyheapbuf = yyalloc(len);
+                            memcpy(yyheapbuf, unescaped, len);
+                            bhex_free(unescaped);
                             bhex_free(tmp);
                             return TSTR;
                         }

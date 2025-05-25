@@ -24,6 +24,7 @@ int TEST(commit_list_one_overwrite)(void)
     bhex_free(out);
 
 end:
+    bhex_free(strbuilder_reset(sb));
     return r;
 }
 
@@ -46,6 +47,7 @@ int TEST(commit_list_one_insert)(void)
     bhex_free(out);
 
 end:
+    bhex_free(strbuilder_reset(sb));
     return r;
 }
 
@@ -68,6 +70,7 @@ int TEST(commit_list_one_delete)(void)
     bhex_free(out);
 
 end:
+    bhex_free(strbuilder_reset(sb));
     return r;
 }
 
@@ -90,6 +93,7 @@ int TEST(commit_list_one_more_than_8)(void)
     bhex_free(out);
 
 end:
+    bhex_free(strbuilder_reset(sb));
     return r;
 }
 
@@ -117,5 +121,6 @@ int TEST(commit_list_multiple)(void)
     bhex_free(out);
 
 end:
+    bhex_free(strbuilder_reset(sb));
     return r;
 }

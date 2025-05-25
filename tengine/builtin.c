@@ -1,5 +1,6 @@
 #include "builtin.h"
 #include "defs.h"
+#include "display.h"
 #include "strbuilder.h"
 #include "tengine.h"
 #include "value.h"
@@ -372,10 +373,10 @@ static TEngineValue* builtin_print(TEngine* e, FileBuffer* fb, DList* params)
     for (u64_t i = 0; i < params->size; ++i) {
         TEngineValue* p = params->data[i];
         if (p->t == TENGINE_STRING) {
-            printf("%.*s", p->str_size, p->str);
+            display_printf("%.*s", p->str_size, p->str);
         } else {
             char* p_str = TEngineValue_tostring(p, 0);
-            printf("%s", p_str);
+            display_printf("%s", p_str);
             bhex_free(p_str);
         }
     }

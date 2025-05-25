@@ -308,12 +308,19 @@ proc
     IMAGE_NT_HEADERS     NTHeader;
     DATA_DIRECTORY_ARRAY DataDirArray;
 
+    seek(DosHeader.e_lfanew + 0x18 + NTHeader.FileHeader.SizeOfOptionalHeader);
+
     local section_i = 0;
     while ( section_i < NTHeader.FileHeader.NumberOfSections ) {
         IMAGE_SECTION_HEADER SectionHeader;
         local off = off();
         seek(SectionHeader.PointerToRawData);
-        u8 SectionData[SectionHeader.SizeOfRawData];
+        local secsize = SectionHeader.SizeOfRawData;
+        if (secsize > remaining_size()) {
+            print("[!] section size [", secsize, "] is greater than remaining size [", remaining_size(), "], trimming\n");
+            secsize = remaining_size();
+        }
+        u8 SectionData[secsize];
         seek(off);
 
         section_i = section_i + 1;

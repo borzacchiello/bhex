@@ -26,6 +26,7 @@ int TEST(notkitty)(void)
     bhex_free(out);
 
 end:
+    bhex_free(strbuilder_reset(sb));
     return r;
 }
 
@@ -50,5 +51,6 @@ int TEST(empty)(void)
     bhex_free(out);
 
 end:
+    bhex_free(strbuilder_reset(sb));
     return r;
 }

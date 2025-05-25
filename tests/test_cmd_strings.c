@@ -25,6 +25,7 @@ int TEST(no_param_1)(void)
     bhex_free(out);
 
 end:
+    bhex_free(strbuilder_reset(sb));
     return r;
 }
 
@@ -45,6 +46,7 @@ int TEST(min_len_1)(void)
     bhex_free(out);
 
 end:
+    bhex_free(strbuilder_reset(sb));
     return r;
 }
 
@@ -67,5 +69,6 @@ int TEST(null_terminated_1)(void)
     bhex_free(out);
 
 end:
+    bhex_free(strbuilder_reset(sb));
     return r;
 }

@@ -10,12 +10,13 @@
 #include "dummy_filebuffer.h"
 #include "elf_not_kitty.h"
 #include "elf_truncated.h"
+#include "pe_tiny.h"
 #include "../cmd/cmd.h"
 #include "filebuffer.h"
 
 static CmdContext*      cc;
-static DummyFilebuffer *dfb, *dfb_alt_1, *dfb_alt_2;
-static StringBuilder*   sb;
+static DummyFilebuffer *elf_fb, *pe_fb, *dfb_alt_1, *dfb_alt_2;
+static StringBuilder *  sb, *err_sb;
 
 static void print_on_strbuilder(const char* fmt, ...)
 {
@@ -25,6 +26,11 @@ static void print_on_strbuilder(const char* fmt, ...)
     va_end(argp);
 }
 
+static void log_on_err_strbuilder(const char* str)
+{
+    strbuilder_append(err_sb, str);
+}
+
 __attribute__((constructor)) static void __init(void)
 {
     disable_warning = 1;
@@ -32,9 +38,12 @@ __attribute__((constructor)) static void __init(void)
     cc = cmdctx_init();
     if (!cc)
         panic("unable to create cmd ctx");
-    dfb = dummyfilebuffer_create(elf_not_kitty, sizeof(elf_not_kitty));
-    if (!dfb)
-        panic("unable to create dummy fb");
+    elf_fb = dummyfilebuffer_create(elf_not_kitty, sizeof(elf_not_kitty));
+    if (!elf_fb)
+        panic("unable to create elf dummy fb");
+    pe_fb = dummyfilebuffer_create(pe_tiny, sizeof(pe_tiny));
+    if (!pe_fb)
+        panic("unable to create pe dummy fb");
     dfb_alt_1 =
         dummyfilebuffer_create(elf_truncated_1, sizeof(elf_truncated_1));
     if (!dfb_alt_1)
@@ -46,25 +55,34 @@ __attribute__((constructor)) static void __init(void)
     sb = strbuilder_new();
     if (!sb)
         panic("unable to create string builder");
+    err_sb = strbuilder_new();
+    if (!err_sb)
+        panic("unable to create error string builder");
 
     display_set_print_callback(print_on_strbuilder);
+    register_log_callback(log_on_err_strbuilder);
 }
 
 __attribute__((destructor)) static void __deinit(void)
 {
     if (cc)
         cmdctx_destroy(cc);
-    if (dfb)
-        dummyfilebuffer_destroy(dfb);
+    if (elf_fb)
+        dummyfilebuffer_destroy(elf_fb);
+    if (pe_fb)
+        dummyfilebuffer_destroy(pe_fb);
     if (dfb_alt_1)
         dummyfilebuffer_destroy(dfb_alt_1);
     if (dfb_alt_2)
         dummyfilebuffer_destroy(dfb_alt_2);
     if (sb)
         bhex_free(strbuilder_finalize(sb));
+    if (err_sb)
+        bhex_free(strbuilder_finalize(err_sb));
 }
 
-__attribute__((unused)) static int exec_commands(const char* s)
+__attribute__((unused)) static int exec_commands_on(const char*      s,
+                                                    DummyFilebuffer* dummyfb)
 {
     char tmp[512] = {0};
     if (strlen(s) > sizeof(tmp) - 1)
@@ -72,8 +90,8 @@ __attribute__((unused)) static int exec_commands(const char* s)
     strcpy(tmp, s);
 
     // reset the state, just in case
-    fb_seek(dfb->fb, 0);
-    fb_undo_all(dfb->fb);
+    fb_seek(dummyfb->fb, 0);
+    fb_undo_all(dummyfb->fb);
 
     char* cmd = strtok(tmp, ";");
     while (cmd) {
@@ -81,7 +99,7 @@ __attribute__((unused)) static int exec_commands(const char* s)
         if (parse(cmd, &pc) != 0)
             panic("parse failed");
         int r;
-        if ((r = cmdctx_run(cc, pc, dfb->fb)) != 0) {
+        if ((r = cmdctx_run(cc, pc, dummyfb->fb)) != 0) {
             parsed_command_destroy(pc);
             return 1;
         }
@@ -89,6 +107,11 @@ __attribute__((unused)) static int exec_commands(const char* s)
         cmd = strtok(NULL, ";");
     }
     return 0;
+}
+
+__attribute__((unused)) static int exec_commands(const char* s)
+{
+    return exec_commands_on(s, elf_fb);
 }
 
 __attribute__((unused)) static int compare_strings_ignoring_X(const char* s1,

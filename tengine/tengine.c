@@ -29,6 +29,8 @@ typedef struct yy_buffer_state* YY_BUFFER_STATE;
 extern YY_BUFFER_STATE          yy_scan_string(const char* str);
 extern void                     yy_delete_buffer(YY_BUFFER_STATE buffer);
 extern void                     yylex_destroy();
+extern void                     yyrestart(FILE* input_file);
+extern void                     yy_switch_to_buffer(YY_BUFFER_STATE new_buffer);
 
 typedef struct ProcessContext {
     FileBuffer* fb;
@@ -820,6 +822,7 @@ ASTCtx* TEngine_parse_file(FILE* f)
     // I did not find any other way to handle this scenario...
     bhex_alloc_track_start();
     ASTCtx* ast = ASTCtx_new();
+    yyrestart(f);
 
     yyset_in(f);
     yyset_ctx(ast);
@@ -828,6 +831,7 @@ ASTCtx* TEngine_parse_file(FILE* f)
         error("parsing failed");
         bhex_alloc_track_free_all();
         bhex_alloc_track_stop();
+        yylex_destroy();
         return NULL;
     }
 
@@ -845,6 +849,7 @@ ASTCtx* TEngine_parse_string(const char* str)
 
     yyset_ctx(ast);
     YY_BUFFER_STATE state = yy_scan_string(str);
+    yy_switch_to_buffer(state);
 
     if (yyparse() != 0) {
         error("parsing failed");

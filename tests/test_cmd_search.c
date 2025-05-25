@@ -10,7 +10,7 @@ int TEST(hello)(void)
     const char* expected = " >> Match @ 0x0000080\n";
 
     int r = TEST_FAILED;
-    if (exec_commands("src hello") != 0)
+    if (exec_commands_on("src hello", elf_fb) != 0)
         goto end;
 
     char* out = strbuilder_reset(sb);
@@ -18,6 +18,7 @@ int TEST(hello)(void)
     bhex_free(out);
 
 end:
+    bhex_free(strbuilder_reset(sb));
     return r;
 }
 
@@ -37,7 +38,7 @@ int TEST(hello_p)(void)
     // clang-format on
 
     int r = TEST_FAILED;
-    if (exec_commands("src/p hello") != 0)
+    if (exec_commands_on("src/p hello", elf_fb) != 0)
         goto end;
 
     char* out = strbuilder_reset(sb);
@@ -45,6 +46,7 @@ int TEST(hello_p)(void)
     bhex_free(out);
 
 end:
+    bhex_free(strbuilder_reset(sb));
     return r;
 }
 
@@ -61,6 +63,7 @@ int TEST(hex)(void)
     bhex_free(out);
 
 end:
+    bhex_free(strbuilder_reset(sb));
     return r;
 }
 
@@ -77,5 +80,6 @@ int TEST(hex_seek)(void)
     bhex_free(out);
 
 end:
+    bhex_free(strbuilder_reset(sb));
     return r;
 }
