@@ -16,6 +16,9 @@
 static const char* search_folders[] = {"/usr/local/share/bhex/templates",
                                        "../templates", "."};
 
+// just for testing purposes
+int template_skip_search = 0;
+
 typedef struct TemplateCtx {
     map* templates;
 } TemplateCtx;
@@ -155,46 +158,48 @@ Cmd* templatecmd_create(void)
 
     char tmp[1024];
 
-    // Iterate over the default templates directories
-    for (u64_t i = 0; i < sizeof(search_folders) / sizeof(const char*); ++i) {
-        const char* dirpath = search_folders[i];
-        DIR*        dir     = opendir(dirpath);
-        if (dir == NULL)
-            continue;
-
-        struct dirent* entry;
-        while ((entry = readdir(dir)) != NULL) {
-            // look for "*.bhe" files
-            if (strcmp(entry->d_name, ".") == 0 ||
-                strcmp(entry->d_name, "..") == 0)
-                continue;
-            size_t d_namelen = strlen(entry->d_name);
-            if (d_namelen < 4 ||
-                strcmp(entry->d_name + (d_namelen - 4), ".bhe") != 0)
+    if (!template_skip_search) {
+        // Iterate over the default templates directories
+        for (u64_t i = 0; i < sizeof(search_folders) / sizeof(const char*); ++i) {
+            const char* dirpath = search_folders[i];
+            DIR*        dir     = opendir(dirpath);
+            if (dir == NULL)
                 continue;
 
-            memset(tmp, 0, sizeof(tmp));
-            snprintf(tmp, sizeof(tmp) - 1, "%s/%s", dirpath, entry->d_name);
+            struct dirent* entry;
+            while ((entry = readdir(dir)) != NULL) {
+                // look for "*.bhe" files
+                if (strcmp(entry->d_name, ".") == 0 ||
+                    strcmp(entry->d_name, "..") == 0)
+                    continue;
+                size_t d_namelen = strlen(entry->d_name);
+                if (d_namelen < 4 ||
+                    strcmp(entry->d_name + (d_namelen - 4), ".bhe") != 0)
+                    continue;
 
-            // Remove extension
-            entry->d_name[d_namelen - 4] = '\0';
-            if (map_contains(ctx->templates, entry->d_name)) {
-                warning("template '%s' already loaded, skipping file '%s'",
-                        entry->d_name, tmp);
-                continue;
+                memset(tmp, 0, sizeof(tmp));
+                snprintf(tmp, sizeof(tmp) - 1, "%s/%s", dirpath, entry->d_name);
+
+                // Remove extension
+                entry->d_name[d_namelen - 4] = '\0';
+                if (map_contains(ctx->templates, entry->d_name)) {
+                    warning("template '%s' already loaded, skipping file '%s'",
+                            entry->d_name, tmp);
+                    continue;
+                }
+
+                ASTCtx* ast = TEngine_parse_filename(tmp);
+                if (ast == NULL)
+                    // Invalid bhe file
+                    continue;
+
+                // Remove extension
+                entry->d_name[d_namelen - 4] = '\0';
+                map_set(ctx->templates, entry->d_name, ast);
+                // info("loaded template '%s' from '%s'", entry->d_name, tmp);
             }
-
-            ASTCtx* ast = TEngine_parse_filename(tmp);
-            if (ast == NULL)
-                // Invalid bhe file
-                continue;
-
-            // Remove extension
-            entry->d_name[d_namelen - 4] = '\0';
-            map_set(ctx->templates, entry->d_name, ast);
-            // info("loaded template '%s' from '%s'", entry->d_name, tmp);
+            closedir(dir);
         }
-        closedir(dir);
     }
 
     cmd->obj   = ctx;
