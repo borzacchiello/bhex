@@ -29,7 +29,7 @@ Just run `bhex <file>` to start the shell.
 Supported flags:
 
 ```
-Usage:  ./bhex [ options ] inputfile
+Usage:  bhex [ options ] inputfile
   -h  --help        Print help
   -w  --write       Open the file in write mode
   -b  --backup      Backup original file in "filename.bk"
@@ -82,8 +82,10 @@ Available commands:
     help [h]
     interactive [int]
     info [i]
+    interactive [int]
     entropy [e]
     search [src]
+    crc [cr]
     strings [str]
     template [t]
     seek [s]
@@ -141,11 +143,11 @@ Start an interactive session.
 
 search: search a string or a sequence of bytes in the file
 
-  src[/{x, s}/sk/p] <data>
+  src[/{x, s}/sk/p] <what>
      x:  data is an hex string
      s:  data is a string (default)
      sk: seek to first match
-     p:  print blocks info
+     c:  print context
 
   data: either a string or an hex string
 ```
@@ -170,26 +172,34 @@ enumerate the strings in the file (i.e., sequences of printable ascii characters
 
 template: parse the file at current offset using a 'bhe' template file
 
-  t[/l/ls] <name or file>
-     l:  list available templates
-     ls: list available structs
+  t[/l] <name or file>
+     l: list available templates and structs
 
-  name: the name of the pre-loaded template/struct to use, of a path to a template file
+  name: the name of the pre-loaded template/struct to use, or a path to a template file, or a filter if in list mode
 
-[0x0000000] $ t/l/ls
+[0x0000000] $ t/l
 
 Available templates:
-  elf
   tar
+  pe
+  elf
 
 Available template structs:
+  tar.TarHeader
+  pe.IMAGE_NT_HEADERS
+  pe.IMAGE_OPTIONAL_HEADER32
+  pe.DATA_DIRECTORY_ARRAY
+  pe.IMAGE_DATA_DIRECTORY
+  pe.IMAGE_FILE_HEADER
+  pe.IMAGE_OPTIONAL_HEADER64
+  pe.IMAGE_SECTION_HEADER
+  pe.IMAGE_DOS_HEADER
   elf.Elf64_Shdr
   elf.Elf64_Phdr
   elf.Elf32_Phdr
   elf.Elf_Ehdr
   elf.ElfIdent
   elf.Elf32_Shdr
-  tar.TarHeader
 ```
 
 ### Seek
@@ -260,7 +270,7 @@ disas: disassemble code at current offset
 
 print: display the data at current offset in various formats
 
-  p[/{x,w,d,q}/{le,be}/r/{+,-}] <nelements>
+  p[/{x,w,d,q,a,C}/{le,be}/r/{+,-}] <nelements>
      x:  hex output (default)
      w:  words
      d:  dwords
@@ -366,5 +376,9 @@ undo the last write
 
 ```
 [0x0000000] $ c?
-commit all the writes to file
+
+commit: commit all writes to file
+
+  c[/l]
+     l: list uncommited changes
 ```
