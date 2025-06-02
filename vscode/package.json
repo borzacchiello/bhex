@@ -1,0 +1,36 @@
+{
+  "name": "bhe-syntax-highlight",
+  "displayName": "BHE Binary Format Language Support",
+  "description": "Syntax highlighting for BHE binary format description language",
+  "version": "1.0.0",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [{
+      "id": "bhe",
+      "aliases": ["BHE", "bhe"],
+      "extensions": [".bhe"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "bhe",
+      "scopeName": "source.bhe",
+      "path": "./syntaxes/bhe.tmLanguage.json"
+    }]
+  },
+  "scripts": {
+    "package": "vsce package"
+  },
+  "repository": "https://github.com/borzacchiello/bhex/vscode",
+  "keywords": [
+    "syntax",
+    "highlight",
+    "bhe",
+    "binary",
+    "format"
+  ]
+}
