@@ -6,21 +6,31 @@
   "engines": {
     "vscode": "^1.74.0"
   },
+  "main": "./extension.js",
   "categories": [
     "Programming Languages"
   ],
   "contributes": {
-    "languages": [{
-      "id": "bhe",
-      "aliases": ["BHE", "bhe"],
-      "extensions": [".bhe"],
-      "configuration": "./language-configuration.json"
-    }],
-    "grammars": [{
-      "language": "bhe",
-      "scopeName": "source.bhe",
-      "path": "./syntaxes/bhe.tmLanguage.json"
-    }]
+    "languages": [
+      {
+        "id": "bhe",
+        "aliases": [
+          "BHE",
+          "bhe"
+        ],
+        "extensions": [
+          ".bhe"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "bhe",
+        "scopeName": "source.bhe",
+        "path": "./syntaxes/bhe.tmLanguage.json"
+      }
+    ]
   },
   "scripts": {
     "package": "vsce package"

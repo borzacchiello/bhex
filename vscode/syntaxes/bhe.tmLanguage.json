@@ -3,46 +3,21 @@
   "scopeName": "source.bhe",
   "fileTypes": ["bhe"],
   "patterns": [
-    {
-      "include": "#comments"
-    },
-    {
-      "include": "#keywords"
-    },
-    {
-      "include": "#types"
-    },
-    {
-      "include": "#functions"
-    },
-    {
-      "include": "#numbers"
-    },
-    {
-      "include": "#strings"
-    },
-    {
-      "include": "#operators"
-    },
-    {
-      "include": "#identifiers"
-    },
-    {
-      "include": "#punctuation"
-    }
+    { "include": "#comments" },
+    { "include": "#keywords" },
+    { "include": "#types" },
+    { "include": "#functions" },
+    { "include": "#numbers" },
+    { "include": "#strings" },
+    { "include": "#operators" },
+    { "include": "#identifiers" },
+    { "include": "#punctuation" }
   ],
   "repository": {
     "comments": {
       "patterns": [
-        {
-          "name": "comment.line.double-slash.bhe",
-          "match": "//.*$"
-        },
-        {
-          "name": "comment.block.bhe",
-          "begin": "/\\*",
-          "end": "\\*/"
-        }
+        { "name": "comment.line.double-slash.bhe", "match": "//.*$" },
+        { "name": "comment.block.bhe", "begin": "/\\*", "end": "\\*/" }
       ]
     },
     "keywords": {
@@ -68,8 +43,11 @@
           "match": "\\b(u8|u16|u32|u64|i8|i16|i32|i64|uint8_t|uint16_t|uint32_t|uint64_t|int8_t|int16_t|int32_t|int64_t|char|string)\\b"
         },
         {
-          "name": "storage.type.bhe",
-          "match": "\\b[A-Z][a-zA-Z0-9_]*\\b"
+          "match": "\\b([A-Za-z_][A-Za-z_0-9]*)\\s+([A-Za-z_][A-Za-z_0-9]*)\\b",
+          "captures": {
+            "1": { "name": "storage.type.bhe" },
+            "2": { "name": "variable.parameter.bhe" }
+          }
         }
       ]
     },
@@ -77,7 +55,7 @@
       "patterns": [
         {
           "name": "entity.name.function.builtin.bhe",
-          "match": "\\b(endianess_le|endianess_be|nums_in_hex|nums_in_dec|disable_print|enable_print|seek|fwd|off|size|remaining_size|print|atoi|strip|strlen)\\b"
+          "match": "\\b(endianess_le|endianess_be|nums_in_hex|nums_in_dec|disable_print|enable_print|seek|fwd|off|size|remaining_size|print|atoi|strip|strlen)(?=\\s*\\()\\b"
         },
         {
           "name": "entity.name.function.bhe",
@@ -87,22 +65,10 @@
     },
     "numbers": {
       "patterns": [
-        {
-          "name": "constant.numeric.hex.bhe",
-          "match": "\\b0[xX][0-9a-fA-F]+\\b"
-        },
-        {
-          "name": "constant.numeric.binary.bhe",
-          "match": "\\b0[bB][01]+\\b"
-        },
-        {
-          "name": "constant.numeric.octal.bhe",
-          "match": "\\b0[0-7]+\\b"
-        },
-        {
-          "name": "constant.numeric.decimal.bhe",
-          "match": "\\b[0-9]+\\.?[0-9]*([eE][+-]?[0-9]+)?\\b"
-        }
+        { "name": "constant.numeric.hex.bhe",     "match": "\\b0[xX][0-9a-fA-F]+\\b" },
+        { "name": "constant.numeric.binary.bhe",  "match": "\\b0[bB][01]+\\b" },
+        { "name": "constant.numeric.octal.bhe",   "match": "\\b0[0-7]+\\b" },
+        { "name": "constant.numeric.decimal.bhe", "match": "\\b[0-9]+\\.?[0-9]*([eE][+-]?[0-9]+)?\\b" }
       ]
     },
     "strings": {
@@ -112,10 +78,7 @@
           "begin": "\"",
           "end": "\"",
           "patterns": [
-            {
-              "name": "constant.character.escape.bhe",
-              "match": "\\\\."
-            }
+            { "name": "constant.character.escape.bhe", "match": "\\\\." }
           ]
         },
         {
@@ -123,76 +86,34 @@
           "begin": "'",
           "end": "'",
           "patterns": [
-            {
-              "name": "constant.character.escape.bhe",
-              "match": "\\\\."
-            }
+            { "name": "constant.character.escape.bhe", "match": "\\\\." }
           ]
         }
       ]
     },
     "operators": {
       "patterns": [
-        {
-          "name": "keyword.operator.bitwise.bhe",
-          "match": "&|\\||\\^|~|<<|>>"
-        },
-        {
-          "name": "keyword.operator.logical.bhe",
-          "match": "&&|\\|\\||!"
-        },
-        {
-          "name": "keyword.operator.comparison.bhe",
-          "match": "==|!=|<=|>=|<|>"
-        },
-        {
-          "name": "keyword.operator.arithmetic.bhe",
-          "match": "\\+|\\-|\\*|/|%"
-        },
-        {
-          "name": "keyword.operator.assignment.bhe",
-          "match": "="
-        }
+        { "name": "keyword.operator.bitwise.bhe",     "match": "&|\\||\\^|~|<<|>>" },
+        { "name": "keyword.operator.logical.bhe",     "match": "&&|\\|\\||!" },
+        { "name": "keyword.operator.comparison.bhe",  "match": "==|!=|<=|>=|<|>" },
+        { "name": "keyword.operator.arithmetic.bhe",  "match": "\\+|\\-|\\*|/|%" },
+        { "name": "keyword.operator.assignment.bhe",  "match": "=" }
       ]
     },
     "identifiers": {
       "patterns": [
-        {
-          "name": "variable.parameter.bhe",
-          "match": "\\b[a-z_][a-zA-Z0-9_]*\\b"
-        }
+        { "match": "\\b([A-Za-z_][A-Za-z_0-9]*)\\b", "name": "variable.parameter.bhe" }
       ]
     },
     "punctuation": {
       "patterns": [
-        {
-          "name": "punctuation.section.block.begin.bhe",
-          "match": "\\{"
-        },
-        {
-          "name": "punctuation.section.block.end.bhe",
-          "match": "\\}"
-        },
-        {
-          "name": "punctuation.section.brackets.begin.bhe",
-          "match": "\\["
-        },
-        {
-          "name": "punctuation.section.brackets.end.bhe",
-          "match": "\\]"
-        },
-        {
-          "name": "punctuation.section.parens.begin.bhe",
-          "match": "\\("
-        },
-        {
-          "name": "punctuation.section.parens.end.bhe",
-          "match": "\\)"
-        },
-        {
-          "name": "punctuation.separator.bhe",
-          "match": ";|,"
-        }
+        { "name": "punctuation.section.block.begin.bhe",     "match": "\\{" },
+        { "name": "punctuation.section.block.end.bhe",       "match": "\\}" },
+        { "name": "punctuation.section.brackets.begin.bhe",  "match": "\\[" },
+        { "name": "punctuation.section.brackets.end.bhe",    "match": "\\]" },
+        { "name": "punctuation.section.parens.begin.bhe",    "match": "\\(" },
+        { "name": "punctuation.section.parens.end.bhe",      "match": "\\)" },
+        { "name": "punctuation.separator.bhe",               "match": ";|," }
       ]
     }
   }

@@ -1,58 +1,58 @@
 struct IMAGE_DOS_HEADER
 {
-    u16 e_magic;    // Magic number
-    u16 e_cblp;     // Bytes on last page of file
-    u16 e_cp;       // Pages in file
-    u16 e_crlc;     // Relocations
-    u16 e_cparhdr;  // Size of header in paragraphs
-    u16 e_minalloc; // Minimum extra paragraphs needed
-    u16 e_maxalloc; // Maximum extra paragraphs needed
-    u16 e_ss;       // Initial (relative) SS value
-    u16 e_sp;       // Initial SP value
-    u16 e_csum;     // Checksum
-    u16 e_ip;       // Initial IP value
-    u16 e_cs;       // Initial (relative) CS value
-    u16 e_lfarlc;   // File address of relocation table
-    u16 e_ovno;     // Overlay number
-    u16 e_res[4];   // Reserved words
-    u16 e_oemid;    // OEM identifier (for e_oeminfo)
-    u16 e_oeminfo;  // OEM information; e_oemid specific
-    u16 e_res2[10]; // Reserved words
-    i32 e_lfanew;   // File address of new exe header
+    u16 e_magic;     // Magic number
+    u16 e_cblp;      // Bytes on last page of file
+    u16 e_cp;        // Pages in file
+    u16 e_crlc;      // Relocations
+    u16 e_cparhdr;   // Size of header in paragraphs
+    u16 e_minalloc;  // Minimum extra paragraphs needed
+    u16 e_maxalloc;  // Maximum extra paragraphs needed
+    u16 e_ss;        // Initial (relative) SS value
+    u16 e_sp;        // Initial SP value
+    u16 e_csum;      // Checksum
+    u16 e_ip;        // Initial IP value
+    u16 e_cs;        // Initial (relative) CS value
+    u16 e_lfarlc;    // File address of relocation table
+    u16 e_ovno;      // Overlay number
+    u16 e_res[4];    // Reserved words
+    u16 e_oemid;     // OEM identifier (for e_oeminfo)
+    u16 e_oeminfo;   // OEM information; e_oemid specific
+    u16 e_res2[10];  // Reserved words
+    i32 e_lfanew;    // File address of new exe header
 }
 
 enum IMAGE_MACHINE_TYPE : u16
 {
-    UNKNOWN     = 0x0,    // The content of this field is assumed to be applicable to any machine type
-    ALPHA       = 0x184,  // Alpha AXP, 32-bit address space
-    ALPHA64     = 0x284,  // Alpha 64, 64-bit address space
-    AM33        = 0x1d3,  // Matsushita AM33
+    UNKNOWN     = 0x0000, // The content of this field is assumed to be applicable to any machine type
+    ALPHA       = 0x0184, // Alpha AXP, 32-bit address space
+    ALPHA64     = 0x0284, // Alpha 64, 64-bit address space
+    AM33        = 0x01d3, // Matsushita AM33
     AMD64       = 0x8664, // x64
-    ARM         = 0x1c0,  // ARM little endian
+    ARM         = 0x01c0, // ARM little endian
     ARM64       = 0xaa64, // ARM64 little endian
-    ARMNT       = 0x1c4,  // ARM Thumb-2 little endian
-    AXP64       = 0x284,  // AXP 64 (Same as Alpha 64)
-    EBC         = 0xebc,  // EFI byte code
-    I386        = 0x14c,  // Intel 386 or later processors and compatible processors
-    IA64        = 0x200,  // Intel Itanium processor family
+    ARMNT       = 0x01c4, // ARM Thumb-2 little endian
+    AXP64       = 0x0284, // AXP 64 (Same as Alpha 64)
+    EBC         = 0x0ebc, // EFI byte code
+    I386        = 0x014c, // Intel 386 or later processors and compatible processors
+    IA64        = 0x0200, // Intel Itanium processor family
     LOONGARCH32 = 0x6232, // LoongArch 32-bit processor family
     LOONGARCH64 = 0x6264, // LoongArch 64-bit processor family
     M32R        = 0x9041, // Mitsubishi M32R little endian
-    MIPS16      = 0x266,  // MIPS16
-    MIPSFPU     = 0x366,  // MIPS with FPU
-    MIPSFPU16   = 0x466,  // MIPS16 with FPU
-    POWERPC     = 0x1f0,  // Power PC little endian
-    POWERPCFP   = 0x1f1,  // Power PC with floating point support
-    R4000       = 0x166,  // MIPS little endian
+    MIPS16      = 0x0266, // MIPS16
+    MIPSFPU     = 0x0366, // MIPS with FPU
+    MIPSFPU16   = 0x0466, // MIPS16 with FPU
+    POWERPC     = 0x01f0, // Power PC little endian
+    POWERPCFP   = 0x01f1, // Power PC with floating point support
+    R4000       = 0x0166, // MIPS little endian
     RISCV32     = 0x5032, // RISC-V 32-bit address space
     RISCV64     = 0x5064, // RISC-V 64-bit address space
     RISCV128    = 0x5128, // RISC-V 128-bit address space
-    SH3         = 0x1a2,  // Hitachi SH3
-    SH3DSP      = 0x1a3,  // Hitachi SH3 DSP
-    SH4         = 0x1a6,  // Hitachi SH4
-    SH5         = 0x1a8,  // Hitachi SH5
-    THUMB       = 0x1c2,  // Thumb
-    WCEMIPSV2   = 0x169   // MIPS little-endian WCE v2
+    SH3         = 0x01a2, // Hitachi SH3
+    SH3DSP      = 0x01a3, // Hitachi SH3 DSP
+    SH4         = 0x01a6, // Hitachi SH4
+    SH5         = 0x01a8, // Hitachi SH5
+    THUMB       = 0x01c2, // Thumb
+    WCEMIPSV2   = 0x0169                                                                                                                                                      // MIPS little-endian WCE v2
 }
 
 orenum IMAGE_FILE_CHARACTERISTICS : u16
@@ -85,7 +85,7 @@ struct IMAGE_FILE_HEADER
     IMAGE_FILE_CHARACTERISTICS Characteristics;
 }
 
-orenum IMAGE_DLLCHARACTERISTICS : u16 
+orenum IMAGE_DLLCHARACTERISTICS : u16
 {
     HIGH_ENTROPY_VA       = 0x0020, // Image can handle a high entropy 64-bit virtual address space.
     DYNAMIC_BASE          = 0x0040, // DLL can be relocated at load time.
@@ -97,7 +97,7 @@ orenum IMAGE_DLLCHARACTERISTICS : u16
     APPCONTAINER          = 0x1000, // Image must execute in an AppContainer.
     WDM_DRIVER            = 0x2000, // A WDM driver.
     GUARD_CF              = 0x4000, // Image supports Control Flow Guard.
-    TERMINAL_SERVER_AWARE = 0x8000  // Terminal Server aware.
+    TERMINAL_SERVER_AWARE = 0x8000                                                                                                                                      // Terminal Server aware.
 }
 
 enum IMAGE_SUBSYSTEM : u16
@@ -119,108 +119,108 @@ enum IMAGE_SUBSYSTEM : u16
 
 orenum IMAGE_SECTION_CHARACTERISTIC : u32
 {
-    TYPE_NO_PAD          = 0x00000008,
-    CNT_CODE             = 0x00000020,
-    CNT_INITIALIZED_DATA = 0x00000040,
+    TYPE_NO_PAD            = 0x00000008,
+    CNT_CODE               = 0x00000020,
+    CNT_INITIALIZED_DATA   = 0x00000040,
     CNT_UNINITIALIZED_DATA = 0x00000080,
-    LNK_OTHER            = 0x00000100,
-    LNK_INFO             = 0x00000200,
-    LNK_REMOVE           = 0x00000800,
-    LNK_COMDAT           = 0x00001000,
-    NO_DEFER_SPEC_EXC    = 0x00004000,
-    GPREL                = 0x00008000,
-    MEM_PURGEABLE        = 0x00020000,
-    MEM_LOCKED           = 0x00040000,
-    MEM_PRELOAD          = 0x00080000,
-    ALIGN_1BYTES         = 0x00100000,
-    ALIGN_2BYTES         = 0x00200000,
-    ALIGN_4BYTES         = 0x00300000,
-    ALIGN_8BYTES         = 0x00400000,
-    ALIGN_16BYTES        = 0x00500000,
-    ALIGN_32BYTES        = 0x00600000,
-    ALIGN_64BYTES        = 0x00700000,
-    ALIGN_128BYTES       = 0x00800000,
-    ALIGN_256BYTES       = 0x00900000,
-    ALIGN_512BYTES       = 0x00A00000,
-    ALIGN_1024BYTES      = 0x00B00000,
-    ALIGN_2048BYTES      = 0x00C00000,
-    ALIGN_4096BYTES      = 0x00D00000,
-    ALIGN_8192BYTES      = 0x00E00000,
-    LNK_NRELOC_OVFL      = 0x01000000,
-    MEM_DISCARDABLE      = 0x02000000,
-    MEM_NOT_CACHED       = 0x04000000,
-    MEM_NOT_PAGED        = 0x08000000,
-    MEM_SHARED           = 0x10000000,
-    MEM_EXECUTE          = 0x20000000,
-    MEM_READ             = 0x40000000,
-    MEM_WRITE            = 0x80000000
+    LNK_OTHER              = 0x00000100,
+    LNK_INFO               = 0x00000200,
+    LNK_REMOVE             = 0x00000800,
+    LNK_COMDAT             = 0x00001000,
+    NO_DEFER_SPEC_EXC      = 0x00004000,
+    GPREL                  = 0x00008000,
+    MEM_PURGEABLE          = 0x00020000,
+    MEM_LOCKED             = 0x00040000,
+    MEM_PRELOAD            = 0x00080000,
+    ALIGN_1BYTES           = 0x00100000,
+    ALIGN_2BYTES           = 0x00200000,
+    ALIGN_4BYTES           = 0x00300000,
+    ALIGN_8BYTES           = 0x00400000,
+    ALIGN_16BYTES          = 0x00500000,
+    ALIGN_32BYTES          = 0x00600000,
+    ALIGN_64BYTES          = 0x00700000,
+    ALIGN_128BYTES         = 0x00800000,
+    ALIGN_256BYTES         = 0x00900000,
+    ALIGN_512BYTES         = 0x00A00000,
+    ALIGN_1024BYTES        = 0x00B00000,
+    ALIGN_2048BYTES        = 0x00C00000,
+    ALIGN_4096BYTES        = 0x00D00000,
+    ALIGN_8192BYTES        = 0x00E00000,
+    LNK_NRELOC_OVFL        = 0x01000000,
+    MEM_DISCARDABLE        = 0x02000000,
+    MEM_NOT_CACHED         = 0x04000000,
+    MEM_NOT_PAGED          = 0x08000000,
+    MEM_SHARED             = 0x10000000,
+    MEM_EXECUTE            = 0x20000000,
+    MEM_READ               = 0x40000000,
+    MEM_WRITE              = 0x80000000
 }
 
 struct IMAGE_OPTIONAL_HEADER64
 {
-    u16 Magic;
-    u8  MajorLinkerVersion;
-    u8  MinorLinkerVersion;
-    u32 SizeOfCode;
-    u32 SizeOfInitializedData;
-    u32 SizeOfUninitializedData;
-    u32 AddressOfEntryPoint;
-    u32 BaseOfCode;
-    u64 ImageBase;
-    u32 SectionAlignment;
-    u32 FileAlignment;
-    u16 MajorOperatingSystemVersion;
-    u16 MinorOperatingSystemVersion;
-    u16 MajorImageVersion;
-    u16 MinorImageVersion;
-    u16 MajorSubsystemVersion;
-    u16 MinorSubsystemVersion;
-    u32 Win32VersionValue;
-    u32 SizeOfImage;
-    u32 SizeOfHeaders;
-    u32 CheckSum;
+    u16                      Magic;
+    u8                       MajorLinkerVersion;
+    u8                       MinorLinkerVersion;
+    u32                      SizeOfCode;
+    u32                      SizeOfInitializedData;
+    u32                      SizeOfUninitializedData;
+    u32                      AddressOfEntryPoint;
+    u32                      BaseOfCode;
+    u64                      ImageBase;
+    u32                      SectionAlignment;
+    u32                      FileAlignment;
+    u16                      MajorOperatingSystemVersion;
+    u16                      MinorOperatingSystemVersion;
+    u16                      MajorImageVersion;
+    u16                      MinorImageVersion;
+    u16                      MajorSubsystemVersion;
+    u16                      MinorSubsystemVersion;
+    u32                      Win32VersionValue;
+    u32                      SizeOfImage;
+    u32                      SizeOfHeaders;
+    u32                      CheckSum;
     IMAGE_SUBSYSTEM          Subsystem;
     IMAGE_DLLCHARACTERISTICS DllCharacteristics;
-    u64 SizeOfStackReserve;
-    u64 SizeOfStackCommit;
-    u64 SizeOfHeapReserve;
-    u64 SizeOfHeapCommit;
-    u32 LoaderFlags;
-    u32 NumberOfRvaAndSizes;
+    u64                      SizeOfStackReserve;
+    u64                      SizeOfStackCommit;
+    u64                      SizeOfHeapReserve;
+    u64                      SizeOfHeapCommit;
+    u32                      LoaderFlags;
+    u32                      NumberOfRvaAndSizes;
 }
 
 struct IMAGE_OPTIONAL_HEADER32
 {
-    u16 Magic;
-    u8  MajorLinkerVersion;
-    u8  MinorLinkerVersion;
-    u32 SizeOfCode;
-    u32 SizeOfInitializedData;
-    u32 SizeOfUninitializedData;
-    u32 AddressOfEntryPoint;
-    u32 BaseOfCode;
-    u32 BaseOfData;
-    u32 ImageBase;
-    u32 SectionAlignment;
-    u32 FileAlignment;
-    u16 MajorOperatingSystemVersion;
-    u16 MinorOperatingSystemVersion;
-    u16 MajorImageVersion;
-    u16 MinorImageVersion;
-    u16 MajorSubsystemVersion;
-    u16 MinorSubsystemVersion;
-    u32 Win32VersionValue;
-    u32 SizeOfImage;
-    u32 SizeOfHeaders;
-    u32 CheckSum;
+    u16                      Magic;
+    u8                       MajorLinkerVersion;
+    u8                       MinorLinkerVersion;
+    u32                      SizeOfCode;
+    u32                      SizeOfInitializedData;
+    u32                      SizeOfUninitializedData;
+    u32                      AddressOfEntryPoint;
+    u32                      BaseOfCode;
+    u32                      BaseOfData;
+    u32                      ImageBase;
+    u32                      SectionAlignment;
+    u32                      FileAlignment;
+    u16                      MajorOperatingSystemVersion;
+    u16                      MinorOperatingSystemVersion;
+    u16                      MajorImageVersion;
+    u16                      MinorImageVersion;
+    u16                      MajorSubsystemVersion;
+    u16                      MinorSubsystemVersion;
+    u32                      Win32VersionValue;
+    u32                      SizeOfImage;
+    u32                      SizeOfHeaders;
+    u32                      CheckSum;
     IMAGE_SUBSYSTEM          Subsystem;
     IMAGE_DLLCHARACTERISTICS DllCharacteristics;
-    u32 SizeOfStackReserve;
-    u32 SizeOfStackCommit;
-    u32 SizeOfHeapReserve;
-    u32 SizeOfHeapCommit;
-    u32 LoaderFlags;
-    u32 NumberOfRvaAndSizes;
+    u32                      SizeOfStackReserve;
+    u32                      SizeOfStackCommit;
+    u32                      SizeOfHeapReserve;
+    u32                      SizeOfHeapCommit;
+    u32                      LoaderFlags;
+    u32                      NumberOfRvaAndSizes;
 }
 
 struct IMAGE_DATA_DIRECTORY
@@ -251,15 +251,15 @@ struct DATA_DIRECTORY_ARRAY
 
 struct IMAGE_SECTION_HEADER
 {
-    char Name[8];
-    u32  Misc;
-    u32  VirtualAddress;
-    u32  SizeOfRawData;
-    u32  PointerToRawData;
-    u32  PointerToRelocations;
-    u32  PointerToLinenumbers;
-    u16  NumberOfRelocations;
-    u16  NumberOfLinenumbers;
+    char                         Name[8];
+    u32                          Misc;
+    u32                          VirtualAddress;
+    u32                          SizeOfRawData;
+    u32                          PointerToRawData;
+    u32                          PointerToRelocations;
+    u32                          PointerToLinenumbers;
+    u16                          NumberOfRelocations;
+    u16                          NumberOfLinenumbers;
     IMAGE_SECTION_CHARACTERISTIC Characteristics;
 }
 
@@ -313,6 +313,7 @@ proc
     local section_i = 0;
     while ( section_i < NTHeader.FileHeader.NumberOfSections ) {
         IMAGE_SECTION_HEADER SectionHeader;
+
         local off = off();
         seek(SectionHeader.PointerToRawData);
         local secsize = SectionHeader.SizeOfRawData;
