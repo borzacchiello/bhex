@@ -39,7 +39,7 @@ static int is_valid_mod(const char* mod, const char* modsfmt)
 
 int handle_mods(ParsedCommand* pcmd, const char* modsfmt, ...)
 {
-    LLNode* mod = pcmd->cmd_modifiers.head;
+    ll_node_t* mod = pcmd->cmd_modifiers.head;
     while (mod != NULL) {
         if (is_valid_mod((const char*)mod->data, modsfmt) != 0)
             return 1;
@@ -65,7 +65,7 @@ int handle_mods(ParsedCommand* pcmd, const char* modsfmt, ...)
         int  idx     = 0;
         el           = strtok_r(group, EL_DELIM, &el_state);
         while (el != NULL) {
-            LLNode* mod = pcmd->cmd_modifiers.head;
+            ll_node_t* mod = pcmd->cmd_modifiers.head;
             while (mod != NULL) {
                 if (strcmp((const char*)mod->data, el) == 0) {
                     if (was_set) {
@@ -97,7 +97,7 @@ int handle_args(ParsedCommand* pcmd, u32_t max, u32_t required, ...)
 
     va_list ap;
     va_start(ap, required);
-    LLNode* arg = pcmd->args.head;
+    ll_node_t* arg = pcmd->args.head;
     while (arg != NULL) {
         char** vptr = va_arg(ap, char**);
         *vptr       = (char*)arg->data;

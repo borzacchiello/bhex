@@ -34,7 +34,7 @@ typedef struct FileBuffer {
     s8_t   readonly;
     u64_t  version;
 
-    LL modifications;
+    ll_t modifications;
 
     u8_t block[fb_block_size];
     s8_t block_dirty;

@@ -98,7 +98,7 @@ static int commitcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
             display_printf("\n");
 
         u32_t   nmod = 0;
-        LLNode* node = fb->modifications.head;
+        ll_node_t* node = fb->modifications.head;
         while (node != NULL) {
             Modification* mod = (Modification*)node->data;
             switch (mod->type) {

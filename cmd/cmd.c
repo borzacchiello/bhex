@@ -98,7 +98,7 @@ int cmd_help(CmdContext* cc)
     display_printf("\nAvailable commands:\n");
     display_printf("    help [h]\n");
     display_printf("    interactive [int]\n");
-    LLNode* curr = cc->commands.head;
+    ll_node_t* curr = cc->commands.head;
     while (curr) {
         Cmd* cmd = (Cmd*)curr->data;
         display_printf("    %s [%s]\n", cmd->name, cmd->alias);
@@ -116,7 +116,7 @@ int cmdctx_run(CmdContext* cc, ParsedCommand* pc, FileBuffer* fb)
         return cmd_help(cc);
     }
 
-    LLNode* curr = cc->commands.head;
+    ll_node_t* curr = cc->commands.head;
     while (curr) {
         Cmd* cmd = (Cmd*)curr->data;
         if (strcmp(pc->cmd, cmd->name) == 0 ||

@@ -1552,7 +1552,7 @@ int TEST(syntax_error)(void)
     char* out = strbuilder_reset(err_sb);
     r         = compare_strings_ignoring_X(expected, out);
     bhex_free(out);
-    
+
 end:
     if (e)
         delete_tengine(e);

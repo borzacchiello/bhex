@@ -62,6 +62,7 @@ set(common_src
     common/strbuilder.c
     common/display.c
     common/filebuffer.c
+    common/cmdline_parser.c
     common/util/byte_to_num.c
     common/util/byte_to_str.c
     common/util/endian.c
@@ -135,7 +136,6 @@ if (ENABLE_TESTS)
         ${common_src}
         ${tengine_src}
         ${command_src}
-        parser.c
         tests/dummy_filebuffer.c
         ${CMAKE_SOURCE_DIR}/tests/main.c)
 
@@ -149,7 +149,6 @@ add_executable(bhex
     ${command_src}
     ${tengine_src}
     linenoise/linenoise.c
-    parser.c
     completion.c
     main.c)
 

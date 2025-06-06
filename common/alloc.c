@@ -101,8 +101,8 @@ void* bhex_realloc(void* b, size_t size)
     if (size == 0)
         panic("realloc size is zero");
 
-    int was_removed = track_remove(b);
-    void* r = realloc(b, size);
+    int   was_removed = track_remove(b);
+    void* r           = realloc(b, size);
     if (r == NULL)
         panic("realloc failed");
 

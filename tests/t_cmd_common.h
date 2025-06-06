@@ -100,7 +100,7 @@ __attribute__((unused)) static int exec_commands_on(const char*      s,
     char* cmd = strtok(tmp, ";");
     while (cmd) {
         ParsedCommand* pc;
-        if (parse(cmd, &pc) != 0)
+        if (cmdline_parse(cmd, &pc) != 0)
             panic("parse failed");
         int r;
         if ((r = cmdctx_run(cc, pc, dummyfb->fb)) != 0) {

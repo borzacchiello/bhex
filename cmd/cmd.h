@@ -3,7 +3,7 @@
 
 #include <ll.h>
 #include <filebuffer.h>
-#include "../parser.h"
+#include <cmdline_parser.h>
 
 #define COMMAND_OK                   0
 #define COMMAND_ERR_NO_SUCH_COMMAND  1
@@ -31,7 +31,7 @@ typedef struct Cmd {
 } Cmd;
 
 typedef struct CmdContext {
-    LL commands;
+    ll_t commands;
 } CmdContext;
 
 CmdContext* cmdctx_init();

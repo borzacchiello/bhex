@@ -47,7 +47,7 @@ static int parse_seek_arg(SeekState* state, ParsedCommand* pc, SeekArg* o_arg)
             return COMMAND_UNSUPPORTED_MOD;
     }
 
-    LLNode* node = pc->args.head;
+    ll_node_t* node = pc->args.head;
     if (pc->args.size != 1)
         return COMMAND_UNSUPPORTED_ARG;
 

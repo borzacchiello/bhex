@@ -1,4 +1,4 @@
-#include "parser.h"
+#include "cmdline_parser.h"
 
 #include <string.h>
 #include <alloc.h>
@@ -118,7 +118,7 @@ static int gen_token(const char* s, const char* one_char_tokens, char** o_token,
 }
 
 // The API is public to access it in the "test" binary
-int tokenize(const char* str, LL* o_result)
+int tokenize(const char* str, ll_t* o_result)
 {
     static const char* phase1_tokens = "/?";
     static const char* phase2_tokens = "";
@@ -155,12 +155,12 @@ int tokenize(const char* str, LL* o_result)
     return PARSER_OK;
 }
 
-int parse(const char* str, ParsedCommand** o_cmd)
+int cmdline_parse(const char* str, ParsedCommand** o_cmd)
 {
     *o_cmd = NULL;
 
-    LL  tokens = ll_create();
-    int r      = tokenize(str, &tokens);
+    ll_t tokens = ll_create();
+    int  r      = tokenize(str, &tokens);
     if (r != PARSER_OK) {
         ll_clear(&tokens, destroy_token);
         return r;
@@ -174,9 +174,9 @@ int parse(const char* str, ParsedCommand** o_cmd)
     pc->cmd_modifiers = ll_create();
     pc->print_help    = 0;
 
-    int     err              = PARSER_OK;
-    int     next_is_modifier = 0;
-    LLNode* token            = ll_pop(&tokens);
+    int        err              = PARSER_OK;
+    int        next_is_modifier = 0;
+    ll_node_t* token            = ll_pop(&tokens);
     while (token) {
         if (strcmp((char*)token->data, "/") == 0) {
             if (pc->cmd == NULL) {

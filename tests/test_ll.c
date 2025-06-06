@@ -8,10 +8,10 @@
 #define TEST(name) test_##name
 #endif
 
-static int ll_check_eq(LL* ll, uptr_t* arr, size_t size)
+static int ll_check_eq(ll_t* ll, uptr_t* arr, size_t size)
 {
-    LLNode* curr = ll->head;
-    u32_t   i    = 0;
+    ll_node_t* curr = ll->head;
+    u32_t      i    = 0;
     while (curr) {
         if (i >= size)
             return 0;
@@ -25,7 +25,7 @@ static int ll_check_eq(LL* ll, uptr_t* arr, size_t size)
 
 int TEST(add)()
 {
-    LL ll = ll_create();
+    ll_t ll = ll_create();
     ll_add(&ll, 0);
     ll_add(&ll, 1);
     ll_add(&ll, 2);
@@ -39,7 +39,7 @@ int TEST(add)()
 
 int TEST(add_tail)()
 {
-    LL ll = ll_create();
+    ll_t ll = ll_create();
     ll_add_tail(&ll, 0);
     ll_add_tail(&ll, 1);
     ll_add_tail(&ll, 2);
@@ -53,13 +53,13 @@ int TEST(add_tail)()
 
 int TEST(getref_contained)()
 {
-    LL ll = ll_create();
+    ll_t ll = ll_create();
     ll_add(&ll, 0);
     ll_add(&ll, 1);
     ll_add(&ll, 2);
 
-    LLNode* d = ll_getref(&ll, 1);
-    int     r = d && d->data == 1;
+    ll_node_t* d = ll_getref(&ll, 1);
+    int        r = d && d->data == 1;
 
     ll_clear(&ll, NULL);
     return r;
@@ -67,13 +67,13 @@ int TEST(getref_contained)()
 
 int TEST(getref_not_contained)()
 {
-    LL ll = ll_create();
+    ll_t ll = ll_create();
     ll_add(&ll, 0);
     ll_add(&ll, 1);
     ll_add(&ll, 2);
 
-    LLNode* d = ll_getref(&ll, 3);
-    int     r = !d;
+    ll_node_t* d = ll_getref(&ll, 3);
+    int        r = !d;
 
     ll_clear(&ll, NULL);
     return r;
@@ -81,13 +81,13 @@ int TEST(getref_not_contained)()
 
 int TEST(getref_first)()
 {
-    LL ll = ll_create();
+    ll_t ll = ll_create();
     ll_add(&ll, 0);
     ll_add(&ll, 1);
     ll_add(&ll, 2);
 
-    LLNode* d = ll_getref(&ll, 0);
-    int     r = d && d->data == 2;
+    ll_node_t* d = ll_getref(&ll, 0);
+    int        r = d && d->data == 2;
 
     ll_clear(&ll, NULL);
     return r;
@@ -95,13 +95,13 @@ int TEST(getref_first)()
 
 int TEST(getref_last)()
 {
-    LL ll = ll_create();
+    ll_t ll = ll_create();
     ll_add(&ll, 0);
     ll_add(&ll, 1);
     ll_add(&ll, 2);
 
-    LLNode* d = ll_getref(&ll, ll.size - 1);
-    int     r = d && d->data == 0;
+    ll_node_t* d = ll_getref(&ll, ll.size - 1);
+    int        r = d && d->data == 0;
 
     ll_clear(&ll, NULL);
     return r;
@@ -109,13 +109,13 @@ int TEST(getref_last)()
 
 int TEST(pop_with_el)()
 {
-    LL ll = ll_create();
+    ll_t ll = ll_create();
     ll_add(&ll, 0);
     ll_add(&ll, 1);
     ll_add(&ll, 2);
 
-    LLNode* e = ll_pop(&ll);
-    int     r = e && e->data == 2;
+    ll_node_t* e = ll_pop(&ll);
+    int        r = e && e->data == 2;
 
     bhex_free(e);
     ll_clear(&ll, NULL);
@@ -124,9 +124,9 @@ int TEST(pop_with_el)()
 
 int TEST(pop_without_el)()
 {
-    LL      ll = ll_create();
-    LLNode* e  = ll_pop(&ll);
-    int     r  = !e;
+    ll_t       ll = ll_create();
+    ll_node_t* e  = ll_pop(&ll);
+    int        r  = !e;
 
     ll_clear(&ll, NULL);
     return r;
@@ -134,7 +134,7 @@ int TEST(pop_without_el)()
 
 int TEST(invert)()
 {
-    LL ll = ll_create();
+    ll_t ll = ll_create();
     ll_add(&ll, 0);
     ll_add(&ll, 1);
     ll_add(&ll, 2);

@@ -5,11 +5,11 @@
 #include <errno.h>
 #include <alloc.h>
 #include <log.h>
+#include <cmdline_parser.h>
 
 #include "linenoise/linenoise.h"
 #include "completion.h"
 #include "cmd/cmd.h"
-#include "parser.h"
 
 const char* const   short_options  = "hw2bnsc:";
 const struct option long_options[] = {
@@ -135,7 +135,7 @@ static void main_loop(FileBuffer* fb, CmdContext* cc)
         linenoiseHistoryAdd(inp);
 
         ParsedCommand* pc;
-        int            r = parse(inp, &pc);
+        int            r = cmdline_parse(inp, &pc);
         if (r != PARSER_OK) {
             error("%s", parser_err_to_string(r));
             bhex_free(inp);
@@ -158,7 +158,7 @@ static void command_loop(FileBuffer* fb, CmdContext* cc, char* commands)
 
     char* token = strtok(commands, ";");
     while (token) {
-        if ((r = parse(token, &pc)) != PARSER_OK) {
+        if ((r = cmdline_parse(token, &pc)) != PARSER_OK) {
             error("%s", parser_err_to_string(r));
             return;
         }
@@ -182,7 +182,7 @@ static void stdin_loop(FileBuffer* fb, CmdContext* cc)
     char*   lineptr = NULL;
 
     while ((nread = getline(&lineptr, &len, stdin)) != -1) {
-        if ((r = parse(lineptr, &pc)) != PARSER_OK) {
+        if ((r = cmdline_parse(lineptr, &pc)) != PARSER_OK) {
             error("%s", parser_err_to_string(r));
             return;
         }

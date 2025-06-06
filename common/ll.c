@@ -3,17 +3,17 @@
 
 #include <stdio.h>
 
-LL ll_create(void)
+ll_t ll_create(void)
 {
-    LL ll = {.head = NULL, .size = 0};
+    ll_t ll = {.head = NULL, .size = 0};
     return ll;
 }
 
-void ll_clear(LL* ll, func_on_el_t destroy_el)
+void ll_clear(ll_t* ll, func_on_el_t destroy_el)
 {
-    LLNode* curr = ll->head;
+    ll_node_t* curr = ll->head;
     while (curr != NULL) {
-        LLNode* tmp = curr->next;
+        ll_node_t* tmp = curr->next;
         if (destroy_el)
             destroy_el(curr->data);
         bhex_free(curr);
@@ -24,21 +24,21 @@ void ll_clear(LL* ll, func_on_el_t destroy_el)
     ll->size = 0;
 }
 
-void ll_add(LL* ll, uptr_t data)
+void ll_add(ll_t* ll, uptr_t data)
 {
-    LLNode* node = bhex_malloc(sizeof(LLNode));
-    node->next   = ll->head;
-    node->data   = data;
+    ll_node_t* node = bhex_malloc(sizeof(ll_node_t));
+    node->next      = ll->head;
+    node->data      = data;
 
     ll->head = node;
     ll->size++;
 }
 
-void ll_add_tail(LL* ll, uptr_t data)
+void ll_add_tail(ll_t* ll, uptr_t data)
 {
-    LLNode* node = bhex_malloc(sizeof(LLNode));
-    node->next   = NULL;
-    node->data   = data;
+    ll_node_t* node = bhex_malloc(sizeof(ll_node_t));
+    node->next      = NULL;
+    node->data      = data;
     ll->size++;
 
     if (ll->head == NULL) {
@@ -46,27 +46,27 @@ void ll_add_tail(LL* ll, uptr_t data)
         return;
     }
 
-    LLNode* curr = ll->head;
+    ll_node_t* curr = ll->head;
     while (curr->next != NULL) {
         curr = curr->next;
     }
     curr->next = node;
 }
 
-LLNode* ll_pop(LL* ll)
+ll_node_t* ll_pop(ll_t* ll)
 {
     if (ll->head == NULL)
         return NULL;
 
-    LLNode* r = ll->head;
-    ll->head  = ll->head->next;
+    ll_node_t* r = ll->head;
+    ll->head     = ll->head->next;
     ll->size--;
     return r;
 }
 
-LLNode* ll_getref(LL* ll, u32_t i)
+ll_node_t* ll_getref(ll_t* ll, u32_t i)
 {
-    LLNode* curr = ll->head;
+    ll_node_t* curr = ll->head;
     while (i != 0) {
         if (curr == NULL)
             return NULL;
@@ -76,32 +76,32 @@ LLNode* ll_getref(LL* ll, u32_t i)
     return curr;
 }
 
-void ll_invert(LL* ll)
+void ll_invert(ll_t* ll)
 {
-    LLNode* prev = NULL;
-    LLNode* curr = ll->head;
+    ll_node_t* prev = NULL;
+    ll_node_t* curr = ll->head;
 
     while (curr) {
-        LLNode* tmp = curr->next;
-        curr->next  = prev;
-        prev        = curr;
-        curr        = tmp;
+        ll_node_t* tmp = curr->next;
+        curr->next     = prev;
+        prev           = curr;
+        curr           = tmp;
     }
     ll->head = prev;
 }
 
-void ll_foreach(LL* ll, func_on_el_t f)
+void ll_foreach(ll_t* ll, func_on_el_t f)
 {
-    LLNode* curr = ll->head;
+    ll_node_t* curr = ll->head;
     while (curr) {
         f(curr->data);
         curr = curr->next;
     }
 }
 
-void ll_print(LL* ll, func_on_el_t print_el)
+void ll_print(ll_t* ll, func_on_el_t print_el)
 {
-    LLNode* curr = ll->head;
+    ll_node_t* curr = ll->head;
     while (curr) {
         if (print_el) {
             print_el(curr->data);

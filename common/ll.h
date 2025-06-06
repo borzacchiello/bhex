@@ -3,29 +3,29 @@
 
 #include <defs.h>
 
-typedef struct LLNode {
-    struct LLNode* next;
-    uptr_t          data;
-} LLNode;
+typedef struct ll_node_t {
+    struct ll_node_t* next;
+    uptr_t            data;
+} ll_node_t;
 
-typedef struct LL {
-    LLNode* head;
-    u32_t   size;
-} LL;
+typedef struct ll_t {
+    ll_node_t* head;
+    u32_t      size;
+} ll_t;
 
 typedef void (*func_on_el_t)(uptr_t);
 
-LL   ll_create();
-void ll_clear(LL* ll, func_on_el_t destroy_el);
+ll_t ll_create();
+void ll_clear(ll_t* ll, func_on_el_t destroy_el);
 
-void    ll_add(LL* ll, uptr_t data);
-void    ll_add_tail(LL* ll, uptr_t data);
-LLNode* ll_pop(LL* ll);
-LLNode* ll_getref(LL* ll, u32_t i);
+void       ll_add(ll_t* ll, uptr_t data);
+void       ll_add_tail(ll_t* ll, uptr_t data);
+ll_node_t* ll_pop(ll_t* ll);
+ll_node_t* ll_getref(ll_t* ll, u32_t i);
 
-void ll_invert(LL* ll);
-void ll_foreach(LL* ll, func_on_el_t f);
+void ll_invert(ll_t* ll);
+void ll_foreach(ll_t* ll, func_on_el_t f);
 
-void ll_print(LL* ll, func_on_el_t print_el);
+void ll_print(ll_t* ll, func_on_el_t print_el);
 
 #endif

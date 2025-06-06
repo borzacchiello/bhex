@@ -1,19 +1,19 @@
 #include <string.h>
-#include <ll.h>
 
-#include "../parser.h"
+#include <cmdline_parser.h>
+#include <ll.h>
 
 #ifndef TEST
 #define TEST(name) test_##name
 #endif
 
-int  tokenize(const char* str, LL* o_result);
+int  tokenize(const char* str, ll_t* o_result);
 void destroy_token(uptr_t tptr);
 
-int check_eq(LL* ll, const char** arr, size_t size)
+int check_eq(ll_t* ll, const char** arr, size_t size)
 {
-    LLNode* curr = ll->head;
-    u32_t   i    = 0;
+    ll_node_t* curr = ll->head;
+    u32_t      i    = 0;
     while (curr) {
         if (i >= size)
             return 0;
@@ -27,8 +27,8 @@ int check_eq(LL* ll, const char** arr, size_t size)
 
 int TEST(tokenize_simple)()
 {
-    LL  ll;
-    int r = tokenize("ciao ciao come va\n", &ll);
+    ll_t ll;
+    int  r = tokenize("ciao ciao come va\n", &ll);
     if (r != PARSER_OK)
         return 0;
 
@@ -41,8 +41,8 @@ int TEST(tokenize_simple)()
 
 int TEST(tokenize_simple_spaces)()
 {
-    LL  ll;
-    int r = tokenize("    ciao   ciao \t\tcome va    \n\n", &ll);
+    ll_t ll;
+    int  r = tokenize("    ciao   ciao \t\tcome va    \n\n", &ll);
     if (r != PARSER_OK)
         return 0;
 
@@ -55,8 +55,8 @@ int TEST(tokenize_simple_spaces)()
 
 int TEST(tokenize_quotation_ok)()
 {
-    LL  ll;
-    int r = tokenize("ciao \"Mario Rossi\"\n", &ll);
+    ll_t ll;
+    int  r = tokenize("ciao \"Mario Rossi\"\n", &ll);
     if (r != PARSER_OK)
         return 0;
 
@@ -69,15 +69,15 @@ int TEST(tokenize_quotation_ok)()
 
 int TEST(tokenize_quotation_err)()
 {
-    LL  ll;
-    int r = tokenize("ciao \"Mario Rossi\n", &ll);
+    ll_t ll;
+    int  r = tokenize("ciao \"Mario Rossi\n", &ll);
     return r == PARSER_ERR_UNCLOSED_QUOTATION;
 }
 
 int TEST(tokenize_cmd_params)()
 {
-    LL  ll;
-    int r = tokenize("w/x/+16 aabbccdd\n", &ll);
+    ll_t ll;
+    int  r = tokenize("w/x/+16 aabbccdd\n", &ll);
     if (r != PARSER_OK)
         return 0;
 
@@ -90,8 +90,8 @@ int TEST(tokenize_cmd_params)()
 
 int TEST(tokenize_cmd_help)()
 {
-    LL  ll;
-    int r = tokenize("w?\n", &ll);
+    ll_t ll;
+    int  r = tokenize("w?\n", &ll);
     if (r != PARSER_OK)
         return 0;
 
@@ -104,8 +104,8 @@ int TEST(tokenize_cmd_help)()
 
 int TEST(tokenize_cmd_params_slash_in_arg)()
 {
-    LL  ll;
-    int r = tokenize("w/x/+16 /ciao/ciao/ciao\n", &ll);
+    ll_t ll;
+    int  r = tokenize("w/x/+16 /ciao/ciao/ciao\n", &ll);
     if (r != PARSER_OK)
         return 0;
 
@@ -120,7 +120,7 @@ int TEST(parser_simple)()
 {
     ParsedCommand* pc;
 
-    int r = parse("help", &pc);
+    int r = cmdline_parse("help", &pc);
     if (r != PARSER_OK)
         return 0;
 
@@ -151,7 +151,7 @@ int TEST(parser_with_args)()
 {
     ParsedCommand* pc;
 
-    int r = parse("help a1 a2", &pc);
+    int r = cmdline_parse("help a1 a2", &pc);
     if (r != PARSER_OK)
         return 0;
 
@@ -184,7 +184,7 @@ int TEST(parser_with_cmdmod)()
 {
     ParsedCommand* pc;
 
-    int r = parse("w/x/+16", &pc);
+    int r = cmdline_parse("w/x/+16", &pc);
     if (r != PARSER_OK)
         return 0;
 
@@ -218,7 +218,7 @@ int TEST(parser_with_args_cmdmod)()
 {
     ParsedCommand* pc;
 
-    int r = parse("w/x/+16 aabbccdd", &pc);
+    int r = cmdline_parse("w/x/+16 aabbccdd", &pc);
     if (r != PARSER_OK)
         return 0;
 
@@ -255,7 +255,7 @@ int TEST(parser_help_mod)()
 {
     ParsedCommand* pc;
 
-    int r = parse("w?", &pc);
+    int r = cmdline_parse("w?", &pc);
     if (r != PARSER_OK)
         return 0;
 
@@ -286,7 +286,7 @@ int TEST(parser_err_trailing_data)()
 {
     ParsedCommand* pc;
 
-    int r = parse("w? ciao", &pc);
+    int r = cmdline_parse("w? ciao", &pc);
     return r == PARSER_ERR_UNEXPECTED_TRAILING_DATA;
 }
 
@@ -294,6 +294,6 @@ int TEST(parser_err_cmdmod_before_cmd)()
 {
     ParsedCommand* pc;
 
-    int r = parse("/w", &pc);
+    int r = cmdline_parse("/w", &pc);
     return r == PARSER_ERR_CMDMOD_BEFORE_CMD;
 }

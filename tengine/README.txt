@@ -23,3 +23,4 @@ Work in progress template engine
 	* needs string literal
 [ ] allow usage of structs from other files (using like an "import NAME" statement)
 [ ] make 'proc' not mandatory
+[ ] implement the output in a generic way, so that we can choose different backends (e.g., JSON)

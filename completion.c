@@ -137,7 +137,7 @@ static void cmd_completion(const char* word, linenoiseCompletions* lc)
     } while (0)
     static_cmd_completion("help");
 
-    LLNode* curr = g_cc->commands.head;
+    ll_node_t* curr = g_cc->commands.head;
     while (curr) {
         Cmd* cmd = (Cmd*)curr->data;
         if (!word_len || (word_len < strlen(cmd->name) &&
@@ -192,7 +192,7 @@ char* bhex_shell_hint(const char* buf, int* color, int* bold)
         goto end;
     size_t word_len = strlen(last_word);
 
-    LLNode* curr = g_cc->commands.head;
+    ll_node_t* curr = g_cc->commands.head;
     while (curr) {
         Cmd* cmd = (Cmd*)curr->data;
         if (cmd->hint != NULL) {

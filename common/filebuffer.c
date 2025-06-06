@@ -225,7 +225,7 @@ int fb_delete(FileBuffer* fb, size_t size)
 
 int fb_undo_last(FileBuffer* fb)
 {
-    LLNode* n = ll_pop(&fb->modifications);
+    ll_node_t* n = ll_pop(&fb->modifications);
     if (!n)
         return 0;
 
@@ -393,8 +393,8 @@ void fb_commit(FileBuffer* fb)
 
     ll_invert(&fb->modifications);
 
-    int     r;
-    LLNode* curr = fb->modifications.head;
+    int        r;
+    ll_node_t* curr = fb->modifications.head;
     while (curr) {
         Modification* mod = (Modification*)curr->data;
         switch (mod->type) {
@@ -447,8 +447,8 @@ static int fb_read_internal(FileBuffer* fb, u64_t addr, u64_t fsize, u64_t idx,
 
     size_t size = min(fb_block_size - idx, fsize - addr);
 
-    int     n    = 0;
-    LLNode* curr = fb->modifications.head;
+    int        n    = 0;
+    ll_node_t* curr = fb->modifications.head;
     while (curr && n < nmod) {
         curr = curr->next;
         n += 1;
@@ -564,8 +564,8 @@ const u8_t* fb_read_ex(FileBuffer* fb, size_t size, u32_t mod_idx)
     if (mod_idx != 0) {
         fb->block_dirty = 1;
         // we should adjust fsize according to the skipped modifications
-        u32_t   nmod = 0;
-        LLNode* curr = fb->modifications.head;
+        u32_t      nmod = 0;
+        ll_node_t* curr = fb->modifications.head;
         while (curr && nmod < mod_idx) {
             Modification* mod = (Modification*)curr->data;
             switch (mod->type) {

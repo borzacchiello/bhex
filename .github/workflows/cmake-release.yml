@@ -23,7 +23,7 @@ jobs:
             os: ubuntu-24.04
             c_compiler: gcc
             cxx_compiler: g++
-            cmake_flags: -DASAN=on
+            cmake_flags:
             dependencies: 
             strip: strip
           - name: linux-i386

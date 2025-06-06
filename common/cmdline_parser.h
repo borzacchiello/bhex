@@ -16,11 +16,11 @@
 typedef struct ParsedCommand {
     char* cmd;
     int   print_help;
-    LL    cmd_modifiers;
-    LL    args;
+    ll_t  cmd_modifiers;
+    ll_t  args;
 } ParsedCommand;
 
-int  parse(const char* str, ParsedCommand** o_cmd);
+int  cmdline_parse(const char* str, ParsedCommand** o_cmd);
 void parsed_command_destroy(ParsedCommand* cmd);
 
 const char* parser_err_to_string(int err);
