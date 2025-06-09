@@ -74,23 +74,22 @@ static Enum* get_enum(ASTCtx* ast, const char* name)
 
 static map* process_struct_type(ProcessContext* ctx, Type* type)
 {
-    ASTCtx* ast = NULL;
+    ASTCtx* original_ast = ctx->engine->ast;
+    map*    result       = NULL;
+
     if (type->bhe_name != NULL) {
         if (imported_cb == NULL) {
             warning("imported callback not configured");
             return NULL;
         }
-        ast = imported_cb(imported_ptr, type->bhe_name);
-    } else {
-        ast = ctx->engine->ast;
+
+        // from now on, and while parsing this type, use this AST
+        ctx->engine->ast = imported_cb(imported_ptr, type->bhe_name);
     }
 
-    if (ast == NULL)
-        return NULL;
-
-    Block* body = get_struct_body(ast, type->name);
+    Block* body = get_struct_body(ctx->engine->ast, type->name);
     if (body == NULL)
-        return NULL;
+        goto end;
 
     Scope* scope = Scope_new();
 
@@ -100,11 +99,15 @@ static map* process_struct_type(ProcessContext* ctx, Type* type)
         Stmt* stmt = (Stmt*)body->stmts->data[i];
         if (process_stmt(ctx, stmt, scope) != 0) {
             Scope_free(scope);
-            return NULL;
+            goto end;
         }
     }
     ctx->print_off -= 4;
-    return Scope_free_and_get_filevars(scope);
+    result = Scope_free_and_get_filevars(scope);
+
+end:
+    ctx->engine->ast = original_ast;
+    return result;
 }
 
 static const char* process_enum_type(ProcessContext* ctx, Type* type,
@@ -648,7 +651,8 @@ static int process_FILE_VAR_DECL(ProcessContext* ctx, Stmt* stmt, Scope* scope)
     engine_printf(ctx->engine, "b+%08llx ", ctx->fb->off - ctx->initial_off);
     for (int i = 0; i < ctx->print_off; ++i)
         engine_printf(ctx->engine, " ");
-    engine_printf(ctx->engine, " %*s: ", ctx->engine->ast->max_ident_len, stmt->name);
+    engine_printf(ctx->engine, " %*s: ", ctx->engine->ast->max_ident_len,
+                  stmt->name);
 
     if (stmt->arr_size == NULL) {
         // Not an array

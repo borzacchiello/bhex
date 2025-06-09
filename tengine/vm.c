@@ -144,6 +144,8 @@ int tengine_vm_process_file(TEngineVM* ctx, FileBuffer* fb, const char* fname)
 
 int tengine_vm_process_string(TEngineVM* ctx, FileBuffer* fb, const char* code)
 {
+    u64_t orig_off = fb->off;
+
     size_t prog_size = strlen(code) + 32;
     char*  prog      = bhex_calloc(prog_size);
     snprintf(prog, prog_size - 1, "proc { %s ; }", code);
@@ -151,11 +153,13 @@ int tengine_vm_process_string(TEngineVM* ctx, FileBuffer* fb, const char* code)
     TEngineInterpreter* e = tengine_interpreter_run_on_string(fb, prog);
     if (!e) {
         bhex_free(prog);
+        fb->off = orig_off;
         return 1;
     }
 
     tengine_interpreter_deinit(e);
     bhex_free(e);
     bhex_free(prog);
+    fb->off = orig_off;
     return 0;
 }

@@ -96,6 +96,8 @@ __attribute__((unused)) static int exec_commands_on(const char*      s,
     // reset the state, just in case
     fb_seek(dummyfb->fb, 0);
     fb_undo_all(dummyfb->fb);
+    bhex_free(strbuilder_reset(sb));
+    bhex_free(strbuilder_reset(err_sb));
 
     char* cmd = strtok(tmp, ";");
     while (cmd) {
