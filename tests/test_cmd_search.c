@@ -18,7 +18,6 @@ int TEST(hello)(void)
     bhex_free(out);
 
 end:
-    bhex_free(strbuilder_reset(sb));
     return r;
 }
 
@@ -46,7 +45,6 @@ int TEST(hello_p)(void)
     bhex_free(out);
 
 end:
-    bhex_free(strbuilder_reset(sb));
     return r;
 }
 
@@ -63,7 +61,6 @@ int TEST(hex)(void)
     bhex_free(out);
 
 end:
-    bhex_free(strbuilder_reset(sb));
     return r;
 }
 
@@ -80,6 +77,5 @@ int TEST(hex_seek)(void)
     bhex_free(out);
 
 end:
-    bhex_free(strbuilder_reset(sb));
     return r;
 }

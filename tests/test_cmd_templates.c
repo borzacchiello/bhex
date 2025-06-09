@@ -112,7 +112,6 @@ int TEST(template_elf)(void)
     bhex_free(out);
 
 end:
-    bhex_free(strbuilder_reset(sb));
     return r;
 }
 
@@ -254,6 +253,5 @@ int TEST(template_pe)(void)
     bhex_free(out);
 
 end:
-    bhex_free(strbuilder_reset(sb));
     return r;
 }

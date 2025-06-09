@@ -81,6 +81,24 @@ TEngineVM* tengine_vm_create(const char** dirs)
     return ctx;
 }
 
+int tengine_vm_add_template(TEngineVM* ctx, const char* name, const char* path)
+{
+    if (map_contains(ctx->templates, name)) {
+        warning("template '%s' already loaded, overwriting template '%s'",
+                name);
+    }
+
+    ASTCtx* ast = tengine_interpreter_parse_filename(path);
+    if (ast == NULL) {
+        // Invalid bhe file
+        warning("template @ '%s' invalid", path);
+        return 1;
+    }
+
+    map_set(ctx->templates, name, ast);
+    return 0;
+}
+
 void tengine_vm_destroy(TEngineVM* ctx)
 {
     map_destroy(ctx->templates);

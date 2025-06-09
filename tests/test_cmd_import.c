@@ -87,7 +87,6 @@ int TEST(insert_1)(void)
     bhex_free(out);
 
 end:
-    bhex_free(strbuilder_reset(sb));
     return r;
 }
 
@@ -114,7 +113,6 @@ int TEST(insert_2)(void)
     bhex_free(out);
 
 end:
-    bhex_free(strbuilder_reset(sb));
     return r;
 }
 
@@ -142,7 +140,6 @@ int TEST(insert_3)(void)
     bhex_free(out);
 
 end:
-    bhex_free(strbuilder_reset(sb));
     return r;
 }
 
@@ -226,7 +223,6 @@ int TEST(insert_4)(void)
     bhex_free(out);
 
 end:
-    bhex_free(strbuilder_reset(sb));
     return r;
 }
 
@@ -265,7 +261,6 @@ int TEST(overwrite_1)(void)
     bhex_free(out);
 
 end:
-    bhex_free(strbuilder_reset(sb));
     return r;
 }
 
@@ -279,7 +274,6 @@ int TEST(invalid_size_1)(void)
     int r = TEST_FAILED;
     if (exec_commands(import_buf) != 0)
         r = TEST_SUCCEEDED;
-    bhex_free(strbuilder_reset(sb));
     return r;
 }
 
@@ -293,7 +287,6 @@ int TEST(invalid_offset_1)(void)
     int r = TEST_FAILED;
     if (exec_commands(import_buf) != 0)
         r = TEST_SUCCEEDED;
-    bhex_free(strbuilder_reset(sb));
     return r;
 }
 
@@ -307,6 +300,5 @@ int TEST(invalid_size_with_offset_1)(void)
     int r = TEST_FAILED;
     if (exec_commands(import_buf) != 0)
         r = TEST_SUCCEEDED;
-    bhex_free(strbuilder_reset(sb));
     return r;
 }

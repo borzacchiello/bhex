@@ -31,7 +31,6 @@ int TEST(equal_smaller)(void)
     bhex_free(out);
 
 end:
-    bhex_free(strbuilder_reset(sb));
     return r;
 }
 
@@ -58,7 +57,6 @@ int TEST(different_smaller)(void)
     bhex_free(out);
 
 end:
-    bhex_free(strbuilder_reset(sb));
     return r;
 }
 
@@ -84,10 +82,9 @@ bold_begin " 000f: FF                                                .\n" bold_e
         goto end;
 
     char* out = strbuilder_reset(sb);
-    r = compare_strings_ignoring_X(expected, out);
+    r         = compare_strings_ignoring_X(expected, out);
     bhex_free(out);
 
 end:
-    bhex_free(strbuilder_reset(sb));
     return r;
 }

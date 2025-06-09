@@ -1,4 +1,6 @@
 #include "../tengine/vm.h"
+#include "alloc.h"
+#include "strbuilder.h"
 #include "t_cmd_common.h"
 #include "t.h"
 
@@ -6,7 +8,7 @@
 #define TEST(name) test_##name
 #endif
 
-static const char* tengine_vm_tests_dirs[] = {"./templates", NULL};
+static const char* empty_dirs[] = {NULL};
 
 int TEST(use_struct_of_another_file)(void)
 {
@@ -20,9 +22,11 @@ int TEST(use_struct_of_another_file)(void)
     // clang-format on
 
     int        r  = TEST_FAILED;
-    TEngineVM* vm = tengine_vm_create(tengine_vm_tests_dirs);
+    TEngineVM* vm = tengine_vm_create(empty_dirs);
     if (vm == NULL)
         return 0;
+    if (tengine_vm_add_template(vm, "net", "./templates/net.bhe") != 0)
+        goto end;
 
     if (tengine_vm_process_string(vm, elf_fb->fb, prog) != 0)
         goto end;
@@ -66,9 +70,11 @@ int TEST(use_complex_struct_of_another_file)(void)
     // clang-format on
 
     int        r  = TEST_FAILED;
-    TEngineVM* vm = tengine_vm_create(tengine_vm_tests_dirs);
+    TEngineVM* vm = tengine_vm_create(empty_dirs);
     if (vm == NULL)
         return 0;
+    if (tengine_vm_add_template(vm, "elf", "./templates/elf.bhe") != 0)
+        goto end;
 
     if (tengine_vm_process_string(vm, elf_fb->fb, prog) != 0)
         goto end;
@@ -91,9 +97,11 @@ int TEST(use_enum_of_another_file)(void)
     // clang-format on
 
     int        r  = TEST_FAILED;
-    TEngineVM* vm = tengine_vm_create(tengine_vm_tests_dirs);
+    TEngineVM* vm = tengine_vm_create(empty_dirs);
     if (vm == NULL)
         return 0;
+    if (tengine_vm_add_template(vm, "elf", "./templates/elf.bhe") != 0)
+        goto end;
 
     if (tengine_vm_process_string(vm, elf_fb->fb, prog) != 0)
         goto end;

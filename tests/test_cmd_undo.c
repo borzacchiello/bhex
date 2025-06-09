@@ -22,7 +22,6 @@ int TEST(undo_write)(void)
     bhex_free(out);
 
 end:
-    bhex_free(strbuilder_reset(sb));
     return r;
 }
 
@@ -43,7 +42,6 @@ int TEST(undo_insert)(void)
     bhex_free(out);
 
 end:
-    bhex_free(strbuilder_reset(sb));
     return r;
 }
 
@@ -66,7 +64,6 @@ int TEST(undo_write_insert)(void)
     bhex_free(out);
 
 end:
-    bhex_free(strbuilder_reset(sb));
     return r;
 }
 
@@ -87,7 +84,6 @@ int TEST(undo_delete)(void)
     bhex_free(out);
 
 end:
-    bhex_free(strbuilder_reset(sb));
     return r;
 }
 
@@ -109,6 +105,5 @@ int TEST(undo_all)(void)
     bhex_free(out);
 
 end:
-    bhex_free(strbuilder_reset(sb));
     return r;
 }

@@ -86,6 +86,8 @@ static map* process_struct_type(ProcessContext* ctx, Type* type)
         // from now on, and while parsing this type, use this AST
         ctx->engine->ast = imported_cb(imported_ptr, type->bhe_name);
     }
+    if (!ctx->engine->ast)
+        return NULL;
 
     Block* body = get_struct_body(ctx->engine->ast, type->name);
     if (body == NULL)

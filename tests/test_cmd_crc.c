@@ -83,7 +83,6 @@ int TEST(whole_file_all_crcs)(void)
     bhex_free(out);
 
 end:
-    bhex_free(strbuilder_reset(sb));
     return r;
 }
 
@@ -114,7 +113,6 @@ int TEST(whole_file_all_crc32)(void)
     bhex_free(out);
 
 end:
-    bhex_free(strbuilder_reset(sb));
     return r;
 }
 
@@ -134,7 +132,6 @@ int TEST(whole_file_one_crc)(void)
     bhex_free(out);
 
 end:
-    bhex_free(strbuilder_reset(sb));
     return r;
 }
 
@@ -154,7 +151,6 @@ int TEST(one_byte_one_crc)(void)
     bhex_free(out);
 
 end:
-    bhex_free(strbuilder_reset(sb));
     return r;
 }
 
@@ -174,7 +170,6 @@ int TEST(one_byte_off_one_one_crc)(void)
     bhex_free(out);
 
 end:
-    bhex_free(strbuilder_reset(sb));
     return r;
 }
 
@@ -183,7 +178,6 @@ int TEST(invalid_offset)(void)
     int r = TEST_SUCCEEDED;
     if (exec_commands("crc CRC-8/BLUETOOTH 1 99999999") == 0)
         r = TEST_FAILED;
-    bhex_free(strbuilder_reset(sb));
     return r;
 }
 
@@ -203,6 +197,5 @@ int TEST(size_too_big)(void)
     bhex_free(out);
 
 end:
-    bhex_free(strbuilder_reset(sb));
     return r;
 }

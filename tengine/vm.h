@@ -12,6 +12,8 @@ typedef struct TEngineVM {
 TEngineVM* tengine_vm_create(const char** dirs);
 void       tengine_vm_destroy(TEngineVM* ctx);
 
+int tengine_vm_add_template(TEngineVM* ctx, const char* name, const char* path);
+
 void tengine_vm_iter_templates(TEngineVM* ctx,
                                void (*cb)(const char* name, ASTCtx* ast));
 void tengine_vm_iter_structs(TEngineVM* ctx,

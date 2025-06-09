@@ -60,7 +60,6 @@ int TEST(small_chunk)(void)
         r = TEST_SUCCEEDED;
 
 end:
-    bhex_free(strbuilder_reset(sb));
     if (out_content)
         bhex_free(out_content);
     return r;
@@ -85,7 +84,6 @@ int TEST(big_chunk)(void)
         r = TEST_SUCCEEDED;
 
 end:
-    bhex_free(strbuilder_reset(sb));
     if (out_content)
         bhex_free(out_content);
     return r;
@@ -110,7 +108,6 @@ int TEST(not_zero_off)(void)
         r = TEST_SUCCEEDED;
 
 end:
-    bhex_free(strbuilder_reset(sb));
     if (out_content)
         bhex_free(out_content);
     return r;
