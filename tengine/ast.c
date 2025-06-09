@@ -529,11 +529,27 @@ void IfCond_free(IfCond* c)
     bhex_free(c);
 }
 
-Stmt* Stmt_FILE_VAR_DECL_new(const char* type, const char* name, Expr* size)
+Type* Type_new(const char* name, const char* bhe_name)
+{
+    Type* t = bhex_calloc(sizeof(Type));
+    t->name = bhex_strdup(name);
+    if (bhe_name)
+        t->bhe_name = bhex_strdup(bhe_name);
+    return t;
+}
+
+void Type_free(Type* t)
+{
+    bhex_free(t->name);
+    bhex_free(t->bhe_name);
+    bhex_free(t);
+}
+
+Stmt* Stmt_FILE_VAR_DECL_new(Type* type, const char* name, Expr* size)
 {
     Stmt* stmt     = bhex_calloc(sizeof(Stmt));
     stmt->t        = FILE_VAR_DECL;
-    stmt->type     = bhex_strdup(type);
+    stmt->type     = type;
     stmt->name     = bhex_strdup(name);
     stmt->arr_size = size;
     return stmt;
@@ -612,7 +628,7 @@ Stmt* Stmt_BREAK_new(void)
 
 static void FILE_VAR_DECL_free(Stmt* stmt)
 {
-    bhex_free(stmt->type);
+    Type_free(stmt->type);
     bhex_free(stmt->name);
     if (stmt->arr_size)
         Expr_free(stmt->arr_size);
@@ -678,7 +694,10 @@ void Stmt_pp(Stmt* stmt)
 {
     switch (stmt->t) {
         case FILE_VAR_DECL:
-            printf("  %s %s", stmt->type, stmt->name);
+            printf("  ");
+            if (stmt->type->bhe_name != NULL)
+                printf("%s#", stmt->type->bhe_name);
+            printf("%s %s", stmt->type->name, stmt->name);
             if (stmt->arr_size != NULL) {
                 printf("[");
                 Expr_pp(stmt->arr_size);
@@ -890,6 +909,7 @@ ASTCtx* ASTCtx_new(void)
     map_set_dispose(ctx->enums, (void (*)(void*))Enum_free);
     ctx->functions = map_create();
     map_set_dispose(ctx->functions, (void (*)(void*))Function_free);
+    ctx->max_ident_len = 0;
     return ctx;
 }
 

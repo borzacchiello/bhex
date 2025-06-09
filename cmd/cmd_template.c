@@ -1,6 +1,6 @@
 #include "cmd_arg_handler.h"
 #include "cmd_template.h"
-#include "../tengine/tengine.h"
+#include "../tengine/vm.h"
 
 #include <sys/stat.h>
 #include <display.h>
@@ -10,25 +10,20 @@
 #include <log.h>
 #include "cmd.h"
 
-#define HINT_STR "[/l] <name or file>"
-#define LIST_SET 0
+#define HINT_STR       "[/l/i] <name or file>"
+#define MODE_LIST      0
+#define MODE_INTERPRET 1
 
-static const char* search_folders[] = {"/usr/local/share/bhex/templates",
-                                       "../templates", "."};
+static const char* search_folders[]       = {"/usr/local/share/bhex/templates",
+                                             "../templates", ".", NULL};
+static const char* search_folders_empty[] = {NULL};
 
 // just for testing purposes
 int template_skip_search = 0;
 
 typedef struct TemplateCtx {
-    map* templates;
+    TEngineVM* vm;
 } TemplateCtx;
-
-static void templatecmd_dispose(TemplateCtx* ctx)
-{
-    map_destroy(ctx->templates);
-    bhex_free(ctx);
-    return;
-}
 
 static void templatecmd_help(void* obj)
 {
@@ -38,10 +33,21 @@ static void templatecmd_help(void* obj)
         "\n"
         "  t" HINT_STR "\n"
         "     l: list available templates and structs\n"
+        "     i: interpret inline code\n"
         "\n"
-        "  name: the name of the pre-loaded template/struct to use, or a "
-        "path to a template file, or a filter if in list mode\n"
+        "  arg: its meaning depends on the mode. It could be\n"
+        "       - the name of the pre-loaded template/struct to use\n"
+        "       - a path to a template file\n"
+        "       - a filter (if in list mode)\n"
+        "       - inline bhex code (if in interpret mode)\n"
         "\n");
+}
+
+static void templatecmd_dispose(TemplateCtx* ctx)
+{
+    tengine_vm_destroy(ctx->vm);
+    bhex_free(ctx);
+    return;
 }
 
 static int file_exists(const char* path)
@@ -51,40 +57,44 @@ static int file_exists(const char* path)
     return S_ISREG(path_stat.st_mode);
 }
 
+static const char* print_filter = NULL;
+static void        templates_print_cb(const char* name, ASTCtx* ast)
+{
+    if (ast->proc != NULL &&
+        (!print_filter || strstr(name, print_filter) != NULL)) {
+        display_printf("  %s\n", name);
+    }
+}
+
+static void structs_print_cb(const char* name, const char* struct_name,
+                             ASTCtx* ast)
+{
+    if (!print_filter || strstr(name, print_filter) != NULL ||
+        strstr(struct_name, print_filter) != NULL) {
+        display_printf("  %s.%s\n", name, struct_name);
+    }
+}
+
 static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
 {
     char* arg_str = NULL;
     if (handle_args(pc, 1, 0, &arg_str) != 0)
         return COMMAND_INVALID_ARG;
 
-    int list = -1;
-    if (handle_mods(pc, "l", &list) != 0)
+    int mode = -1;
+    if (handle_mods(pc, "l,i", &mode) != 0)
         return COMMAND_INVALID_MOD;
 
-    if (list == LIST_SET) {
-        if (arg_str)
+    if (mode == MODE_LIST) {
+        print_filter = arg_str;
+        if (print_filter)
             display_printf("\n > Filtering using '%s' <\n", arg_str);
 
         display_printf("\nAvailable templates:\n");
-        for (const char* key = map_first(ctx->templates); key != NULL;
-             key             = map_next(ctx->templates, key)) {
-            if (!arg_str || strstr(key, arg_str) != NULL) {
-                display_printf("  %s\n", key);
-            }
-        }
-
+        tengine_vm_iter_templates(ctx->vm, templates_print_cb);
         display_printf("\nAvailable template structs:\n");
-        for (const char* key = map_first(ctx->templates); key != NULL;
-             key             = map_next(ctx->templates, key)) {
-            ASTCtx* ast = map_get(ctx->templates, key);
-            for (const char* str = map_first(ast->structs); str != NULL;
-                 str             = map_next(ast->structs, str)) {
-                if (!arg_str || strstr(key, arg_str) != NULL ||
-                    strstr(str, arg_str) != NULL) {
-                    display_printf("  %s.%s\n", key, str);
-                }
-            }
-        }
+        tengine_vm_iter_structs(ctx->vm, structs_print_cb);
+
         display_printf("\n");
         return COMMAND_OK;
     }
@@ -96,9 +106,18 @@ static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
     char* bhe         = arg_str;
     int   r           = COMMAND_INVALID_ARG;
 
+    if (mode == MODE_INTERPRET) {
+        if (tengine_vm_process_string(ctx->vm, fb, arg_str) != 0) {
+            error("template execution failed");
+            goto end;
+        }
+        r = COMMAND_OK;
+        goto end;
+    }
+
     if (file_exists(bhe)) {
         // Template file
-        if (TEngine_process_filename(fb, bhe) != 0) {
+        if (tengine_vm_process_file(ctx->vm, fb, bhe) != 0) {
             error("template execution failed");
             goto end;
         }
@@ -106,37 +125,33 @@ static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
         r = COMMAND_OK;
         goto end;
     }
-    if (map_contains(ctx->templates, bhe)) {
-        // Pre-loaded template
-        display_printf("\n");
-        ASTCtx* ast = map_get(ctx->templates, bhe);
-        if (TEngine_process_ast(fb, ast) == 0) {
-            display_printf("\n");
-            r = COMMAND_OK;
+
+    if (tengine_vm_has_template(ctx->vm, bhe)) {
+        // Template name
+        if (tengine_vm_process_bhe(ctx->vm, fb, bhe) != 0) {
+            error("template execution failed");
+            goto end;
         }
+        display_printf("\n");
+        r = COMMAND_OK;
         goto end;
     }
+
     // Pre-loaded struct
     char* tname = strtok(bhe, ".");
     if (tname == NULL)
-        goto err;
-
-    if (!map_contains(ctx->templates, tname))
         goto err;
 
     char* sname = strtok(NULL, ".");
     if (sname == NULL)
         goto err;
 
-    if (strtok(NULL, ".") != NULL)
-        goto err;
+    if (tengine_vm_process_bhe_struct(ctx->vm, fb, tname, sname) != 0) {
+        error("template execution failed");
+        goto end;
+    }
 
     display_printf("\n");
-    ASTCtx* ast = map_get(ctx->templates, tname);
-    if (TEngine_process_ast_struct(fb, ast, sname) != 0)
-        goto err;
-    display_printf("\n");
-
     r = COMMAND_OK;
 
 end:
@@ -153,55 +168,8 @@ Cmd* templatecmd_create(void)
     Cmd* cmd = bhex_malloc(sizeof(Cmd));
 
     TemplateCtx* ctx = bhex_calloc(sizeof(TemplateCtx));
-    ctx->templates   = map_create();
-    map_set_dispose(ctx->templates, (void (*)(void*))ASTCtx_delete);
-
-    char tmp[1024];
-
-    if (!template_skip_search) {
-        // Iterate over the default templates directories
-        for (u64_t i = 0; i < sizeof(search_folders) / sizeof(const char*); ++i) {
-            const char* dirpath = search_folders[i];
-            DIR*        dir     = opendir(dirpath);
-            if (dir == NULL)
-                continue;
-
-            struct dirent* entry;
-            while ((entry = readdir(dir)) != NULL) {
-                // look for "*.bhe" files
-                if (strcmp(entry->d_name, ".") == 0 ||
-                    strcmp(entry->d_name, "..") == 0)
-                    continue;
-                size_t d_namelen = strlen(entry->d_name);
-                if (d_namelen < 4 ||
-                    strcmp(entry->d_name + (d_namelen - 4), ".bhe") != 0)
-                    continue;
-
-                memset(tmp, 0, sizeof(tmp));
-                snprintf(tmp, sizeof(tmp) - 1, "%s/%s", dirpath, entry->d_name);
-
-                // Remove extension
-                entry->d_name[d_namelen - 4] = '\0';
-                if (map_contains(ctx->templates, entry->d_name)) {
-                    warning("template '%s' already loaded, skipping file '%s'",
-                            entry->d_name, tmp);
-                    continue;
-                }
-
-                ASTCtx* ast = TEngine_parse_filename(tmp);
-                if (ast == NULL)
-                    // Invalid bhe file
-                    continue;
-
-                // Remove extension
-                entry->d_name[d_namelen - 4] = '\0';
-                map_set(ctx->templates, entry->d_name, ast);
-                // info("loaded template '%s' from '%s'", entry->d_name, tmp);
-            }
-            closedir(dir);
-        }
-    }
-
+    ctx->vm    = tengine_vm_create(template_skip_search ? search_folders_empty
+                                                        : search_folders);
     cmd->obj   = ctx;
     cmd->name  = "template";
     cmd->alias = "t";

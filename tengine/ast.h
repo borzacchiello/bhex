@@ -112,6 +112,16 @@ Expr* Expr_BNOT_new(Expr* e);
 Expr* Expr_dup(Expr* e);
 void  Expr_free(Expr* e);
 
+typedef struct Type {
+    // name of the type
+    char* name;
+    // if the type is not imported, bhe_name is NULL
+    char* bhe_name;
+} Type;
+
+Type* Type_new(const char* name, const char* bhe_name);
+void  Type_free(Type* t);
+
 typedef enum ASTStmtType {
     FILE_VAR_DECL =
         100, // File variable declaration (content is taken from FileBuffer)
@@ -129,7 +139,7 @@ typedef struct Stmt {
     union {
         struct {
             // FILE_VAR_DECL
-            char* type;
+            Type* type;
             char* name;
             Expr* arr_size;
         };
@@ -156,7 +166,7 @@ typedef struct Stmt {
     };
 } Stmt;
 
-Stmt* Stmt_FILE_VAR_DECL_new(const char* type, const char* name, Expr* size);
+Stmt* Stmt_FILE_VAR_DECL_new(Type* type, const char* name, Expr* size);
 Stmt* Stmt_LOCAL_VAR_DECL_new(const char* name, Expr* value);
 Stmt* Stmt_LOCAL_VAR_ASS_new(const char* name, Expr* value);
 Stmt* Stmt_VOID_FUNC_CALL_new(const char* name, DList* params);
@@ -224,6 +234,9 @@ typedef struct ASTCtx {
 
     // fn XXX ( ... ) { ... } => Map of name to Function*
     map* functions;
+
+    // the maximum length of any ident found while parsing this AST
+    int max_ident_len;
 } ASTCtx;
 
 ASTCtx* ASTCtx_new();

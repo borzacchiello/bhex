@@ -1,4 +1,4 @@
-#include "tengine.h"
+#include "interpreter.h"
 #include "builtin.h"
 #include "defs.h"
 #include "dlist.h"
@@ -32,12 +32,15 @@ extern void                     yylex_destroy();
 extern void                     yyrestart(FILE* input_file);
 extern void                     yy_switch_to_buffer(YY_BUFFER_STATE new_buffer);
 
+static void*         imported_ptr = NULL;
+static imported_cb_t imported_cb  = NULL;
+
 typedef struct ProcessContext {
-    FileBuffer* fb;
-    TEngine*    engine;
-    u64_t       initial_off;
-    int         print_off;
-    int         should_break;
+    FileBuffer*         fb;
+    TEngineInterpreter* engine;
+    u64_t               initial_off;
+    int                 print_off;
+    int                 should_break;
 } ProcessContext;
 
 static int process_stmt(ProcessContext* ctx, Stmt* stmt, struct Scope* scope);
@@ -46,7 +49,7 @@ static int eval_to_u64(ProcessContext* ctx, Scope* scope, Expr* e, u64_t* o);
 static int eval_to_str(ProcessContext* ctx, Scope* scope, Expr* e,
                        const char** o);
 
-static void value_pp(TEngine* e, u32_t off, TEngineValue* v)
+static void value_pp(TEngineInterpreter* e, u32_t off, TEngineValue* v)
 {
     char* value_str = TEngineValue_tostring(v, e->print_in_hex);
     if (off && count_chars_in_str(value_str, '\n'))
@@ -55,31 +58,37 @@ static void value_pp(TEngine* e, u32_t off, TEngineValue* v)
     bhex_free(value_str);
 }
 
-static Block* get_struct_body(TEngine* e, const char* name)
+static Block* get_struct_body(ASTCtx* ast, const char* name)
 {
-    for (const char* key = map_first(e->ast->structs); key != NULL;
-         key             = map_next(e->ast->structs, key)) {
-        if (strcmp(name, key) != 0)
-            continue;
-        return map_get(e->ast->structs, key);
-    }
-    return NULL;
+    if (!map_contains(ast->structs, name))
+        return NULL;
+    return map_get(ast->structs, name);
 }
 
-static Enum* get_enum(TEngine* e, const char* name)
+static Enum* get_enum(ASTCtx* ast, const char* name)
 {
-    for (const char* key = map_first(e->ast->enums); key != NULL;
-         key             = map_next(e->ast->enums, key)) {
-        if (strcmp(name, key) != 0)
-            continue;
-        return map_get(e->ast->enums, key);
-    }
-    return NULL;
+    if (!map_contains(ast->enums, name))
+        return NULL;
+    return map_get(ast->enums, name);
 }
 
-static map* process_struct_type(ProcessContext* ctx, const char* type)
+static map* process_struct_type(ProcessContext* ctx, Type* type)
 {
-    Block* body = get_struct_body(ctx->engine, type);
+    ASTCtx* ast = NULL;
+    if (type->bhe_name != NULL) {
+        if (imported_cb == NULL) {
+            warning("imported callback not configured");
+            return NULL;
+        }
+        ast = imported_cb(imported_ptr, type->bhe_name);
+    } else {
+        ast = ctx->engine->ast;
+    }
+
+    if (ast == NULL)
+        return NULL;
+
+    Block* body = get_struct_body(ast, type->name);
     if (body == NULL)
         return NULL;
 
@@ -98,10 +107,24 @@ static map* process_struct_type(ProcessContext* ctx, const char* type)
     return Scope_free_and_get_filevars(scope);
 }
 
-static const char* process_enum_type(ProcessContext* ctx, const char* type,
+static const char* process_enum_type(ProcessContext* ctx, Type* type,
                                      u64_t* econst)
 {
-    Enum* e = get_enum(ctx->engine, type);
+    ASTCtx* ast = NULL;
+    if (type->bhe_name != NULL) {
+        if (imported_cb == NULL) {
+            warning("imported callback not configured");
+            return NULL;
+        }
+        ast = imported_cb(imported_ptr, type->bhe_name);
+    } else {
+        ast = ctx->engine->ast;
+    }
+
+    if (ast == NULL)
+        return NULL;
+
+    Enum* e = get_enum(ast, type->name);
     if (e == NULL)
         return NULL;
 
@@ -133,17 +156,19 @@ static const char* process_enum_type(ProcessContext* ctx, const char* type,
 }
 
 static TEngineValue* process_type(ProcessContext* ctx, const char* varname,
-                                  const char* type, Scope* scope)
+                                  Type* type, Scope* scope)
 {
-    const TEngineBuiltinType* t = get_builtin_type(type);
-    if (t != NULL) {
-        TEngineValue* r = t->process(ctx->engine, ctx->fb);
-        if (r == NULL)
-            return NULL;
+    if (type->bhe_name == NULL) {
+        const TEngineBuiltinType* t = get_builtin_type(type->name);
+        if (t != NULL) {
+            TEngineValue* r = t->process(ctx->engine, ctx->fb);
+            if (r == NULL)
+                return NULL;
 
-        value_pp(ctx->engine, ctx->print_off, r);
-        engine_printf(ctx->engine, "\n");
-        return r;
+            value_pp(ctx->engine, ctx->print_off, r);
+            engine_printf(ctx->engine, "\n");
+            return r;
+        }
     }
 
     map* custom_type_vars = process_struct_type(ctx, type);
@@ -161,7 +186,7 @@ static TEngineValue* process_type(ProcessContext* ctx, const char* varname,
         return v;
     }
 
-    error("[tengine] unknown type %s", type);
+    error("[tengine] unknown type %s", type->name);
     return NULL;
 }
 
@@ -520,7 +545,7 @@ eval_to_str(ProcessContext* ctx, Scope* scope, Expr* e, const char** o)
 }
 
 static int process_array_type(ProcessContext* ctx, const char* varname,
-                              const char* type, Expr* esize, Scope* scope,
+                              Type* type, Expr* esize, Scope* scope,
                               TEngineValue** oval)
 {
     *oval = NULL;
@@ -536,56 +561,58 @@ static int process_array_type(ProcessContext* ctx, const char* varname,
         return 1;
     }
 
-    if (strcmp(type, "char") == 0) {
-        // Special case, the output variable is a string
-        u64_t       final_off = ctx->fb->off + size;
-        u8_t*       tmp       = bhex_calloc(size + 1);
-        const u8_t* buf       = fb_read(ctx->fb, size);
-        memcpy(tmp, buf, size);
-        *oval = TEngineValue_STRING_new(tmp, size);
-        value_pp(ctx->engine, ctx->print_off, *oval);
-        engine_printf(ctx->engine, "\n");
-        bhex_free(tmp);
-        fb_seek(ctx->fb, final_off);
-        return 0;
-    }
-    if (strcmp(type, "u8") == 0) {
-        // Special case, buf
-        u64_t       final_off     = ctx->fb->off + size;
-        u64_t       size_to_print = min(MAX_ARR_PRINT_SIZE, size);
-        const u8_t* buf           = fb_read(ctx->fb, size_to_print);
-        for (u64_t i = 0; i < size_to_print; ++i)
-            engine_printf(ctx->engine, "%02x", buf[i]);
-        if (size_to_print < size)
-            engine_printf(ctx->engine, "...");
-        engine_printf(ctx->engine, "\n");
-
-        *oval = TEngineValue_BUF_new(ctx->fb->off, size);
-        fb_seek(ctx->fb, final_off);
-        return 0;
-    }
-    const TEngineBuiltinType* t = get_builtin_type(type);
-    if (t != NULL) {
-        // A builtin type
-        *oval = TEngineValue_ARRAY_new();
-
-        u64_t printed = 0;
-        engine_printf(ctx->engine, "[ ");
-        while (printed < size) {
-            TEngineValue* val = t->process(ctx->engine, ctx->fb);
-            if (val == NULL)
-                return 1;
-            if (printed++ < MAX_ARR_PRINT_SIZE) {
-                value_pp(ctx->engine, ctx->print_off, val);
-                if (printed <= size - 1)
-                    engine_printf(ctx->engine, ", ");
-            }
-            if (printed == MAX_ARR_PRINT_SIZE && size < printed)
-                engine_printf(ctx->engine, "...");
-            TEngineValue_ARRAY_append(*oval, val);
+    if (type->bhe_name == NULL) {
+        if (strcmp(type->name, "char") == 0) {
+            // Special case, the output variable is a string
+            u64_t       final_off = ctx->fb->off + size;
+            u8_t*       tmp       = bhex_calloc(size + 1);
+            const u8_t* buf       = fb_read(ctx->fb, size);
+            memcpy(tmp, buf, size);
+            *oval = TEngineValue_STRING_new(tmp, size);
+            value_pp(ctx->engine, ctx->print_off, *oval);
+            engine_printf(ctx->engine, "\n");
+            bhex_free(tmp);
+            fb_seek(ctx->fb, final_off);
+            return 0;
         }
-        engine_printf(ctx->engine, " ]\n");
-        return 0;
+        if (strcmp(type->name, "u8") == 0) {
+            // Special case, buf
+            u64_t       final_off     = ctx->fb->off + size;
+            u64_t       size_to_print = min(MAX_ARR_PRINT_SIZE, size);
+            const u8_t* buf           = fb_read(ctx->fb, size_to_print);
+            for (u64_t i = 0; i < size_to_print; ++i)
+                engine_printf(ctx->engine, "%02x", buf[i]);
+            if (size_to_print < size)
+                engine_printf(ctx->engine, "...");
+            engine_printf(ctx->engine, "\n");
+
+            *oval = TEngineValue_BUF_new(ctx->fb->off, size);
+            fb_seek(ctx->fb, final_off);
+            return 0;
+        }
+        const TEngineBuiltinType* t = get_builtin_type(type->name);
+        if (t != NULL) {
+            // A builtin type
+            *oval = TEngineValue_ARRAY_new();
+
+            u64_t printed = 0;
+            engine_printf(ctx->engine, "[ ");
+            while (printed < size) {
+                TEngineValue* val = t->process(ctx->engine, ctx->fb);
+                if (val == NULL)
+                    return 1;
+                if (printed++ < MAX_ARR_PRINT_SIZE) {
+                    value_pp(ctx->engine, ctx->print_off, val);
+                    if (printed <= size - 1)
+                        engine_printf(ctx->engine, ", ");
+                }
+                if (printed == MAX_ARR_PRINT_SIZE && size < printed)
+                    engine_printf(ctx->engine, "...");
+                TEngineValue_ARRAY_append(*oval, val);
+            }
+            engine_printf(ctx->engine, " ]\n");
+            return 0;
+        }
     }
 
     // Array of custom type
@@ -593,7 +620,8 @@ static int process_array_type(ProcessContext* ctx, const char* varname,
     *oval         = TEngineValue_ARRAY_new();
 
     engine_printf(ctx->engine, "\n");
-    for (int i = 0; i < ctx->print_off + 11 + yymax_ident_len; ++i)
+    for (int i = 0; i < ctx->print_off + 11 + ctx->engine->ast->max_ident_len;
+         ++i)
         engine_printf(ctx->engine, " ");
     engine_printf(ctx->engine, "[%lld]", printed);
     for (printed = 0; printed < size; ++printed) {
@@ -603,7 +631,8 @@ static int process_array_type(ProcessContext* ctx, const char* varname,
             return 1;
         }
         if (printed < size - 1) {
-            for (int i = 0; i < ctx->print_off + 11 + yymax_ident_len; ++i)
+            for (int i = 0;
+                 i < ctx->print_off + 11 + ctx->engine->ast->max_ident_len; ++i)
                 engine_printf(ctx->engine, " ");
             engine_printf(ctx->engine, "[%lld]", printed + 1);
         }
@@ -619,7 +648,7 @@ static int process_FILE_VAR_DECL(ProcessContext* ctx, Stmt* stmt, Scope* scope)
     engine_printf(ctx->engine, "b+%08llx ", ctx->fb->off - ctx->initial_off);
     for (int i = 0; i < ctx->print_off; ++i)
         engine_printf(ctx->engine, " ");
-    engine_printf(ctx->engine, " %*s: ", yymax_ident_len, stmt->name);
+    engine_printf(ctx->engine, " %*s: ", ctx->engine->ast->max_ident_len, stmt->name);
 
     if (stmt->arr_size == NULL) {
         // Not an array
@@ -786,7 +815,7 @@ static int process_stmt(ProcessContext* ctx, Stmt* stmt, Scope* scope)
     return 1;
 }
 
-static int process_ast(TEngine* engine, FileBuffer* fb)
+static int process_ast(TEngineInterpreter* engine, FileBuffer* fb)
 {
     if (!engine->ast->proc) {
         error("[tengine] no proc");
@@ -803,7 +832,7 @@ static int process_ast(TEngine* engine, FileBuffer* fb)
     return 0;
 }
 
-ASTCtx* TEngine_parse_filename(const char* bhe)
+ASTCtx* tengine_interpreter_parse_filename(const char* bhe)
 {
     FILE* f = fopen(bhe, "r");
     if (f == NULL) {
@@ -811,12 +840,12 @@ ASTCtx* TEngine_parse_filename(const char* bhe)
         return NULL;
     }
 
-    ASTCtx* ast = TEngine_parse_file(f);
+    ASTCtx* ast = tengine_interpreter_parse_file(f);
     fclose(f);
     return ast;
 }
 
-ASTCtx* TEngine_parse_file(FILE* f)
+ASTCtx* tengine_interpreter_parse_file(FILE* f)
 {
     // Register all the allocations, so that we can free them in case of errors.
     // I did not find any other way to handle this scenario...
@@ -834,13 +863,15 @@ ASTCtx* TEngine_parse_file(FILE* f)
         yylex_destroy();
         return NULL;
     }
+    ast->max_ident_len = yymax_ident_len;
+    yymax_ident_len    = 0;
 
     bhex_alloc_track_stop();
     yylex_destroy();
     return ast;
 }
 
-ASTCtx* TEngine_parse_string(const char* str)
+ASTCtx* tengine_interpreter_parse_string(const char* str)
 {
     // Register all the allocations, so that we can free them in case of errors.
     // I did not find any other way to handle this scenario...
@@ -858,13 +889,15 @@ ASTCtx* TEngine_parse_string(const char* str)
         yy_delete_buffer(state);
         return NULL;
     }
+    ast->max_ident_len = yymax_ident_len;
+    yymax_ident_len    = 0;
 
     yy_delete_buffer(state);
     bhex_alloc_track_stop();
     return ast;
 }
 
-void TEngine_init(TEngine* engine, ASTCtx* ast)
+void tengine_interpreter_init(TEngineInterpreter* engine, ASTCtx* ast)
 {
     engine->ast          = ast;
     engine->proc_scope   = Scope_new();
@@ -873,9 +906,19 @@ void TEngine_init(TEngine* engine, ASTCtx* ast)
     engine->quiet_mode   = 0;
 }
 
-void TEngine_deinit(TEngine* engine) { Scope_free(engine->proc_scope); }
+void tengine_interpreter_deinit(TEngineInterpreter* engine)
+{
+    Scope_free(engine->proc_scope);
+}
 
-int TEngine_process_filename(FileBuffer* fb, const char* bhe)
+void tengine_interpreter_set_imported_types_callback(imported_cb_t cb,
+                                                     void*         userptr)
+{
+    imported_ptr = userptr;
+    imported_cb  = cb;
+}
+
+int tengine_interpreter_process_filename(FileBuffer* fb, const char* bhe)
 {
     FILE* f = fopen(bhe, "r");
     if (f == NULL) {
@@ -883,34 +926,35 @@ int TEngine_process_filename(FileBuffer* fb, const char* bhe)
         return 1;
     }
 
-    int r = TEngine_process_file(fb, f);
+    int r = tengine_interpreter_process_file(fb, f);
     fclose(f);
     return r;
 }
 
-int TEngine_process_file(FileBuffer* fb, FILE* f)
+int tengine_interpreter_process_file(FileBuffer* fb, FILE* f)
 {
-    ASTCtx* ast = TEngine_parse_file(f);
+    ASTCtx* ast = tengine_interpreter_parse_file(f);
     if (ast == NULL)
         return 1;
 
-    int r = TEngine_process_ast(fb, ast);
+    int r = tengine_interpreter_process_ast(fb, ast);
     ASTCtx_delete(ast);
     return r;
 }
 
-TEngine* TEngine_run_on_string(FileBuffer* fb, const char* str)
+TEngineInterpreter* tengine_interpreter_run_on_string(FileBuffer* fb,
+                                                      const char* str)
 {
-    ASTCtx* ast = TEngine_parse_string(str);
+    ASTCtx* ast = tengine_interpreter_parse_string(str);
     if (ast == NULL)
         return NULL;
 
-    TEngine* e = bhex_calloc(sizeof(TEngine));
-    TEngine_init(e, ast);
+    TEngineInterpreter* e = bhex_calloc(sizeof(TEngineInterpreter));
+    tengine_interpreter_init(e, ast);
 
     if (process_ast(e, fb) != 0) {
         ASTCtx_delete(ast);
-        TEngine_deinit(e);
+        tengine_interpreter_deinit(e);
         bhex_free(e);
         return NULL;
     }
@@ -918,31 +962,32 @@ TEngine* TEngine_run_on_string(FileBuffer* fb, const char* str)
     return e;
 }
 
-int TEngine_process_string(FileBuffer* fb, const char* str)
+int tengine_interpreter_process_string(FileBuffer* fb, const char* str)
 {
-    ASTCtx* ast = TEngine_parse_string(str);
+    ASTCtx* ast = tengine_interpreter_parse_string(str);
     if (ast == NULL)
         return 1;
 
-    int r = TEngine_process_ast(fb, ast);
+    int r = tengine_interpreter_process_ast(fb, ast);
     ASTCtx_delete(ast);
     return r;
 }
 
-int TEngine_process_ast(FileBuffer* fb, ASTCtx* ast)
+int tengine_interpreter_process_ast(FileBuffer* fb, ASTCtx* ast)
 {
-    TEngine eng;
-    TEngine_init(&eng, ast);
+    TEngineInterpreter eng;
+    tengine_interpreter_init(&eng, ast);
 
     int r = process_ast(&eng, fb);
-    TEngine_deinit(&eng);
+    tengine_interpreter_deinit(&eng);
     return r;
 }
 
-int TEngine_process_ast_struct(FileBuffer* fb, ASTCtx* ast, const char* s)
+int tengine_interpreter_process_ast_struct(FileBuffer* fb, ASTCtx* ast,
+                                           const char* s)
 {
-    TEngine eng;
-    TEngine_init(&eng, ast);
+    TEngineInterpreter eng;
+    tengine_interpreter_init(&eng, ast);
 
     int r = 1;
     if (!map_contains(ast->structs, s)) {
@@ -960,16 +1005,16 @@ int TEngine_process_ast_struct(FileBuffer* fb, ASTCtx* ast, const char* s)
     r = 0;
 
 end:
-    TEngine_deinit(&eng);
+    tengine_interpreter_deinit(&eng);
     return r;
 }
 
-void TEngine_pp(TEngine* e)
+void tengine_interpreter_pp(TEngineInterpreter* e)
 {
     int orig_quiet_mode = e->quiet_mode;
     e->quiet_mode       = 0;
 
-    printf("TEngine\n\n");
+    printf("TEngineInterpreter\n\n");
     ASTCtx_pp(e->ast);
 
     printf("\nProc File Variables\n");

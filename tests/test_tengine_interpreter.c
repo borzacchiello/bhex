@@ -4,7 +4,7 @@
 #include <defs.h>
 
 #include "dummy_filebuffer.h"
-#include "../tengine/tengine.h"
+#include "../tengine/interpreter.h"
 #include "../tengine/scope.h"
 #include "elf_not_kitty.h"
 #include "strbuilder.h"
@@ -15,9 +15,9 @@
 #define TEST(name) test_##name
 #endif
 
-static void delete_tengine(TEngine* e)
+static void delete_interpreter(TEngineInterpreter* e)
 {
-    TEngine_deinit(e);
+    tengine_interpreter_deinit(e);
     bhex_free(e);
 }
 
@@ -63,7 +63,7 @@ int TEST(const)(void)
 {
     const char* prog = "proc { local a = 0; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -72,7 +72,7 @@ int TEST(const)(void)
     IS_TENGINE_SNUM_EQ(r, v, 0);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -80,7 +80,7 @@ int TEST(const_s8)(void)
 {
     const char* prog = "proc { local a = 42s8; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -89,7 +89,7 @@ int TEST(const_s8)(void)
     IS_TENGINE_SNUM_EQ(r, v, 42);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -97,7 +97,7 @@ int TEST(const_s16)(void)
 {
     const char* prog = "proc { local a = 42s16; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -106,7 +106,7 @@ int TEST(const_s16)(void)
     IS_TENGINE_SNUM_EQ(r, v, 42);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -114,7 +114,7 @@ int TEST(const_s32)(void)
 {
     const char* prog = "proc { local a = 42s32; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -123,7 +123,7 @@ int TEST(const_s32)(void)
     IS_TENGINE_SNUM_EQ(r, v, 42);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -131,7 +131,7 @@ int TEST(const_u8)(void)
 {
     const char* prog = "proc { local a = 16u8; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -140,7 +140,7 @@ int TEST(const_u8)(void)
     IS_TENGINE_UNUM_EQ(r, v, 16);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -148,7 +148,7 @@ int TEST(const_u16)(void)
 {
     const char* prog = "proc { local a = 300u16; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -157,7 +157,7 @@ int TEST(const_u16)(void)
     IS_TENGINE_UNUM_EQ(r, v, 300);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -165,7 +165,7 @@ int TEST(const_u32)(void)
 {
     const char* prog = "proc { local a = 100000u32; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -174,7 +174,7 @@ int TEST(const_u32)(void)
     IS_TENGINE_UNUM_EQ(r, v, 100000);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -182,7 +182,7 @@ int TEST(const_u64)(void)
 {
     const char* prog = "proc { local a = 1099511627537u64; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -191,7 +191,7 @@ int TEST(const_u64)(void)
     IS_TENGINE_UNUM_EQ(r, v, 1099511627537ull);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -199,7 +199,7 @@ int TEST(hex_const)(void)
 {
     const char* prog = "proc { local a = 0xdeadbeef; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -208,7 +208,7 @@ int TEST(hex_const)(void)
     IS_TENGINE_SNUM_EQ(r, v, 0xdeadbeef);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -216,7 +216,7 @@ int TEST(hex_const_u8)(void)
 {
     const char* prog = "proc { local a = 0xffu8; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -225,7 +225,7 @@ int TEST(hex_const_u8)(void)
     IS_TENGINE_UNUM_EQ(r, v, 255);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -233,7 +233,7 @@ int TEST(hex_const_u16)(void)
 {
     const char* prog = "proc { local a = 0xfffu16; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -242,7 +242,7 @@ int TEST(hex_const_u16)(void)
     IS_TENGINE_UNUM_EQ(r, v, 0xfff);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -250,7 +250,7 @@ int TEST(hex_const_u32)(void)
 {
     const char* prog = "proc { local a = 0xffffffu32; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -259,7 +259,7 @@ int TEST(hex_const_u32)(void)
     IS_TENGINE_UNUM_EQ(r, v, 0xffffff);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -267,7 +267,7 @@ int TEST(hex_const_u64)(void)
 {
     const char* prog = "proc { local a = 0xffffffffffu64; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -276,7 +276,7 @@ int TEST(hex_const_u64)(void)
     IS_TENGINE_UNUM_EQ(r, v, 0xffffffffffull);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -287,7 +287,7 @@ int TEST(cast_u8)(void)
                        "  local b = u8(a);"
                        "}";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -296,7 +296,7 @@ int TEST(cast_u8)(void)
     IS_TENGINE_UNUM_EQ(r, v, 0xff);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -307,7 +307,7 @@ int TEST(cast_i8)(void)
                        "  local b = i8(a);"
                        "}";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -316,7 +316,7 @@ int TEST(cast_i8)(void)
     IS_TENGINE_SNUM_EQ(r, v, -1);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -324,7 +324,7 @@ int TEST(const_limit_1)(void)
 {
     const char* prog = "proc { local a = 0x7fffffffffffffff; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -333,7 +333,7 @@ int TEST(const_limit_1)(void)
     IS_TENGINE_SNUM_EQ(r, v, 0x7fffffffffffffffl);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -341,7 +341,7 @@ int TEST(const_limit_2)(void)
 {
     const char* prog = "proc { local a = -0x8000000000000000; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -350,7 +350,7 @@ int TEST(const_limit_2)(void)
     IS_TENGINE_SNUM_EQ(r, v, -0x8000000000000000l);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -358,7 +358,7 @@ int TEST(neg_const)(void)
 {
     const char* prog = "proc { local a = -42; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -367,7 +367,7 @@ int TEST(neg_const)(void)
     IS_TENGINE_SNUM_EQ(r, v, -42);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -375,7 +375,7 @@ int TEST(str_const_1)(void)
 {
     const char* prog = "proc { local a = \"ciao\"; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -384,7 +384,7 @@ int TEST(str_const_1)(void)
     IS_TENGINE_STRING_EQ(r, v, "ciao");
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -392,7 +392,7 @@ int TEST(str_const_2)(void)
 {
     const char* prog = "proc { local a = \"ciao\xde\xad\xbe\xef\"; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -401,7 +401,7 @@ int TEST(str_const_2)(void)
     IS_TENGINE_STRING_EQ(r, v, "ciao\xde\xad\xbe\xef");
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -410,7 +410,7 @@ int TEST(eq_str)(void)
     const char* prog =
         "proc { local a = \"ciao\"; local b = \"ciao\"; local c = a == b; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -419,7 +419,7 @@ int TEST(eq_str)(void)
     IS_TENGINE_UNUM_EQ(r, v, 1);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -427,7 +427,7 @@ int TEST(sub)(void)
 {
     const char* prog = "proc { local a = 4; local b = a - 5; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -436,7 +436,7 @@ int TEST(sub)(void)
     IS_TENGINE_SNUM_EQ(r, v, -1);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -444,7 +444,7 @@ int TEST(add)(void)
 {
     const char* prog = "proc { local a = 4; local b = a + 10; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -453,7 +453,7 @@ int TEST(add)(void)
     IS_TENGINE_SNUM_EQ(r, v, 14);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -461,7 +461,7 @@ int TEST(add_no_space)(void)
 {
     const char* prog = "proc { local a = 4; local b = a+10; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -470,7 +470,7 @@ int TEST(add_no_space)(void)
     IS_TENGINE_SNUM_EQ(r, v, 14);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -478,7 +478,7 @@ int TEST(add_wrap_s8)(void)
 {
     const char* prog = "proc { local a = 127s8; local b = a + 1s8; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -487,7 +487,7 @@ int TEST(add_wrap_s8)(void)
     IS_TENGINE_SNUM_EQ(r, v, -0x80);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -495,7 +495,7 @@ int TEST(add_wrap_s16)(void)
 {
     const char* prog = "proc { local a = 0x7fffs16; local b = a + 1s16; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -504,7 +504,7 @@ int TEST(add_wrap_s16)(void)
     IS_TENGINE_SNUM_EQ(r, v, -0x8000);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -512,7 +512,7 @@ int TEST(add_wrap_s32)(void)
 {
     const char* prog = "proc { local a = 0x7fffffffs32; local b = a + 1s32; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -521,7 +521,7 @@ int TEST(add_wrap_s32)(void)
     IS_TENGINE_SNUM_EQ(r, v, -0x80000000ll);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -529,7 +529,7 @@ int TEST(add_wrap_u8)(void)
 {
     const char* prog = "proc { local a = 250u8; local b = a + 6u8; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -538,7 +538,7 @@ int TEST(add_wrap_u8)(void)
     IS_TENGINE_UNUM_EQ(r, v, 0);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -546,7 +546,7 @@ int TEST(add_wrap_u16)(void)
 {
     const char* prog = "proc { local a = 0xffffu16; local b = a + 1u16; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -555,7 +555,7 @@ int TEST(add_wrap_u16)(void)
     IS_TENGINE_UNUM_EQ(r, v, 0);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -563,7 +563,7 @@ int TEST(add_wrap_u32)(void)
 {
     const char* prog = "proc { local a = 0xffffffffu32; local b = a + 1u32; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -572,7 +572,7 @@ int TEST(add_wrap_u32)(void)
     IS_TENGINE_UNUM_EQ(r, v, 0);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -581,7 +581,7 @@ int TEST(add_wrap_u64)(void)
     const char* prog =
         "proc { local a = 0xffffffffffffffffu64; local b = a + 1u64; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -590,7 +590,7 @@ int TEST(add_wrap_u64)(void)
     IS_TENGINE_UNUM_EQ(r, v, 0);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -598,7 +598,7 @@ int TEST(mul)(void)
 {
     const char* prog = "proc { local a = 4; local b = a * 10; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -607,7 +607,7 @@ int TEST(mul)(void)
     IS_TENGINE_SNUM_EQ(r, v, 40);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -615,7 +615,7 @@ int TEST(div_1)(void)
 {
     const char* prog = "proc { local a = 44; local b = a / 10; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -624,7 +624,7 @@ int TEST(div_1)(void)
     IS_TENGINE_SNUM_EQ(r, v, 4);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -632,7 +632,7 @@ int TEST(div_2)(void)
 {
     const char* prog = "proc { local a = 16; local b = a / 4; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -641,7 +641,7 @@ int TEST(div_2)(void)
     IS_TENGINE_SNUM_EQ(r, v, 4);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -649,7 +649,7 @@ int TEST(mod_1)(void)
 {
     const char* prog = "proc { local a = 43; local b = a % 10; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -658,7 +658,7 @@ int TEST(mod_1)(void)
     IS_TENGINE_SNUM_EQ(r, v, 3);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -666,7 +666,7 @@ int TEST(mod_2)(void)
 {
     const char* prog = "proc { local a = 16; local b = a % 4; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -675,15 +675,15 @@ int TEST(mod_2)(void)
     IS_TENGINE_SNUM_EQ(r, v, 0);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
-int TEST (and)(void)
+int TEST(and)(void)
 {
     const char* prog = "proc { local a = 0xffff; local b = a & 0xf0f0; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -692,7 +692,7 @@ int TEST (and)(void)
     IS_TENGINE_SNUM_EQ(r, v, 0xf0f0);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -700,7 +700,7 @@ int TEST(or)(void)
 {
     const char* prog = "proc { local a = 0xf0f0; local b = a | 0x0f0f; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -709,15 +709,15 @@ int TEST(or)(void)
     IS_TENGINE_SNUM_EQ(r, v, 0xffff);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
-int TEST (xor)(void)
+int TEST(xor)(void)
 {
     const char* prog = "proc { local a = 0xff; local b = a ^ 0xf0; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -726,7 +726,7 @@ int TEST (xor)(void)
     IS_TENGINE_SNUM_EQ(r, v, 0x0f);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -734,7 +734,7 @@ int TEST(neg_1)(void)
 {
     const char* prog = "proc { local a = -(42+16); }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -743,7 +743,7 @@ int TEST(neg_1)(void)
     IS_TENGINE_SNUM_EQ(r, v, -58);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -751,7 +751,7 @@ int TEST(neg_2)(void)
 {
     const char* prog = "proc { local a = 43 + -(42+16); }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -760,7 +760,7 @@ int TEST(neg_2)(void)
     IS_TENGINE_SNUM_EQ(r, v, -58 + 43);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -772,7 +772,7 @@ int TEST(band_1)(void)
                        "  local c = a && b;"
                        "}";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -781,7 +781,7 @@ int TEST(band_1)(void)
     IS_TENGINE_BOOL_EQ(r, v, 0);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -793,7 +793,7 @@ int TEST(band_2)(void)
                        "  local c = a && b;"
                        "}";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -802,7 +802,7 @@ int TEST(band_2)(void)
     IS_TENGINE_BOOL_EQ(r, v, 1);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -814,7 +814,7 @@ int TEST(bor_1)(void)
                        "  local c = a || b;"
                        "}";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -823,7 +823,7 @@ int TEST(bor_1)(void)
     IS_TENGINE_BOOL_EQ(r, v, 1);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -835,7 +835,7 @@ int TEST(bor_2)(void)
                        "  local c = a || b;"
                        "}";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -844,7 +844,7 @@ int TEST(bor_2)(void)
     IS_TENGINE_BOOL_EQ(r, v, 0);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -858,7 +858,7 @@ int TEST(bneq_1)(void)
                        "  }"
                        "}";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -867,7 +867,7 @@ int TEST(bneq_1)(void)
     IS_TENGINE_SNUM_EQ(r, v, 42);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -881,7 +881,7 @@ int TEST(bnot_1)(void)
                        "  }"
                        "}";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -890,7 +890,7 @@ int TEST(bnot_1)(void)
     IS_TENGINE_SNUM_EQ(r, v, 42);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -898,7 +898,7 @@ int TEST(precedence_op_1)(void)
 {
     const char* prog = "proc { local a = 4 + 3 * 8; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -909,7 +909,7 @@ int TEST(precedence_op_1)(void)
     IS_TENGINE_SNUM_EQ(r, v, 28);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -917,7 +917,7 @@ int TEST(precedence_op_2)(void)
 {
     const char* prog = "proc { local a = 4 - 3 * 8; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -926,7 +926,7 @@ int TEST(precedence_op_2)(void)
     IS_TENGINE_SNUM_EQ(r, v, -20);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -934,7 +934,7 @@ int TEST(precedence_op_3)(void)
 {
     const char* prog = "proc { local a = 4 - 3 + 3 * 2; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -943,7 +943,7 @@ int TEST(precedence_op_3)(void)
     IS_TENGINE_SNUM_EQ(r, v, 7);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -951,7 +951,7 @@ int TEST(precedence_op_4)(void)
 {
     const char* prog = "proc { local a = 4 * 3 - 1; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -960,7 +960,7 @@ int TEST(precedence_op_4)(void)
     IS_TENGINE_SNUM_EQ(r, v, 11);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -968,7 +968,7 @@ int TEST(precedence_op_5)(void)
 {
     const char* prog = "proc { local a = (4 + 3) * 8; }";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -979,7 +979,7 @@ int TEST(precedence_op_5)(void)
     IS_TENGINE_SNUM_EQ(r, v, 56);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -993,7 +993,7 @@ int TEST(if_1)(void)
                        "  }"
                        "}";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -1002,7 +1002,7 @@ int TEST(if_1)(void)
     IS_TENGINE_SNUM_EQ(r, v, 45);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -1016,7 +1016,7 @@ int TEST(if_2)(void)
                        "  }"
                        "}";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -1025,7 +1025,7 @@ int TEST(if_2)(void)
     IS_TENGINE_SNUM_EQ(r, v, 3);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -1043,7 +1043,7 @@ int TEST(if_3)(void)
                        "  }"
                        "}";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -1052,7 +1052,7 @@ int TEST(if_3)(void)
     IS_TENGINE_SNUM_EQ(r, v, 46);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -1068,7 +1068,7 @@ int TEST(if_4)(void)
                        "  }"
                        "}";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -1077,7 +1077,7 @@ int TEST(if_4)(void)
     IS_TENGINE_SNUM_EQ(r, v, 3);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -1095,7 +1095,7 @@ int TEST(if_5)(void)
                        "  }"
                        "}";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -1104,7 +1104,7 @@ int TEST(if_5)(void)
     IS_TENGINE_SNUM_EQ(r, v, 47);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -1119,7 +1119,7 @@ int TEST(while_1)(void)
                        "  }"
                        "}";
 
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         return 0;
 
@@ -1128,7 +1128,7 @@ int TEST(while_1)(void)
     IS_TENGINE_SNUM_EQ(r, v, 90);
 
 end:
-    delete_tengine(e);
+    delete_interpreter(e);
     return r;
 }
 
@@ -1143,7 +1143,7 @@ int TEST(array_1)(void)
                        "    local a = buf[9];"
                        "}";
 
-    TEngine* e = TEngine_run_on_string(tfb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(tfb->fb, prog);
     if (e == NULL)
         goto end;
 
@@ -1152,7 +1152,7 @@ int TEST(array_1)(void)
 
 end:
     if (e)
-        delete_tengine(e);
+        delete_interpreter(e);
     dummyfilebuffer_destroy(tfb);
     return r;
 }
@@ -1169,7 +1169,7 @@ int TEST(array_2)(void)
                        "    local a = buf[4];"
                        "}";
 
-    TEngine* e = TEngine_run_on_string(tfb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(tfb->fb, prog);
     if (e == NULL)
         goto end;
 
@@ -1181,7 +1181,7 @@ int TEST(array_2)(void)
 
 end:
     if (e)
-        delete_tengine(e);
+        delete_interpreter(e);
     dummyfilebuffer_destroy(tfb);
     return r;
 }
@@ -1198,7 +1198,7 @@ int TEST(array_3)(void)
                        "    local a = buf[4];"
                        "}";
 
-    TEngine* e = TEngine_run_on_string(tfb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(tfb->fb, prog);
     if (e == NULL)
         goto end;
 
@@ -1207,7 +1207,7 @@ int TEST(array_3)(void)
 
 end:
     if (e)
-        delete_tengine(e);
+        delete_interpreter(e);
     dummyfilebuffer_destroy(tfb);
     return r;
 }
@@ -1227,7 +1227,7 @@ int TEST(array_4)(void)
                             "    local  a = data[1].n2;"
                             "}";
 
-    TEngine* e = TEngine_run_on_string(tfb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(tfb->fb, prog);
     if (e == NULL)
         goto end;
 
@@ -1236,7 +1236,7 @@ int TEST(array_4)(void)
 
 end:
     if (e)
-        delete_tengine(e);
+        delete_interpreter(e);
     dummyfilebuffer_destroy(tfb);
     return r;
 }
@@ -1258,7 +1258,7 @@ int TEST(array_5)(void)
                        "    local   a = v.n4;"
                        "}";
 
-    TEngine* e = TEngine_run_on_string(tfb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(tfb->fb, prog);
     if (e == NULL)
         goto end;
 
@@ -1267,7 +1267,7 @@ int TEST(array_5)(void)
 
 end:
     if (e)
-        delete_tengine(e);
+        delete_interpreter(e);
     dummyfilebuffer_destroy(tfb);
     return r;
 }
@@ -1315,7 +1315,7 @@ int TEST(elf_1)(void)
                        "    local    a = header.e_entry;"
                        "}";
 
-    TEngine* e = TEngine_run_on_string(tfb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(tfb->fb, prog);
     if (e == NULL)
         goto end;
 
@@ -1324,7 +1324,7 @@ int TEST(elf_1)(void)
 
 end:
     if (e)
-        delete_tengine(e);
+        delete_interpreter(e);
     dummyfilebuffer_destroy(tfb);
     return r;
 }
@@ -1338,7 +1338,7 @@ int TEST(strip)(void)
                             "    local a = strip(\"  ciao  \t\n\");"
                             "}";
 
-    TEngine* e = TEngine_run_on_string(tfb->fb, prog);
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(tfb->fb, prog);
     if (e == NULL)
         goto end;
 
@@ -1347,7 +1347,7 @@ int TEST(strip)(void)
 
 end:
     if (e)
-        delete_tengine(e);
+        delete_interpreter(e);
     dummyfilebuffer_destroy(tfb);
     return r;
 }
@@ -1363,8 +1363,8 @@ int TEST(fn_1)(void)
                        "    local a = test();"
                        "}";
 
-    int      r = 0;
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    int                 r = 0;
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         goto end;
 
@@ -1373,7 +1373,7 @@ int TEST(fn_1)(void)
 
 end:
     if (e)
-        delete_tengine(e);
+        delete_interpreter(e);
     return r;
 }
 
@@ -1388,8 +1388,8 @@ int TEST(fn_2)(void)
                        "    local a = test(42);"
                        "}";
 
-    int      r = 0;
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    int                 r = 0;
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         goto end;
 
@@ -1398,7 +1398,7 @@ int TEST(fn_2)(void)
 
 end:
     if (e)
-        delete_tengine(e);
+        delete_interpreter(e);
     return r;
 }
 
@@ -1413,8 +1413,8 @@ int TEST(fn_3)(void)
                        "    local a = test(42, 42);"
                        "}";
 
-    int      r = 0;
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    int                 r = 0;
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         goto end;
 
@@ -1423,7 +1423,7 @@ int TEST(fn_3)(void)
 
 end:
     if (e)
-        delete_tengine(e);
+        delete_interpreter(e);
     return r;
 }
 
@@ -1438,8 +1438,8 @@ int TEST(comment_line_1)(void)
                        "    local a = test(42, 42);"
                        "}";
 
-    int      r = 0;
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    int                 r = 0;
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         goto end;
 
@@ -1448,7 +1448,7 @@ int TEST(comment_line_1)(void)
 
 end:
     if (e)
-        delete_tengine(e);
+        delete_interpreter(e);
     return r;
 }
 
@@ -1463,8 +1463,8 @@ int TEST(comment_multiline_1)(void)
                        "    local a = test(42, 42);"
                        "}";
 
-    int      r = 0;
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    int                 r = 0;
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         goto end;
 
@@ -1473,7 +1473,7 @@ int TEST(comment_multiline_1)(void)
 
 end:
     if (e)
-        delete_tengine(e);
+        delete_interpreter(e);
     return r;
 }
 
@@ -1490,8 +1490,8 @@ int TEST(comment_multiline_2)(void)
         "test(42, 42);"
         "}";
 
-    int      r = 0;
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    int                 r = 0;
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         goto end;
 
@@ -1500,7 +1500,7 @@ int TEST(comment_multiline_2)(void)
 
 end:
     if (e)
-        delete_tengine(e);
+        delete_interpreter(e);
     return r;
 }
 
@@ -1516,8 +1516,8 @@ int TEST(enum_const)(void)
                        "    local a = MyEnum::A + MyEnum::B + 16u8;"
                        "}";
 
-    int      r = 0;
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    int                 r = 0;
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e == NULL)
         goto end;
 
@@ -1526,7 +1526,7 @@ int TEST(enum_const)(void)
 
 end:
     if (e)
-        delete_tengine(e);
+        delete_interpreter(e);
     return r;
 }
 
@@ -1544,8 +1544,8 @@ int TEST(syntax_error)(void)
 
     const char* prog = "@,,";
 
-    int      r = TEST_FAILED;
-    TEngine* e = TEngine_run_on_string(elf_fb->fb, prog);
+    int                 r = TEST_FAILED;
+    TEngineInterpreter* e = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (e != NULL)
         goto end;
 
@@ -1555,6 +1555,6 @@ int TEST(syntax_error)(void)
 
 end:
     if (e)
-        delete_tengine(e);
+        delete_interpreter(e);
     return r;
 }

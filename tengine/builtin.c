@@ -2,7 +2,7 @@
 #include "defs.h"
 #include "display.h"
 #include "strbuilder.h"
-#include "tengine.h"
+#include "interpreter.h"
 #include "value.h"
 
 #include <stddef.h>
@@ -15,7 +15,7 @@
     Builtin Types
 */
 
-static TEngineValue* string_process(TEngine* e, FileBuffer* fb)
+static TEngineValue* string_process(TEngineInterpreter* e, FileBuffer* fb)
 {
     u64_t tmp_capacity = 8;
     u64_t tmp_size     = 0;
@@ -50,7 +50,7 @@ end:
     return r;
 }
 
-static TEngineValue* char_process(TEngine* e, FileBuffer* fb)
+static TEngineValue* char_process(TEngineInterpreter* e, FileBuffer* fb)
 {
     const u8_t* buf = fb_read(fb, 1);
     if (buf == NULL)
@@ -60,7 +60,8 @@ static TEngineValue* char_process(TEngine* e, FileBuffer* fb)
     return TEngineValue_CHAR_new(*buf);
 }
 
-static TEngineValue* uint_process(TEngine* e, const u8_t* buf, u32_t size)
+static TEngineValue* uint_process(TEngineInterpreter* e, const u8_t* buf,
+                                  u32_t size)
 {
     u64_t v = 0;
     for (u32_t i = 0; i < size; ++i) {
@@ -71,7 +72,8 @@ static TEngineValue* uint_process(TEngine* e, const u8_t* buf, u32_t size)
     return TEngineValue_UNUM_new(v, size);
 }
 
-static TEngineValue* int_process(TEngine* e, const u8_t* buf, u32_t size)
+static TEngineValue* int_process(TEngineInterpreter* e, const u8_t* buf,
+                                 u32_t size)
 {
     u64_t v = 0;
     for (u32_t i = 0; i < size; ++i) {
@@ -101,7 +103,8 @@ static TEngineValue* int_process(TEngine* e, const u8_t* buf, u32_t size)
 }
 
 #define GEN_INT_PROCESS(name, size, signed)                                    \
-    static TEngineValue* name##_process(TEngine* engine, FileBuffer* fb)       \
+    static TEngineValue* name##_process(TEngineInterpreter* engine,            \
+                                        FileBuffer*         fb)                \
     {                                                                          \
         const u8_t* buf = fb_read(fb, size);                                   \
         fb_seek(fb, fb->off + size);                                           \
@@ -150,7 +153,7 @@ const TEngineBuiltinType* get_builtin_type(const char* type)
 */
 
 #define GEN_INT_CAST(name, sz, signed)                                         \
-    static TEngineValue* builtin_##name(TEngine* e, FileBuffer* fb,            \
+    static TEngineValue* builtin_##name(TEngineInterpreter* e, FileBuffer* fb, \
                                         DList* params)                         \
     {                                                                          \
         if (!params || params->size == 0)                                      \
@@ -182,7 +185,8 @@ GEN_INT_CAST(i16, 2, 1)
 GEN_INT_CAST(i32, 4, 1)
 GEN_INT_CAST(i64, 8, 1)
 
-static TEngineValue* builtin_off(TEngine* e, FileBuffer* fb, DList* params)
+static TEngineValue* builtin_off(TEngineInterpreter* e, FileBuffer* fb,
+                                 DList* params)
 {
     if (params && params->size > 0)
         panic("[tengine] builtin_off invalid parameters");
@@ -190,7 +194,8 @@ static TEngineValue* builtin_off(TEngine* e, FileBuffer* fb, DList* params)
     return TEngineValue_UNUM_new(fb->off, 8);
 }
 
-static TEngineValue* builtin_size(TEngine* e, FileBuffer* fb, DList* params)
+static TEngineValue* builtin_size(TEngineInterpreter* e, FileBuffer* fb,
+                                  DList* params)
 {
     if (params && params->size > 0)
         panic("[tengine] builtin_size invalid parameters");
@@ -198,8 +203,8 @@ static TEngineValue* builtin_size(TEngine* e, FileBuffer* fb, DList* params)
     return TEngineValue_UNUM_new(fb->size, 8);
 }
 
-static TEngineValue* builtin_remaining_size(TEngine* e, FileBuffer* fb,
-                                            DList* params)
+static TEngineValue* builtin_remaining_size(TEngineInterpreter* e,
+                                            FileBuffer* fb, DList* params)
 {
     if (params && params->size > 0)
         panic("[tengine] builtin_remaining_size invalid parameters");
@@ -207,7 +212,8 @@ static TEngineValue* builtin_remaining_size(TEngine* e, FileBuffer* fb,
     return TEngineValue_UNUM_new(fb->size - fb->off, 8);
 }
 
-static TEngineValue* builtin_atoi(TEngine* e, FileBuffer* fb, DList* params)
+static TEngineValue* builtin_atoi(TEngineInterpreter* e, FileBuffer* fb,
+                                  DList* params)
 {
     if (!params || params->size != 1)
         panic("[tengine] builtin_atoi invalid parameters");
@@ -227,7 +233,8 @@ static TEngineValue* builtin_atoi(TEngine* e, FileBuffer* fb, DList* params)
     return TEngineValue_SNUM_new(oval, 64);
 }
 
-static TEngineValue* builtin_strlen(TEngine* e, FileBuffer* fb, DList* params)
+static TEngineValue* builtin_strlen(TEngineInterpreter* e, FileBuffer* fb,
+                                    DList* params)
 {
     if (!params || params->size != 1)
         panic("[tengine] builtin_strlen invalid parameters");
@@ -242,7 +249,8 @@ static TEngineValue* builtin_strlen(TEngine* e, FileBuffer* fb, DList* params)
     return TEngineValue_UNUM_new(strlen(param_str), 8);
 }
 
-static TEngineValue* builtin_strip(TEngine* e, FileBuffer* fb, DList* params)
+static TEngineValue* builtin_strip(TEngineInterpreter* e, FileBuffer* fb,
+                                   DList* params)
 {
     if (!params || params->size != 1)
         panic("[tengine] builtin_strip missing required parameter");
@@ -267,7 +275,7 @@ static TEngineValue* builtin_strip(TEngine* e, FileBuffer* fb, DList* params)
     return r;
 }
 
-static TEngineValue* builtin_endianess_le(TEngine* e, FileBuffer* fb,
+static TEngineValue* builtin_endianess_le(TEngineInterpreter* e, FileBuffer* fb,
                                           DList* params)
 {
     if (params && params->size > 0)
@@ -277,7 +285,7 @@ static TEngineValue* builtin_endianess_le(TEngine* e, FileBuffer* fb,
     return NULL;
 }
 
-static TEngineValue* builtin_endianess_be(TEngine* e, FileBuffer* fb,
+static TEngineValue* builtin_endianess_be(TEngineInterpreter* e, FileBuffer* fb,
                                           DList* params)
 {
     if (params && params->size > 0)
@@ -287,7 +295,7 @@ static TEngineValue* builtin_endianess_be(TEngine* e, FileBuffer* fb,
     return NULL;
 }
 
-static TEngineValue* builtin_nums_in_hex(TEngine* e, FileBuffer* fb,
+static TEngineValue* builtin_nums_in_hex(TEngineInterpreter* e, FileBuffer* fb,
                                          DList* params)
 {
     if (params && params->size > 0)
@@ -297,7 +305,7 @@ static TEngineValue* builtin_nums_in_hex(TEngine* e, FileBuffer* fb,
     return NULL;
 }
 
-static TEngineValue* builtin_nums_in_dec(TEngine* e, FileBuffer* fb,
+static TEngineValue* builtin_nums_in_dec(TEngineInterpreter* e, FileBuffer* fb,
                                          DList* params)
 {
     if (params && params->size > 0)
@@ -307,8 +315,8 @@ static TEngineValue* builtin_nums_in_dec(TEngine* e, FileBuffer* fb,
     return NULL;
 }
 
-static TEngineValue* builtin_disable_print(TEngine* e, FileBuffer* fb,
-                                           DList* params)
+static TEngineValue* builtin_disable_print(TEngineInterpreter* e,
+                                           FileBuffer* fb, DList* params)
 {
     if (params && params->size > 0)
         panic("[tengine] disable_print invalid parameters");
@@ -317,7 +325,7 @@ static TEngineValue* builtin_disable_print(TEngine* e, FileBuffer* fb,
     return NULL;
 }
 
-static TEngineValue* builtin_enable_print(TEngine* e, FileBuffer* fb,
+static TEngineValue* builtin_enable_print(TEngineInterpreter* e, FileBuffer* fb,
                                           DList* params)
 {
     if (params && params->size > 0)
@@ -327,7 +335,8 @@ static TEngineValue* builtin_enable_print(TEngine* e, FileBuffer* fb,
     return NULL;
 }
 
-static TEngineValue* builtin_seek(TEngine* e, FileBuffer* fb, DList* params)
+static TEngineValue* builtin_seek(TEngineInterpreter* e, FileBuffer* fb,
+                                  DList* params)
 {
     if (!params || params->size != 1)
         panic("[tengine] builtin_seek invalid parameters");
@@ -346,7 +355,8 @@ static TEngineValue* builtin_seek(TEngine* e, FileBuffer* fb, DList* params)
     return NULL;
 }
 
-static TEngineValue* builtin_fwd(TEngine* e, FileBuffer* fb, DList* params)
+static TEngineValue* builtin_fwd(TEngineInterpreter* e, FileBuffer* fb,
+                                 DList* params)
 {
     if (!params || params->size != 1)
         panic("[tengine] builtin_fwd invalid parameters");
@@ -365,7 +375,8 @@ static TEngineValue* builtin_fwd(TEngine* e, FileBuffer* fb, DList* params)
     return NULL;
 }
 
-static TEngineValue* builtin_print(TEngine* e, FileBuffer* fb, DList* params)
+static TEngineValue* builtin_print(TEngineInterpreter* e, FileBuffer* fb,
+                                   DList* params)
 {
     if (!params || params->size == 0)
         panic("[tengine] builtin_print at least one parameter required");

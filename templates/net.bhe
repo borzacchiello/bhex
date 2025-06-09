@@ -1,0 +1,6 @@
+struct eth
+{
+    u8  dst[6];
+    u8  src[6];
+    u16 type;
+}

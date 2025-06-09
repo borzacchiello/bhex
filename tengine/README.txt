@@ -9,7 +9,6 @@ Work in progress template engine
 [X] fix that p/r 100 prints 112 chars
 [X] fix mem leak when syntax error occurs
 [X] find a way to test tengine through in-memory file buffers
-[ ] calls to non-existent non-void function leads to segfault (??? cannot reproduce)
 [X] make sure operator precedence is respected
 [X] implement remaining expression operators
 [X] implement a 'remaining size' API
@@ -18,9 +17,8 @@ Work in progress template engine
 	[X] u8, u16, u32, i8, i16, i32
 	[X] raw_buffer
 [X] implement print API
-	* needs string literal
-[ ] implement a 'find_next' API (which returns the offset, or -1)
-	* needs string literal
-[ ] allow usage of structs from other files (using like an "import NAME" statement)
-[ ] make 'proc' not mandatory
+[X] allow usage of structs from other files (using like an "import NAME" statement)
+[X] make 'proc' not mandatory
+[ ] improve error print
 [ ] implement the output in a generic way, so that we can choose different backends (e.g., JSON)
+[ ] implement a 'find_next' API (which returns the offset, or -1)

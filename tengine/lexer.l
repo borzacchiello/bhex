@@ -232,6 +232,7 @@ __attribute__((destructor)) static void delete_yyheapbuf(void) { if (yyheapbuf) 
 "."                     { return TDOT; }
 ":"                     { return TCOLON; }
 ";"                     { return TSEMICOLON; }
+"#"                     { return THASHTAG; }
 \"[^"]*\"               {
                             if (yyheapbuf) yyfree(yyheapbuf);
                             yyheapbuf = NULL;

@@ -100,7 +100,8 @@ set(tengine_src
     tengine/scope.c
     tengine/lexer.c
     tengine/parser.c
-    tengine/tengine.c
+    tengine/interpreter.c
+    tengine/vm.c
     tengine/value.c)
 
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -Wall -ffunction-sections")

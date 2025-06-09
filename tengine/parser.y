@@ -37,6 +37,7 @@ void yyerror(const char *s)
     DList*   params;
     DList*   enum_list;
     Expr*    expr;
+    Type*    fvar_type;
     char*    ident;
 }
 
@@ -44,10 +45,11 @@ void yyerror(const char *s)
 %token TPROC TFN TLOCAL TSTRUCT TENUM TORENUM TIF TELIF TELSE TWHILE TBREAK
 %token TIDENTIFIER TUNUM8 TUNUM16 TUNUM32 TUNUM64 TSNUM8 TSNUM16 TSNUM32 TSNUM64 TSTR
 %token TCLBRACE TCRBRACE TLBRACE TRBRACE SQLBRACE SQRBRACE 
-%token TSEMICOLON TCOLON TCOMMA TDOT TCOLCOL
+%token TSEMICOLON TCOLON TCOMMA TDOT TCOLCOL THASHTAG
 %token TADD TSUB TMUL TDIV TMOD TAND TOR TXOR TBAND TBOR TBEQ TBNEQ TBGT TBGE TBLT TBLE TEQUAL TBNOT
 
 // Non terminal tokens types
+%type <fvar_type> fvar_type
 %type <stmt>      stmt fvar_decl lvar_decl lvar_ass void_fcall if_elif else while break
 %type <stmts>     stmts
 %type <enum_list> enum_list
@@ -137,14 +139,25 @@ stmt        : fvar_decl TSEMICOLON
             | while
     ;
 
-fvar_decl   : ident ident                           {
-                                                        $$ = Stmt_FILE_VAR_DECL_new($1, $2, NULL);
+fvar_type   : ident                                 {
+                                                        $$ = Type_new($1, NULL);
                                                         bhex_free($1);
+                                                    }
+            | ident THASHTAG ident                  {
+                                                        $$ = Type_new($3, $1);
+                                                        bhex_free($1);
+                                                        bhex_free($3);
+                                                    }
+
+    ;
+
+fvar_decl   : fvar_type ident                       {
+                                                        $$ = Stmt_FILE_VAR_DECL_new($1, $2, NULL);
                                                         bhex_free($2);
                                                     }
-            | ident ident SQLBRACE expr SQRBRACE    {
+            | fvar_type ident SQLBRACE expr SQRBRACE 
+                                                    {
                                                         $$ = Stmt_FILE_VAR_DECL_new($1, $2, $4);
-                                                        bhex_free($1);
                                                         bhex_free($2);
                                                     }
     ;

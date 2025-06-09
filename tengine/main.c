@@ -1,4 +1,4 @@
-#include "tengine.h"
+#include "interpreter.h"
 
 #include <filebuffer.h>
 #include <log.h>
@@ -23,7 +23,7 @@ int main(int argc, char** argv)
         usage(argv[0]);
     }
 
-    int r = TEngine_process_file(fb, stdin);
+    int r = tengine_interpreter_process_file(fb, stdin);
     filebuffer_destroy(fb);
     return r;
 }

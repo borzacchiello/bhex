@@ -78,8 +78,6 @@ int handle_mods(ParsedCommand* pcmd, const char* modsfmt, ...)
                 }
                 mod = mod->next;
             }
-            if (*vptr)
-                break;
             idx += 1;
             el = strtok_r(NULL, EL_DELIM, &el_state);
         }

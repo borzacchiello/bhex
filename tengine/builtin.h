@@ -3,21 +3,21 @@
 
 #include "ast.h"
 
+struct TEngineInterpreter;
 struct TEngineValue;
 struct FileBuffer;
-struct TEngine;
 struct DList;
 
 typedef struct TEngineBuiltinType {
     char name[MAX_IDENT_SIZE];
-    struct TEngineValue* (*process)(struct TEngine* e, struct FileBuffer* fb);
+    struct TEngineValue* (*process)(struct TEngineInterpreter* e, struct FileBuffer* fb);
 } TEngineBuiltinType;
 
 const TEngineBuiltinType* get_builtin_type(const char* type);
 
 typedef struct TEngineBuiltinFunc {
     char  name[MAX_IDENT_SIZE];
-    struct TEngineValue* (*process)(struct TEngine* e, struct FileBuffer* fb,
+    struct TEngineValue* (*process)(struct TEngineInterpreter* e, struct FileBuffer* fb,
                                     struct DList* params);
 } TEngineBuiltinFunc;
 
