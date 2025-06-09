@@ -3,6 +3,7 @@
 
 #include "defs.h"
 #include <dlist.h>
+#include <stdio.h>
 #include <map.h>
 
 #define MAX_IDENT_SIZE 32
@@ -241,6 +242,10 @@ typedef struct ASTCtx {
 
 ASTCtx* ASTCtx_new();
 void    ASTCtx_delete(ASTCtx* ctx);
+
+ASTCtx* tengine_parse_filename(const char* bhe);
+ASTCtx* tengine_parse_file(FILE* f);
+ASTCtx* tengine_parse_string(const char* str);
 
 // Debug print routines
 void Expr_pp(Expr* e);

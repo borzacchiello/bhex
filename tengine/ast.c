@@ -3,12 +3,20 @@
 
 #include "ast.h"
 #include "defs.h"
+#include "local.h"
 #include "util/byte_to_str.h"
 
 #include <alloc.h>
 #include <log.h>
 #include <dlist.h>
 #include <map.h>
+
+typedef struct yy_buffer_state* YY_BUFFER_STATE;
+extern YY_BUFFER_STATE          yy_scan_string(const char* str);
+extern void                     yy_delete_buffer(YY_BUFFER_STATE buffer);
+extern void                     yylex_destroy();
+extern void                     yyrestart(FILE* input_file);
+extern void                     yy_switch_to_buffer(YY_BUFFER_STATE new_buffer);
 
 Expr* Expr_SCONST_new(s64_t v, u8_t size)
 {
@@ -954,4 +962,69 @@ void ASTCtx_pp(ASTCtx* ctx)
         DList_foreach(ctx->proc->stmts, (void (*)(void*))Stmt_pp);
     }
     printf("}\n");
+}
+
+ASTCtx* tengine_parse_filename(const char* bhe)
+{
+    FILE* f = fopen(bhe, "r");
+    if (f == NULL) {
+        error("unable to open template file '%s'", bhe);
+        return NULL;
+    }
+
+    ASTCtx* ast = tengine_parse_file(f);
+    fclose(f);
+    return ast;
+}
+
+ASTCtx* tengine_parse_file(FILE* f)
+{
+    // Register all the allocations, so that we can free them in case of errors.
+    // I did not find any other way to handle this scenario...
+    bhex_alloc_track_start();
+    ASTCtx* ast = ASTCtx_new();
+    yyrestart(f);
+
+    yyset_in(f);
+    yyset_ctx(ast);
+
+    if (yyparse() != 0) {
+        error("parsing failed");
+        bhex_alloc_track_free_all();
+        bhex_alloc_track_stop();
+        yylex_destroy();
+        return NULL;
+    }
+    ast->max_ident_len = yymax_ident_len;
+    yymax_ident_len    = 0;
+
+    bhex_alloc_track_stop();
+    yylex_destroy();
+    return ast;
+}
+
+ASTCtx* tengine_parse_string(const char* str)
+{
+    // Register all the allocations, so that we can free them in case of errors.
+    // I did not find any other way to handle this scenario...
+    bhex_alloc_track_start();
+    ASTCtx* ast = ASTCtx_new();
+
+    yyset_ctx(ast);
+    YY_BUFFER_STATE state = yy_scan_string(str);
+    yy_switch_to_buffer(state);
+
+    if (yyparse() != 0) {
+        error("parsing failed");
+        bhex_alloc_track_free_all();
+        bhex_alloc_track_stop();
+        yy_delete_buffer(state);
+        return NULL;
+    }
+    ast->max_ident_len = yymax_ident_len;
+    yymax_ident_len    = 0;
+
+    yy_delete_buffer(state);
+    bhex_alloc_track_stop();
+    return ast;
 }

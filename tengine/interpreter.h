@@ -17,10 +17,6 @@ typedef struct TEngineInterpreter {
     int       quiet_mode;
 } TEngineInterpreter;
 
-ASTCtx* tengine_interpreter_parse_filename(const char* bhe);
-ASTCtx* tengine_interpreter_parse_file(FILE* f);
-ASTCtx* tengine_interpreter_parse_string(const char* str);
-
 void tengine_interpreter_init(TEngineInterpreter* engine, ASTCtx* ast);
 void tengine_interpreter_deinit(TEngineInterpreter* engine);
 

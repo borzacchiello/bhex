@@ -58,7 +58,7 @@ TEngineVM* tengine_vm_create(const char** dirs)
                 continue;
             }
 
-            ASTCtx* ast = tengine_interpreter_parse_filename(tmp);
+            ASTCtx* ast = tengine_parse_filename(tmp);
             if (ast == NULL) {
                 // Invalid bhe file
                 warning("template '%s' invalid, skipping file '%s'",
@@ -88,7 +88,7 @@ int tengine_vm_add_template(TEngineVM* ctx, const char* name, const char* path)
                 name);
     }
 
-    ASTCtx* ast = tengine_interpreter_parse_filename(path);
+    ASTCtx* ast = tengine_parse_filename(path);
     if (ast == NULL) {
         // Invalid bhe file
         warning("template @ '%s' invalid", path);
