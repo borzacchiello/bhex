@@ -14,8 +14,8 @@ typedef struct InterpreterContext {
     u64_t         initial_off;
     struct Scope* proc_scope;
 
-    int       alignment_off;
-    int       print_off;
+    u32_t alignment_off;
+    u32_t print_off;
 
     Endianess endianess;
     int       print_in_hex;

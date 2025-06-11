@@ -321,8 +321,7 @@ static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
             if (builtin_func != NULL) {
                 DList* params_vals =
                     evaluate_list_of_exprs(ctx, scope, e->params);
-                TEngineValue* r =
-                    builtin_func->process(ctx, params_vals);
+                TEngineValue* r = builtin_func->process(ctx, params_vals);
                 if (params_vals)
                     DList_destroy(params_vals,
                                   (void (*)(void*))TEngineValue_free);
@@ -621,7 +620,7 @@ static int process_array_type(InterpreterContext* ctx, const char* varname,
     *oval         = TEngineValue_ARRAY_new();
 
     interpreter_printf(ctx, "\n");
-    for (int i = 0; i < ctx->print_off + 11 + ctx->alignment_off; ++i)
+    for (u32_t i = 0; i < ctx->print_off + 11 + ctx->alignment_off; ++i)
         interpreter_printf(ctx, " ");
     interpreter_printf(ctx, "[%lld]", printed);
     for (printed = 0; printed < size; ++printed) {
@@ -631,7 +630,7 @@ static int process_array_type(InterpreterContext* ctx, const char* varname,
             return 1;
         }
         if (printed < size - 1) {
-            for (int i = 0; i < ctx->print_off + 11 + ctx->alignment_off; ++i)
+            for (u32_t i = 0; i < ctx->print_off + 11 + ctx->alignment_off; ++i)
                 interpreter_printf(ctx, " ");
             interpreter_printf(ctx, "[%lld]", printed + 1);
         }
@@ -646,7 +645,7 @@ static int process_FILE_VAR_DECL(InterpreterContext* ctx, Stmt* stmt,
                                  Scope* scope)
 {
     interpreter_printf(ctx, "b+%08llx ", ctx->fb->off - ctx->initial_off);
-    for (int i = 0; i < ctx->print_off; ++i)
+    for (u32_t i = 0; i < ctx->print_off; ++i)
         interpreter_printf(ctx, " ");
     interpreter_printf(ctx, " %*s: ", ctx->ast->max_ident_len, stmt->name);
 

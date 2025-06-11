@@ -341,7 +341,7 @@ int TEST(const_limit_2)(void)
 
     int           r = 0;
     TEngineValue* v = Scope_get_local(scope, "a");
-    IS_TENGINE_SNUM_EQ(r, v, -0x8000000000000000l);
+    IS_TENGINE_SNUM_EQ(r, v, (int64_t)-0x8000000000000000l);
 
 end:
     Scope_free(scope);
