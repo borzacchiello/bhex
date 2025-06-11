@@ -56,9 +56,16 @@ void Scope_add_local(Scope* s, const char* name, TEngineValue* value)
 
 map* Scope_free_and_get_filevars(Scope* s)
 {
-    // Destroy only the locals
     map_destroy(s->locals);
     map* r = s->filevars;
+    bhex_free(s);
+    return r;
+}
+
+map* Scope_free_and_get_locals(Scope* s)
+{
+    map_destroy(s->filevars);
+    map* r = s->locals;
     bhex_free(s);
     return r;
 }

@@ -19,7 +19,7 @@ Work in progress template engine
 [X] implement print API
 [X] allow usage of structs from other files (using like an "import NAME" statement)
 [X] make 'proc' not mandatory
-[ ] refactor tengine interpreter
+[X] refactor tengine interpreter
 	- parsing helpers should be moved to ast.c
 	- the TEngineInterpreter struct should be merged with ProcessContext and made private
 [ ] improve error print

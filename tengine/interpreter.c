@@ -1,6 +1,7 @@
 #include "interpreter.h"
 #include "builtin.h"
 #include "dlist.h"
+#include "filebuffer.h"
 #include "value.h"
 #include "scope.h"
 #include "defs.h"
@@ -15,9 +16,9 @@
 
 #define MAX_ARR_PRINT_SIZE 16
 
-#define engine_printf(e, ...)                                                  \
+#define interpreter_printf(ctx, ...)                                           \
     do {                                                                       \
-        if (!e->quiet_mode) {                                                  \
+        if (!ctx->quiet_mode) {                                                \
             display_printf(__VA_ARGS__);                                       \
         }                                                                      \
     } while (0)
@@ -27,26 +28,27 @@
 static void*         imported_ptr = NULL;
 static imported_cb_t imported_cb  = NULL;
 
-typedef struct ProcessContext {
-    FileBuffer*         fb;
-    TEngineInterpreter* engine;
-    u64_t               initial_off;
-    int                 print_off;
-    int                 should_break;
-} ProcessContext;
+static int           process_stmt(InterpreterContext* ctx, Stmt* stmt,
+                                  struct Scope* scope);
+static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
+                                   Expr* e);
+static int           eval_to_u64(InterpreterContext* ctx, Scope* scope, Expr* e,
+                                 u64_t* o);
+static int           eval_to_str(InterpreterContext* ctx, Scope* scope, Expr* e,
+                                 const char** o);
 
-static int process_stmt(ProcessContext* ctx, Stmt* stmt, struct Scope* scope);
-static TEngineValue* evaluate_expr(ProcessContext* ctx, Scope* scope, Expr* e);
-static int eval_to_u64(ProcessContext* ctx, Scope* scope, Expr* e, u64_t* o);
-static int eval_to_str(ProcessContext* ctx, Scope* scope, Expr* e,
-                       const char** o);
+static void interpreter_context_soft_clone(InterpreterContext* dst,
+                                           InterpreterContext* src)
+{
+    memcpy(dst, src, sizeof(InterpreterContext));
+}
 
-static void value_pp(TEngineInterpreter* e, u32_t off, TEngineValue* v)
+static void value_pp(InterpreterContext* e, u32_t off, TEngineValue* v)
 {
     char* value_str = TEngineValue_tostring(v, e->print_in_hex);
     if (off && count_chars_in_str(value_str, '\n'))
         value_str = str_indent(value_str, off);
-    engine_printf(e, "%s", value_str);
+    interpreter_printf(e, "%s", value_str);
     bhex_free(value_str);
 }
 
@@ -64,11 +66,12 @@ static Enum* get_enum(ASTCtx* ast, const char* name)
     return map_get(ast->enums, name);
 }
 
-static map* process_struct_type(ProcessContext* ctx, Type* type)
+static map* process_struct_type(InterpreterContext* ctx, Type* type)
 {
-    ASTCtx* original_ast = ctx->engine->ast;
-    map*    result       = NULL;
+    InterpreterContext cloned_ctx;
+    interpreter_context_soft_clone(&cloned_ctx, ctx);
 
+    map* result = NULL;
     if (type->bhe_name != NULL) {
         if (imported_cb == NULL) {
             warning("imported callback not configured");
@@ -76,18 +79,18 @@ static map* process_struct_type(ProcessContext* ctx, Type* type)
         }
 
         // from now on, and while parsing this type, use this AST
-        ctx->engine->ast = imported_cb(imported_ptr, type->bhe_name);
+        ctx->ast = imported_cb(imported_ptr, type->bhe_name);
     }
-    if (!ctx->engine->ast)
+    if (!ctx->ast)
         return NULL;
 
-    Block* body = get_struct_body(ctx->engine->ast, type->name);
+    Block* body = get_struct_body(ctx->ast, type->name);
     if (body == NULL)
         goto end;
 
     Scope* scope = Scope_new();
 
-    engine_printf(ctx->engine, "\n");
+    interpreter_printf(ctx, "\n");
     ctx->print_off += 4;
     for (u64_t i = 0; i < body->stmts->size; ++i) {
         Stmt* stmt = (Stmt*)body->stmts->data[i];
@@ -100,11 +103,11 @@ static map* process_struct_type(ProcessContext* ctx, Type* type)
     result = Scope_free_and_get_filevars(scope);
 
 end:
-    ctx->engine->ast = original_ast;
+    interpreter_context_soft_clone(ctx, &cloned_ctx);
     return result;
 }
 
-static const char* process_enum_type(ProcessContext* ctx, Type* type,
+static const char* process_enum_type(InterpreterContext* ctx, Type* type,
                                      u64_t* econst)
 {
     ASTCtx* ast = NULL;
@@ -115,7 +118,7 @@ static const char* process_enum_type(ProcessContext* ctx, Type* type,
         }
         ast = imported_cb(imported_ptr, type->bhe_name);
     } else {
-        ast = ctx->engine->ast;
+        ast = ctx->ast;
     }
 
     if (ast == NULL)
@@ -132,7 +135,7 @@ static const char* process_enum_type(ProcessContext* ctx, Type* type,
         return NULL;
     }
 
-    TEngineValue* v = t->process(ctx->engine, ctx->fb);
+    TEngineValue* v = t->process(ctx);
     if (v == NULL)
         return NULL;
 
@@ -152,18 +155,18 @@ static const char* process_enum_type(ProcessContext* ctx, Type* type,
     return name;
 }
 
-static TEngineValue* process_type(ProcessContext* ctx, const char* varname,
+static TEngineValue* process_type(InterpreterContext* ctx, const char* varname,
                                   Type* type, Scope* scope)
 {
     if (type->bhe_name == NULL) {
         const TEngineBuiltinType* t = get_builtin_type(type->name);
         if (t != NULL) {
-            TEngineValue* r = t->process(ctx->engine, ctx->fb);
+            TEngineValue* r = t->process(ctx);
             if (r == NULL)
                 return NULL;
 
-            value_pp(ctx->engine, ctx->print_off, r);
-            engine_printf(ctx->engine, "\n");
+            value_pp(ctx, ctx->print_off, r);
+            interpreter_printf(ctx, "\n");
             return r;
         }
     }
@@ -178,8 +181,8 @@ static TEngineValue* process_type(ProcessContext* ctx, const char* varname,
     const char* enum_var = process_enum_type(ctx, type, &econst);
     if (enum_var != NULL) {
         TEngineValue* v = TEngineValue_ENUM_VALUE_new(enum_var, econst);
-        value_pp(ctx->engine, ctx->print_off, v);
-        engine_printf(ctx->engine, "\n");
+        value_pp(ctx, ctx->print_off, v);
+        interpreter_printf(ctx, "\n");
         return v;
     }
 
@@ -187,7 +190,7 @@ static TEngineValue* process_type(ProcessContext* ctx, const char* varname,
     return NULL;
 }
 
-static TEngineValue* handle_function_call(ProcessContext* ctx, Function* fn,
+static TEngineValue* handle_function_call(InterpreterContext* ctx, Function* fn,
                                           DList* params_exprs,
                                           Scope* caller_scope)
 {
@@ -223,7 +226,7 @@ end:
     return result;
 }
 
-static DList* evaluate_list_of_exprs(ProcessContext* ctx, Scope* scope,
+static DList* evaluate_list_of_exprs(InterpreterContext* ctx, Scope* scope,
                                      DList* l)
 {
     DList* r = NULL;
@@ -241,7 +244,8 @@ static DList* evaluate_list_of_exprs(ProcessContext* ctx, Scope* scope,
     return r;
 }
 
-static TEngineValue* evaluate_expr(ProcessContext* ctx, Scope* scope, Expr* e)
+static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
+                                   Expr* e)
 {
 #define evaluate_check_null                                                    \
     if (!lhs || !rhs) {                                                        \
@@ -256,12 +260,12 @@ static TEngineValue* evaluate_expr(ProcessContext* ctx, Scope* scope, Expr* e)
         case EXPR_UCONST:
             return TEngineValue_UNUM_new(e->uconst_value, e->uconst_size);
         case EXPR_ENUM_CONST: {
-            if (!map_contains(ctx->engine->ast->enums, e->enum_name)) {
+            if (!map_contains(ctx->ast->enums, e->enum_name)) {
                 error("[tengine] no such enum '%s'", e->enum_name);
                 return NULL;
             }
             u64_t v;
-            Enum* enumptr = map_get(ctx->engine->ast->enums, e->enum_name);
+            Enum* enumptr = map_get(ctx->ast->enums, e->enum_name);
             if (Enum_find_value(enumptr, e->enum_field, &v) != 0) {
                 error("[tengine] enum '%s' has no such field '%s'",
                       e->enum_name, e->enum_field);
@@ -318,7 +322,7 @@ static TEngineValue* evaluate_expr(ProcessContext* ctx, Scope* scope, Expr* e)
                 DList* params_vals =
                     evaluate_list_of_exprs(ctx, scope, e->params);
                 TEngineValue* r =
-                    builtin_func->process(ctx->engine, ctx->fb, params_vals);
+                    builtin_func->process(ctx, params_vals);
                 if (params_vals)
                     DList_destroy(params_vals,
                                   (void (*)(void*))TEngineValue_free);
@@ -327,11 +331,11 @@ static TEngineValue* evaluate_expr(ProcessContext* ctx, Scope* scope, Expr* e)
                           e->fname);
                 return r;
             }
-            if (map_contains(ctx->engine->ast->functions, e->fname)) {
+            if (map_contains(ctx->ast->functions, e->fname)) {
                 // Custom function
                 DList* params_vals =
                     evaluate_list_of_exprs(ctx, scope, e->params);
-                Function* fn = map_get(ctx->engine->ast->functions, e->fname);
+                Function*     fn = map_get(ctx->ast->functions, e->fname);
                 TEngineValue* result =
                     handle_function_call(ctx, fn, params_vals, scope);
                 if (params_vals)
@@ -512,7 +516,7 @@ static TEngineValue* evaluate_expr(ProcessContext* ctx, Scope* scope, Expr* e)
     return NULL;
 }
 
-static int eval_to_u64(ProcessContext* ctx, Scope* scope, Expr* e, u64_t* o)
+static int eval_to_u64(InterpreterContext* ctx, Scope* scope, Expr* e, u64_t* o)
 {
     TEngineValue* v = evaluate_expr(ctx, scope, e);
     if (v == NULL)
@@ -527,7 +531,7 @@ static int eval_to_u64(ProcessContext* ctx, Scope* scope, Expr* e, u64_t* o)
 }
 
 __attribute__((unused)) static int
-eval_to_str(ProcessContext* ctx, Scope* scope, Expr* e, const char** o)
+eval_to_str(InterpreterContext* ctx, Scope* scope, Expr* e, const char** o)
 {
     TEngineValue* v = evaluate_expr(ctx, scope, e);
     if (v == NULL)
@@ -541,7 +545,7 @@ eval_to_str(ProcessContext* ctx, Scope* scope, Expr* e, const char** o)
     return 0;
 }
 
-static int process_array_type(ProcessContext* ctx, const char* varname,
+static int process_array_type(InterpreterContext* ctx, const char* varname,
                               Type* type, Expr* esize, Scope* scope,
                               TEngineValue** oval)
 {
@@ -566,8 +570,8 @@ static int process_array_type(ProcessContext* ctx, const char* varname,
             const u8_t* buf       = fb_read(ctx->fb, size);
             memcpy(tmp, buf, size);
             *oval = TEngineValue_STRING_new(tmp, size);
-            value_pp(ctx->engine, ctx->print_off, *oval);
-            engine_printf(ctx->engine, "\n");
+            value_pp(ctx, ctx->print_off, *oval);
+            interpreter_printf(ctx, "\n");
             bhex_free(tmp);
             fb_seek(ctx->fb, final_off);
             return 0;
@@ -578,10 +582,10 @@ static int process_array_type(ProcessContext* ctx, const char* varname,
             u64_t       size_to_print = min(MAX_ARR_PRINT_SIZE, size);
             const u8_t* buf           = fb_read(ctx->fb, size_to_print);
             for (u64_t i = 0; i < size_to_print; ++i)
-                engine_printf(ctx->engine, "%02x", buf[i]);
+                interpreter_printf(ctx, "%02x", buf[i]);
             if (size_to_print < size)
-                engine_printf(ctx->engine, "...");
-            engine_printf(ctx->engine, "\n");
+                interpreter_printf(ctx, "...");
+            interpreter_printf(ctx, "\n");
 
             *oval = TEngineValue_BUF_new(ctx->fb->off, size);
             fb_seek(ctx->fb, final_off);
@@ -593,21 +597,21 @@ static int process_array_type(ProcessContext* ctx, const char* varname,
             *oval = TEngineValue_ARRAY_new();
 
             u64_t printed = 0;
-            engine_printf(ctx->engine, "[ ");
+            interpreter_printf(ctx, "[ ");
             while (printed < size) {
-                TEngineValue* val = t->process(ctx->engine, ctx->fb);
+                TEngineValue* val = t->process(ctx);
                 if (val == NULL)
                     return 1;
                 if (printed++ < MAX_ARR_PRINT_SIZE) {
-                    value_pp(ctx->engine, ctx->print_off, val);
+                    value_pp(ctx, ctx->print_off, val);
                     if (printed <= size - 1)
-                        engine_printf(ctx->engine, ", ");
+                        interpreter_printf(ctx, ", ");
                 }
                 if (printed == MAX_ARR_PRINT_SIZE && size < printed)
-                    engine_printf(ctx->engine, "...");
+                    interpreter_printf(ctx, "...");
                 TEngineValue_ARRAY_append(*oval, val);
             }
-            engine_printf(ctx->engine, " ]\n");
+            interpreter_printf(ctx, " ]\n");
             return 0;
         }
     }
@@ -616,11 +620,10 @@ static int process_array_type(ProcessContext* ctx, const char* varname,
     u64_t printed = 0;
     *oval         = TEngineValue_ARRAY_new();
 
-    engine_printf(ctx->engine, "\n");
-    for (int i = 0; i < ctx->print_off + 11 + ctx->engine->ast->max_ident_len;
-         ++i)
-        engine_printf(ctx->engine, " ");
-    engine_printf(ctx->engine, "[%lld]", printed);
+    interpreter_printf(ctx, "\n");
+    for (int i = 0; i < ctx->print_off + 11 + ctx->alignment_off; ++i)
+        interpreter_printf(ctx, " ");
+    interpreter_printf(ctx, "[%lld]", printed);
     for (printed = 0; printed < size; ++printed) {
         map* custom_type_vars = process_struct_type(ctx, type);
         if (custom_type_vars == NULL) {
@@ -628,10 +631,9 @@ static int process_array_type(ProcessContext* ctx, const char* varname,
             return 1;
         }
         if (printed < size - 1) {
-            for (int i = 0;
-                 i < ctx->print_off + 11 + ctx->engine->ast->max_ident_len; ++i)
-                engine_printf(ctx->engine, " ");
-            engine_printf(ctx->engine, "[%lld]", printed + 1);
+            for (int i = 0; i < ctx->print_off + 11 + ctx->alignment_off; ++i)
+                interpreter_printf(ctx, " ");
+            interpreter_printf(ctx, "[%lld]", printed + 1);
         }
 
         TEngineValue* el = TEngineValue_OBJ_new(custom_type_vars);
@@ -640,13 +642,13 @@ static int process_array_type(ProcessContext* ctx, const char* varname,
     return 0;
 }
 
-static int process_FILE_VAR_DECL(ProcessContext* ctx, Stmt* stmt, Scope* scope)
+static int process_FILE_VAR_DECL(InterpreterContext* ctx, Stmt* stmt,
+                                 Scope* scope)
 {
-    engine_printf(ctx->engine, "b+%08llx ", ctx->fb->off - ctx->initial_off);
+    interpreter_printf(ctx, "b+%08llx ", ctx->fb->off - ctx->initial_off);
     for (int i = 0; i < ctx->print_off; ++i)
-        engine_printf(ctx->engine, " ");
-    engine_printf(ctx->engine, " %*s: ", ctx->engine->ast->max_ident_len,
-                  stmt->name);
+        interpreter_printf(ctx, " ");
+    interpreter_printf(ctx, " %*s: ", ctx->ast->max_ident_len, stmt->name);
 
     if (stmt->arr_size == NULL) {
         // Not an array
@@ -667,7 +669,8 @@ static int process_FILE_VAR_DECL(ProcessContext* ctx, Stmt* stmt, Scope* scope)
     return 0;
 }
 
-static int process_LOCAL_VAR_DECL(ProcessContext* ctx, Stmt* stmt, Scope* scope)
+static int process_LOCAL_VAR_DECL(InterpreterContext* ctx, Stmt* stmt,
+                                  Scope* scope)
 {
     TEngineValue* v = evaluate_expr(ctx, scope, stmt->local_value);
     if (v == NULL)
@@ -677,7 +680,8 @@ static int process_LOCAL_VAR_DECL(ProcessContext* ctx, Stmt* stmt, Scope* scope)
     return 0;
 }
 
-static int process_LOCAL_VAR_ASS(ProcessContext* ctx, Stmt* stmt, Scope* scope)
+static int process_LOCAL_VAR_ASS(InterpreterContext* ctx, Stmt* stmt,
+                                 Scope* scope)
 {
     TEngineValue* v = evaluate_expr(ctx, scope, stmt->local_value);
     if (v == NULL)
@@ -692,22 +696,22 @@ static int process_LOCAL_VAR_ASS(ProcessContext* ctx, Stmt* stmt, Scope* scope)
     return 0;
 }
 
-static int process_VOID_FUNC_CALL(ProcessContext* ctx, Stmt* stmt, Scope* scope)
+static int process_VOID_FUNC_CALL(InterpreterContext* ctx, Stmt* stmt,
+                                  Scope* scope)
 {
     const TEngineBuiltinFunc* builtin_func = get_builtin_func(stmt->fname);
     if (builtin_func != NULL) {
         DList* params_vals = evaluate_list_of_exprs(ctx, scope, stmt->params);
-        TEngineValue* r =
-            builtin_func->process(ctx->engine, ctx->fb, params_vals);
+        TEngineValue* r    = builtin_func->process(ctx, params_vals);
         if (params_vals)
             DList_destroy(params_vals, (void (*)(void*))TEngineValue_free);
         TEngineValue_free(r);
         return 0;
     }
-    if (map_contains(ctx->engine->ast->functions, stmt->fname)) {
+    if (map_contains(ctx->ast->functions, stmt->fname)) {
         // Custom function
         DList* params_vals = evaluate_list_of_exprs(ctx, scope, stmt->params);
-        Function*     fn   = map_get(ctx->engine->ast->functions, stmt->fname);
+        Function*     fn   = map_get(ctx->ast->functions, stmt->fname);
         TEngineValue* result =
             handle_function_call(ctx, fn, params_vals, scope);
         if (params_vals)
@@ -722,7 +726,7 @@ static int process_VOID_FUNC_CALL(ProcessContext* ctx, Stmt* stmt, Scope* scope)
     return 1;
 }
 
-static int process_STMT_IF_ELIF_ELSE(ProcessContext* ctx, Stmt* stmt,
+static int process_STMT_IF_ELIF_ELSE(InterpreterContext* ctx, Stmt* stmt,
                                      Scope* scope)
 {
     // TODO: we are using the same context of the current block, to do the
@@ -757,7 +761,7 @@ static int process_STMT_IF_ELIF_ELSE(ProcessContext* ctx, Stmt* stmt,
     return 0;
 }
 
-static int process_STMT_WHILE(ProcessContext* ctx, Stmt* stmt, Scope* scope)
+static int process_STMT_WHILE(InterpreterContext* ctx, Stmt* stmt, Scope* scope)
 {
     // TODO: same problem WRT STMT_IF
 
@@ -787,7 +791,7 @@ static int process_STMT_WHILE(ProcessContext* ctx, Stmt* stmt, Scope* scope)
     return 0;
 }
 
-static int process_stmt(ProcessContext* ctx, Stmt* stmt, Scope* scope)
+static int process_stmt(InterpreterContext* ctx, Stmt* stmt, Scope* scope)
 {
     switch (stmt->t) {
         case FILE_VAR_DECL:
@@ -813,35 +817,41 @@ static int process_stmt(ProcessContext* ctx, Stmt* stmt, Scope* scope)
     return 1;
 }
 
-static int process_ast(TEngineInterpreter* engine, FileBuffer* fb)
+static int process_ast(InterpreterContext* ictx)
 {
-    if (!engine->ast->proc) {
+    if (!ictx->ast->proc) {
         error("[tengine] no proc");
         return 1;
     }
 
-    ProcessContext ctx   = {fb, engine, fb->off, 0};
-    DList*         stmts = engine->ast->proc->stmts;
+    InterpreterContext cloned_ctx;
+    interpreter_context_soft_clone(&cloned_ctx, ictx);
+
+    DList* stmts = ictx->ast->proc->stmts;
     for (u64_t i = 0; i < stmts->size; ++i) {
         Stmt* stmt = (Stmt*)stmts->data[i];
-        if (process_stmt(&ctx, stmt, engine->proc_scope) != 0)
+        if (process_stmt(&cloned_ctx, stmt, ictx->proc_scope) != 0)
             return 1;
     }
     return 0;
 }
 
-void tengine_interpreter_init(TEngineInterpreter* engine, ASTCtx* ast)
+static void interpreter_context_init(InterpreterContext* ictx, ASTCtx* ast,
+                                     FileBuffer* fb)
 {
-    engine->ast          = ast;
-    engine->proc_scope   = Scope_new();
-    engine->endianess    = TE_LITTLE_ENDIAN;
-    engine->print_in_hex = 1;
-    engine->quiet_mode   = 0;
+    ictx->ast           = ast;
+    ictx->alignment_off = ast->max_ident_len;
+    ictx->fb            = fb;
+    ictx->proc_scope    = Scope_new();
+    ictx->endianess     = TE_LITTLE_ENDIAN;
+    ictx->print_in_hex  = 1;
+    ictx->quiet_mode    = 0;
+    ictx->alignment_off = 0;
 }
 
-void tengine_interpreter_deinit(TEngineInterpreter* engine)
+static void interpreter_context_deinit(InterpreterContext* ictx)
 {
-    Scope_free(engine->proc_scope);
+    Scope_free(ictx->proc_scope);
 }
 
 void tengine_interpreter_set_imported_types_callback(imported_cb_t cb,
@@ -875,24 +885,23 @@ int tengine_interpreter_process_file(FileBuffer* fb, FILE* f)
     return r;
 }
 
-TEngineInterpreter* tengine_interpreter_run_on_string(FileBuffer* fb,
-                                                      const char* str)
+Scope* tengine_interpreter_run_on_string(FileBuffer* fb, const char* str)
 {
     ASTCtx* ast = tengine_parse_string(str);
-    if (ast == NULL)
+    if (ast == NULL) {
         return NULL;
+    }
 
-    TEngineInterpreter* e = bhex_calloc(sizeof(TEngineInterpreter));
-    tengine_interpreter_init(e, ast);
+    InterpreterContext ctx = {0};
+    interpreter_context_init(&ctx, ast, fb);
 
-    if (process_ast(e, fb) != 0) {
+    if (process_ast(&ctx) != 0) {
         ASTCtx_delete(ast);
-        tengine_interpreter_deinit(e);
-        bhex_free(e);
+        interpreter_context_deinit(&ctx);
         return NULL;
     }
     ASTCtx_delete(ast);
-    return e;
+    return ctx.proc_scope;
 }
 
 int tengine_interpreter_process_string(FileBuffer* fb, const char* str)
@@ -908,19 +917,19 @@ int tengine_interpreter_process_string(FileBuffer* fb, const char* str)
 
 int tengine_interpreter_process_ast(FileBuffer* fb, ASTCtx* ast)
 {
-    TEngineInterpreter eng;
-    tengine_interpreter_init(&eng, ast);
+    InterpreterContext eng = {0};
+    interpreter_context_init(&eng, ast, fb);
 
-    int r = process_ast(&eng, fb);
-    tengine_interpreter_deinit(&eng);
+    int r = process_ast(&eng);
+    interpreter_context_deinit(&eng);
     return r;
 }
 
 int tengine_interpreter_process_ast_struct(FileBuffer* fb, ASTCtx* ast,
                                            const char* s)
 {
-    TEngineInterpreter eng;
-    tengine_interpreter_init(&eng, ast);
+    InterpreterContext eng = {0};
+    interpreter_context_init(&eng, ast, fb);
 
     int r = 1;
     if (!map_contains(ast->structs, s)) {
@@ -928,26 +937,28 @@ int tengine_interpreter_process_ast_struct(FileBuffer* fb, ASTCtx* ast,
         goto end;
     }
 
-    ProcessContext ctx = {fb, &eng, fb->off, 0};
-    Block*         b   = map_get(ast->structs, s);
+    InterpreterContext cloned_ctx;
+    interpreter_context_soft_clone(&cloned_ctx, &eng);
+
+    Block* b = map_get(ast->structs, s);
     for (u64_t i = 0; i < b->stmts->size; ++i) {
         Stmt* stmt = (Stmt*)b->stmts->data[i];
-        if (process_stmt(&ctx, stmt, eng.proc_scope) != 0)
+        if (process_stmt(&cloned_ctx, stmt, eng.proc_scope) != 0)
             goto end;
     }
     r = 0;
 
 end:
-    tengine_interpreter_deinit(&eng);
+    interpreter_context_deinit(&eng);
     return r;
 }
 
-void tengine_interpreter_pp(TEngineInterpreter* e)
+void tengine_interpreter_pp(InterpreterContext* e)
 {
     int orig_quiet_mode = e->quiet_mode;
     e->quiet_mode       = 0;
 
-    printf("TEngineInterpreter\n\n");
+    printf("InterpreterContext\n\n");
     ASTCtx_pp(e->ast);
 
     printf("\nProc File Variables\n");

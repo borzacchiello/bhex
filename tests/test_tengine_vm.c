@@ -12,7 +12,7 @@ static const char* empty_dirs[] = {NULL};
 
 int TEST(use_struct_of_another_file)(void)
 {
-    const char* prog = "net#eth a";
+    const char* prog = "net#eth a;";
     // clang-format off
     const char* expected = 
         "b+00000000    a: \n"
@@ -23,13 +23,15 @@ int TEST(use_struct_of_another_file)(void)
 
     int        r  = TEST_FAILED;
     TEngineVM* vm = tengine_vm_create(empty_dirs);
-    if (vm == NULL)
+    if (vm == NULL) {
         return 0;
-    if (tengine_vm_add_template(vm, "net", "./templates/net.bhe") != 0)
+    }
+    if (tengine_vm_add_template(vm, "net", "./templates/net.bhe") != 0) {
         goto end;
-
-    if (tengine_vm_process_string(vm, elf_fb->fb, prog) != 0)
+    }
+    if (tengine_vm_process_string(vm, elf_fb->fb, prog) != 0) {
         goto end;
+    }
 
     char* out = strbuilder_reset(sb);
     r         = compare_strings_ignoring_X(expected, out);
@@ -41,7 +43,7 @@ end:
 
 int TEST(use_complex_struct_of_another_file)(void)
 {
-    const char* prog = "elf#Elf_Ehdr h";
+    const char* prog = "elf#Elf_Ehdr h;";
     // clang-format off
     const char* expected = 
         "b+00000000         h: \n"
@@ -90,7 +92,7 @@ end:
 
 int TEST(use_enum_of_another_file)(void)
 {
-    const char* prog = "fwd(0x12); elf#ElfMachine m";
+    const char* prog = "fwd(0x12); elf#ElfMachine m;";
     // clang-format off
     const char* expected =
         "b+00000012           m: EM_386\n";
