@@ -7,12 +7,13 @@
 #include <alloc.h>
 #include <log.h>
 
+#include "data/elf_not_kitty.h"
+#include "data/elf_truncated.h"
+#include "data/pe_tiny.h"
+
 #include "dummy_filebuffer.h"
-#include "elf_not_kitty.h"
-#include "elf_truncated.h"
-#include "pe_tiny.h"
-#include "../cmd/cmd.h"
 #include "filebuffer.h"
+#include "../cmd/cmd.h"
 
 extern int template_skip_search;
 

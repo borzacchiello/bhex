@@ -1,4 +1,3 @@
-#include "elf_not_kitty.h"
 #include "t_cmd_common.h"
 #include "t.h"
 
@@ -71,7 +70,7 @@ int TEST(big_chunk)(void)
     u8_t* out_content = NULL;
     u64_t out_size    = 0;
 
-    if (exec_commands("s 0; ex /tmp/out.bin 4096") != 0)
+    if (exec_commands("s 0; ex /tmp/out.bin") != 0)
         goto end;
 
     if (read_and_unlink_file("/tmp/out.bin", &out_content, &out_size) != 0)
@@ -105,6 +104,30 @@ int TEST(not_zero_off)(void)
         goto end;
 
     if (memcmp(out_content, "ELF", 3) == 0)
+        r = TEST_SUCCEEDED;
+
+end:
+    if (out_content)
+        bhex_free(out_content);
+    return r;
+}
+
+int TEST(no_size)(void)
+{
+    int   r           = TEST_FAILED;
+    u8_t* out_content = NULL;
+    u64_t out_size    = 0;
+
+    if (exec_commands("s 320; ex /tmp/out.bin") != 0)
+        goto end;
+
+    if (read_and_unlink_file("/tmp/out.bin", &out_content, &out_size) != 0)
+        goto end;
+
+    if (out_size != 4)
+        goto end;
+
+    if (memcmp(out_content, &elf_not_kitty[sizeof(elf_not_kitty) - 4], 4) == 0)
         r = TEST_SUCCEEDED;
 
 end:

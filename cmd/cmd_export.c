@@ -8,7 +8,7 @@
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 
-#define HINT_STR " [<ofile> <size>]"
+#define HINT_STR " <ofile> [<size>]"
 
 static void exportcmd_dispose(void* obj) { return; }
 
@@ -21,26 +21,24 @@ static void exportcmd_help(void* obj)
         "  ex" HINT_STR "\n"
         "\n"
         "  ofile: output file\n"
-        "  size:  number of bytes to export\n\n");
+        "  size:  number of bytes to export (if omitted, all the remaining bytes)\n\n");
 }
 
 static int exportcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 {
-    if (pc->args.size != 2)
+    if (pc->args.size != 1 && pc->args.size != 2)
         return COMMAND_INVALID_ARG;
     if (pc->cmd_modifiers.size != 0)
         return COMMAND_UNSUPPORTED_MOD;
 
+    u64_t       size     = fb->size - fb->off;
     const char* ofile    = (const char*)pc->args.head->data;
-    const char* size_str = (const char*)pc->args.head->next->data;
-    u64_t       size     = 0;
-    if (!str_to_uint64(size_str, &size))
-        return COMMAND_INVALID_ARG;
-
-    if (size > fb->size - fb->off) {
-        size = fb->size - fb->off;
-        warning("size is too big, trimming it to %llu", size);
+    if (pc->args.size == 2) {
+        const char* size_str = (const char*)pc->args.head->next->data;
+        if (!str_to_uint64(size_str, &size))
+            return COMMAND_INVALID_ARG;
     }
+
     if (size == 0)
         return COMMAND_INVALID_ARG;
 

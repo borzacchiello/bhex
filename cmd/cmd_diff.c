@@ -61,7 +61,7 @@ static void print_diffs(FileBuffer* self, FileBuffer* other, int print_diffs)
     fb_seek(other, 0);
 
     if (print_diffs)
-        puts("");
+        display_printf("\n");
 
     u64_t ndiffs     = 0;
     u64_t off        = 0;

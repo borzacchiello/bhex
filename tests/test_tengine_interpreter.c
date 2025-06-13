@@ -3,13 +3,11 @@
 #include <log.h>
 #include <defs.h>
 
-#include "dummy_filebuffer.h"
 #include "../tengine/interpreter.h"
 #include "../tengine/scope.h"
-#include "elf_not_kitty.h"
 #include "strbuilder.h"
-#include "t.h"
 #include "t_cmd_common.h"
+#include "t.h"
 
 #ifndef TEST
 #define TEST(name) test_##name

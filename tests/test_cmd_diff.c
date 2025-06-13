@@ -64,6 +64,7 @@ int TEST(different_smaller_print)(void)
 {
     // clang-format off
     const char* expected =
+           "\n"
            " 000f: 00                                                .\n"
 bold_begin " 000f: FF                                                .\n" bold_end
            " ...\n"
