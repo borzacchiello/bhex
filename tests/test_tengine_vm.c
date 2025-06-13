@@ -1,5 +1,6 @@
 #include "../tengine/vm.h"
 #include "alloc.h"
+#include "filebuffer.h"
 #include "strbuilder.h"
 #include "t_cmd_common.h"
 #include "t.h"
@@ -12,6 +13,8 @@ static const char* empty_dirs[] = {NULL};
 
 int TEST(use_struct_of_another_file)(void)
 {
+    fb_undo_all(elf_fb->fb);
+
     const char* prog = "net#eth a;";
     // clang-format off
     const char* expected = 
@@ -43,6 +46,8 @@ end:
 
 int TEST(use_complex_struct_of_another_file)(void)
 {
+    fb_undo_all(elf_fb->fb);
+
     const char* prog = "elf#Elf_Ehdr h;";
     // clang-format off
     const char* expected = 
@@ -92,6 +97,8 @@ end:
 
 int TEST(use_enum_of_another_file)(void)
 {
+    fb_undo_all(elf_fb->fb);
+
     const char* prog = "fwd(0x12); elf#ElfMachine m;";
     // clang-format off
     const char* expected =
