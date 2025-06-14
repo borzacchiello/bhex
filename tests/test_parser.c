@@ -67,6 +67,55 @@ int TEST(tokenize_quotation_ok)()
     return r;
 }
 
+int TEST(tokenize_embedded_quotes)()
+{
+    ll_t ll;
+    int  r = tokenize("ciao \"Mario \\\"Bla\\\" Rossi\"\n", &ll);
+    if (r != PARSER_OK)
+        return 0;
+
+    const char* arr[] = {"ciao", "Mario \"Bla\" Rossi"};
+    r = check_eq(&ll, (const char**)&arr, sizeof(arr) / sizeof(char*));
+
+    ll_clear(&ll, destroy_token);
+    return r;
+}
+
+int TEST(tokenize_other_backslashes)()
+{
+    ll_t ll;
+    int  r = tokenize("ciao \"\\0\\1\\2\\3\"\n", &ll);
+    if (r != PARSER_OK)
+        return 0;
+
+    const char* arr[] = {"ciao", "\\0\\1\\2\\3"};
+    r = check_eq(&ll, (const char**)&arr, sizeof(arr) / sizeof(char*));
+
+    ll_clear(&ll, destroy_token);
+    return r;
+}
+
+int TEST(tokenize_backslashes_in_string)()
+{
+    ll_t ll;
+    int  r = tokenize("ciao \"\\\\\"\n", &ll);
+    if (r != PARSER_OK)
+        return 0;
+
+    const char* arr[] = {"ciao", "\\"};
+    r = check_eq(&ll, (const char**)&arr, sizeof(arr) / sizeof(char*));
+
+    ll_clear(&ll, destroy_token);
+    return r;
+}
+
+int TEST(tokenize_unclosed_with_backslash)()
+{
+    ll_t ll;
+    int  r = tokenize("ciao \"\\\"\n", &ll);
+    return r == PARSER_ERR_UNCLOSED_QUOTATION;
+}
+
 int TEST(tokenize_quotation_err)()
 {
     ll_t ll;

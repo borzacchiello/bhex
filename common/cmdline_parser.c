@@ -1,4 +1,6 @@
 #include "cmdline_parser.h"
+#include "defs.h"
+#include "strbuilder.h"
 
 #include <string.h>
 #include <alloc.h>
@@ -6,6 +8,7 @@
 
 static const char* space_tokens   = " \t\n";
 static const char  quotation_char = '"';
+static const char  backslash_char = '\\';
 
 const char* parser_err_to_string(int err)
 {
@@ -81,22 +84,44 @@ static int gen_token(const char* s, const char* one_char_tokens, char** o_token,
         // The character is a "one_char_token"
         len = 1;
     } else if (*s == quotation_char) {
+
         // eat all the characters (including spaces, tabs and tokens)
         // until we encounter a new "
+        int            prev_was_backslash = 0;
+        StringBuilder* o_token_sb         = strbuilder_new();
 
         // remove first quote
-        begin_off = 1;
         curr += 1;
-        while (*curr && *curr != quotation_char) {
+        while (*curr) {
+            if (*curr == quotation_char && !prev_was_backslash) {
+                // end of the quotation
+                break;
+            }
+
+            if (prev_was_backslash && *curr != quotation_char &&
+                *curr != backslash_char)
+                strbuilder_append_char(o_token_sb, backslash_char);
+
+            if (*curr != backslash_char)
+                strbuilder_append_char(o_token_sb, *curr);
+            else if (*curr == backslash_char && prev_was_backslash)
+                strbuilder_append_char(o_token_sb, backslash_char);
+
+            prev_was_backslash =
+                (*curr == backslash_char && !prev_was_backslash);
             len += 1;
             curr += 1;
         }
         if (*curr != quotation_char) {
             // quote not closed
+            bhex_free(strbuilder_finalize(o_token_sb));
             return PARSER_ERR_UNCLOSED_QUOTATION;
         }
-        // remove last quote
-        end_off = 1;
+
+        *o_off   = len + 2; // +2 for the two quotes
+        *o_token = strbuilder_finalize(o_token_sb);
+        return PARSER_OK;
+
     } else {
         // eat all the character until we encounter a space token or a
         // one_char_token
