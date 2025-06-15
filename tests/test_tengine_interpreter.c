@@ -1550,3 +1550,55 @@ end:
         Scope_free(scope);
     return r;
 }
+
+int TEST(find_forward_match)(void)
+{
+    int              r = 0;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create((const u8_t*)"AAAAciaoBBBB", 12);
+    const char* prog = "proc {"
+                       "    local a = find(\"ciao\");"
+                       "}";
+
+    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    if (scope == NULL) {
+        goto end;
+    }
+
+    TEngineValue* v = Scope_get_local(scope, "a");
+    IS_TENGINE_UNUM_EQ(r, v, 1);
+    r = tfb->fb->off == 4;
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+}
+
+int TEST(find_backward_match)(void)
+{
+    int              r = 0;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create((const u8_t*)"AAAAciaoBBBB", 12);
+    fb_seek(tfb->fb, 12);
+
+    const char* prog = "proc {"
+                       "    local a = find(\"ciao\", 1);"
+                       "}";
+
+    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    if (scope == NULL) {
+        goto end;
+    }
+
+    TEngineValue* v = Scope_get_local(scope, "a");
+    IS_TENGINE_UNUM_EQ(r, v, 1);
+    r = tfb->fb->off == 4;
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+}

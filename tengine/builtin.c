@@ -1,8 +1,10 @@
 #include "builtin.h"
 #include "defs.h"
 #include "display.h"
+#include "filebuffer.h"
 #include "strbuilder.h"
 #include "interpreter.h"
+#include "util/str.h"
 #include "value.h"
 
 #include <stddef.h>
@@ -155,8 +157,10 @@ const TEngineBuiltinType* get_builtin_type(const char* type)
     static TEngineValue* builtin_##name(InterpreterContext* ctx,               \
                                         DList*              params)            \
     {                                                                          \
-        if (!params || params->size == 0)                                      \
-            panic("[tengine] " #name " invalid parameters");                   \
+        if (!params || params->size == 0) {                                    \
+            error("[tengine] " #name ": missing required parameter");          \
+            return NULL;                                                       \
+        }                                                                      \
         if (signed) {                                                          \
             s64_t s;                                                           \
             if (TEngineValue_as_s64(params->data[0], &s) != 0) {               \
@@ -186,16 +190,20 @@ GEN_INT_CAST(i64, 8, 1)
 
 static TEngineValue* builtin_off(InterpreterContext* ctx, DList* params)
 {
-    if (params && params->size > 0)
-        panic("[tengine] builtin_off invalid parameters");
+    if (params && params->size > 0) {
+        error("[tengine] off: expected no parameter");
+        return NULL;
+    }
 
     return TEngineValue_UNUM_new(ctx->fb->off, 8);
 }
 
 static TEngineValue* builtin_size(InterpreterContext* ctx, DList* params)
 {
-    if (params && params->size > 0)
-        panic("[tengine] builtin_size invalid parameters");
+    if (params && params->size > 0) {
+        error("[tengine] size: expected no parameter");
+        return NULL;
+    }
 
     return TEngineValue_UNUM_new(ctx->fb->size, 8);
 }
@@ -203,16 +211,20 @@ static TEngineValue* builtin_size(InterpreterContext* ctx, DList* params)
 static TEngineValue* builtin_remaining_size(InterpreterContext* ctx,
                                             DList*              params)
 {
-    if (params && params->size > 0)
-        panic("[tengine] builtin_remaining_size invalid parameters");
+    if (params && params->size > 0) {
+        error("[tengine] remaining_size: expected no parameter");
+        return NULL;
+    }
 
     return TEngineValue_UNUM_new(ctx->fb->size - ctx->fb->off, 8);
 }
 
 static TEngineValue* builtin_atoi(InterpreterContext* ctx, DList* params)
 {
-    if (!params || params->size != 1)
-        panic("[tengine] builtin_atoi invalid parameters");
+    if (!params || params->size != 1) {
+        error("[tengine] atoi: missing required parameter");
+        return NULL;
+    }
 
     TEngineValue* param = params->data[0];
     const char*   param_str;
@@ -231,8 +243,10 @@ static TEngineValue* builtin_atoi(InterpreterContext* ctx, DList* params)
 
 static TEngineValue* builtin_strlen(InterpreterContext* ctx, DList* params)
 {
-    if (!params || params->size != 1)
-        panic("[tengine] builtin_strlen invalid parameters");
+    if (!params || params->size != 1) {
+        error("[tengine] strlen: missing required parameter");
+        return NULL;
+    }
 
     TEngineValue* param = params->data[0];
     const char*   param_str;
@@ -246,8 +260,10 @@ static TEngineValue* builtin_strlen(InterpreterContext* ctx, DList* params)
 
 static TEngineValue* builtin_strip(InterpreterContext* ctx, DList* params)
 {
-    if (!params || params->size != 1)
-        panic("[tengine] builtin_strip missing required parameter");
+    if (!params || params->size != 1) {
+        error("[tengine] strip: missing required parameter");
+        return NULL;
+    }
 
     TEngineValue* param = params->data[0];
     const char*   param_str;
@@ -272,8 +288,10 @@ static TEngineValue* builtin_strip(InterpreterContext* ctx, DList* params)
 static TEngineValue* builtin_endianess_le(InterpreterContext* ctx,
                                           DList*              params)
 {
-    if (params && params->size > 0)
-        panic("[tengine] builtin_endianess_le invalid parameters");
+    if (params && params->size > 0) {
+        error("[tengine] endianess_le: expected no parameter");
+        return NULL;
+    }
 
     ctx->endianess = TE_LITTLE_ENDIAN;
     return NULL;
@@ -282,8 +300,10 @@ static TEngineValue* builtin_endianess_le(InterpreterContext* ctx,
 static TEngineValue* builtin_endianess_be(InterpreterContext* ctx,
                                           DList*              params)
 {
-    if (params && params->size > 0)
-        panic("[tengine] builtin_endianess_be invalid parameters");
+    if (params && params->size > 0) {
+        error("[tengine] endianess_be: expected no parameter");
+        return NULL;
+    }
 
     ctx->endianess = TE_BIG_ENDIAN;
     return NULL;
@@ -291,8 +311,10 @@ static TEngineValue* builtin_endianess_be(InterpreterContext* ctx,
 
 static TEngineValue* builtin_nums_in_hex(InterpreterContext* ctx, DList* params)
 {
-    if (params && params->size > 0)
-        panic("[tengine] nums_in_hex invalid parameters");
+    if (params && params->size > 0) {
+        error("[tengine] nums_in_hex: expected no parameter");
+        return NULL;
+    }
 
     ctx->print_in_hex = 1;
     return NULL;
@@ -300,8 +322,10 @@ static TEngineValue* builtin_nums_in_hex(InterpreterContext* ctx, DList* params)
 
 static TEngineValue* builtin_nums_in_dec(InterpreterContext* ctx, DList* params)
 {
-    if (params && params->size > 0)
-        panic("[tengine] nums_in_dec invalid parameters");
+    if (params && params->size > 0) {
+        error("[tengine] nums_in_dec: expected no parameter");
+        return NULL;
+    }
 
     ctx->print_in_hex = 0;
     return NULL;
@@ -310,8 +334,10 @@ static TEngineValue* builtin_nums_in_dec(InterpreterContext* ctx, DList* params)
 static TEngineValue* builtin_disable_print(InterpreterContext* ctx,
                                            DList*              params)
 {
-    if (params && params->size > 0)
-        panic("[tengine] disable_print invalid parameters");
+    if (params && params->size > 0) {
+        error("[tengine] disable_print: expected no parameter");
+        return NULL;
+    }
 
     ctx->quiet_mode = 1;
     return NULL;
@@ -320,8 +346,10 @@ static TEngineValue* builtin_disable_print(InterpreterContext* ctx,
 static TEngineValue* builtin_enable_print(InterpreterContext* ctx,
                                           DList*              params)
 {
-    if (params && params->size > 0)
-        panic("[tengine] enable_print invalid parameters");
+    if (params && params->size > 0) {
+        error("[tengine] enable_print: expected no parameter");
+        return NULL;
+    }
 
     ctx->quiet_mode = 0;
     return NULL;
@@ -329,8 +357,10 @@ static TEngineValue* builtin_enable_print(InterpreterContext* ctx,
 
 static TEngineValue* builtin_seek(InterpreterContext* ctx, DList* params)
 {
-    if (!params || params->size != 1)
-        panic("[tengine] builtin_seek invalid parameters");
+    if (!params || params->size != 1) {
+        panic("[tengine] seek: expected a parameter");
+        return NULL;
+    }
 
     TEngineValue* param = params->data[0];
     u64_t         param_u64;
@@ -348,8 +378,10 @@ static TEngineValue* builtin_seek(InterpreterContext* ctx, DList* params)
 
 static TEngineValue* builtin_fwd(InterpreterContext* ctx, DList* params)
 {
-    if (!params || params->size != 1)
-        panic("[tengine] builtin_fwd invalid parameters");
+    if (!params || params->size != 1) {
+        error("[tengine] fwd: expected a parameter");
+        return NULL;
+    }
 
     TEngineValue* param = params->data[0];
     u64_t         param_u64;
@@ -368,7 +400,7 @@ static TEngineValue* builtin_fwd(InterpreterContext* ctx, DList* params)
 static TEngineValue* builtin_print(InterpreterContext* ctx, DList* params)
 {
     if (!params || params->size == 0)
-        panic("[tengine] builtin_print at least one parameter required");
+        return NULL;
 
     for (u64_t i = 0; i < params->size; ++i) {
         TEngineValue* p = params->data[i];
@@ -381,6 +413,141 @@ static TEngineValue* builtin_print(InterpreterContext* ctx, DList* params)
         }
     }
     return NULL;
+}
+
+static TEngineValue* builtin_find(InterpreterContext* ctx, DList* params)
+{
+    if (!params || params->size == 0) {
+        error("[tengine] find: at least one parameter required");
+        return NULL;
+    }
+
+    TEngineValue* what = params->data[0];
+    if (what->t != TENGINE_STRING) {
+        error("[tengine] find: expected a string as first parameter");
+        return NULL;
+    }
+
+    if (what->str_size == 0) {
+        warning("[tengine] find: empty string");
+        return NULL;
+    }
+
+    int direction_forward = 1;
+    if (params->size > 1) {
+        // second parameter: if > 0, backward search
+        TEngineValue* param = params->data[1];
+        u64_t         param_u64;
+        if (TEngineValue_as_u64(param, &param_u64) != 0) {
+            error("[tengine] find: expected a bool");
+            return NULL;
+        }
+        direction_forward = !param_u64;
+    }
+
+    u8_t*  what_bytes = NULL;
+    size_t what_len   = 0;
+    char*  what_str   = bhex_calloc(what->str_size + 1);
+    memcpy(what_str, what->str, what->str_size);
+    if (!unescape_ascii_string(what_str, &what_bytes, &what_len)) {
+        error("[tengine] find: invalid string");
+        bhex_free(what_str);
+        return NULL;
+    }
+    bhex_free(what_str);
+
+    u64_t orig_off = ctx->fb->off;
+    if (direction_forward) {
+        size_t what_off = 0;
+        u64_t  curr_off = orig_off;
+
+        while (curr_off < ctx->fb->size) {
+            if (fb_seek(ctx->fb, curr_off) != 0)
+                panic("fb_seek failed in an unexpected way");
+
+            size_t to_read = fb_block_size;
+            if (to_read > ctx->fb->size - ctx->fb->off)
+                to_read = ctx->fb->size - ctx->fb->off;
+
+            const u8_t* data = fb_read(ctx->fb, to_read);
+            if (data == NULL) {
+                bhex_free(what_bytes);
+                return NULL;
+            }
+
+            u32_t data_off = 0;
+            while (data_off < to_read && what_off < what_len) {
+                if (data[data_off] == what_bytes[what_off])
+                    what_off++;
+                else
+                    what_off = 0;
+                data_off++;
+            }
+
+            if (what_off == what_len) {
+                // we have a match
+                if (fb_seek(ctx->fb, ctx->fb->off + data_off - what_len) != 0)
+                    panic("fb_seek failed in an unexpected way");
+                return TEngineValue_UNUM_new(1, 1);
+            }
+
+            curr_off += to_read;
+        }
+
+        // no match
+        if (fb_seek(ctx->fb, orig_off) != 0)
+            panic("fb_seek failed in an unexpected way");
+        return TEngineValue_UNUM_new(0, 1);
+    }
+
+    // Backward search
+    u32_t what_off = what_len - 1;
+    u64_t curr_off = orig_off < fb_block_size ? 0 : (orig_off - fb_block_size);
+
+    while (1) {
+        if (fb_seek(ctx->fb, curr_off) != 0)
+            panic("fb_seek failed in an unexpected way");
+
+        size_t to_read = fb_block_size;
+        if (to_read > ctx->fb->size - ctx->fb->off)
+            to_read = ctx->fb->size - ctx->fb->off;
+        if (to_read == 0)
+            break;
+
+        const u8_t* data = fb_read(ctx->fb, to_read);
+        if (data == NULL) {
+            bhex_free(what_bytes);
+            return NULL;
+        }
+
+        u32_t data_off = to_read - 1;
+        while (1) {
+            if (data_off == 0 || what_off == 0)
+                break;
+            if (data[data_off] == what_bytes[what_off]) {
+                what_off--;
+            } else {
+                what_off = what_len - 1;
+            }
+            data_off--;
+        }
+
+        if (what_off == 0) {
+            // we have a match
+            if (fb_seek(ctx->fb, ctx->fb->off + data_off) != 0)
+                panic("fb_seek failed in an unexpected way");
+            return TEngineValue_UNUM_new(1, 1);
+        }
+
+        if (curr_off == 0)
+            break;
+        curr_off -= to_read;
+    }
+
+    // no match
+    if (fb_seek(ctx->fb, orig_off) != 0)
+        panic("fb_seek failed in an unexpected way");
+    return TEngineValue_UNUM_new(0, 1);
 }
 
 static TEngineBuiltinFunc builtin_funcs[] = {
@@ -407,6 +574,7 @@ static TEngineBuiltinFunc builtin_funcs[] = {
     {"atoi", builtin_atoi},
     {"strip", builtin_strip},
     {"strlen", builtin_strlen},
+    {"find", builtin_find},
 };
 
 const TEngineBuiltinFunc* get_builtin_func(const char* name)

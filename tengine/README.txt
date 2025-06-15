@@ -24,4 +24,4 @@ Work in progress template engine
 	- the TEngineInterpreter struct should be merged with ProcessContext and made private
 [ ] improve error print
 [ ] implement the output in a generic way, so that we can choose different backends (e.g., JSON)
-[ ] implement a 'find_next' API (which returns the offset, or -1)
+[X] implement a 'find_next' API (which returns the offset, or -1)

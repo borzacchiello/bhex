@@ -326,8 +326,7 @@ static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
                     DList_destroy(params_vals,
                                   (void (*)(void*))TEngineValue_free);
                 if (r == NULL)
-                    error("[tengine] called void call '%s' in expression",
-                          e->fname);
+                    error("[tengine] call to '%s' failed", e->fname);
                 return r;
             }
             if (map_contains(ctx->ast->functions, e->fname)) {
