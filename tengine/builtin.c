@@ -488,6 +488,7 @@ static TEngineValue* builtin_find(InterpreterContext* ctx, DList* params)
                 // we have a match
                 if (fb_seek(ctx->fb, ctx->fb->off + data_off - what_len) != 0)
                     panic("fb_seek failed in an unexpected way");
+                bhex_free(what_bytes);
                 return TEngineValue_UNUM_new(1, 1);
             }
 
@@ -497,6 +498,7 @@ static TEngineValue* builtin_find(InterpreterContext* ctx, DList* params)
         // no match
         if (fb_seek(ctx->fb, orig_off) != 0)
             panic("fb_seek failed in an unexpected way");
+        bhex_free(what_bytes);
         return TEngineValue_UNUM_new(0, 1);
     }
 
@@ -536,6 +538,7 @@ static TEngineValue* builtin_find(InterpreterContext* ctx, DList* params)
             // we have a match
             if (fb_seek(ctx->fb, ctx->fb->off + data_off) != 0)
                 panic("fb_seek failed in an unexpected way");
+            bhex_free(what_bytes);
             return TEngineValue_UNUM_new(1, 1);
         }
 
@@ -547,6 +550,7 @@ static TEngineValue* builtin_find(InterpreterContext* ctx, DList* params)
     // no match
     if (fb_seek(ctx->fb, orig_off) != 0)
         panic("fb_seek failed in an unexpected way");
+    bhex_free(what_bytes);
     return TEngineValue_UNUM_new(0, 1);
 }
 
