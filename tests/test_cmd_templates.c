@@ -239,7 +239,7 @@ int TEST(template_pe)(void)
         "b+000000bc               NumberOfRelocations: 0045\n"
         "b+000000be               NumberOfLinenumbers: 0046\n"
         "b+000000c0                   Characteristics: CNT_INITIALIZED_DATA\n"
-        "[!] section size [258] is greater than remaining size [120], trimming\n"
+        "[!] section size [ 258 ] is greater than remaining size [ 120 ], trimming \n"
         "b+00000094                   SectionData: f4000000180000002e004c8d42c8ebe8...\n"
         "\n";
     // clang-format on

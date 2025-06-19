@@ -318,7 +318,7 @@ proc
         seek(SectionHeader.PointerToRawData);
         local secsize = SectionHeader.SizeOfRawData;
         if (secsize > remaining_size()) {
-            print("[!] section size [", secsize, "] is greater than remaining size [", remaining_size(), "], trimming\n");
+            print("[!] section size [", secsize, "] is greater than remaining size [", remaining_size(), "], trimming");
             secsize = remaining_size();
         }
         u8 SectionData[secsize];
