@@ -405,13 +405,14 @@ static TEngineValue* builtin_print(InterpreterContext* ctx, DList* params)
     for (u64_t i = 0; i < params->size; ++i) {
         TEngineValue* p = params->data[i];
         if (p->t == TENGINE_STRING) {
-            display_printf("%.*s", p->str_size, p->str);
+            display_printf("%.*s ", p->str_size, p->str);
         } else {
             char* p_str = TEngineValue_tostring(p, 0);
-            display_printf("%s", p_str);
+            display_printf("%s ", p_str);
             bhex_free(p_str);
         }
     }
+    display_printf("\n");
     return NULL;
 }
 
