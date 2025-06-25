@@ -1,7 +1,8 @@
 #include "str.h"
-#include <alloc.h>
 
 #include <string.h>
+#include <alloc.h>
+#include <log.h>
 
 #define ESCAPE_OK           0
 #define ESCAPE_NEXT_IS_BYTE 1
@@ -155,6 +156,8 @@ char* str_indent(char* s, u32_t spaces)
 
     size_t len    = strlen(s);
     size_t newlen = len + (count_chars_in_str(s, '\n') + 1) * spaces;
+    if (newlen < len)
+        panic("overflow");
 
     s = bhex_realloc(s, newlen + 1);
 
@@ -164,7 +167,7 @@ char* str_indent(char* s, u32_t spaces)
     while (i < newlen) {
         if (s[i] == '\n') {
             i += 1;
-            memmove(s + i + spaces, s + i, len - i);
+            memmove(s + i + spaces, s + i, newlen - i - spaces);
             memset(s + i, ' ', spaces);
             i += spaces;
             continue;

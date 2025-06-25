@@ -3,6 +3,7 @@
 #include <log.h>
 #include <defs.h>
 
+#include "data/big_buffers.h"
 #include "../tengine/interpreter.h"
 #include "../tengine/scope.h"
 #include "strbuilder.h"
@@ -30,6 +31,20 @@
     if ((v)->unum != (n))                                                      \
         goto end;                                                              \
     (r) = 1;
+
+#define ASSERT_TENGINE_UNUM_EQ(v, n)                                           \
+    if ((v) == NULL) {                                                         \
+        printf("[!] v is null\n");                                             \
+        goto fail;                                                             \
+    }                                                                          \
+    if ((v)->t != TENGINE_UNUM) {                                              \
+        printf("[!] v type is not TENGINE_UNUM\n");                            \
+        goto fail;                                                             \
+    }                                                                          \
+    if ((v)->unum != (n)) {                                                    \
+        printf("[!] expected %llu, got %llu\n", (v)->unum, (u64_t)(n));        \
+        goto fail;                                                             \
+    }
 
 #define IS_TENGINE_BOOL_EQ(r, v, n)                                            \
     if ((v) == NULL)                                                           \
@@ -671,7 +686,7 @@ end:
     return r;
 }
 
-int TEST (and)(void)
+int TEST(and)(void)
 {
     const char* prog = "proc { local a = 0xffff; local b = a & 0xf0f0; }";
 
@@ -705,7 +720,7 @@ end:
     return r;
 }
 
-int TEST (xor)(void)
+int TEST(xor)(void)
 {
     const char* prog = "proc { local a = 0xff; local b = a ^ 0xf0; }";
 
@@ -1553,7 +1568,7 @@ end:
 
 int TEST(find_forward_match)(void)
 {
-    int              r = 0;
+    int              r = TEST_SUCCEEDED;
     DummyFilebuffer* tfb =
         dummyfilebuffer_create((const u8_t*)"AAAAciaoBBBB", 12);
     const char* prog = "proc {"
@@ -1561,24 +1576,54 @@ int TEST(find_forward_match)(void)
                        "}";
 
     Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
-    if (scope == NULL) {
-        goto end;
-    }
+    ASSERT(scope != NULL);
 
     TEngineValue* v = Scope_get_local(scope, "a");
-    IS_TENGINE_UNUM_EQ(r, v, 1);
-    r = tfb->fb->off == 4;
+    ASSERT_TENGINE_UNUM_EQ(v, 1);
+    ASSERT(tfb->fb->off == 4);
 
 end:
     if (scope)
         Scope_free(scope);
     dummyfilebuffer_destroy(tfb);
     return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(find_forward_no_match)(void)
+{
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(answer_to_universe, sizeof(answer_to_universe));
+    fb_seek(tfb->fb, tfb->fb->size);
+    const char* prog = "proc {"
+                       "    local a = find(\"ciao\");"
+                       "}";
+
+    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope != NULL);
+
+    TEngineValue* v = Scope_get_local(scope, "a");
+    ASSERT_TENGINE_UNUM_EQ(v, 0);
+    ASSERT(tfb->fb->off == tfb->fb->size);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
 }
 
 int TEST(find_backward_match)(void)
 {
-    int              r = 0;
+    int              r = TEST_SUCCEEDED;
     DummyFilebuffer* tfb =
         dummyfilebuffer_create((const u8_t*)"AAAAciaoBBBB", 12);
     fb_seek(tfb->fb, 12);
@@ -1588,17 +1633,48 @@ int TEST(find_backward_match)(void)
                        "}";
 
     Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
-    if (scope == NULL) {
-        goto end;
-    }
+    ASSERT(scope != NULL);
 
     TEngineValue* v = Scope_get_local(scope, "a");
-    IS_TENGINE_UNUM_EQ(r, v, 1);
-    r = tfb->fb->off == 4;
+    ASSERT_TENGINE_UNUM_EQ(v, 1);
+    ASSERT(tfb->fb->off == 4);
 
 end:
     if (scope)
         Scope_free(scope);
     dummyfilebuffer_destroy(tfb);
     return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(find_backward_no_match)(void)
+{
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(answer_to_universe, sizeof(answer_to_universe));
+    fb_seek(tfb->fb, tfb->fb->size);
+
+    const char* prog = "proc {"
+                       "    local a = find(\"ugo\", 1);"
+                       "}";
+
+    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope != NULL);
+
+    TEngineValue* v = Scope_get_local(scope, "a");
+    ASSERT_TENGINE_UNUM_EQ(v, 0);
+    ASSERT(tfb->fb->off == tfb->fb->size);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
 }

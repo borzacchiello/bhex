@@ -130,7 +130,7 @@ static const char* process_enum_type(InterpreterContext* ctx, Type* type,
 
     const TEngineBuiltinType* t = get_builtin_type(e->type);
     if (t == NULL) {
-        error("[tengine] Enum %s has an invalid source type [%s]", type,
+        error("[tengine] Enum %s has an invalid source type [%s]", type->name,
               e->type);
         return NULL;
     }
@@ -146,7 +146,7 @@ static const char* process_enum_type(InterpreterContext* ctx, Type* type,
 
     const char* name = Enum_find_const(e, val);
     if (name == NULL) {
-        warning("[tengine] Enum %s has no value %llu", type, val);
+        warning("[tengine] Enum %s has no value %llu", type->name, val);
         static char tmpbuf[1024];
         memset(tmpbuf, 0, sizeof(tmpbuf));
         snprintf(tmpbuf, sizeof(tmpbuf) - 1, "UNK [%llu ~ 0x%llx]", val, val);
@@ -285,6 +285,10 @@ static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
         }
         case EXPR_SUBSCR: {
             TEngineValue* lhs = evaluate_expr(ctx, scope, e->subscr_e);
+            if (!lhs) {
+                error("[tengine] invalid subscr .%s", e->subscr_name);
+                return NULL;
+            }
             if (lhs->t != TENGINE_OBJ) {
                 TEngineValue_free(lhs);
                 error("[tengine] invalid subscription operator: e is not an "
@@ -319,8 +323,12 @@ static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
         case EXPR_FUN_CALL: {
             const TEngineBuiltinFunc* builtin_func = get_builtin_func(e->fname);
             if (builtin_func != NULL) {
-                DList* params_vals =
-                    evaluate_list_of_exprs(ctx, scope, e->params);
+                DList* params_vals = NULL;
+                if (e->params) {
+                    params_vals = evaluate_list_of_exprs(ctx, scope, e->params);
+                    if (params_vals == NULL)
+                        return NULL;
+                }
                 TEngineValue* r = builtin_func->process(ctx, params_vals);
                 if (params_vals)
                     DList_destroy(params_vals,
@@ -331,8 +339,12 @@ static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
             }
             if (map_contains(ctx->ast->functions, e->fname)) {
                 // Custom function
-                DList* params_vals =
-                    evaluate_list_of_exprs(ctx, scope, e->params);
+                DList* params_vals = NULL;
+                if (e->params) {
+                    params_vals = evaluate_list_of_exprs(ctx, scope, e->params);
+                    if (params_vals == NULL)
+                        return NULL;
+                }
                 Function*     fn = map_get(ctx->ast->functions, e->fname);
                 TEngineValue* result =
                     handle_function_call(ctx, fn, params_vals, scope);
@@ -625,7 +637,7 @@ static int process_array_type(InterpreterContext* ctx, const char* varname,
     for (printed = 0; printed < size; ++printed) {
         map* custom_type_vars = process_struct_type(ctx, type);
         if (custom_type_vars == NULL) {
-            error("[tengine] unknown type %s", type);
+            error("[tengine] unknown type %s", type->name);
             return 1;
         }
         if (printed < size - 1) {

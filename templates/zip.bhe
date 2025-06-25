@@ -1,0 +1,242 @@
+enum ExtraFieldType : u16
+{
+    EXTRA_FIELD_ZIP64                   = 0x0001, // ZIP64 extended information
+    EXTRA_FIELD_AV_INFO                 = 0x0007, // AV Info
+    EXTRA_FIELD_NTFS                    = 0x000a, // NTFS file attributes
+    EXTRA_FIELD_UNIX                    = 0x000d, // UNIX file attributes
+    EXTRA_FIELD_UNIX_NEW                = 0x7875, // Info-ZIP New Unix (newer UID/GID)
+    EXTRA_FIELD_STRONG_ENCRYPTION       = 0x0017, // Strong encryption header
+    EXTRA_FIELD_PATCH_DESCRIPTOR        = 0x000f, // Patch descriptor
+    EXTRA_FIELD_PKCS7                   = 0x0014, // PKCS#7 Store for X.509 Certificates
+    EXTRA_FIELD_X509_CERT_ID_SIG        = 0x0015, // X.509 Certificate ID and Signature
+    EXTRA_FIELD_X509_CERT_ID            = 0x0016, // X.509 Certificate ID
+    EXTRA_FIELD_POLICY_DECRYPTION_KEY   = 0x0019, // Policy Decryption Key Record
+    EXTRA_FIELD_SMARTCRYPT_KEY_PROVIDER = 0x001a, // Smartcrypt Key Provider Record
+    EXTRA_FIELD_SMARTCRYPT_POLICY_KEY   = 0x001b, // Smartcrypt Policy Key Data Record
+    EXTRA_FIELD_MVS                     = 0x0065, // MVS Extra Field
+    EXTRA_FIELD_OS2_EXTENDED_ATTRIBUTES = 0x0009, // OS/2 Extended Attributes
+    EXTRA_FIELD_ASI_UNIX                = 0x756e, // ASi Unix Extra Field
+    EXTRA_FIELD_EXTENDED_TIMESTAMP      = 0x5455, // Extended Timestamp
+    EXTRA_FIELD_UNICODE_PATH            = 0x7075, // Info-ZIP Unicode Path
+    EXTRA_FIELD_UNICODE_COMMENT         = 0x6375, // Info-ZIP Unicode Comment
+    EXTRA_FIELD_AES_ENCRYPTION          = 0x9901, // WinZip AES Encryption
+    EXTRA_FIELD_XCEED_UNICODE           = 0x554e, // Xceed Unicode Extra Field
+    EXTRA_FIELD_JAVA_ATTRIBUTES         = 0xcafe  // Java JAR file attributes
+}
+
+struct EXTRA_FIELD_EXTENDED_TIMESTAMP
+{
+    u16 data_size;  // Size of the data portion
+    u8  flags;      // Bit 0: mtime, Bit 1: atime, Bit 2: ctime
+
+    // Followed by timestamps in Unix format (uint32_t each):
+    local i = 0;
+    while ( i < data_size - 1 ) {
+        u32 time;
+        i = i + 4;
+    }
+}
+
+struct UNIX_NEW_UID
+{
+    u8 size; // Size of UID field (1, 2, 4, or 8 bytes)
+    if (size == 1) {
+        u8 value;
+    } elif (size == 2) {
+        u16 value;
+    } elif (size == 4) {
+        u32 value;
+    } elif (size == 8) {
+        u64 value;
+    } else {
+        u8 value[size];
+    }
+}
+
+struct EXTRA_FIELD_UNIX_NEW
+{
+    u16          data_size;  // Total data size for this block
+    u8           version;    // Version (currently 1)
+    UNIX_NEW_UID uid;
+    UNIX_NEW_UID gid;
+}
+
+struct ExtraFieldHeader
+{
+    ExtraFieldType header_id; // Identifies the extra field type
+
+    // data_size bytes of field-specific data
+    if (header_id == ExtraFieldType::EXTRA_FIELD_EXTENDED_TIMESTAMP) {
+        EXTRA_FIELD_EXTENDED_TIMESTAMP ext_timestamp;
+    } elif (header_id == ExtraFieldType::EXTRA_FIELD_UNIX_NEW) {
+        EXTRA_FIELD_UNIX_NEW unix_new;
+    } else {
+        u16 data_size;
+        u8  data[data_size];
+    }
+}
+
+fn parse_extra_fields(len)
+{
+    local prev = off();
+    while (len > 0) {
+        ExtraFieldHeader extraField;
+        local            adv = off() - prev;
+        len  = len - adv;
+        prev = off();
+    }
+}
+
+orenum HeaderFlag : u16
+{
+    ENCRYPTED_FILE          = 1,
+    COMPRESSION_OPTION_1    = 2,
+    COMPRESSION_OPTION_2    = 4,
+    DATA_DESCRIPTOR         = 8,
+    ENHANCED_DEFLATION      = 16,
+    COMPRESSED_PATCHED_DATA = 32,
+    STRONG_ENCRYPTION       = 64,
+    LANGUAGE_ENCODING       = 2048,
+    MASK_HEADER_VALUES      = 8192
+}
+
+enum CompressionMethod : u16
+{
+    NO_COMPRESSION                    = 0,
+    SHRUNK                            = 1,
+    REDUCED_WITH_COMPRESSION_FACTOR_1 = 2,
+    REDUCED_WITH_COMPRESSION_FACTOR_2 = 3,
+    REDUCED_WITH_COMPRESSION_FACTOR_3 = 4,
+    REDUCED_WITH_COMPRESSION_FACTOR_4 = 5,
+    IMPLODED                          = 6,
+    DEFLATED                          = 8,
+    ENHANCED_DEFLATED                 = 9,
+    PKWARE_DCL_IMPLODED               = 10,
+    BZIP2                             = 12,
+    LZMA                              = 14,
+    IBM_TERSE                         = 18,
+    IBM_LZ77z                         = 19,
+    PPMd_version_1_rev_1              = 98
+}
+
+struct LocalFileHeader
+{
+    u8                signature[4];
+    u16               version;
+    HeaderFlag        flags;
+    CompressionMethod compression;
+    u16               mod_time;
+    u16               mod_date;
+    u32               crc32;
+    u32               compressed_size;
+    u32               uncompressed_size;
+    u16               filename_len;
+    u16               extra_field_len;
+    char              filename[filename_len];
+
+    parse_extra_fields(extra_field_len);
+    if (compressed_size > 0) {
+        u8 data[compressed_size];
+    }
+}
+
+struct CentralDirectoryHeader
+{
+    char              signature[4];         // 0x02014b50 (PK\001\002)
+    u16               version_made_by;      // Version made by
+    u16               version_needed;       // Version needed to extract
+    HeaderFlag        flags;                // General purpose bit flag
+    CompressionMethod compression_method;   // Compression method
+    u16               mod_time;             // Last mod file time
+    u16               mod_date;             // Last mod file date
+    u32               crc32;                // CRC-32 checksum
+    u32               compressed_size;      // Compressed size
+    u32               uncompressed_size;    // Uncompressed size
+    u16               filename_length;      // Filename length
+    u16               extra_field_length;   // Extra field length
+    u16               comment_length;       // File comment length
+    u16               disk_number;          // Disk number start
+    u16               internal_attributes;  // Internal file attributes
+    u32               external_attributes;  // External file attributes
+    u32               local_header_offset;  // Relative offset of local header
+
+    char filename[filename_length];
+    parse_extra_fields(extra_field_length);
+    if (comment_length > 0) {
+        u8 comment[comment_length];
+    }
+}
+
+struct EndOfCentralDirZIP
+{
+    char signature[4];           // 0x06054b50 (PK\005\006)
+    u16  disk_number;            // Number of this disk
+    u16  central_dir_disk;       // Disk where central directory starts
+    u16  central_dir_entries;    // Number of central directory entries on this disk
+    u16  total_entries;          // Total number of central directory entries
+    u32  central_dir_size;       // Size of central directory
+    u32  central_dir_offset;     // Offset of start of central directory
+    u16  comment_length;         // ZIP file comment length
+    if (comment_length > 0) {
+        char comment[comment_length];
+    }
+}
+
+struct EndOfCentralDirZIP64
+{
+    char signature[4];           // 0x06064b50 (PK\006\006)
+    u64  record_size;            // Size of ZIP64 end of central directory record
+    u16  version_made_by;        // Version made by
+    u16  version_needed;         // Version needed to extract
+    u32  disk_number;            // Number of this disk
+    u32  central_dir_disk;       // Disk where central directory starts
+    u64  central_dir_entries;    // Number of central directory entries on this disk
+    u64  total_entries;          // Total number of central directory entries
+    u64  central_dir_size;       // Size of central directory
+    u64  central_dir_offset;     // Offset of start of central directory
+    // Followed by:
+    // - ZIP64 extensible data sector (variable length)
+}
+
+fn newline()
+{
+    print("");
+}
+
+proc
+{
+    local magic   = "PK\x05\x06";
+    local magic64 = "PK\x06\x06";
+
+    // seek to end
+    seek(size());
+    if (find(magic, 1 /* backward search */ )) {
+        // ZIP
+        EndOfCentralDirZIP endOfCentralDir;
+    } elif (find(magic, 1 /* backward search */ )) {
+        // ZIP64
+        EndOfCentralDirZIP64 endOfCentralDir;
+    } else {
+        print("[!] invalid ZIP");
+    }
+
+    seek(endOfCentralDir.central_dir_offset);
+    newline();
+
+    local i = 0;
+    while ( i < endOfCentralDir.central_dir_entries ) {
+        CentralDirectoryHeader dirElement;
+
+        local off = off();
+        seek(dirElement.local_header_offset);
+        LocalFileHeader localElement;
+        seek(off);
+        i = i + 1;
+
+        newline();
+    }
+
+    if (off() - endOfCentralDir.central_dir_offset != endOfCentralDir.central_dir_size) {
+        print("[!] invalid central_dir_size");
+    }
+}

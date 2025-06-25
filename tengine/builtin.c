@@ -8,6 +8,7 @@
 #include "value.h"
 
 #include <stddef.h>
+#include <stdio.h>
 #include <util/byte_to_num.h>
 #include <string.h>
 #include <alloc.h>
@@ -358,7 +359,7 @@ static TEngineValue* builtin_enable_print(InterpreterContext* ctx,
 static TEngineValue* builtin_seek(InterpreterContext* ctx, DList* params)
 {
     if (!params || params->size != 1) {
-        panic("[tengine] seek: expected a parameter");
+        error("[tengine] seek: expected a parameter");
         return NULL;
     }
 
@@ -505,15 +506,17 @@ static TEngineValue* builtin_find(InterpreterContext* ctx, DList* params)
 
     // Backward search
     u32_t what_off = what_len - 1;
-    u64_t curr_off = orig_off < fb_block_size ? 0 : (orig_off - fb_block_size);
+    u64_t prev_off = orig_off;
+    u64_t curr_off =
+        (prev_off < fb_block_size) ? 0 : (prev_off - fb_block_size);
 
     while (1) {
         if (fb_seek(ctx->fb, curr_off) != 0)
             panic("fb_seek failed in an unexpected way");
 
-        size_t to_read = fb_block_size;
-        if (to_read > ctx->fb->size - ctx->fb->off)
-            to_read = ctx->fb->size - ctx->fb->off;
+        size_t to_read = (prev_off - curr_off < fb_block_size)
+                             ? prev_off - curr_off
+                             : fb_block_size;
         if (to_read == 0)
             break;
 
@@ -545,7 +548,8 @@ static TEngineValue* builtin_find(InterpreterContext* ctx, DList* params)
 
         if (curr_off == 0)
             break;
-        curr_off -= to_read;
+        prev_off = curr_off;
+        curr_off = prev_off < fb_block_size ? 0 : (prev_off - fb_block_size);
     }
 
     // no match

@@ -28,4 +28,12 @@ typedef struct test_t {
 #define TEST_FAILED    0
 #define TEST_SUCCEEDED 1
 
+#define ASSERT(cond)                                                           \
+    do {                                                                       \
+        if (!(cond)) {                                                         \
+            printf("[!] assertion (" #cond ") failed\n");                      \
+            goto fail;                                                         \
+        }                                                                      \
+    } while (0)
+
 #endif
