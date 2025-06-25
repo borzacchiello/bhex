@@ -21,6 +21,7 @@ typedef struct InterpreterContext {
     int       print_in_hex;
     int       quiet_mode;
     int       should_break;
+    int       stop_execution;
 } InterpreterContext;
 
 int tengine_interpreter_process_filename(FileBuffer* fb, const char* bhe);

@@ -98,6 +98,8 @@ static map* process_struct_type(InterpreterContext* ctx, Type* type)
             Scope_free(scope);
             goto end;
         }
+        if (ctx->stop_execution)
+            break;
     }
     ctx->print_off -= 4;
     result = Scope_free_and_get_filevars(scope);
@@ -216,6 +218,8 @@ static TEngineValue* handle_function_call(InterpreterContext* ctx, Function* fn,
         Stmt* stmt = fn->block->stmts->data[i];
         if (process_stmt(ctx, stmt, fn_scope) != 0)
             goto end;
+        if (ctx->stop_execution)
+            break;
     }
     result   = Scope_free_and_get_result(fn_scope);
     fn_scope = NULL;
@@ -285,10 +289,8 @@ static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
         }
         case EXPR_SUBSCR: {
             TEngineValue* lhs = evaluate_expr(ctx, scope, e->subscr_e);
-            if (!lhs) {
-                error("[tengine] invalid subscr .%s", e->subscr_name);
+            if (!lhs)
                 return NULL;
-            }
             if (lhs->t != TENGINE_OBJ) {
                 TEngineValue_free(lhs);
                 error("[tengine] invalid subscription operator: e is not an "
@@ -715,8 +717,13 @@ static int process_VOID_FUNC_CALL(InterpreterContext* ctx, Stmt* stmt,
 {
     const TEngineBuiltinFunc* builtin_func = get_builtin_func(stmt->fname);
     if (builtin_func != NULL) {
-        DList* params_vals = evaluate_list_of_exprs(ctx, scope, stmt->params);
-        TEngineValue* r    = builtin_func->process(ctx, params_vals);
+        DList* params_vals = NULL;
+        if (stmt->params) {
+            params_vals = evaluate_list_of_exprs(ctx, scope, stmt->params);
+            if (params_vals == NULL)
+                return 1;
+        }
+        TEngineValue* r = builtin_func->process(ctx, params_vals);
         if (params_vals)
             DList_destroy(params_vals, (void (*)(void*))TEngineValue_free);
         TEngineValue_free(r);
@@ -724,8 +731,13 @@ static int process_VOID_FUNC_CALL(InterpreterContext* ctx, Stmt* stmt,
     }
     if (map_contains(ctx->ast->functions, stmt->fname)) {
         // Custom function
-        DList* params_vals = evaluate_list_of_exprs(ctx, scope, stmt->params);
-        Function*     fn   = map_get(ctx->ast->functions, stmt->fname);
+        DList* params_vals = NULL;
+        if (stmt->params) {
+            params_vals = evaluate_list_of_exprs(ctx, scope, stmt->params);
+            if (params_vals == NULL)
+                return 1;
+        }
+        Function*     fn = map_get(ctx->ast->functions, stmt->fname);
         TEngineValue* result =
             handle_function_call(ctx, fn, params_vals, scope);
         if (params_vals)
@@ -760,6 +772,8 @@ static int process_STMT_IF_ELIF_ELSE(InterpreterContext* ctx, Stmt* stmt,
                 Stmt* s = ic->block->stmts->data[i];
                 if (process_stmt(ctx, s, scope) != 0)
                     return 1;
+                if (ctx->stop_execution)
+                    break;
             }
             return 0;
         }
@@ -769,6 +783,8 @@ static int process_STMT_IF_ELIF_ELSE(InterpreterContext* ctx, Stmt* stmt,
             Stmt* s = stmt->else_block->stmts->data[i];
             if (process_stmt(ctx, s, scope) != 0)
                 return 1;
+            if (ctx->stop_execution)
+                break;
         }
         return 0;
     }
@@ -790,7 +806,7 @@ static int process_STMT_WHILE(InterpreterContext* ctx, Stmt* stmt, Scope* scope)
             Stmt* stmt = (Stmt*)stmts->data[i];
             if (process_stmt(ctx, stmt, scope) != 0)
                 return 1;
-            if (ctx->should_break) {
+            if (ctx->should_break || ctx->stop_execution) {
                 ctx->should_break = 0;
                 breaked           = 1;
                 break;
@@ -846,6 +862,8 @@ static int process_ast(InterpreterContext* ictx)
         Stmt* stmt = (Stmt*)stmts->data[i];
         if (process_stmt(&cloned_ctx, stmt, ictx->proc_scope) != 0)
             return 1;
+        if (cloned_ctx.stop_execution)
+            break;
     }
     return 0;
 }
@@ -853,14 +871,13 @@ static int process_ast(InterpreterContext* ictx)
 static void interpreter_context_init(InterpreterContext* ictx, ASTCtx* ast,
                                      FileBuffer* fb)
 {
+    memset(ictx, 0, sizeof(InterpreterContext));
     ictx->ast           = ast;
     ictx->alignment_off = ast->max_ident_len;
     ictx->fb            = fb;
     ictx->proc_scope    = Scope_new();
     ictx->endianess     = TE_LITTLE_ENDIAN;
     ictx->print_in_hex  = 1;
-    ictx->quiet_mode    = 0;
-    ictx->alignment_off = 0;
 }
 
 static void interpreter_context_deinit(InterpreterContext* ictx)
@@ -959,6 +976,8 @@ int tengine_interpreter_process_ast_struct(FileBuffer* fb, ASTCtx* ast,
         Stmt* stmt = (Stmt*)b->stmts->data[i];
         if (process_stmt(&cloned_ctx, stmt, eng.proc_scope) != 0)
             goto end;
+        if (cloned_ctx.stop_execution)
+            break;
     }
     r = 0;
 

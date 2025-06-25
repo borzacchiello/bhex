@@ -218,6 +218,7 @@ proc
         EndOfCentralDirZIP64 endOfCentralDir;
     } else {
         print("[!] invalid ZIP");
+        exit();
     }
 
     seek(endOfCentralDir.central_dir_offset);

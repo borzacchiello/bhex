@@ -419,6 +419,12 @@ static TEngineValue* builtin_print(InterpreterContext* ctx, DList* params)
     return NULL;
 }
 
+static TEngineValue* builtin_exit(InterpreterContext* ctx, DList* params)
+{
+    ctx->stop_execution = 1;
+    return NULL;
+}
+
 static TEngineValue* builtin_find(InterpreterContext* ctx, DList* params)
 {
     if (!params || params->size == 0) {
@@ -570,6 +576,7 @@ static TEngineBuiltinFunc builtin_funcs[] = {
     {"i16", builtin_i16},
     {"i32", builtin_i32},
     {"i64", builtin_i64},
+    {"exit", builtin_exit},
     {"endianess_le", builtin_endianess_le},
     {"endianess_be", builtin_endianess_be},
     {"nums_in_hex", builtin_nums_in_hex},
