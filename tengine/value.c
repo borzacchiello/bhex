@@ -154,8 +154,10 @@ TEngineValue* TEngineValue_array_sub(FileBuffer* fb, const TEngineValue* e,
                 error("[tengine] invalid buffer, it spans outside the file");
                 return NULL;
             }
-            const u8_t*   buf = fb_read(fb, 1);
-            TEngineValue* v   = TEngineValue_UNUM_new(buf[0], 1);
+            const u8_t* buf = fb_read(fb, 1);
+            if (buf == NULL)
+                return NULL;
+            TEngineValue* v = TEngineValue_UNUM_new(buf[0], 1);
             fb_seek(fb, orig_s);
             return v;
         }

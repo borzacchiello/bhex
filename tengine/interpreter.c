@@ -578,6 +578,8 @@ static int process_array_type(InterpreterContext* ctx, const char* varname,
             u64_t       final_off = ctx->fb->off + size;
             u8_t*       tmp       = bhex_calloc(size + 1);
             const u8_t* buf       = fb_read(ctx->fb, size);
+            if (buf == NULL)
+                return 1;
             memcpy(tmp, buf, size);
             *oval = TEngineValue_STRING_new(tmp, size);
             value_pp(ctx, ctx->print_off, *oval);
@@ -591,6 +593,8 @@ static int process_array_type(InterpreterContext* ctx, const char* varname,
             u64_t       final_off     = ctx->fb->off + size;
             u64_t       size_to_print = min(MAX_ARR_PRINT_SIZE, size);
             const u8_t* buf           = fb_read(ctx->fb, size_to_print);
+            if (buf == NULL)
+                return 1;
             for (u64_t i = 0; i < size_to_print; ++i)
                 interpreter_printf(ctx, "%02x", buf[i]);
             if (size_to_print < size)

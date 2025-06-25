@@ -42,6 +42,8 @@ static TEngineValue* string_process(InterpreterContext* ctx)
         if (fb_seek(ctx->fb, ctx->fb->off + 1) != 0)
             goto end;
         buf = fb_read(ctx->fb, 1);
+        if (buf == NULL)
+            return NULL;
     }
 
     enlarge_tmp;
