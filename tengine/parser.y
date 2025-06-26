@@ -221,33 +221,39 @@ fvar_type   : ident                                 {
 
 fvar_decl   : fvar_type ident                       {
                                                         $$ = Stmt_FILE_VAR_DECL_new($1, $2, NULL);
+                                                        Stmt_set_source_info($$, yy_line, yy_column);
                                                         bhex_free($2);
                                                     }
             | fvar_type ident SQLBRACE expr SQRBRACE 
                                                     {
                                                         $$ = Stmt_FILE_VAR_DECL_new($1, $2, $4);
+                                                        Stmt_set_source_info($$, yy_line, yy_column);
                                                         bhex_free($2);
                                                     }
     ;
 
 lvar_decl   : TLOCAL ident TEQUAL expr              {
                                                         $$ = Stmt_LOCAL_VAR_DECL_new($2, $4);
+                                                        Stmt_set_source_info($$, yy_line, yy_column);
                                                         bhex_free($2);
                                                     }
     ;
 
 lvar_ass   : ident TEQUAL expr                      {
                                                         $$ = Stmt_LOCAL_VAR_ASS_new($1, $3);
+                                                        Stmt_set_source_info($$, yy_line, yy_column);
                                                         bhex_free($1);
                                                     }
     ;
 
 void_fcall  : ident TCLBRACE TCRBRACE               {
                                                         $$ = Stmt_VOID_FUNC_CALL_new($1, NULL);
+                                                        Stmt_set_source_info($$, yy_line, yy_column);
                                                         bhex_free($1);
                                                     }
             | ident TCLBRACE params TCRBRACE        {
                                                         $$ = Stmt_VOID_FUNC_CALL_new($1, $3);
+                                                        Stmt_set_source_info($$, yy_line, yy_column);
                                                         bhex_free($1);
                                                     }
     ;
@@ -255,6 +261,7 @@ void_fcall  : ident TCLBRACE TCRBRACE               {
 if_elif     : TIF TCLBRACE expr TCRBRACE TLBRACE stmts TRBRACE
                                                     {
                                                         $$ = Stmt_STMT_IF_new($3, Block_new($6));
+                                                        Stmt_set_source_info($$, yy_line, yy_column);
                                                     }
             | if_elif TELIF TCLBRACE expr TCRBRACE TLBRACE stmts TRBRACE
                                                     {
@@ -273,11 +280,13 @@ else        : if_elif TELSE TLBRACE stmts TRBRACE
 while       : TWHILE TCLBRACE expr TCRBRACE TLBRACE stmts TRBRACE
                                                     {
                                                         $$ = Stmt_WHILE_new($3, Block_new($6));
+                                                        Stmt_set_source_info($$, yy_line, yy_column);
                                                     }
     ;
 
 break       : TBREAK                                {
                                                         $$ = Stmt_BREAK_new();
+                                                        Stmt_set_source_info($$, yy_line, yy_column);
                                                     }
     ;
 

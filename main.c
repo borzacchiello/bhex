@@ -143,7 +143,7 @@ static void main_loop(FileBuffer* fb, CmdContext* cc)
         }
 
         r = cmdctx_run(cc, pc, fb);
-        if (r != COMMAND_OK)
+        if (r != COMMAND_OK && r != COMMAND_SILENT_ERROR)
             error("%s", cmdctx_err_to_string(r));
 
         parsed_command_destroy(pc);
@@ -162,7 +162,8 @@ static void command_loop(FileBuffer* fb, CmdContext* cc, char* commands)
             error("%s", parser_err_to_string(r));
             return;
         }
-        if ((r = cmdctx_run(cc, pc, fb)) != COMMAND_OK) {
+        if ((r = cmdctx_run(cc, pc, fb)) != COMMAND_OK &&
+            r != COMMAND_SILENT_ERROR) {
             error("%s", cmdctx_err_to_string(r));
             parsed_command_destroy(pc);
             return;
@@ -186,7 +187,8 @@ static void stdin_loop(FileBuffer* fb, CmdContext* cc)
             error("%s", parser_err_to_string(r));
             return;
         }
-        if ((r = cmdctx_run(cc, pc, fb)) != COMMAND_OK) {
+        if ((r = cmdctx_run(cc, pc, fb)) != COMMAND_OK &&
+            r != COMMAND_SILENT_ERROR) {
             error("%s", cmdctx_err_to_string(r));
             parsed_command_destroy(pc);
             return;

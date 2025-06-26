@@ -2,6 +2,7 @@
 #include "builtin.h"
 #include "dlist.h"
 #include "filebuffer.h"
+#include "strbuilder.h"
 #include "value.h"
 #include "scope.h"
 #include "defs.h"
@@ -41,6 +42,23 @@ static void interpreter_context_soft_clone(InterpreterContext* dst,
                                            InterpreterContext* src)
 {
     memcpy(dst, src, sizeof(InterpreterContext));
+}
+
+void tengine_raise_exception(InterpreterContext* ictx, const char* fmt, ...)
+{
+    if (ictx->exc == NULL) {
+        ictx->exc     = bhex_calloc(sizeof(InterpreterException));
+        ictx->exc->sb = strbuilder_new();
+    } else {
+        strbuilder_append(ictx->exc->sb, ", ");
+    }
+
+    ictx->stop_execution = 1;
+
+    va_list argp;
+    va_start(argp, fmt);
+    strbuilder_appendvs(ictx->exc->sb, fmt, argp);
+    va_end(argp);
 }
 
 static void value_pp(InterpreterContext* e, u32_t off, TEngineValue* v)
@@ -132,8 +150,8 @@ static const char* process_enum_type(InterpreterContext* ctx, Type* type,
 
     const TEngineBuiltinType* t = get_builtin_type(e->type);
     if (t == NULL) {
-        error("[tengine] Enum %s has an invalid source type [%s]", type->name,
-              e->type);
+        tengine_raise_exception(ctx, "Enum %s has an invalid source type [%s]",
+                                type->name, e->type);
         return NULL;
     }
 
@@ -188,7 +206,7 @@ static TEngineValue* process_type(InterpreterContext* ctx, const char* varname,
         return v;
     }
 
-    error("[tengine] unknown type %s", type->name);
+    tengine_raise_exception(ctx, "unknown type %s", type->name);
     return NULL;
 }
 
@@ -202,9 +220,11 @@ static TEngineValue* handle_function_call(InterpreterContext* ctx, Function* fn,
     u64_t nparams         = params_exprs ? params_exprs->size : 0;
     u64_t expected_params = fn->params ? fn->params->size : 0;
     if (nparams != expected_params) {
-        error("[tengine] invalid number of parameters while calling %s: "
-              "expected %llu, got %llu",
-              fn->name, expected_params, nparams);
+        tengine_raise_exception(
+            ctx,
+            "invalid number of parameters while calling %s: "
+            "expected %llu, got %llu",
+            fn->name, expected_params, nparams);
         goto end;
     }
 
@@ -265,14 +285,14 @@ static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
             return TEngineValue_UNUM_new(e->uconst_value, e->uconst_size);
         case EXPR_ENUM_CONST: {
             if (!map_contains(ctx->ast->enums, e->enum_name)) {
-                error("[tengine] no such enum '%s'", e->enum_name);
+                tengine_raise_exception(ctx, "no such enum '%s'", e->enum_name);
                 return NULL;
             }
             u64_t v;
             Enum* enumptr = map_get(ctx->ast->enums, e->enum_name);
             if (Enum_find_value(enumptr, e->enum_field, &v) != 0) {
-                error("[tengine] enum '%s' has no such field '%s'",
-                      e->enum_name, e->enum_field);
+                tengine_raise_exception(ctx, "enum '%s' has no such field '%s'",
+                                        e->enum_name, e->enum_field);
                 return NULL;
             }
             return TEngineValue_UNUM_new(v, 8);
@@ -282,7 +302,7 @@ static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
         case EXPR_VAR: {
             TEngineValue* value = Scope_get_anyvar(scope, e->name);
             if (!value) {
-                error("[tengine] no such variable '%s'", e->name);
+                tengine_raise_exception(ctx, "no such variable '%s'", e->name);
                 return NULL;
             }
             return TEngineValue_dup(value);
@@ -293,16 +313,19 @@ static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
                 return NULL;
             if (lhs->t != TENGINE_OBJ) {
                 TEngineValue_free(lhs);
-                error("[tengine] invalid subscription operator: e is not an "
-                      "object");
+                tengine_raise_exception(
+                    ctx, "invalid subscription operator: e is not an "
+                         "object");
                 return NULL;
             }
 
             if (!map_contains(lhs->subvals, e->subscr_name)) {
                 TEngineValue_free(lhs);
-                error("[tengine] invalid subscription operator: e does not "
-                      "contain '%s'",
-                      e->subscr_name);
+                tengine_raise_exception(
+                    ctx,
+                    "invalid subscription operator: e does not "
+                    "contain '%s'",
+                    e->subscr_name);
                 return NULL;
             }
             TEngineValue* val = map_get(lhs->subvals, e->subscr_name);
@@ -336,7 +359,8 @@ static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
                     DList_destroy(params_vals,
                                   (void (*)(void*))TEngineValue_free);
                 if (r == NULL)
-                    error("[tengine] call to '%s' failed", e->fname);
+                    tengine_raise_exception(ctx, "call to '%s' failed",
+                                            e->fname);
                 return r;
             }
             if (map_contains(ctx->ast->functions, e->fname)) {
@@ -358,7 +382,8 @@ static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
                 return result;
             }
 
-            error("[tengine] no such non-void function '%s'", e->fname);
+            tengine_raise_exception(ctx, "no such non-void function '%s'",
+                                    e->fname);
             return NULL;
         }
         case EXPR_ADD: {
@@ -568,9 +593,11 @@ static int process_array_type(InterpreterContext* ctx, const char* varname,
         return 1;
 
     if (size > ctx->fb->size - ctx->fb->off) {
-        error("[tengine] invalid array size: %lld, it is bigger than the "
-              "remaining file size",
-              size);
+        tengine_raise_exception(
+            ctx,
+            "invalid array size: %lld, it is bigger than the "
+            "remaining file size",
+            size);
         return 1;
     }
 
@@ -643,7 +670,7 @@ static int process_array_type(InterpreterContext* ctx, const char* varname,
     for (printed = 0; printed < size; ++printed) {
         map* custom_type_vars = process_struct_type(ctx, type);
         if (custom_type_vars == NULL) {
-            error("[tengine] unknown type %s", type->name);
+            tengine_raise_exception(ctx, "unknown type %s", type->name);
             return 1;
         }
         if (printed < size - 1) {
@@ -704,7 +731,8 @@ static int process_LOCAL_VAR_ASS(InterpreterContext* ctx, Stmt* stmt,
         return 1;
 
     if (Scope_get_local(scope, stmt->local_name) == NULL) {
-        error("[tengine] no such local variable '%s", stmt->local_name);
+        tengine_raise_exception(ctx, "no such local variable '%s",
+                                stmt->local_name);
         return 1;
     }
 
@@ -748,7 +776,7 @@ static int process_VOID_FUNC_CALL(InterpreterContext* ctx, Stmt* stmt,
         return 0;
     }
 
-    error("[tengine] no such function '%s'", stmt->fname);
+    tengine_raise_exception(ctx, "no such function '%s'", stmt->fname);
     return 1;
 }
 
@@ -821,7 +849,8 @@ static int process_STMT_WHILE(InterpreterContext* ctx, Stmt* stmt, Scope* scope)
     return 0;
 }
 
-static int process_stmt(InterpreterContext* ctx, Stmt* stmt, Scope* scope)
+static int process_stmt_internal(InterpreterContext* ctx, Stmt* stmt,
+                                 Scope* scope)
 {
     switch (stmt->t) {
         case FILE_VAR_DECL:
@@ -840,17 +869,33 @@ static int process_stmt(InterpreterContext* ctx, Stmt* stmt, Scope* scope)
             ctx->should_break = 1;
             return 0;
         default: {
-            error("[tengine] invalid stmt type %d", stmt->t);
+            tengine_raise_exception(ctx, "invalid stmt type %d", stmt->t);
             break;
         }
     }
     return 1;
 }
 
+static int process_stmt(InterpreterContext* ctx, Stmt* stmt, Scope* scope)
+{
+    int r = process_stmt_internal(ctx, stmt, scope);
+    if (ctx->exc != NULL) {
+        // process the exception, as of today we just print it
+        char* exc_msg = strbuilder_finalize(ctx->exc->sb);
+        error("Exception @ line %d, col %d > %s", stmt->line_of_code, stmt->column,
+              exc_msg);
+
+        bhex_free(exc_msg);
+        bhex_free(ctx->exc);
+        ctx->exc = NULL;
+    }
+    return r;
+}
+
 static int process_ast(InterpreterContext* ictx)
 {
     if (!ictx->ast->proc) {
-        error("[tengine] no proc");
+        tengine_raise_exception(ictx, "no proc");
         return 1;
     }
 
@@ -883,6 +928,9 @@ static void interpreter_context_init(InterpreterContext* ictx, ASTCtx* ast,
 static void interpreter_context_deinit(InterpreterContext* ictx)
 {
     Scope_free(ictx->proc_scope);
+    if (ictx->exc) {
+        bhex_free(strbuilder_finalize(ictx->exc->sb));
+    }
 }
 
 void tengine_interpreter_set_imported_types_callback(imported_cb_t cb,
@@ -964,7 +1012,7 @@ int tengine_interpreter_process_ast_struct(FileBuffer* fb, ASTCtx* ast,
 
     int r = 1;
     if (!map_contains(ast->structs, s)) {
-        error("[tengine] no such struct '%s'", s);
+        error("no such struct '%s'", s);
         goto end;
     }
 

@@ -948,7 +948,7 @@ YY_RULE_SETUP
 {
                             handle_token;
                             if (!str_to_int64(yytext, &yysnumval)) {
-                                error("[tengine lexer] invalid s64 num '%s'", yytext);
+                                // error("[tengine lexer] invalid s64 num '%s'", yytext);
                                 return 1;
                             }
                             return TSNUM64;
@@ -960,7 +960,7 @@ YY_RULE_SETUP
 {
                             handle_token;
                             if (!str_to_int64(yytext, &yysnumval)) {
-                                error("[tengine lexer] invalid s64 hex num '%s'", yytext);
+                                // error("[tengine lexer] invalid s64 hex num '%s'", yytext);
                                 return 1;
                             }
                             return TSNUM64;
@@ -974,7 +974,7 @@ YY_RULE_SETUP
                             u8_t n;
                             yytext[yyleng-2] = '\0';
                             if (!str_to_uint8(yytext, &n)) {
-                                error("[tengine lexer] invalid u8 num '%s'", yytext);
+                                // error("[tengine lexer] invalid u8 num '%s'", yytext);
                                 return 1;
                             }
                             yyunumval = (u64_t)n;
@@ -989,7 +989,7 @@ YY_RULE_SETUP
                             u8_t n;
                             yytext[yyleng-2] = '\0';
                             if (!str_to_uint8(yytext, &n)) {
-                                error("[tengine lexer] invalid u8 hex num '%s'", yytext);
+                                // error("[tengine lexer] invalid u8 hex num '%s'", yytext);
                                 return 1;
                             }
                             yyunumval = (u64_t)n;
@@ -1004,7 +1004,7 @@ YY_RULE_SETUP
                             u16_t n;
                             yytext[yyleng-3] = '\0';
                             if (!str_to_uint16(yytext, &n)) {
-                                error("[tengine lexer] invalid u16 num '%s'", yytext);
+                                // error("[tengine lexer] invalid u16 num '%s'", yytext);
                                 return 1;
                             }
                             yyunumval = (u64_t)n;
@@ -1019,7 +1019,7 @@ YY_RULE_SETUP
                             u16_t n;
                             yytext[yyleng-3] = '\0';
                             if (!str_to_uint16(yytext, &n)) {
-                                error("[tengine lexer] invalid u16 hex num '%s'", yytext);
+                                // error("[tengine lexer] invalid u16 hex num '%s'", yytext);
                                 return 1;
                             }
                             yyunumval = (u64_t)n;
@@ -1034,7 +1034,7 @@ YY_RULE_SETUP
                             u32_t n;
                             yytext[yyleng-3] = '\0';
                             if (!str_to_uint32(yytext, &n)) {
-                                error("[tengine lexer] invalid u32 num '%s'", yytext);
+                                // error("[tengine lexer] invalid u32 num '%s'", yytext);
                                 return 1;
                             }
                             yyunumval = (u64_t)n;
@@ -1049,7 +1049,7 @@ YY_RULE_SETUP
                             u32_t n;
                             yytext[yyleng-3] = '\0';
                             if (!str_to_uint32(yytext, &n)) {
-                                error("[tengine lexer] invalid u32 hex num '%s'", yytext);
+                                // error("[tengine lexer] invalid u32 hex num '%s'", yytext);
                                 return 1;
                             }
                             yyunumval = (u64_t)n;
@@ -1064,7 +1064,7 @@ YY_RULE_SETUP
                             u64_t n;
                             yytext[yyleng-3] = '\0';
                             if (!str_to_uint64(yytext, &n)) {
-                                error("[tengine lexer] invalid u64 num '%s'", yytext);
+                                // error("[tengine lexer] invalid u64 num '%s'", yytext);
                                 return 1;
                             }
                             yyunumval = (u64_t)n;
@@ -1079,7 +1079,7 @@ YY_RULE_SETUP
                             u64_t n;
                             yytext[yyleng-3] = '\0';
                             if (!str_to_uint64(yytext, &n)) {
-                                error("[tengine lexer] invalid u64 hex num '%s'", yytext);
+                                // error("[tengine lexer] invalid u64 hex num '%s'", yytext);
                                 return 1;
                             }
                             yyunumval = (u64_t)n;
@@ -1094,7 +1094,7 @@ YY_RULE_SETUP
                             s8_t n;
                             yytext[yyleng-2] = '\0';
                             if (!str_to_int8(yytext, &n)) {
-                                error("[tengine lexer] invalid s8 num '%s'", yytext);
+                                // error("[tengine lexer] invalid s8 num '%s'", yytext);
                                 return 1;
                             }
                             yysnumval = (s64_t)n;
@@ -1109,7 +1109,7 @@ YY_RULE_SETUP
                             s8_t n;
                             yytext[yyleng-2] = '\0';
                             if (!str_to_int8(yytext, &n)) {
-                                error("[tengine lexer] invalid s8 hex num '%s'", yytext);
+                                // error("[tengine lexer] invalid s8 hex num '%s'", yytext);
                                 return 1;
                             }
                             yysnumval = (s64_t)n;
@@ -1124,7 +1124,7 @@ YY_RULE_SETUP
                             s16_t n;
                             yytext[yyleng-3] = '\0';
                             if (!str_to_int16(yytext, &n)) {
-                                error("[tengine lexer] invalid s16 num '%s'", yytext);
+                                // error("[tengine lexer] invalid s16 num '%s'", yytext);
                                 return 1;
                             }
                             yysnumval = (s64_t)n;
@@ -1139,7 +1139,7 @@ YY_RULE_SETUP
                             s16_t n;
                             yytext[yyleng-3] = '\0';
                             if (!str_to_int16(yytext, &n)) {
-                                error("[tengine lexer] invalid s16 hex num '%s'", yytext);
+                                // error("[tengine lexer] invalid s16 hex num '%s'", yytext);
                                 return 1;
                             }
                             yysnumval = (s64_t)n;
@@ -1154,7 +1154,7 @@ YY_RULE_SETUP
                             s32_t n;
                             yytext[yyleng-3] = '\0';
                             if (!str_to_int32(yytext, &n)) {
-                                error("[tengine lexer] invalid s32 num '%s'", yytext);
+                                // error("[tengine lexer] invalid s32 num '%s'", yytext);
                                 return 1;
                             }
                             yysnumval = (s64_t)n;
@@ -1169,7 +1169,7 @@ YY_RULE_SETUP
                             s32_t n;
                             yytext[yyleng-3] = '\0';
                             if (!str_to_int32(yytext, &n)) {
-                                error("[tengine lexer] invalid s32 hex num '%s'", yytext);
+                                // error("[tengine lexer] invalid s32 hex num '%s'", yytext);
                                 return 1;
                             }
                             yysnumval = (s64_t)n;
@@ -1355,7 +1355,7 @@ YY_RULE_SETUP
                             size_t len;
                             u8_t*  unescaped;
                             if (!unescape_ascii_string(tmp, &unescaped, &len)) {
-                                error("[tengine lexer] invalid string '%s'", tmp);
+                                // error("[tengine lexer] invalid string '%s'", tmp);
                                 bhex_free(tmp);
                                 return 1;
                             }
@@ -1383,7 +1383,7 @@ YY_RULE_SETUP
 #line 313 "lexer.l"
 {
                             handle_token;
-                            error("[tengine lexer] unknown token");
+                            // error("[tengine lexer] unknown token");
                             return 1;
                         }
 	YY_BREAK

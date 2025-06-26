@@ -104,11 +104,12 @@ static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
 
     u64_t initial_off = fb->off;
     char* bhe         = arg_str;
-    int   r           = COMMAND_INVALID_ARG;
+    int   r           = COMMAND_SILENT_ERROR;
+
+    display_printf("\n");
 
     if (mode == MODE_INTERPRET) {
         if (tengine_vm_process_string(ctx->vm, fb, arg_str) != 0) {
-            error("template execution failed");
             goto end;
         }
         r = COMMAND_OK;
@@ -118,10 +119,8 @@ static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
     if (file_exists(bhe)) {
         // Template file
         if (tengine_vm_process_file(ctx->vm, fb, bhe) != 0) {
-            error("template execution failed");
             goto end;
         }
-        display_printf("\n");
         r = COMMAND_OK;
         goto end;
     }
@@ -129,10 +128,8 @@ static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
     if (tengine_vm_has_template(ctx->vm, bhe)) {
         // Template name
         if (tengine_vm_process_bhe(ctx->vm, fb, bhe) != 0) {
-            error("template execution failed");
             goto end;
         }
-        display_printf("\n");
         r = COMMAND_OK;
         goto end;
     }
@@ -147,14 +144,12 @@ static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
         goto err;
 
     if (tengine_vm_process_bhe_struct(ctx->vm, fb, tname, sname) != 0) {
-        error("template execution failed");
         goto end;
     }
 
-    display_printf("\n");
     r = COMMAND_OK;
-
 end:
+    display_printf("\n");
     fb_seek(fb, initial_off);
     return r;
 

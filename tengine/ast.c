@@ -556,6 +556,12 @@ void Type_free(Type* t)
     bhex_free(t);
 }
 
+void Stmt_set_source_info(Stmt* stmt, int loc, int col)
+{
+    stmt->line_of_code = loc;
+    stmt->column       = col;
+}
+
 Stmt* Stmt_FILE_VAR_DECL_new(Type* type, const char* name, Expr* size)
 {
     Stmt* stmt     = bhex_calloc(sizeof(Stmt));

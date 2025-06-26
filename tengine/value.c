@@ -138,7 +138,7 @@ TEngineValue* TEngineValue_array_sub(FileBuffer* fb, const TEngineValue* e,
     switch (e->t) {
         case TENGINE_ARRAY: {
             if (e->array_data->size <= n_val) {
-                error("[tengine] out of bound in array (size %llu, index %llu)",
+                error("out of bound in array (size %llu, index %llu)",
                       e->array_data->size, n_val);
                 return NULL;
             }
@@ -146,13 +146,13 @@ TEngineValue* TEngineValue_array_sub(FileBuffer* fb, const TEngineValue* e,
         }
         case TENGINE_BUF: {
             if (e->buf_size <= n_val) {
-                error("[tengine] out of bound in buf (size %llu, index %llu)",
+                error("out of bound in buf (size %llu, index %llu)",
                       e->buf_size, n_val);
                 return NULL;
             }
             u64_t orig_s = fb->off;
             if (fb_seek(fb, e->buf_off + n_val) != 0) {
-                error("[tengine] invalid buffer, it spans outside the file");
+                error("invalid buffer, it spans outside the file");
                 return NULL;
             }
             const u8_t* buf = fb_read(fb, 1);
@@ -164,9 +164,8 @@ TEngineValue* TEngineValue_array_sub(FileBuffer* fb, const TEngineValue* e,
         }
         case TENGINE_STRING: {
             if (e->str_size <= n_val) {
-                error(
-                    "[tengine] out of bound in string (size %llu, index %llu)",
-                    e->str_size, n_val);
+                error("out of bound in string (size %llu, index %llu)",
+                      e->str_size, n_val);
                 return NULL;
             }
             return TEngineValue_UNUM_new(e->str[n_val], 1);
@@ -175,7 +174,7 @@ TEngineValue* TEngineValue_array_sub(FileBuffer* fb, const TEngineValue* e,
             break;
     }
 
-    error("[tengine] array_sub undefined for type %s", type_to_string(e->t));
+    error("array_sub undefined for type %s", type_to_string(e->t));
     return NULL;
 }
 
@@ -203,7 +202,7 @@ TEngineValue* TEngineValue_add(const TEngineValue* lhs, const TEngineValue* rhs)
 {
     binop_num(+);
 
-    error("[tengine] add undefined for types %s and %s", type_to_string(lhs->t),
+    error("add undefined for types %s and %s", type_to_string(lhs->t),
           type_to_string(rhs->t));
     return NULL;
 }
@@ -212,7 +211,7 @@ TEngineValue* TEngineValue_sub(const TEngineValue* lhs, const TEngineValue* rhs)
 {
     binop_num(-);
 
-    error("[tengine] sub undefined for types %s and %s", type_to_string(lhs->t),
+    error("sub undefined for types %s and %s", type_to_string(lhs->t),
           type_to_string(rhs->t));
     return NULL;
 }
@@ -221,7 +220,7 @@ TEngineValue* TEngineValue_mul(const TEngineValue* lhs, const TEngineValue* rhs)
 {
     binop_num(*);
 
-    error("[tengine] mul undefined for types %s and %s", type_to_string(lhs->t),
+    error("mul undefined for types %s and %s", type_to_string(lhs->t),
           type_to_string(rhs->t));
     return NULL;
 }
@@ -230,7 +229,7 @@ TEngineValue* TEngineValue_div(const TEngineValue* lhs, const TEngineValue* rhs)
 {
     binop_num(/);
 
-    error("[tengine] div undefined for types %s and %s", type_to_string(lhs->t),
+    error("div undefined for types %s and %s", type_to_string(lhs->t),
           type_to_string(rhs->t));
     return NULL;
 }
@@ -239,7 +238,7 @@ TEngineValue* TEngineValue_mod(const TEngineValue* lhs, const TEngineValue* rhs)
 {
     binop_num(%);
 
-    error("[tengine] mod undefined for types %s and %s", type_to_string(lhs->t),
+    error("mod undefined for types %s and %s", type_to_string(lhs->t),
           type_to_string(rhs->t));
     return NULL;
 }
@@ -248,7 +247,7 @@ TEngineValue* TEngineValue_and(const TEngineValue* lhs, const TEngineValue* rhs)
 {
     binop_num(&);
 
-    error("[tengine] and undefined for types %s and %s", type_to_string(lhs->t),
+    error("and undefined for types %s and %s", type_to_string(lhs->t),
           type_to_string(rhs->t));
     return NULL;
 }
@@ -257,7 +256,7 @@ TEngineValue* TEngineValue_or(const TEngineValue* lhs, const TEngineValue* rhs)
 {
     binop_num(|);
 
-    error("[tengine] or undefined for types %s and %s", type_to_string(lhs->t),
+    error("or undefined for types %s and %s", type_to_string(lhs->t),
           type_to_string(rhs->t));
     return NULL;
 }
@@ -266,7 +265,7 @@ TEngineValue* TEngineValue_xor(const TEngineValue* lhs, const TEngineValue* rhs)
 {
     binop_num(^);
 
-    error("[tengine] xor undefined for types %s and %s", type_to_string(lhs->t),
+    error("xor undefined for types %s and %s", type_to_string(lhs->t),
           type_to_string(rhs->t));
     return NULL;
 }
@@ -293,7 +292,7 @@ TEngineValue* TEngineValue_bgt(const TEngineValue* lhs, const TEngineValue* rhs)
 {
     binop_bool(>);
 
-    error("[tengine] bgt undefined for types %s and %s", type_to_string(lhs->t),
+    error("bgt undefined for types %s and %s", type_to_string(lhs->t),
           type_to_string(rhs->t));
     return NULL;
 }
@@ -302,7 +301,7 @@ TEngineValue* TEngineValue_bge(const TEngineValue* lhs, const TEngineValue* rhs)
 {
     binop_bool(>=);
 
-    error("[tengine] bge undefined for types %s and %s", type_to_string(lhs->t),
+    error("bge undefined for types %s and %s", type_to_string(lhs->t),
           type_to_string(rhs->t));
     return NULL;
 }
@@ -311,7 +310,7 @@ TEngineValue* TEngineValue_blt(const TEngineValue* lhs, const TEngineValue* rhs)
 {
     binop_bool(<);
 
-    error("[tengine] blt undefined for types %s and %s", type_to_string(lhs->t),
+    error("blt undefined for types %s and %s", type_to_string(lhs->t),
           type_to_string(rhs->t));
     return NULL;
 }
@@ -320,7 +319,7 @@ TEngineValue* TEngineValue_ble(const TEngineValue* lhs, const TEngineValue* rhs)
 {
     binop_bool(<=);
 
-    error("[tengine] ble undefined for types %s and %s", type_to_string(lhs->t),
+    error("ble undefined for types %s and %s", type_to_string(lhs->t),
           type_to_string(rhs->t));
     return NULL;
 }
@@ -357,7 +356,7 @@ TEngineValue* TEngineValue_beq(const TEngineValue* lhs, const TEngineValue* rhs)
         return TEngineValue_UNUM_new((lhs->unum == rhs->enum_const) ? 1 : 0, 1);
     }
 
-    error("[tengine] beq undefined for types %s and %s", type_to_string(lhs->t),
+    error("beq undefined for types %s and %s", type_to_string(lhs->t),
           type_to_string(rhs->t));
     return NULL;
 }
@@ -371,7 +370,7 @@ TEngineValue* TEngineValue_bnot(const TEngineValue* child)
         return TEngineValue_UNUM_new(child->unum == 0 ? 1 : 0, 1);
     }
 
-    error("[tengine] beq undefined for type %s", type_to_string(child->t));
+    error("beq undefined for type %s", type_to_string(child->t));
     return NULL;
 }
 
@@ -380,8 +379,8 @@ TEngineValue* TEngineValue_band(const TEngineValue* lhs,
 {
     binop_bool(&&);
 
-    error("[tengine] band undefined for types %s and %s",
-          type_to_string(lhs->t), type_to_string(rhs->t));
+    error("band undefined for types %s and %s", type_to_string(lhs->t),
+          type_to_string(rhs->t));
     return NULL;
 }
 
@@ -389,7 +388,7 @@ TEngineValue* TEngineValue_bor(const TEngineValue* lhs, const TEngineValue* rhs)
 {
     binop_bool(||);
 
-    error("[tengine] bor undefined for types %s and %s", type_to_string(lhs->t),
+    error("bor undefined for types %s and %s", type_to_string(lhs->t),
           type_to_string(rhs->t));
     return NULL;
 }
@@ -417,7 +416,7 @@ int TEngineValue_as_u64(const TEngineValue* v, u64_t* o)
             return 0;
         case TENGINE_STRING:
         case TENGINE_OBJ:
-            error("[tengine] TEngineValue_as_u64: %s not a numeric type",
+            error("TEngineValue_as_u64: %s not a numeric type",
                   type_to_string(v->t));
             return 1;
         default:
@@ -433,7 +432,7 @@ int TEngineValue_as_string(const TEngineValue* v, const char** o)
         return 0;
     }
 
-    error("[tengine] TEngineValue_as_string: %s is not a string type",
+    error("TEngineValue_as_string: %s is not a string type",
           type_to_string(v->t));
     return 1;
 }
@@ -461,7 +460,7 @@ int TEngineValue_as_s64(const TEngineValue* v, s64_t* o)
             return 0;
         case TENGINE_STRING:
         case TENGINE_OBJ:
-            error("[tengine] TEngineValue_as_s64: %s not a numeric type",
+            error("TEngineValue_as_s64: %s not a numeric type",
                   type_to_string(v->t));
             return 1;
         default:

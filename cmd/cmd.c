@@ -44,6 +44,8 @@ const char* cmdctx_err_to_string(int err)
             return "internal error";
         case COMMAND_FILE_WRITE_ERROR:
             return "file write error";
+        case COMMAND_SILENT_ERROR:
+            return "silent error";
         default:
             break;
     }

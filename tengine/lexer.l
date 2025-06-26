@@ -79,7 +79,7 @@ __attribute__((destructor)) static void delete_yy_bufs(void)
 -?[0-9]+                {
                             handle_token;
                             if (!str_to_int64(yytext, &yysnumval)) {
-                                error("[tengine lexer] invalid s64 num '%s'", yytext);
+                                // error("[tengine lexer] invalid s64 num '%s'", yytext);
                                 return 1;
                             }
                             return TSNUM64;
@@ -87,7 +87,7 @@ __attribute__((destructor)) static void delete_yy_bufs(void)
 -?0x[0-9a-fA-F]+        {
                             handle_token;
                             if (!str_to_int64(yytext, &yysnumval)) {
-                                error("[tengine lexer] invalid s64 hex num '%s'", yytext);
+                                // error("[tengine lexer] invalid s64 hex num '%s'", yytext);
                                 return 1;
                             }
                             return TSNUM64;
@@ -97,7 +97,7 @@ __attribute__((destructor)) static void delete_yy_bufs(void)
                             u8_t n;
                             yytext[yyleng-2] = '\0';
                             if (!str_to_uint8(yytext, &n)) {
-                                error("[tengine lexer] invalid u8 num '%s'", yytext);
+                                // error("[tengine lexer] invalid u8 num '%s'", yytext);
                                 return 1;
                             }
                             yyunumval = (u64_t)n;
@@ -108,7 +108,7 @@ __attribute__((destructor)) static void delete_yy_bufs(void)
                             u8_t n;
                             yytext[yyleng-2] = '\0';
                             if (!str_to_uint8(yytext, &n)) {
-                                error("[tengine lexer] invalid u8 hex num '%s'", yytext);
+                                // error("[tengine lexer] invalid u8 hex num '%s'", yytext);
                                 return 1;
                             }
                             yyunumval = (u64_t)n;
@@ -119,7 +119,7 @@ __attribute__((destructor)) static void delete_yy_bufs(void)
                             u16_t n;
                             yytext[yyleng-3] = '\0';
                             if (!str_to_uint16(yytext, &n)) {
-                                error("[tengine lexer] invalid u16 num '%s'", yytext);
+                                // error("[tengine lexer] invalid u16 num '%s'", yytext);
                                 return 1;
                             }
                             yyunumval = (u64_t)n;
@@ -130,7 +130,7 @@ __attribute__((destructor)) static void delete_yy_bufs(void)
                             u16_t n;
                             yytext[yyleng-3] = '\0';
                             if (!str_to_uint16(yytext, &n)) {
-                                error("[tengine lexer] invalid u16 hex num '%s'", yytext);
+                                // error("[tengine lexer] invalid u16 hex num '%s'", yytext);
                                 return 1;
                             }
                             yyunumval = (u64_t)n;
@@ -141,7 +141,7 @@ __attribute__((destructor)) static void delete_yy_bufs(void)
                             u32_t n;
                             yytext[yyleng-3] = '\0';
                             if (!str_to_uint32(yytext, &n)) {
-                                error("[tengine lexer] invalid u32 num '%s'", yytext);
+                                // error("[tengine lexer] invalid u32 num '%s'", yytext);
                                 return 1;
                             }
                             yyunumval = (u64_t)n;
@@ -152,7 +152,7 @@ __attribute__((destructor)) static void delete_yy_bufs(void)
                             u32_t n;
                             yytext[yyleng-3] = '\0';
                             if (!str_to_uint32(yytext, &n)) {
-                                error("[tengine lexer] invalid u32 hex num '%s'", yytext);
+                                // error("[tengine lexer] invalid u32 hex num '%s'", yytext);
                                 return 1;
                             }
                             yyunumval = (u64_t)n;
@@ -163,7 +163,7 @@ __attribute__((destructor)) static void delete_yy_bufs(void)
                             u64_t n;
                             yytext[yyleng-3] = '\0';
                             if (!str_to_uint64(yytext, &n)) {
-                                error("[tengine lexer] invalid u64 num '%s'", yytext);
+                                // error("[tengine lexer] invalid u64 num '%s'", yytext);
                                 return 1;
                             }
                             yyunumval = (u64_t)n;
@@ -174,7 +174,7 @@ __attribute__((destructor)) static void delete_yy_bufs(void)
                             u64_t n;
                             yytext[yyleng-3] = '\0';
                             if (!str_to_uint64(yytext, &n)) {
-                                error("[tengine lexer] invalid u64 hex num '%s'", yytext);
+                                // error("[tengine lexer] invalid u64 hex num '%s'", yytext);
                                 return 1;
                             }
                             yyunumval = (u64_t)n;
@@ -185,7 +185,7 @@ __attribute__((destructor)) static void delete_yy_bufs(void)
                             s8_t n;
                             yytext[yyleng-2] = '\0';
                             if (!str_to_int8(yytext, &n)) {
-                                error("[tengine lexer] invalid s8 num '%s'", yytext);
+                                // error("[tengine lexer] invalid s8 num '%s'", yytext);
                                 return 1;
                             }
                             yysnumval = (s64_t)n;
@@ -196,7 +196,7 @@ __attribute__((destructor)) static void delete_yy_bufs(void)
                             s8_t n;
                             yytext[yyleng-2] = '\0';
                             if (!str_to_int8(yytext, &n)) {
-                                error("[tengine lexer] invalid s8 hex num '%s'", yytext);
+                                // error("[tengine lexer] invalid s8 hex num '%s'", yytext);
                                 return 1;
                             }
                             yysnumval = (s64_t)n;
@@ -207,7 +207,7 @@ __attribute__((destructor)) static void delete_yy_bufs(void)
                             s16_t n;
                             yytext[yyleng-3] = '\0';
                             if (!str_to_int16(yytext, &n)) {
-                                error("[tengine lexer] invalid s16 num '%s'", yytext);
+                                // error("[tengine lexer] invalid s16 num '%s'", yytext);
                                 return 1;
                             }
                             yysnumval = (s64_t)n;
@@ -218,7 +218,7 @@ __attribute__((destructor)) static void delete_yy_bufs(void)
                             s16_t n;
                             yytext[yyleng-3] = '\0';
                             if (!str_to_int16(yytext, &n)) {
-                                error("[tengine lexer] invalid s16 hex num '%s'", yytext);
+                                // error("[tengine lexer] invalid s16 hex num '%s'", yytext);
                                 return 1;
                             }
                             yysnumval = (s64_t)n;
@@ -229,7 +229,7 @@ __attribute__((destructor)) static void delete_yy_bufs(void)
                             s32_t n;
                             yytext[yyleng-3] = '\0';
                             if (!str_to_int32(yytext, &n)) {
-                                error("[tengine lexer] invalid s32 num '%s'", yytext);
+                                // error("[tengine lexer] invalid s32 num '%s'", yytext);
                                 return 1;
                             }
                             yysnumval = (s64_t)n;
@@ -240,7 +240,7 @@ __attribute__((destructor)) static void delete_yy_bufs(void)
                             s32_t n;
                             yytext[yyleng-3] = '\0';
                             if (!str_to_int32(yytext, &n)) {
-                                error("[tengine lexer] invalid s32 hex num '%s'", yytext);
+                                // error("[tengine lexer] invalid s32 hex num '%s'", yytext);
                                 return 1;
                             }
                             yysnumval = (s64_t)n;
@@ -297,7 +297,7 @@ __attribute__((destructor)) static void delete_yy_bufs(void)
                             size_t len;
                             u8_t*  unescaped;
                             if (!unescape_ascii_string(tmp, &unescaped, &len)) {
-                                error("[tengine lexer] invalid string '%s'", tmp);
+                                // error("[tengine lexer] invalid string '%s'", tmp);
                                 bhex_free(tmp);
                                 return 1;
                             }
@@ -312,7 +312,7 @@ __attribute__((destructor)) static void delete_yy_bufs(void)
 "/*"([^*]|"*"+[^*/])*"*"+"/" { handle_token; /* multi-line comment */  }
 .                       {
                             handle_token;
-                            error("[tengine lexer] unknown token");
+                            // error("[tengine lexer] unknown token");
                             return 1;
                         }
 

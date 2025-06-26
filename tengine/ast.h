@@ -137,6 +137,8 @@ typedef enum ASTStmtType {
 struct Block;
 typedef struct Stmt {
     ASTStmtType t;
+    int         line_of_code;
+    int         column;
     union {
         struct {
             // FILE_VAR_DECL
@@ -176,6 +178,7 @@ void  Stmt_STMT_IF_add_cond(Stmt* stmt, Expr* cond, struct Block* block);
 void  Stmt_STMT_IF_add_else(Stmt* stmt, struct Block* block);
 Stmt* Stmt_WHILE_new(Expr* cond, struct Block* block);
 Stmt* Stmt_BREAK_new();
+void  Stmt_set_source_info(Stmt* stmt, int loc, int col);
 void  Stmt_free(Stmt* stmt);
 
 typedef struct Block {

@@ -22,6 +22,7 @@ Work in progress template engine
 [X] refactor tengine interpreter
 	- parsing helpers should be moved to ast.c
 	- the TEngineInterpreter struct should be merged with ProcessContext and made private
-[ ] improve error print
-[ ] implement the output in a generic way, so that we can choose different backends (e.g., JSON)
 [X] implement a 'find_next' API (which returns the offset, or -1)
+[X] improve error print
+[ ] print source code context while printing exceptions
+[ ] implement the output in a generic way, so that we can choose different backends (e.g., JSON)

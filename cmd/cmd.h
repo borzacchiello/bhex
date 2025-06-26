@@ -14,6 +14,7 @@
 #define COMMAND_INVALID_ARG          6
 #define COMMAND_INTERNAL_ERROR       7
 #define COMMAND_FILE_WRITE_ERROR     8
+#define COMMAND_SILENT_ERROR         9
 
 typedef void (*fptr_help_t)(void* obj);
 typedef void (*fptr_dispose_t)(void* obj);
