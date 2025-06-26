@@ -213,8 +213,9 @@ proc
     if (find(magic, 1 /* backward search */ )) {
         // ZIP
         EndOfCentralDirZIP endOfCentralDir;
-    } elif (find(magic, 1 /* backward search */ )) {
+    } elif (find(magic64, 1 /* backward search */ )) {
         // ZIP64
+        print("[!] ZIP64 is poorly supported");
         EndOfCentralDirZIP64 endOfCentralDir;
     } else {
         print("[!] invalid ZIP");
