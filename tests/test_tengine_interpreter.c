@@ -686,7 +686,7 @@ end:
     return r;
 }
 
-int TEST (and)(void)
+int TEST(and)(void)
 {
     const char* prog = "proc { local a = 0xffff; local b = a & 0xf0f0; }";
 
@@ -720,7 +720,7 @@ end:
     return r;
 }
 
-int TEST (xor)(void)
+int TEST(xor)(void)
 {
     const char* prog = "proc { local a = 0xff; local b = a ^ 0xf0; }";
 
