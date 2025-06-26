@@ -2,13 +2,17 @@
 
 #include <stdio.h>
 
+#include <strbuilder.h>
+#include <string.h>
 #include <alloc.h>
 #include <log.h>
 #include "ast.h"
 
+#define YYERROR_VERBOSE 1
+#define max(x, y) ((x) > (y) ? (x) : (y))
+
 extern int   yylex();
 extern char* yytext;
-extern int   yylineno;
 extern char  yystrval[MAX_IDENT_SIZE];
 extern u8_t* yyheapbuf;
 extern u32_t yyheapbuf_len;
@@ -16,16 +20,79 @@ extern s64_t yysnumval;
 extern u64_t yyunumval;
 extern int   yymax_ident_len;
 
-static ASTCtx* g_ctx;
+extern int     yy_line;
+extern int     yy_column;
+extern FILE*   yyin;
+extern char*   yy_string_to_parse;
+extern ASTCtx* g_ctx;
 
-void yyset_ctx(ASTCtx* ctx)
+static void print_error_from_file(int yylineno, int yy_column)
 {
-    g_ctx = ctx;
+    rewind(yyin);
+
+    char*   line = NULL;
+    size_t  len  = 0;
+    ssize_t read = 0;
+
+    int linenum          = 1;
+    int min_print_lineno = max(yylineno-2, 0);
+    int max_print_lineno = yylineno+2;
+    while ((read = getline(&line, &len, yyin)) != -1) {
+        if (read > 0 && line[read-1] == '\n')
+            line[read-1] = 0;
+
+        if (linenum >= min_print_lineno && linenum <= max_print_lineno)
+            error("%03d: %s", linenum, line);
+        if (linenum == yylineno) {
+            StringBuilder* sb = strbuilder_new();
+            strbuilder_append(sb, "     ");
+            for (int i=0; i<yy_column-1; ++i)
+                strbuilder_append_char(sb, '_');
+            strbuilder_append_char(sb, '^');
+            char* errstr = strbuilder_finalize(sb);
+            error("%s", errstr);
+            bhex_free(errstr);
+        }
+        linenum += 1;
+    }
+    free(line);
+}
+
+static void print_error_from_string(int yylineno, int yy_column)
+{
+    char* str  = bhex_strdup(yy_string_to_parse);
+    char* line = strtok(str, "\n");
+
+    int linenum          = 1;
+    int min_print_lineno = max(yylineno-2, 0);
+    int max_print_lineno = yylineno+2;
+    while (line) {
+        if (linenum >= min_print_lineno && linenum <= max_print_lineno)
+            error("%03d: %s", linenum, line);
+        if (linenum == yylineno) {
+            StringBuilder* sb = strbuilder_new();
+            strbuilder_append(sb, "     ");
+            for (int i=0; i<yy_column-1; ++i)
+                strbuilder_append_char(sb, '_');
+            strbuilder_append_char(sb, '^');
+            char* errstr = strbuilder_finalize(sb);
+            error("%s", errstr);
+            bhex_free(errstr);
+        }
+
+        linenum += 1;
+        line     = strtok(NULL, "\n");
+    }
+    bhex_free(str);
 }
 
 void yyerror(const char *s)
 {
-    error("[tengine parser] %s @ line %d [near token '%s']", s, yylineno, yytext);
+    error("%s @ line %d, column %d", s, yy_line, yy_column);
+    if (yyin != NULL)
+        print_error_from_file(yy_line, yy_column);
+    else if (yy_string_to_parse != NULL)
+        print_error_from_string(yy_line, yy_column);
 }
 
 %}
@@ -69,6 +136,7 @@ void yyerror(const char *s)
 
 // Options
 %locations
+%define parse.error detailed
 
 // The grammar
 %%

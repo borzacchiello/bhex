@@ -3,7 +3,6 @@
 
 #include "ast.h"
 #include "defs.h"
-#include "local.h"
 #include "util/byte_to_str.h"
 
 #include <alloc.h>
@@ -17,6 +16,10 @@ extern void                     yy_delete_buffer(YY_BUFFER_STATE buffer);
 extern void                     yylex_destroy();
 extern void                     yyrestart(FILE* input_file);
 extern void                     yy_switch_to_buffer(YY_BUFFER_STATE new_buffer);
+extern int                      yyparse(void);
+extern void                     yyset_in(FILE*);
+extern void                     yy_custom_init(ASTCtx* ctx, const char* str);
+extern int                      yymax_ident_len;
 
 Expr* Expr_SCONST_new(s64_t v, u8_t size)
 {
@@ -663,7 +666,7 @@ static void STMT_IF_WHILE_free(Stmt* stmt)
 
 static void STMT_IF_ELIF_ELSE_free(Stmt* stmt)
 {
-    DList_destroy(stmt->if_conditions, (void (*)(void*))&IfCond_free);
+    DList_destroy(stmt->if_conditions, (void (*)(void*)) & IfCond_free);
     if (stmt->else_block)
         Block_free(stmt->else_block);
 }
@@ -986,7 +989,7 @@ ASTCtx* tengine_parse_file(FILE* f)
     yyrestart(f);
 
     yyset_in(f);
-    yyset_ctx(ast);
+    yy_custom_init(ast, NULL);
 
     if (yyparse() != 0) {
         error("parsing failed");
@@ -1010,9 +1013,8 @@ ASTCtx* tengine_parse_string(const char* str)
     bhex_alloc_track_start();
     ASTCtx* ast = ASTCtx_new();
 
-    yyset_ctx(ast);
+    yy_custom_init(ast, str);
     YY_BUFFER_STATE state = yy_scan_string(str);
-    yy_switch_to_buffer(state);
 
     if (yyparse() != 0) {
         error("parsing failed");

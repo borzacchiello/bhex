@@ -1,7 +1,6 @@
 #include "value.h"
 #include "defs.h"
 #include "dlist.h"
-#include "local.h"
 #include "util/byte_to_str.h"
 
 #include <filebuffer.h>
@@ -12,6 +11,8 @@
 #include <log.h>
 
 #define max(x, y) ((x) > (y) ? (x) : (y))
+
+extern int yymax_ident_len;
 
 static const char* type_to_string(TEngineValueType t)
 {

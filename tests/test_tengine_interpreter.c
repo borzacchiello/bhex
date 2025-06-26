@@ -686,7 +686,7 @@ end:
     return r;
 }
 
-int TEST(and)(void)
+int TEST (and)(void)
 {
     const char* prog = "proc { local a = 0xffff; local b = a & 0xf0f0; }";
 
@@ -720,7 +720,7 @@ end:
     return r;
 }
 
-int TEST(xor)(void)
+int TEST (xor)(void)
 {
     const char* prog = "proc { local a = 0xff; local b = a ^ 0xf0; }";
 
@@ -1542,12 +1542,11 @@ int TEST(syntax_error)(void)
     // clang-format off
     const char* expected =
         "[  ERROR  ] [tengine lexer] unknown token\n"
-        "[  ERROR  ] [tengine parser] syntax error @ line 7 [near token '@']\n"
+        "[  ERROR  ] syntax error, unexpected invalid token @ line 1, column 1\n"
+        "[  ERROR  ] 001: @,,\n"
+        "[  ERROR  ]      ^\n"
         "[  ERROR  ] parsing failed\n";
     // clang-format on
-
-    // just in case
-    bhex_free(strbuilder_reset(err_sb));
 
     const char* prog = "@,,";
 
