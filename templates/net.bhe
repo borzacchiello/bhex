@@ -1,6 +1,265 @@
-struct eth
+struct eth_header
 {
-    u8  dst[6];
-    u8  src[6];
-    u16 type;
+    endianess_be();
+
+    u8         dst[6];
+    u8         src[6];
+    eth_type_t type;
+}
+
+enum eth_type_t : u16
+{
+    ETH_TYPE_IEEE802_3_MAX    = 0x05DC, // Maximum 802.3 length value
+    ETH_TYPE_PUP              = 0x0200, // Xerox PUP
+    ETH_TYPE_SPRITE           = 0x0500, // Sprite
+    ETH_TYPE_IP               = 0x0800, // Internet Protocol version 4 (IPv4)
+    ETH_TYPE_ARP              = 0x0806, // Address Resolution Protocol (ARP)
+    ETH_TYPE_RARP             = 0x8035, // Reverse Address Resolution Protocol (RARP)
+    ETH_TYPE_DEC_MOP_RC       = 0x6002, // DEC MOP Remote Console
+    ETH_TYPE_DEC_MOP_DUMP     = 0x6003, // DEC MOP Dump/Load Assistant
+    ETH_TYPE_DEC_DNA_DL       = 0x6004, // DEC DNA Dump/Load
+    ETH_TYPE_DEC_DNA_RC       = 0x6005, // DEC DNA Remote Console
+    ETH_TYPE_DEC_DNA_RT       = 0x6006, // DEC DNA Routing
+    ETH_TYPE_DEC_LAT          = 0x6007, // DEC LAT
+    ETH_TYPE_DEC_DIAG         = 0x6008, // DEC Diagnostics Protocol
+    ETH_TYPE_DEC_CUST         = 0x6009, // DEC Customer Protocol
+    ETH_TYPE_DEC_LAVC_SCA     = 0x6010, // DEC LAVC, SCA
+    ETH_TYPE_DEC_AMBER        = 0x6011, // DEC AMBER
+    ETH_TYPE_DEC_MUMPS        = 0x6012, // DEC MUMPS
+    ETH_TYPE_3COM_NBP_DGRAM   = 0x3C00, // 3Com NBP Datagram
+    ETH_TYPE_3COM_NBP_CONTROL = 0x3C01, // 3Com NBP Control
+    ETH_TYPE_IPX              = 0x8137, // Novell NetWare IPX
+    ETH_TYPE_IPX_8138         = 0x8138, // Novell NetWare IPX (alternate)
+    ETH_TYPE_APPLETALK        = 0x809B, // AppleTalk (EtherTalk)
+    ETH_TYPE_AARP             = 0x80F3, // AppleTalk Address Resolution Protocol
+    ETH_TYPE_IBM_SNA          = 0x80D5, // IBM SNA Service on Ethernet
+    ETH_TYPE_VLAN             = 0x8100, // IEEE 802.1Q VLAN-tagged frame
+    ETH_TYPE_QINQ             = 0x88A8, // IEEE 802.1ad QinQ VLAN double-tagged frame
+    ETH_TYPE_VLAN_9100        = 0x9100, // Legacy QinQ
+    ETH_TYPE_VLAN_9200        = 0x9200, // Legacy QinQ
+    ETH_TYPE_IPV6             = 0x86DD, // Internet Protocol Version 6 (IPv6)
+    ETH_TYPE_IPV6_ICMP        = 0x003A, // ICMPv6 (though typically inside IPv6)
+    ETH_TYPE_PPP              = 0x880B, // Point-to-Point Protocol (PPP)
+    ETH_TYPE_PPPOE_DISCOVERY  = 0x8863, // PPP over Ethernet Discovery Stage
+    ETH_TYPE_PPPOE_SESSION    = 0x8864, // PPP over Ethernet Session Stage
+    ETH_TYPE_MPLS_UNICAST     = 0x8847, // MPLS Unicast
+    ETH_TYPE_MPLS_MULTICAST   = 0x8848, // MPLS Multicast
+    ETH_TYPE_EAPOL            = 0x888E, // IEEE 802.1X EAP over LAN
+    ETH_TYPE_JUMBO            = 0x8870, // Jumbo Frames
+    ETH_TYPE_LLDP             = 0x88CC, // Link Layer Discovery Protocol (LLDP)
+    ETH_TYPE_WOL              = 0x0842, // Wake-on-LAN
+    ETH_TYPE_TRILL            = 0x22F3, // TRILL
+    ETH_TYPE_FCOE             = 0x8906, // Fibre Channel over Ethernet (FCoE)
+    ETH_TYPE_FIP              = 0x8914, // FCoE Initialization Protocol (FIP)
+    ETH_TYPE_PTP              = 0x88F7, // IEEE 1588 Precision Time Protocol
+    ETH_TYPE_NSH              = 0x894F, // Network Service Header
+    ETH_TYPE_MACSEC           = 0x88E5, // IEEE 802.1AE MAC Security (MACsec)
+    ETH_TYPE_PBB              = 0x88E7, // IEEE 802.1ah Provider Backbone Bridge
+    ETH_TYPE_CFM              = 0x8902, // IEEE 802.1ag Connectivity Fault Management
+    ETH_TYPE_HSR              = 0x892F, // IEC 62439-3 HSR
+    ETH_TYPE_LOOPBACK         = 0x9000, // Ethernet Loopback packet
+    ETH_TYPE_EXPERIMENTAL_1   = 0x88B5, // Local Experimental Ethertype 1
+    ETH_TYPE_EXPERIMENTAL_2   = 0x88B6, // Local Experimental Ethertype 2
+    ETH_TYPE_UNKNOWN          = 0xFFFF, // Unknown/Invalid EtherType
+    ETH_TYPE_INVALID_ZERO     = 0x0000  // Unknown/Invalid EtherType
+}
+
+struct ipv4_header
+{
+    endianess_be();
+
+    u8            version_ihl;       // Version (4 bits) + Internet Header Length (4 bits)
+    u8            type_of_service;   // Type of Service / DSCP + ECN
+    u16           total_length;      // Total length of IP packet (header + data)
+    u16           identification;    // Identification for fragmentation
+    u16           flags_fragment;    // Flags (3 bits) + Fragment offset (13 bits)
+    u8            time_to_live;      // Time to Live (TTL)
+    ip_protocol_t protocol;          // Next level protocol (TCP=6, UDP=17, etc.)
+    u16           header_checksum;   // Header checksum
+    u8            source_address[4]; // Source IP address
+    u8            dest_address[4];   // Destination IP address
+
+    local headers_len = (version_ihl & 0xf) * 4;
+    if (headers_len > 20) {
+        u8 options[headers_len - 20];
+    }
+}
+
+enum ip_protocol_t : u8
+{
+    IPPROTO_HOPOPT          = 0, // IPv6 Hop-by-Hop Option Header
+    IPPROTO_ICMP            = 1, // Internet Control Message Protocol
+    IPPROTO_IGMP            = 2, // Internet Group Management Protocol
+    IPPROTO_GGP             = 3, // Gateway-to-Gateway Protocol
+    IPPROTO_IPIP            = 4, // IP in IP (encapsulation)
+    IPPROTO_ST              = 5, // Stream
+    IPPROTO_TCP             = 6, // Transmission Control Protocol
+    IPPROTO_CBT             = 7, // CBT
+    IPPROTO_EGP             = 8, // Exterior Gateway Protocol
+    IPPROTO_IGP             = 9, // Interior Gateway Protocol
+    IPPROTO_BBN_RCC_MON     = 10, // BBN RCC Monitoring
+    IPPROTO_NVP_II          = 11, // Network Voice Protocol
+    IPPROTO_PUP             = 12, // PUP
+    IPPROTO_ARGUS           = 13, // ARGUS
+    IPPROTO_EMCON           = 14, // EMCON
+    IPPROTO_XNET            = 15, // Cross Net Debugger
+    IPPROTO_CHAOS           = 16, // Chaos
+    IPPROTO_UDP             = 17, // User Datagram Protocol
+    IPPROTO_MUX             = 18, // Multiplexing
+    IPPROTO_DCN_MEAS        = 19, // DCN Measurement Subsystems
+    IPPROTO_HMP             = 20, // Host Monitoring
+    IPPROTO_PRM             = 21, // Packet Radio Measurement
+    IPPROTO_XNS_IDP         = 22, // XEROX NS IDP
+    IPPROTO_TRUNK_1         = 23, // Trunk-1
+    IPPROTO_TRUNK_2         = 24, // Trunk-2
+    IPPROTO_LEAF_1          = 25, // Leaf-1
+    IPPROTO_LEAF_2          = 26, // Leaf-2
+    IPPROTO_RDP             = 27, // Reliable Data Protocol
+    IPPROTO_IRTP            = 28, // Internet Reliable Transaction
+    IPPROTO_ISO_TP4         = 29, // ISO Transport Protocol Class 4
+    IPPROTO_NETBLT          = 30, // Bulk Data Transfer Protocol
+    IPPROTO_MFE_NSP         = 31, // MFE Network Services Protocol
+    IPPROTO_MERIT_INP       = 32, // MERIT Internodal Protocol
+    IPPROTO_DCCP            = 33, // Datagram Congestion Control Protocol
+    IPPROTO_3PC             = 34, // Third Party Connect Protocol
+    IPPROTO_IDPR            = 35, // Inter-Domain Policy Routing Protocol
+    IPPROTO_XTP             = 36, // XTP
+    IPPROTO_DDP             = 37, // Datagram Delivery Protocol
+    IPPROTO_IDPR_CMTP       = 38, // IDPR Control Message Transport Proto
+    IPPROTO_TPXX            = 39, // TP++ Transport Protocol
+    IPPROTO_IL              = 40, // IL Transport Protocol
+    IPPROTO_IPV6            = 41, // IPv6 encapsulation
+    IPPROTO_SDRP            = 42, // Source Demand Routing Protocol
+    IPPROTO_IPV6_ROUTE      = 43, // Routing Header for IPv6
+    IPPROTO_IPV6_FRAG       = 44, // Fragment Header for IPv6
+    IPPROTO_IDRP            = 45, // Inter-Domain Routing Protocol
+    IPPROTO_RSVP            = 46, // Reservation Protocol
+    IPPROTO_GRE             = 47, // Generic Routing Encapsulation
+    IPPROTO_DSR             = 48, // Dynamic Source Routing Protocol
+    IPPROTO_BNA             = 49, // BNA
+    IPPROTO_ESP             = 50, // Encap Security Payload
+    IPPROTO_AH              = 51, // Authentication Header
+    IPPROTO_I_NLSP          = 52, // Integrated Net Layer Security TUBA
+    IPPROTO_SWIPE           = 53, // IP with Encryption
+    IPPROTO_NARP            = 54, // NBMA Address Resolution Protocol
+    IPPROTO_MOBILE          = 55, // IP Mobility
+    IPPROTO_TLSP            = 56, // Transport Layer Security Protocol
+    IPPROTO_SKIP            = 57, // SKIP
+    IPPROTO_IPV6_ICMP       = 58, // ICMP for IPv6
+    IPPROTO_IPV6_NONXT      = 59, // No Next Header for IPv6
+    IPPROTO_IPV6_OPTS       = 60, // Destination Options for IPv6
+    IPPROTO_CFTP            = 62, // CFTP
+    IPPROTO_SAT_EXPAK       = 64, // SATNET and Backroom EXPAK
+    IPPROTO_KRYPTOLAN       = 65, // Kryptolan
+    IPPROTO_RVD             = 66, // MIT Remote Virtual Disk Protocol
+    IPPROTO_IPPC            = 67, // Internet Pluribus Packet Core
+    IPPROTO_SAT_MON         = 69, // SATNET Monitoring
+    IPPROTO_VISA            = 70, // VISA Protocol
+    IPPROTO_IPCV            = 71, // Internet Packet Core Utility
+    IPPROTO_CPNX            = 72, // Computer Protocol Network Executive
+    IPPROTO_CPHB            = 73, // Computer Protocol Heart Beat
+    IPPROTO_WSN             = 74, // Wang Span Network
+    IPPROTO_PVP             = 75, // Packet Video Protocol
+    IPPROTO_BR_SAT_MON      = 76, // Backroom SATNET Monitoring
+    IPPROTO_SUN_ND          = 77, // SUN ND PROTOCOL-Temporary
+    IPPROTO_WB_MON          = 78, // WIDEBAND Monitoring
+    IPPROTO_WB_EXPAK        = 79, // WIDEBAND EXPAK
+    IPPROTO_ISO_IP          = 80, // ISO Internet Protocol
+    IPPROTO_VMTP            = 81, // VMTP
+    IPPROTO_SECURE_VMTP     = 82, // SECURE-VMTP
+    IPPROTO_VINES           = 83, // VINES
+    IPPROTO_TTP             = 84, // Transaction Transport Protocol
+    IPPROTO_IPTM            = 84, // Internet Protocol Traffic Manager
+    IPPROTO_NSFNET_IGP      = 85, // NSFNET-IGP
+    IPPROTO_DGP             = 86, // Dissimilar Gateway Protocol
+    IPPROTO_TCF             = 87, // TCF
+    IPPROTO_EIGRP           = 88, // EIGRP
+    IPPROTO_OSPFIGP         = 89, // OSPFIGP
+    IPPROTO_SPRITE_RPC      = 90, // Sprite RPC Protocol
+    IPPROTO_LARP            = 91, // Locus Address Resolution Protocol
+    IPPROTO_MTP             = 92, // Multicast Transport Protocol
+    IPPROTO_AX25            = 93, // AX.25 Frames
+    IPPROTO_IPIP_OLD        = 94, // IP-within-IP Encapsulation Protocol
+    IPPROTO_MICP            = 95, // Mobile Internetworking Control Pro.
+    IPPROTO_SCC_SP          = 96, // Semaphore Communications Sec. Pro.
+    IPPROTO_ETHERIP         = 97, // Ethernet-within-IP Encapsulation
+    IPPROTO_ENCAP           = 98, // Encapsulation Header
+    IPPROTO_GMTP            = 100, // GMTP
+    IPPROTO_IFMP            = 101, // Ipsilon Flow Management Protocol
+    IPPROTO_PNNI            = 102, // PNNI over IP
+    IPPROTO_PIM             = 103, // Protocol Independent Multicast
+    IPPROTO_ARIS            = 104, // ARIS
+    IPPROTO_SCPS            = 105, // SCPS
+    IPPROTO_QNX             = 106, // QNX
+    IPPROTO_A_N             = 107, // Active Networks
+    IPPROTO_IPCOMP          = 108, // IP Payload Compression Protocol
+    IPPROTO_SNP             = 109, // Sitara Networks Protocol
+    IPPROTO_COMPAQ_PEER     = 110, // Compaq Peer Protocol
+    IPPROTO_IPX_IN_IP       = 111, // IPX in IP
+    IPPROTO_VRRP            = 112, // Virtual Router Redundancy Protocol
+    IPPROTO_PGM             = 113, // PGM Reliable Transport Protocol
+    IPPROTO_L2TP            = 115, // Layer Two Tunneling Protocol
+    IPPROTO_DDX             = 116, // D-II Data Exchange (DDX)
+    IPPROTO_IATP            = 117, // Interactive Agent Transfer Protocol
+    IPPROTO_STP             = 118, // Schedule Transfer Protocol
+    IPPROTO_SRP             = 119, // SpectraLink Radio Protocol
+    IPPROTO_UTI             = 120, // UTI
+    IPPROTO_SMP             = 121, // Simple Message Protocol
+    IPPROTO_SM              = 122, // Simple Multicast Protocol
+    IPPROTO_PTP             = 123, // Performance Transparency Protocol
+    IPPROTO_ISIS            = 124, // ISIS over IPv4
+    IPPROTO_FIRE            = 125, // FIRE
+    IPPROTO_CRTP            = 126, // Combat Radio Transport Protocol
+    IPPROTO_CRUDP           = 127, // Combat Radio User Datagram
+    IPPROTO_SSCOPMCE        = 128, // SSCOPMCE
+    IPPROTO_IPLT            = 129, // IPLT
+    IPPROTO_SPS             = 130, // Secure Packet Shield
+    IPPROTO_PIPE            = 131, // Private IP Encapsulation within IP
+    IPPROTO_SCTP            = 132, // Stream Control Transmission Protocol
+    IPPROTO_FC              = 133, // Fibre Channel
+    IPPROTO_RSVP_E2E_IGNORE = 134, // RSVP-E2E-IGNORE
+    IPPROTO_MOBILITY        = 135, // Mobility Header
+    IPPROTO_UDPLITE         = 136, // UDP-Lite
+    IPPROTO_MPLS_IN_IP      = 137, // MPLS-in-IP
+    IPPROTO_MANET           = 138, // MANET Protocols
+    IPPROTO_HIP             = 139, // Host Identity Protocol
+    IPPROTO_SHIM6           = 140, // Shim6 Protocol
+    IPPROTO_WESP            = 141, // Wrapped Encapsulating Security Payload
+    IPPROTO_ROHC            = 142, // Robust Header Compression
+    IPPROTO_ETHERNET        = 143, // Ethernet
+    IPPROTO_AGGFRAG         = 144, // AGGFRAG encapsulation payload
+    IPPROTO_NSH             = 145, // Network Service Header
+    IPPROTO_RAW             = 255  // Raw IP packets
+}
+
+struct tcp_header
+{
+    endianess_be();
+
+    u16        source_port;          // Source port number
+    u16        dest_port;            // Destination port number
+    u32        sequence_num;         // Sequence number
+    u32        ack_num;              // Acknowledgment number
+    u8         data_offset_reserved; // Data offset (4 bits) + Reserved (3 bits) + NS flag (1 bit)
+    tcp_flag_t flags;                // Control flags (CWR, ECE, URG, ACK, PSH, RST, SYN, FIN)
+    u16        window_size;          // Window size
+    u16        checksum;             // Checksum
+    u16        urgent_pointer;       // Urgent pointer
+
+    local headers_len = (data_offset_reserved >> 4) * 4;
+    if (headers_len > 20) {
+        u8 options[headers_len - 20];
+    }
+}
+
+orenum tcp_flag_t : u8
+{
+    TCP_FLAG_FIN = 0x01, // Finish - No more data from sender
+    TCP_FLAG_SYN = 0x02, // Synchronize - Synchronize sequence numbers
+    TCP_FLAG_RST = 0x04, // Reset - Reset the connection
+    TCP_FLAG_PSH = 0x08, // Push - Push data to application immediately
+    TCP_FLAG_ACK = 0x10, // Acknowledgment - Acknowledgment field significant
+    TCP_FLAG_URG = 0x20, // Urgent - Urgent pointer field significant
+    TCP_FLAG_ECE = 0x40, // ECN-Echo - ECN Congestion Experienced
+    TCP_FLAG_CWR = 0x80  // Congestion Window Reduced
 }

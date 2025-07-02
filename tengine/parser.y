@@ -129,7 +129,7 @@ void yyerror(const char *s)
 %left TBEQ TBNEQ TBLT TBLE TBGT TBGE
 %left TAND TOR TXOR
 %left TADD TSUB
-%left TMUL TDIV TMOD
+%left TMUL TDIV TMOD TSHL TSHR
 %left TBNOT
 %left SQLBRACE SQRBRACE
 %left TDOT
@@ -371,6 +371,12 @@ expr        : num
                                                     }
             | expr TBOR expr                        {
                                                         $$ = Expr_BOR_new($1, $3);
+                                                    }
+            | expr TSHR expr                        {
+                                                        $$ = Expr_SHR_new($1, $3);
+                                                    }
+            | expr TSHL expr                        {
+                                                        $$ = Expr_SHL_new($1, $3);
                                                     }
             | TBNOT expr                            {
                                                         $$ = Expr_BNOT_new($2);

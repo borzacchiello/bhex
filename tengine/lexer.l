@@ -267,6 +267,8 @@ __attribute__((destructor)) static void delete_yy_bufs(void)
 "^"                     { handle_token; return TXOR; }
 "!="                    { handle_token; return TBNEQ; }
 "=="                    { handle_token; return TBEQ; }
+">>"                    { handle_token; return TSHR; }
+"<<"                    { handle_token; return TSHL; }
 ">"                     { handle_token; return TBGT; }
 "<"                     { handle_token; return TBLT; }
 ">="                    { handle_token; return TBGE; }

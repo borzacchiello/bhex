@@ -104,7 +104,9 @@ extern int yydebug;
     TBLT = 305,                    /* TBLT  */
     TBLE = 306,                    /* TBLE  */
     TEQUAL = 307,                  /* TEQUAL  */
-    TBNOT = 308                    /* TBNOT  */
+    TBNOT = 308,                   /* TBNOT  */
+    TSHL = 309,                    /* TSHL  */
+    TSHR = 310                     /* TSHR  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -123,7 +125,7 @@ union YYSTYPE
     Type*    fvar_type;
     char*    ident;
 
-#line 127 "parser.h"
+#line 129 "parser.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

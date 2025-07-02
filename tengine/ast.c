@@ -232,6 +232,24 @@ Expr* Expr_BOR_new(Expr* lhs, Expr* rhs)
     return e;
 }
 
+Expr* Expr_SHR_new(Expr* lhs, Expr* rhs)
+{
+    Expr* e = bhex_calloc(sizeof(Expr));
+    e->t    = EXPR_SHR;
+    e->lhs  = lhs;
+    e->rhs  = rhs;
+    return e;
+}
+
+Expr* Expr_SHL_new(Expr* lhs, Expr* rhs)
+{
+    Expr* e = bhex_calloc(sizeof(Expr));
+    e->t    = EXPR_SHL;
+    e->lhs  = lhs;
+    e->rhs  = rhs;
+    return e;
+}
+
 Expr* Expr_BNOT_new(Expr* v)
 {
     Expr* e  = bhex_calloc(sizeof(Expr));
@@ -296,6 +314,8 @@ Expr* Expr_dup(Expr* e)
         case EXPR_BGT:
         case EXPR_BGE:
         case EXPR_BAND:
+        case EXPR_SHR:
+        case EXPR_SHL:
         case EXPR_BOR:
             r->lhs = Expr_dup(e->lhs);
             r->rhs = Expr_dup(e->rhs);
@@ -355,6 +375,8 @@ void Expr_free(Expr* e)
         case EXPR_BGT:
         case EXPR_BGE:
         case EXPR_BAND:
+        case EXPR_SHR:
+        case EXPR_SHL:
         case EXPR_BOR:
             Expr_free(e->lhs);
             Expr_free(e->rhs);
@@ -512,6 +534,20 @@ void Expr_pp(Expr* e)
             printf("( ");
             Expr_pp(e->lhs);
             printf(" || ");
+            Expr_pp(e->rhs);
+            printf(" )");
+            break;
+        case EXPR_SHR:
+            printf("( ");
+            Expr_pp(e->lhs);
+            printf(" >> ");
+            Expr_pp(e->rhs);
+            printf(" )");
+            break;
+        case EXPR_SHL:
+            printf("( ");
+            Expr_pp(e->lhs);
+            printf(" << ");
             Expr_pp(e->rhs);
             printf(" )");
             break;

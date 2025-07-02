@@ -536,6 +536,26 @@ static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
             TEngineValue_free(rhs);
             return res;
         }
+        case EXPR_SHR: {
+            TEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
+            TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
+            evaluate_check_null;
+
+            TEngineValue* res = TEngineValue_shr(lhs, rhs);
+            TEngineValue_free(lhs);
+            TEngineValue_free(rhs);
+            return res;
+        }
+        case EXPR_SHL: {
+            TEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
+            TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
+            evaluate_check_null;
+
+            TEngineValue* res = TEngineValue_shl(lhs, rhs);
+            TEngineValue_free(lhs);
+            TEngineValue_free(rhs);
+            return res;
+        }
         case EXPR_BNOT: {
             TEngineValue* child = evaluate_expr(ctx, scope, e->child);
             if (!child)

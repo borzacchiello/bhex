@@ -15,6 +15,13 @@
 #include "filebuffer.h"
 #include "../cmd/cmd.h"
 
+#define print_err_sb()                                                         \
+    do {                                                                       \
+        char* err = strbuilder_reset(err_sb);                                  \
+        printf("%s", err);                                                     \
+        bhex_free(err);                                                        \
+    } while (0)
+
 extern int template_skip_search;
 
 static CmdContext*      cc;
@@ -86,8 +93,8 @@ __attribute__((destructor)) static void __deinit(void)
         bhex_free(strbuilder_finalize(err_sb));
 }
 
-__attribute__((unused)) static int exec_commands_on(const char*      s,
-                                                    DummyFilebuffer* dummyfb)
+__attribute__((unused)) static int
+exec_commands_on_ex(const char* s, DummyFilebuffer* dummyfb, int split)
 {
     char tmp[512] = {0};
     if (strlen(s) > sizeof(tmp) - 1)
@@ -100,7 +107,9 @@ __attribute__((unused)) static int exec_commands_on(const char*      s,
     bhex_free(strbuilder_reset(sb));
     bhex_free(strbuilder_reset(err_sb));
 
-    char* cmd = strtok(tmp, ";");
+    char* cmd = tmp;
+    if (split)
+        cmd = strtok(tmp, ";");
     while (cmd) {
         ParsedCommand* pc;
         if (cmdline_parse(cmd, &pc) != 0)
@@ -114,6 +123,12 @@ __attribute__((unused)) static int exec_commands_on(const char*      s,
         cmd = strtok(NULL, ";");
     }
     return 0;
+}
+
+__attribute__((unused)) static int exec_commands_on(const char*      s,
+                                                    DummyFilebuffer* dummyfb)
+{
+    return exec_commands_on_ex(s, dummyfb, 1);
 }
 
 __attribute__((unused)) static int exec_commands(const char* s)

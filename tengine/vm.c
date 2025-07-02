@@ -102,6 +102,7 @@ int tengine_vm_add_template(TEngineVM* ctx, const char* name, const char* path)
 
 void tengine_vm_destroy(TEngineVM* ctx)
 {
+    tengine_interpreter_set_imported_types_callback(NULL, NULL);
     map_destroy(ctx->templates);
     bhex_free(ctx);
 }

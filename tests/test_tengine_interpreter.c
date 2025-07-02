@@ -720,7 +720,7 @@ end:
     return r;
 }
 
-int TEST (xor)(void)
+int TEST(xor)(void)
 {
     const char* prog = "proc { local a = 0xff; local b = a ^ 0xf0; }";
 
@@ -731,6 +731,108 @@ int TEST (xor)(void)
     int           r = 0;
     TEngineValue* v = Scope_get_local(scope, "b");
     IS_TENGINE_SNUM_EQ(r, v, 0x0f);
+
+end:
+    Scope_free(scope);
+    return r;
+}
+
+int TEST(shr_1)(void)
+{
+    const char* prog = "proc { local a = 0xff; local b = a >> 1; }";
+
+    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    if (scope == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(scope, "b");
+    IS_TENGINE_SNUM_EQ(r, v, 0xff>>1);
+
+end:
+    Scope_free(scope);
+    return r;
+}
+
+int TEST(shr_2)(void)
+{
+    const char* prog = "proc { local a = 0xff; local b = a >> 2; }";
+
+    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    if (scope == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(scope, "b");
+    IS_TENGINE_SNUM_EQ(r, v, 0xff>>2);
+
+end:
+    Scope_free(scope);
+    return r;
+}
+
+int TEST(shr_3)(void)
+{
+    const char* prog = "proc { local a = 0xff; local b = a >> 10; }";
+
+    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    if (scope == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(scope, "b");
+    IS_TENGINE_SNUM_EQ(r, v, 0);
+
+end:
+    Scope_free(scope);
+    return r;
+}
+
+int TEST(shl_1)(void)
+{
+    const char* prog = "proc { local a = 1; local b = a << 1; }";
+
+    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    if (scope == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(scope, "b");
+    IS_TENGINE_SNUM_EQ(r, v, 1<<1);
+
+end:
+    Scope_free(scope);
+    return r;
+}
+
+int TEST(shl_2)(void)
+{
+    const char* prog = "proc { local a = 1; local b = a << 2; }";
+
+    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    if (scope == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(scope, "b");
+    IS_TENGINE_SNUM_EQ(r, v, 1<<2);
+
+end:
+    Scope_free(scope);
+    return r;
+}
+
+int TEST(shl_3)(void)
+{
+    const char* prog = "proc { local a = 1u8; local b = a << 10u8; }";
+
+    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    if (scope == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(scope, "b");
+    IS_TENGINE_UNUM_EQ(r, v, 0);
 
 end:
     Scope_free(scope);

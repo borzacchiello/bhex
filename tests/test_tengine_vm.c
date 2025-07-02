@@ -1,9 +1,11 @@
-#include "../tengine/vm.h"
-#include "alloc.h"
+#include "t_cmd_common.h"
 #include "filebuffer.h"
 #include "strbuilder.h"
-#include "t_cmd_common.h"
+#include "alloc.h"
 #include "t.h"
+
+#include "../tengine/vm.h"
+#include "data/net.h"
 
 #ifndef TEST
 #define TEST(name) test_##name
@@ -15,13 +17,13 @@ int TEST(use_struct_of_another_file)(void)
 {
     fb_undo_all(elf_fb->fb);
 
-    const char* prog = "net#eth a;";
+    const char* prog = "net#eth_header a;";
     // clang-format off
     const char* expected = 
-        "b+00000000    a: \n"
-        "b+00000000       dst: 7f454c460101\n"
-        "b+00000006       src: 010000000000\n"
-        "b+0000000c      type: 0000\n";
+        "b+00000000           a: \n"
+        "b+00000000                            dst: 7f454c460101\n"
+        "b+00000006                            src: 010000000000\n"
+        "b+0000000c                           type: ETH_TYPE_INVALID_ZERO\n";
     // clang-format on
 
     int        r  = TEST_FAILED;
@@ -30,6 +32,7 @@ int TEST(use_struct_of_another_file)(void)
         return 0;
     }
     if (tengine_vm_add_template(vm, "net", "./templates/net.bhe") != 0) {
+        print_err_sb();
         goto end;
     }
     if (tengine_vm_process_string(vm, elf_fb->fb, prog) != 0) {
@@ -122,4 +125,59 @@ int TEST(use_enum_of_another_file)(void)
 end:
     tengine_vm_destroy(vm);
     return r;
+}
+
+int TEST(template_tcp)(void)
+{
+    // clang-format off
+    const char* prog = "net#eth_header eth; net#ipv4_header ip; net#tcp_header tcp;";
+    const char* expected = 
+        "b+00000000          eth: \n"
+        "b+00000000                            dst: d4925e9eae53\n"
+        "b+00000006                            src: e0d4e86835e9\n"
+        "b+0000000c                           type: ETH_TYPE_IP\n"
+        "b+0000000e           ip: \n"
+        "b+0000000e                    version_ihl: 45\n"
+        "b+0000000f                type_of_service: 00\n"
+        "b+00000010                   total_length: 0028\n"
+        "b+00000012                 identification: 1fd8\n"
+        "b+00000014                 flags_fragment: 4000\n"
+        "b+00000016                   time_to_live: 80\n"
+        "b+00000017                       protocol: IPPROTO_TCP\n"
+        "b+00000018                header_checksum: 0000\n"
+        "b+0000001a                 source_address: c0a80155\n"
+        "b+0000001e                   dest_address: a04f680a\n"
+        "b+00000022          tcp: \n"
+        "b+00000022                    source_port: ee8d\n"
+        "b+00000024                      dest_port: 01bb\n"
+        "b+00000026                   sequence_num: 1fc51680\n"
+        "b+0000002a                        ack_num: 1bd3a788\n"
+        "b+0000002e           data_offset_reserved: 50\n"
+        "b+0000002f                          flags: TCP_FLAG_ACK\n"
+        "b+00000030                    window_size: 00fa\n"
+        "b+00000032                       checksum: ca71\n"
+        "b+00000034                 urgent_pointer: 0000\n";
+    // clang-format on
+
+    int        r  = TEST_SUCCEEDED;
+    TEngineVM* vm = tengine_vm_create(empty_dirs);
+    ASSERT(vm != NULL);
+    ASSERT(tengine_vm_add_template(vm, "net", "./templates/net.bhe") == 0);
+
+    DummyFilebuffer* tfb = dummyfilebuffer_create(tcp_pkt, sizeof(tcp_pkt));
+    ASSERT(tfb != NULL);
+    ASSERT(tengine_vm_process_string(vm, tfb->fb, prog) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    tengine_vm_destroy(vm);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
 }
