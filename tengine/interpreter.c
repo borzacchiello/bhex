@@ -340,7 +340,7 @@ static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
             TEngineValue* rhs = evaluate_expr(ctx, scope, e->array_sub_n);
             evaluate_check_null;
 
-            TEngineValue* res = TEngineValue_array_sub(ctx->fb, lhs, rhs);
+            TEngineValue* res = TEngineValue_array_sub(ctx, lhs, rhs);
             TEngineValue_free(lhs);
             TEngineValue_free(rhs);
             return res;
@@ -391,7 +391,7 @@ static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
             TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
             evaluate_check_null;
 
-            TEngineValue* res = TEngineValue_add(lhs, rhs);
+            TEngineValue* res = TEngineValue_add(ctx, lhs, rhs);
             TEngineValue_free(lhs);
             TEngineValue_free(rhs);
             return res;
@@ -401,7 +401,7 @@ static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
             TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
             evaluate_check_null;
 
-            TEngineValue* res = TEngineValue_sub(lhs, rhs);
+            TEngineValue* res = TEngineValue_sub(ctx, lhs, rhs);
             TEngineValue_free(lhs);
             TEngineValue_free(rhs);
             return res;
@@ -411,7 +411,7 @@ static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
             TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
             evaluate_check_null;
 
-            TEngineValue* res = TEngineValue_mul(lhs, rhs);
+            TEngineValue* res = TEngineValue_mul(ctx, lhs, rhs);
             TEngineValue_free(lhs);
             TEngineValue_free(rhs);
             return res;
@@ -421,7 +421,7 @@ static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
             TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
             evaluate_check_null;
 
-            TEngineValue* res = TEngineValue_div(lhs, rhs);
+            TEngineValue* res = TEngineValue_div(ctx, lhs, rhs);
             TEngineValue_free(lhs);
             TEngineValue_free(rhs);
             return res;
@@ -431,7 +431,7 @@ static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
             TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
             evaluate_check_null;
 
-            TEngineValue* res = TEngineValue_mod(lhs, rhs);
+            TEngineValue* res = TEngineValue_mod(ctx, lhs, rhs);
             TEngineValue_free(lhs);
             TEngineValue_free(rhs);
             return res;
@@ -441,7 +441,7 @@ static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
             TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
             evaluate_check_null;
 
-            TEngineValue* res = TEngineValue_and(lhs, rhs);
+            TEngineValue* res = TEngineValue_and(ctx, lhs, rhs);
             TEngineValue_free(lhs);
             TEngineValue_free(rhs);
             return res;
@@ -451,7 +451,7 @@ static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
             TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
             evaluate_check_null;
 
-            TEngineValue* res = TEngineValue_or(lhs, rhs);
+            TEngineValue* res = TEngineValue_or(ctx, lhs, rhs);
             TEngineValue_free(lhs);
             TEngineValue_free(rhs);
             return res;
@@ -461,7 +461,7 @@ static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
             TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
             evaluate_check_null;
 
-            TEngineValue* res = TEngineValue_xor(lhs, rhs);
+            TEngineValue* res = TEngineValue_xor(ctx, lhs, rhs);
             TEngineValue_free(lhs);
             TEngineValue_free(rhs);
             return res;
@@ -471,7 +471,7 @@ static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
             TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
             evaluate_check_null;
 
-            TEngineValue* res = TEngineValue_beq(lhs, rhs);
+            TEngineValue* res = TEngineValue_beq(ctx, lhs, rhs);
             TEngineValue_free(lhs);
             TEngineValue_free(rhs);
             return res;
@@ -481,7 +481,7 @@ static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
             TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
             evaluate_check_null;
 
-            TEngineValue* res = TEngineValue_blt(lhs, rhs);
+            TEngineValue* res = TEngineValue_blt(ctx, lhs, rhs);
             TEngineValue_free(lhs);
             TEngineValue_free(rhs);
             return res;
@@ -491,7 +491,7 @@ static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
             TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
             evaluate_check_null;
 
-            TEngineValue* res = TEngineValue_ble(lhs, rhs);
+            TEngineValue* res = TEngineValue_ble(ctx, lhs, rhs);
             TEngineValue_free(lhs);
             TEngineValue_free(rhs);
             return res;
@@ -501,7 +501,7 @@ static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
             TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
             evaluate_check_null;
 
-            TEngineValue* res = TEngineValue_bgt(lhs, rhs);
+            TEngineValue* res = TEngineValue_bgt(ctx, lhs, rhs);
             TEngineValue_free(lhs);
             TEngineValue_free(rhs);
             return res;
@@ -511,7 +511,7 @@ static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
             TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
             evaluate_check_null;
 
-            TEngineValue* res = TEngineValue_bge(lhs, rhs);
+            TEngineValue* res = TEngineValue_bge(ctx, lhs, rhs);
             TEngineValue_free(lhs);
             TEngineValue_free(rhs);
             return res;
@@ -521,7 +521,7 @@ static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
             TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
             evaluate_check_null;
 
-            TEngineValue* res = TEngineValue_band(lhs, rhs);
+            TEngineValue* res = TEngineValue_band(ctx, lhs, rhs);
             TEngineValue_free(lhs);
             TEngineValue_free(rhs);
             return res;
@@ -531,7 +531,7 @@ static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
             TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
             evaluate_check_null;
 
-            TEngineValue* res = TEngineValue_bor(lhs, rhs);
+            TEngineValue* res = TEngineValue_bor(ctx, lhs, rhs);
             TEngineValue_free(lhs);
             TEngineValue_free(rhs);
             return res;
@@ -541,7 +541,7 @@ static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
             TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
             evaluate_check_null;
 
-            TEngineValue* res = TEngineValue_shr(lhs, rhs);
+            TEngineValue* res = TEngineValue_shr(ctx, lhs, rhs);
             TEngineValue_free(lhs);
             TEngineValue_free(rhs);
             return res;
@@ -551,7 +551,7 @@ static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
             TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
             evaluate_check_null;
 
-            TEngineValue* res = TEngineValue_shl(lhs, rhs);
+            TEngineValue* res = TEngineValue_shl(ctx, lhs, rhs);
             TEngineValue_free(lhs);
             TEngineValue_free(rhs);
             return res;
@@ -561,7 +561,7 @@ static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
             if (!child)
                 return NULL;
 
-            TEngineValue* res = TEngineValue_bnot(child);
+            TEngineValue* res = TEngineValue_bnot(ctx, child);
             TEngineValue_free(child);
             return res;
         }
@@ -579,7 +579,7 @@ static int eval_to_u64(InterpreterContext* ctx, Scope* scope, Expr* e, u64_t* o)
     if (v == NULL)
         return 1;
 
-    if (TEngineValue_as_u64(v, o) != 0) {
+    if (TEngineValue_as_u64(ctx, v, o) != 0) {
         TEngineValue_free(v);
         return 1;
     }
@@ -594,7 +594,7 @@ eval_to_str(InterpreterContext* ctx, Scope* scope, Expr* e, const char** o)
     if (v == NULL)
         return 1;
 
-    if (TEngineValue_as_string(v, o) != 0) {
+    if (TEngineValue_as_string(ctx, v, o) != 0) {
         TEngineValue_free(v);
         return 1;
     }
@@ -902,8 +902,8 @@ static int process_stmt(InterpreterContext* ctx, Stmt* stmt, Scope* scope)
     if (ctx->exc != NULL) {
         // process the exception, as of today we just print it
         char* exc_msg = strbuilder_finalize(ctx->exc->sb);
-        error("Exception @ line %d, col %d > %s", stmt->line_of_code, stmt->column,
-              exc_msg);
+        error("Exception @ line %d, col %d > %s", stmt->line_of_code,
+              stmt->column, exc_msg);
 
         bhex_free(exc_msg);
         bhex_free(ctx->exc);

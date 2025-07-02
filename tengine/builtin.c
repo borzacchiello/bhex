@@ -167,7 +167,7 @@ const TEngineBuiltinType* get_builtin_type(const char* type)
         }                                                                      \
         if (signed) {                                                          \
             s64_t s;                                                           \
-            if (TEngineValue_as_s64(params->data[0], &s) != 0) {               \
+            if (TEngineValue_as_s64(ctx, params->data[0], &s) != 0) {          \
                 tengine_raise_exception(ctx,                                   \
                                         "builtin_" #name                       \
                                         " parameter cannot be casted to s64"); \
@@ -176,7 +176,7 @@ const TEngineBuiltinType* get_builtin_type(const char* type)
             return TEngineValue_SNUM_new(s, sz);                               \
         }                                                                      \
         u64_t u;                                                               \
-        if (TEngineValue_as_u64(params->data[0], &u) != 0) {                   \
+        if (TEngineValue_as_u64(ctx, params->data[0], &u) != 0) {              \
             tengine_raise_exception(                                           \
                 ctx, "builtin_" #name " parameter cannot be casted to u64");   \
             return NULL;                                                       \
@@ -233,7 +233,7 @@ static TEngineValue* builtin_atoi(InterpreterContext* ctx, DList* params)
 
     TEngineValue* param = params->data[0];
     const char*   param_str;
-    if (TEngineValue_as_string(param, &param_str) != 0) {
+    if (TEngineValue_as_string(ctx, param, &param_str) != 0) {
         tengine_raise_exception(ctx, "atoi: expected a string parameter");
         return NULL;
     }
@@ -255,7 +255,7 @@ static TEngineValue* builtin_strlen(InterpreterContext* ctx, DList* params)
 
     TEngineValue* param = params->data[0];
     const char*   param_str;
-    if (TEngineValue_as_string(param, &param_str) != 0) {
+    if (TEngineValue_as_string(ctx, param, &param_str) != 0) {
         tengine_raise_exception(ctx, "strlen: expected a string parameter");
         return NULL;
     }
@@ -272,7 +272,7 @@ static TEngineValue* builtin_strip(InterpreterContext* ctx, DList* params)
 
     TEngineValue* param = params->data[0];
     const char*   param_str;
-    if (TEngineValue_as_string(param, &param_str) != 0) {
+    if (TEngineValue_as_string(ctx, param, &param_str) != 0) {
         tengine_raise_exception(ctx, "strip: expected a string parameter");
         return NULL;
     }
@@ -369,7 +369,7 @@ static TEngineValue* builtin_seek(InterpreterContext* ctx, DList* params)
 
     TEngineValue* param = params->data[0];
     u64_t         param_u64;
-    if (TEngineValue_as_u64(param, &param_u64) != 0) {
+    if (TEngineValue_as_u64(ctx, param, &param_u64) != 0) {
         tengine_raise_exception(ctx, "seek: expected an uint parameter");
         return NULL;
     }
@@ -391,7 +391,7 @@ static TEngineValue* builtin_fwd(InterpreterContext* ctx, DList* params)
 
     TEngineValue* param = params->data[0];
     u64_t         param_u64;
-    if (TEngineValue_as_u64(param, &param_u64) != 0) {
+    if (TEngineValue_as_u64(ctx, param, &param_u64) != 0) {
         tengine_raise_exception(ctx, "fwd: expected an uint parameter");
         return NULL;
     }
@@ -453,7 +453,7 @@ static TEngineValue* builtin_find(InterpreterContext* ctx, DList* params)
         // second parameter: if > 0, backward search
         TEngineValue* param = params->data[1];
         u64_t         param_u64;
-        if (TEngineValue_as_u64(param, &param_u64) != 0) {
+        if (TEngineValue_as_u64(ctx, param, &param_u64) != 0) {
             tengine_raise_exception(ctx, "find: expected a bool");
             return NULL;
         }

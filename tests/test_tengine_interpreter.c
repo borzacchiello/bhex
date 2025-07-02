@@ -1666,6 +1666,30 @@ end:
     return r;
 }
 
+int TEST(interpreter_error_invalid_op_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "[  ERROR  ] Exception @ line 1, col 27 > mul undefined for types unum and string\n";
+    // clang-format on
+
+    const char* prog = "proc { local a = 1u8 * \"a\"; }";
+
+    int    r     = TEST_FAILED;
+    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    if (scope != NULL)
+        goto end;
+
+    char* out = strbuilder_reset(err_sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    return r;
+}
+
 int TEST(find_forward_match)(void)
 {
     int              r = TEST_SUCCEEDED;

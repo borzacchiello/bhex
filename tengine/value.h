@@ -6,7 +6,7 @@
 #include <map.h>
 
 struct TEngine;
-struct FileBuffer;
+struct InterpreterContext;
 
 typedef enum TEngineValueType {
     TENGINE_UNUM = 500,
@@ -75,47 +75,68 @@ void          TEngineValue_free(TEngineValue* v);
 
 void TEngineValue_ARRAY_append(TEngineValue* arr, TEngineValue* v);
 
-TEngineValue* TEngineValue_array_sub(struct FileBuffer*  fb,
-                                     const TEngineValue* e,
-                                     const TEngineValue* n);
-TEngineValue* TEngineValue_add(const TEngineValue* lhs,
-                               const TEngineValue* rhs);
-TEngineValue* TEngineValue_sub(const TEngineValue* lhs,
-                               const TEngineValue* rhs);
-TEngineValue* TEngineValue_mul(const TEngineValue* lhs,
-                               const TEngineValue* rhs);
-TEngineValue* TEngineValue_div(const TEngineValue* lhs,
-                               const TEngineValue* rhs);
-TEngineValue* TEngineValue_mod(const TEngineValue* lhs,
-                               const TEngineValue* rhs);
-TEngineValue* TEngineValue_and(const TEngineValue* lhs,
-                               const TEngineValue* rhs);
-TEngineValue* TEngineValue_or(const TEngineValue* lhs, const TEngineValue* rhs);
-TEngineValue* TEngineValue_xor(const TEngineValue* lhs,
-                               const TEngineValue* rhs);
-TEngineValue* TEngineValue_shl(const TEngineValue* lhs,
-                               const TEngineValue* rhs);
-TEngineValue* TEngineValue_shr(const TEngineValue* lhs,
-                               const TEngineValue* rhs);
-TEngineValue* TEngineValue_bgt(const TEngineValue* lhs,
-                               const TEngineValue* rhs);
-TEngineValue* TEngineValue_bge(const TEngineValue* lhs,
-                               const TEngineValue* rhs);
-TEngineValue* TEngineValue_blt(const TEngineValue* lhs,
-                               const TEngineValue* rhs);
-TEngineValue* TEngineValue_ble(const TEngineValue* lhs,
-                               const TEngineValue* rhs);
-TEngineValue* TEngineValue_beq(const TEngineValue* lhs,
-                               const TEngineValue* rhs);
-TEngineValue* TEngineValue_band(const TEngineValue* lhs,
-                                const TEngineValue* rhs);
-TEngineValue* TEngineValue_bor(const TEngineValue* lhs,
-                               const TEngineValue* rhs);
-TEngineValue* TEngineValue_bnot(const TEngineValue* child);
+TEngineValue* TEngineValue_array_sub(struct InterpreterContext* ctx,
+                                     const TEngineValue*        e,
+                                     const TEngineValue*        n);
+TEngineValue* TEngineValue_add(struct InterpreterContext* ctx,
+                               const TEngineValue*        lhs,
+                               const TEngineValue*        rhs);
+TEngineValue* TEngineValue_sub(struct InterpreterContext* ctx,
+                               const TEngineValue*        lhs,
+                               const TEngineValue*        rhs);
+TEngineValue* TEngineValue_mul(struct InterpreterContext* ctx,
+                               const TEngineValue*        lhs,
+                               const TEngineValue*        rhs);
+TEngineValue* TEngineValue_div(struct InterpreterContext* ctx,
+                               const TEngineValue*        lhs,
+                               const TEngineValue*        rhs);
+TEngineValue* TEngineValue_mod(struct InterpreterContext* ctx,
+                               const TEngineValue*        lhs,
+                               const TEngineValue*        rhs);
+TEngineValue* TEngineValue_and(struct InterpreterContext* ctx,
+                               const TEngineValue*        lhs,
+                               const TEngineValue*        rhs);
+TEngineValue* TEngineValue_or(struct InterpreterContext* ctx,
+                              const TEngineValue* lhs, const TEngineValue* rhs);
+TEngineValue* TEngineValue_xor(struct InterpreterContext* ctx,
+                               const TEngineValue*        lhs,
+                               const TEngineValue*        rhs);
+TEngineValue* TEngineValue_shl(struct InterpreterContext* ctx,
+                               const TEngineValue*        lhs,
+                               const TEngineValue*        rhs);
+TEngineValue* TEngineValue_shr(struct InterpreterContext* ctx,
+                               const TEngineValue*        lhs,
+                               const TEngineValue*        rhs);
+TEngineValue* TEngineValue_bgt(struct InterpreterContext* ctx,
+                               const TEngineValue*        lhs,
+                               const TEngineValue*        rhs);
+TEngineValue* TEngineValue_bge(struct InterpreterContext* ctx,
+                               const TEngineValue*        lhs,
+                               const TEngineValue*        rhs);
+TEngineValue* TEngineValue_blt(struct InterpreterContext* ctx,
+                               const TEngineValue*        lhs,
+                               const TEngineValue*        rhs);
+TEngineValue* TEngineValue_ble(struct InterpreterContext* ctx,
+                               const TEngineValue*        lhs,
+                               const TEngineValue*        rhs);
+TEngineValue* TEngineValue_beq(struct InterpreterContext* ctx,
+                               const TEngineValue*        lhs,
+                               const TEngineValue*        rhs);
+TEngineValue* TEngineValue_band(struct InterpreterContext* ctx,
+                                const TEngineValue*        lhs,
+                                const TEngineValue*        rhs);
+TEngineValue* TEngineValue_bor(struct InterpreterContext* ctx,
+                               const TEngineValue*        lhs,
+                               const TEngineValue*        rhs);
+TEngineValue* TEngineValue_bnot(struct InterpreterContext* ctx,
+                                const TEngineValue*        child);
 
-int TEngineValue_as_u64(const TEngineValue* v, u64_t* o);
-int TEngineValue_as_s64(const TEngineValue* v, s64_t* o);
-int TEngineValue_as_string(const TEngineValue* v, const char** o);
+int TEngineValue_as_u64(struct InterpreterContext* ctx, const TEngineValue* v,
+                        u64_t* o);
+int TEngineValue_as_s64(struct InterpreterContext* ctx, const TEngineValue* v,
+                        s64_t* o);
+int TEngineValue_as_string(struct InterpreterContext* ctx,
+                           const TEngineValue* v, const char** o);
 
 void  TEngineValue_pp(const TEngineValue* v, int hex);
 char* TEngineValue_tostring(const TEngineValue* v, int hex);

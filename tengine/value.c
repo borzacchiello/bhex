@@ -1,6 +1,7 @@
 #include "value.h"
 #include "defs.h"
 #include "dlist.h"
+#include "interpreter.h"
 #include "util/byte_to_str.h"
 
 #include <filebuffer.h>
@@ -128,44 +129,49 @@ void TEngineValue_ARRAY_append(TEngineValue* arr, TEngineValue* v)
     DList_add(arr->array_data, v);
 }
 
-TEngineValue* TEngineValue_array_sub(FileBuffer* fb, const TEngineValue* e,
+TEngineValue* TEngineValue_array_sub(InterpreterContext* ctx,
+                                     const TEngineValue* e,
                                      const TEngineValue* n)
 {
     u64_t n_val;
-    if (TEngineValue_as_u64(n, &n_val) != 0)
+    if (TEngineValue_as_u64(ctx, n, &n_val) != 0)
         return NULL;
 
     switch (e->t) {
         case TENGINE_ARRAY: {
             if (e->array_data->size <= n_val) {
-                error("out of bound in array (size %llu, index %llu)",
-                      e->array_data->size, n_val);
+                tengine_raise_exception(
+                    ctx, "out of bound in array (size %llu, index %llu)",
+                    e->array_data->size, n_val);
                 return NULL;
             }
             return TEngineValue_dup(e->array_data->data[n_val]);
         }
         case TENGINE_BUF: {
             if (e->buf_size <= n_val) {
-                error("out of bound in buf (size %llu, index %llu)",
-                      e->buf_size, n_val);
+                tengine_raise_exception(
+                    ctx, "out of bound in buf (size %llu, index %llu)",
+                    e->buf_size, n_val);
                 return NULL;
             }
-            u64_t orig_s = fb->off;
-            if (fb_seek(fb, e->buf_off + n_val) != 0) {
-                error("invalid buffer, it spans outside the file");
+            u64_t orig_s = ctx->fb->off;
+            if (fb_seek(ctx->fb, e->buf_off + n_val) != 0) {
+                tengine_raise_exception(
+                    ctx, "invalid buffer, it spans outside the file");
                 return NULL;
             }
-            const u8_t* buf = fb_read(fb, 1);
+            const u8_t* buf = fb_read(ctx->fb, 1);
             if (buf == NULL)
                 return NULL;
             TEngineValue* v = TEngineValue_UNUM_new(buf[0], 1);
-            fb_seek(fb, orig_s);
+            fb_seek(ctx->fb, orig_s);
             return v;
         }
         case TENGINE_STRING: {
             if (e->str_size <= n_val) {
-                error("out of bound in string (size %llu, index %llu)",
-                      e->str_size, n_val);
+                tengine_raise_exception(
+                    ctx, "out of bound in string (size %llu, index %llu)",
+                    e->str_size, n_val);
                 return NULL;
             }
             return TEngineValue_UNUM_new(e->str[n_val], 1);
@@ -174,7 +180,8 @@ TEngineValue* TEngineValue_array_sub(FileBuffer* fb, const TEngineValue* e,
             break;
     }
 
-    error("array_sub undefined for type %s", type_to_string(e->t));
+    tengine_raise_exception(ctx, "array_sub undefined for type %s",
+                            type_to_string(e->t));
     return NULL;
 }
 
@@ -198,93 +205,103 @@ TEngineValue* TEngineValue_array_sub(FileBuffer* fb, const TEngineValue* e,
                                      max(lhs->snum_size, rhs->snum_size));     \
     }
 
-TEngineValue* TEngineValue_add(const TEngineValue* lhs, const TEngineValue* rhs)
+TEngineValue* TEngineValue_add(InterpreterContext* ctx, const TEngineValue* lhs,
+                               const TEngineValue* rhs)
 {
     binop_num(+);
 
-    error("add undefined for types %s and %s", type_to_string(lhs->t),
-          type_to_string(rhs->t));
+    tengine_raise_exception(ctx, "add undefined for types %s and %s",
+                            type_to_string(lhs->t), type_to_string(rhs->t));
     return NULL;
 }
 
-TEngineValue* TEngineValue_sub(const TEngineValue* lhs, const TEngineValue* rhs)
+TEngineValue* TEngineValue_sub(InterpreterContext* ctx, const TEngineValue* lhs,
+                               const TEngineValue* rhs)
 {
     binop_num(-);
 
-    error("sub undefined for types %s and %s", type_to_string(lhs->t),
-          type_to_string(rhs->t));
+    tengine_raise_exception(ctx, "sub undefined for types %s and %s",
+                            type_to_string(lhs->t), type_to_string(rhs->t));
     return NULL;
 }
 
-TEngineValue* TEngineValue_mul(const TEngineValue* lhs, const TEngineValue* rhs)
+TEngineValue* TEngineValue_mul(InterpreterContext* ctx, const TEngineValue* lhs,
+                               const TEngineValue* rhs)
 {
     binop_num(*);
 
-    error("mul undefined for types %s and %s", type_to_string(lhs->t),
-          type_to_string(rhs->t));
+    tengine_raise_exception(ctx, "mul undefined for types %s and %s",
+                            type_to_string(lhs->t), type_to_string(rhs->t));
     return NULL;
 }
 
-TEngineValue* TEngineValue_div(const TEngineValue* lhs, const TEngineValue* rhs)
+TEngineValue* TEngineValue_div(InterpreterContext* ctx, const TEngineValue* lhs,
+                               const TEngineValue* rhs)
 {
     binop_num(/);
 
-    error("div undefined for types %s and %s", type_to_string(lhs->t),
-          type_to_string(rhs->t));
+    tengine_raise_exception(ctx, "div undefined for types %s and %s",
+                            type_to_string(lhs->t), type_to_string(rhs->t));
     return NULL;
 }
 
-TEngineValue* TEngineValue_mod(const TEngineValue* lhs, const TEngineValue* rhs)
+TEngineValue* TEngineValue_mod(InterpreterContext* ctx, const TEngineValue* lhs,
+                               const TEngineValue* rhs)
 {
     binop_num(%);
 
-    error("mod undefined for types %s and %s", type_to_string(lhs->t),
-          type_to_string(rhs->t));
+    tengine_raise_exception(ctx, "mod undefined for types %s and %s",
+                            type_to_string(lhs->t), type_to_string(rhs->t));
     return NULL;
 }
 
-TEngineValue* TEngineValue_and(const TEngineValue* lhs, const TEngineValue* rhs)
+TEngineValue* TEngineValue_and(InterpreterContext* ctx, const TEngineValue* lhs,
+                               const TEngineValue* rhs)
 {
     binop_num(&);
 
-    error("and undefined for types %s and %s", type_to_string(lhs->t),
-          type_to_string(rhs->t));
+    tengine_raise_exception(ctx, "and undefined for types %s and %s",
+                            type_to_string(lhs->t), type_to_string(rhs->t));
     return NULL;
 }
 
-TEngineValue* TEngineValue_or(const TEngineValue* lhs, const TEngineValue* rhs)
+TEngineValue* TEngineValue_or(InterpreterContext* ctx, const TEngineValue* lhs,
+                              const TEngineValue* rhs)
 {
     binop_num(|);
 
-    error("or undefined for types %s and %s", type_to_string(lhs->t),
-          type_to_string(rhs->t));
+    tengine_raise_exception(ctx, "or undefined for types %s and %s",
+                            type_to_string(lhs->t), type_to_string(rhs->t));
     return NULL;
 }
 
-TEngineValue* TEngineValue_xor(const TEngineValue* lhs, const TEngineValue* rhs)
+TEngineValue* TEngineValue_xor(InterpreterContext* ctx, const TEngineValue* lhs,
+                               const TEngineValue* rhs)
 {
     binop_num(^);
 
-    error("xor undefined for types %s and %s", type_to_string(lhs->t),
-          type_to_string(rhs->t));
+    tengine_raise_exception(ctx, "xor undefined for types %s and %s",
+                            type_to_string(lhs->t), type_to_string(rhs->t));
     return NULL;
 }
 
-TEngineValue* TEngineValue_shr(const TEngineValue* lhs, const TEngineValue* rhs)
+TEngineValue* TEngineValue_shr(InterpreterContext* ctx, const TEngineValue* lhs,
+                               const TEngineValue* rhs)
 {
     binop_num(>>);
 
-    error("shr undefined for types %s and %s", type_to_string(lhs->t),
-          type_to_string(rhs->t));
+    tengine_raise_exception(ctx, "shr undefined for types %s and %s",
+                            type_to_string(lhs->t), type_to_string(rhs->t));
     return NULL;
 }
 
-TEngineValue* TEngineValue_shl(const TEngineValue* lhs, const TEngineValue* rhs)
+TEngineValue* TEngineValue_shl(InterpreterContext* ctx, const TEngineValue* lhs,
+                               const TEngineValue* rhs)
 {
     binop_num(<<);
 
-    error("shl undefined for types %s and %s", type_to_string(lhs->t),
-          type_to_string(rhs->t));
+    tengine_raise_exception(ctx, "shl undefined for types %s and %s",
+                            type_to_string(lhs->t), type_to_string(rhs->t));
     return NULL;
 }
 
@@ -306,43 +323,48 @@ TEngineValue* TEngineValue_shl(const TEngineValue* lhs, const TEngineValue* rhs)
         return TEngineValue_UNUM_new((lhs->snum op rhs->snum) ? 1 : 0, 1);     \
     }
 
-TEngineValue* TEngineValue_bgt(const TEngineValue* lhs, const TEngineValue* rhs)
+TEngineValue* TEngineValue_bgt(InterpreterContext* ctx, const TEngineValue* lhs,
+                               const TEngineValue* rhs)
 {
     binop_bool(>);
 
-    error("bgt undefined for types %s and %s", type_to_string(lhs->t),
-          type_to_string(rhs->t));
+    tengine_raise_exception(ctx, "bgt undefined for types %s and %s",
+                            type_to_string(lhs->t), type_to_string(rhs->t));
     return NULL;
 }
 
-TEngineValue* TEngineValue_bge(const TEngineValue* lhs, const TEngineValue* rhs)
+TEngineValue* TEngineValue_bge(InterpreterContext* ctx, const TEngineValue* lhs,
+                               const TEngineValue* rhs)
 {
     binop_bool(>=);
 
-    error("bge undefined for types %s and %s", type_to_string(lhs->t),
-          type_to_string(rhs->t));
+    tengine_raise_exception(ctx, "bge undefined for types %s and %s",
+                            type_to_string(lhs->t), type_to_string(rhs->t));
     return NULL;
 }
 
-TEngineValue* TEngineValue_blt(const TEngineValue* lhs, const TEngineValue* rhs)
+TEngineValue* TEngineValue_blt(InterpreterContext* ctx, const TEngineValue* lhs,
+                               const TEngineValue* rhs)
 {
     binop_bool(<);
 
-    error("blt undefined for types %s and %s", type_to_string(lhs->t),
-          type_to_string(rhs->t));
+    tengine_raise_exception(ctx, "blt undefined for types %s and %s",
+                            type_to_string(lhs->t), type_to_string(rhs->t));
     return NULL;
 }
 
-TEngineValue* TEngineValue_ble(const TEngineValue* lhs, const TEngineValue* rhs)
+TEngineValue* TEngineValue_ble(InterpreterContext* ctx, const TEngineValue* lhs,
+                               const TEngineValue* rhs)
 {
     binop_bool(<=);
 
-    error("ble undefined for types %s and %s", type_to_string(lhs->t),
-          type_to_string(rhs->t));
+    tengine_raise_exception(ctx, "ble undefined for types %s and %s",
+                            type_to_string(lhs->t), type_to_string(rhs->t));
     return NULL;
 }
 
-TEngineValue* TEngineValue_beq(const TEngineValue* lhs, const TEngineValue* rhs)
+TEngineValue* TEngineValue_beq(InterpreterContext* ctx, const TEngineValue* lhs,
+                               const TEngineValue* rhs)
 {
     binop_bool(==);
 
@@ -374,12 +396,13 @@ TEngineValue* TEngineValue_beq(const TEngineValue* lhs, const TEngineValue* rhs)
         return TEngineValue_UNUM_new((lhs->unum == rhs->enum_const) ? 1 : 0, 1);
     }
 
-    error("beq undefined for types %s and %s", type_to_string(lhs->t),
-          type_to_string(rhs->t));
+    tengine_raise_exception(ctx, "beq undefined for types %s and %s",
+                            type_to_string(lhs->t), type_to_string(rhs->t));
     return NULL;
 }
 
-TEngineValue* TEngineValue_bnot(const TEngineValue* child)
+TEngineValue* TEngineValue_bnot(InterpreterContext* ctx,
+                                const TEngineValue* child)
 {
     if (child->t == TENGINE_SNUM) {
         return TEngineValue_UNUM_new(child->snum == 0 ? 1 : 0, 1);
@@ -388,37 +411,42 @@ TEngineValue* TEngineValue_bnot(const TEngineValue* child)
         return TEngineValue_UNUM_new(child->unum == 0 ? 1 : 0, 1);
     }
 
-    error("beq undefined for type %s", type_to_string(child->t));
+    tengine_raise_exception(ctx, "beq undefined for type %s",
+                            type_to_string(child->t));
     return NULL;
 }
 
-TEngineValue* TEngineValue_band(const TEngineValue* lhs,
+TEngineValue* TEngineValue_band(InterpreterContext* ctx,
+                                const TEngineValue* lhs,
                                 const TEngineValue* rhs)
 {
     binop_bool(&&);
 
-    error("band undefined for types %s and %s", type_to_string(lhs->t),
-          type_to_string(rhs->t));
+    tengine_raise_exception(ctx, "band undefined for types %s and %s",
+                            type_to_string(lhs->t), type_to_string(rhs->t));
     return NULL;
 }
 
-TEngineValue* TEngineValue_bor(const TEngineValue* lhs, const TEngineValue* rhs)
+TEngineValue* TEngineValue_bor(InterpreterContext* ctx, const TEngineValue* lhs,
+                               const TEngineValue* rhs)
 {
     binop_bool(||);
 
-    error("bor undefined for types %s and %s", type_to_string(lhs->t),
-          type_to_string(rhs->t));
+    tengine_raise_exception(ctx, "bor undefined for types %s and %s",
+                            type_to_string(lhs->t), type_to_string(rhs->t));
     return NULL;
 }
 
-int TEngineValue_as_u64(const TEngineValue* v, u64_t* o)
+int TEngineValue_as_u64(InterpreterContext* ctx, const TEngineValue* v,
+                        u64_t* o)
 {
     switch (v->t) {
         case TENGINE_UNUM:
             if ((v->unum >> 63) != 0) {
-                error("TEngineValue_as_u64: the number '%llu' is too big to "
-                      "fit a u64_t",
-                      v->unum);
+                tengine_raise_exception(ctx,
+                                        "the number '%llu' is too big to "
+                                        "fit a u64_t",
+                                        v->unum);
                 return 1;
             }
             *o = v->unum;
@@ -434,8 +462,8 @@ int TEngineValue_as_u64(const TEngineValue* v, u64_t* o)
             return 0;
         case TENGINE_STRING:
         case TENGINE_OBJ:
-            error("TEngineValue_as_u64: %s not a numeric type",
-                  type_to_string(v->t));
+            tengine_raise_exception(ctx, "%s not a numeric type",
+                                    type_to_string(v->t));
             return 1;
         default:
             panic("invalid type in TEngineValue_as_u64");
@@ -443,26 +471,29 @@ int TEngineValue_as_u64(const TEngineValue* v, u64_t* o)
     return 1;
 }
 
-int TEngineValue_as_string(const TEngineValue* v, const char** o)
+int TEngineValue_as_string(InterpreterContext* ctx, const TEngineValue* v,
+                           const char** o)
 {
     if (v->t == TENGINE_STRING) {
         *o = (char*)v->str;
         return 0;
     }
 
-    error("TEngineValue_as_string: %s is not a string type",
-          type_to_string(v->t));
+    tengine_raise_exception(ctx, "%s is not a string type",
+                            type_to_string(v->t));
     return 1;
 }
 
-int TEngineValue_as_s64(const TEngineValue* v, s64_t* o)
+int TEngineValue_as_s64(InterpreterContext* ctx, const TEngineValue* v,
+                        s64_t* o)
 {
     switch (v->t) {
         case TENGINE_UNUM:
             if ((v->unum >> 63) != 0) {
-                error("TEngineValue_as_s64: the number '%llu' is too big to "
-                      "fit a s64_t",
-                      v->unum);
+                tengine_raise_exception(ctx,
+                                        "the number '%llu' is too big to "
+                                        "fit a s64_t",
+                                        v->unum);
                 return 1;
             }
             *o = (s64_t)v->unum;
@@ -478,8 +509,8 @@ int TEngineValue_as_s64(const TEngineValue* v, s64_t* o)
             return 0;
         case TENGINE_STRING:
         case TENGINE_OBJ:
-            error("TEngineValue_as_s64: %s not a numeric type",
-                  type_to_string(v->t));
+            tengine_raise_exception(ctx, "%s not a numeric type",
+                                    type_to_string(v->t));
             return 1;
         default:
             panic("invalid type in TEngineValue_as_s64");
