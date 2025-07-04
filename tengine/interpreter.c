@@ -117,6 +117,7 @@ static map* process_struct_type(InterpreterContext* ctx, Type* type)
             goto end;
         }
         if (ctx->stop_execution) {
+            Scope_free(scope);
             cloned_ctx.stop_execution = 1;
             goto end;
         }
