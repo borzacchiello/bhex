@@ -1479,6 +1479,29 @@ end:
     return r;
 }
 
+int TEST(strip_nonascii)(void)
+{
+    int              r    = 0;
+    DummyFilebuffer* tfb  = dummyfilebuffer_create((const u8_t*)"ABCDEF", 6);
+    const char*      prog = "proc {"
+                            "    disable_print();"
+                            "    local a = strip(\"  cia\x01o  \t\n\");"
+                            "}";
+
+    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    if (scope == NULL)
+        goto end;
+
+    TEngineValue* v = Scope_get_local(scope, "a");
+    IS_TENGINE_STRING_EQ(r, v, "ciao");
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+}
+
 int TEST(fn_1)(void)
 {
 

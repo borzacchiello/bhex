@@ -280,7 +280,8 @@ static TEngineValue* builtin_strip(InterpreterContext* ctx, DList* params)
 
     StringBuilder* sb = strbuilder_new();
     for (size_t i = 0; i < param_len; ++i) {
-        if (param_str[i] != ' ' && param_str[i] != '\t' && param_str[i] != '\n')
+        if (param_str[i] != ' ' && param_str[i] != '\t' &&
+            param_str[i] != '\n' && param_str[i] > 0x20 && param_str[i] < 0x7f)
             strbuilder_append_char(sb, param_str[i]);
     }
 
