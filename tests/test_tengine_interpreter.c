@@ -346,7 +346,7 @@ end:
 
 int TEST(const_limit_2)(void)
 {
-    const char* prog = "proc { local a = -0x8000000000000000; }";
+    const char* prog = "proc { local a = -0x7fffffffffffffff-1; }";
 
     Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
@@ -443,6 +443,24 @@ int TEST(sub)(void)
     IS_TENGINE_SNUM_EQ(r, v, -1);
 
 end:
+    Scope_free(scope);
+    return r;
+}
+
+int TEST(sub_no_space)(void)
+{
+    const char* prog = "proc { local a = 4; local b = a-5; }";
+
+    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    if (scope == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(scope, "b");
+    IS_TENGINE_SNUM_EQ(r, v, -1);
+
+end:
+    print_err_sb();
     Scope_free(scope);
     return r;
 }
@@ -720,7 +738,7 @@ end:
     return r;
 }
 
-int TEST(xor)(void)
+int TEST (xor)(void)
 {
     const char* prog = "proc { local a = 0xff; local b = a ^ 0xf0; }";
 
@@ -747,7 +765,7 @@ int TEST(shr_1)(void)
 
     int           r = 0;
     TEngineValue* v = Scope_get_local(scope, "b");
-    IS_TENGINE_SNUM_EQ(r, v, 0xff>>1);
+    IS_TENGINE_SNUM_EQ(r, v, 0xff >> 1);
 
 end:
     Scope_free(scope);
@@ -764,7 +782,7 @@ int TEST(shr_2)(void)
 
     int           r = 0;
     TEngineValue* v = Scope_get_local(scope, "b");
-    IS_TENGINE_SNUM_EQ(r, v, 0xff>>2);
+    IS_TENGINE_SNUM_EQ(r, v, 0xff >> 2);
 
 end:
     Scope_free(scope);
@@ -798,7 +816,7 @@ int TEST(shl_1)(void)
 
     int           r = 0;
     TEngineValue* v = Scope_get_local(scope, "b");
-    IS_TENGINE_SNUM_EQ(r, v, 1<<1);
+    IS_TENGINE_SNUM_EQ(r, v, 1 << 1);
 
 end:
     Scope_free(scope);
@@ -815,7 +833,7 @@ int TEST(shl_2)(void)
 
     int           r = 0;
     TEngineValue* v = Scope_get_local(scope, "b");
-    IS_TENGINE_SNUM_EQ(r, v, 1<<2);
+    IS_TENGINE_SNUM_EQ(r, v, 1 << 2);
 
 end:
     Scope_free(scope);
@@ -1791,6 +1809,32 @@ int TEST(find_backward_no_match)(void)
     TEngineValue* v = Scope_get_local(scope, "a");
     ASSERT_TENGINE_UNUM_EQ(v, 0);
     ASSERT(tfb->fb->off == tfb->fb->size);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(exit_in_struct)(void)
+{
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(answer_to_universe, sizeof(answer_to_universe));
+    fb_seek(tfb->fb, tfb->fb->size);
+
+    const char* prog = "struct A { exit(); }"
+                       "proc {"
+                       "    A a;"
+                       "}";
+
+    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope == NULL);
 
 end:
     if (scope)

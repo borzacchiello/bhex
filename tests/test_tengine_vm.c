@@ -159,12 +159,13 @@ int TEST(template_tcp)(void)
         "b+00000034                 urgent_pointer: 0000\n";
     // clang-format on
 
-    int        r  = TEST_SUCCEEDED;
-    TEngineVM* vm = tengine_vm_create(empty_dirs);
+    int              r   = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb = NULL;
+    TEngineVM*       vm  = tengine_vm_create(empty_dirs);
     ASSERT(vm != NULL);
     ASSERT(tengine_vm_add_template(vm, "net", "./templates/net.bhe") == 0);
 
-    DummyFilebuffer* tfb = dummyfilebuffer_create(tcp_pkt, sizeof(tcp_pkt));
+    tfb = dummyfilebuffer_create(tcp_pkt, sizeof(tcp_pkt));
     ASSERT(tfb != NULL);
     ASSERT(tengine_vm_process_string(vm, tfb->fb, prog) == 0);
 
@@ -173,7 +174,8 @@ int TEST(template_tcp)(void)
     bhex_free(out);
 
 end:
-    dummyfilebuffer_destroy(tfb);
+    if (tfb)
+        dummyfilebuffer_destroy(tfb);
     tengine_vm_destroy(vm);
     return r;
 

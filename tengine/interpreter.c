@@ -116,8 +116,10 @@ static map* process_struct_type(InterpreterContext* ctx, Type* type)
             Scope_free(scope);
             goto end;
         }
-        if (ctx->stop_execution)
-            break;
+        if (ctx->stop_execution) {
+            cloned_ctx.stop_execution = 1;
+            goto end;
+        }
     }
     ctx->print_off -= 4;
     result = Scope_free_and_get_filevars(scope);
@@ -192,6 +194,8 @@ static TEngineValue* process_type(InterpreterContext* ctx, const char* varname,
     }
 
     map* custom_type_vars = process_struct_type(ctx, type);
+    if (ctx->stop_execution)
+        return NULL;
     if (custom_type_vars != NULL) {
         TEngineValue* v = TEngineValue_OBJ_new(custom_type_vars);
         return v;
@@ -206,7 +210,8 @@ static TEngineValue* process_type(InterpreterContext* ctx, const char* varname,
         return v;
     }
 
-    tengine_raise_exception(ctx, "unknown type %s", type->name);
+    if (!ctx->stop_execution)
+        tengine_raise_exception(ctx, "unknown type %s", type->name);
     return NULL;
 }
 
@@ -239,7 +244,7 @@ static TEngineValue* handle_function_call(InterpreterContext* ctx, Function* fn,
         if (process_stmt(ctx, stmt, fn_scope) != 0)
             goto end;
         if (ctx->stop_execution)
-            break;
+            goto end;
     }
     result   = Scope_free_and_get_result(fn_scope);
     fn_scope = NULL;
@@ -689,6 +694,8 @@ static int process_array_type(InterpreterContext* ctx, const char* varname,
     interpreter_printf(ctx, "[%lld]", printed);
     for (printed = 0; printed < size; ++printed) {
         map* custom_type_vars = process_struct_type(ctx, type);
+        if (ctx->stop_execution)
+            return 1;
         if (custom_type_vars == NULL) {
             tengine_raise_exception(ctx, "unknown type %s", type->name);
             return 1;

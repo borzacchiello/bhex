@@ -322,7 +322,7 @@ expr        : num
                                                         $$ = $2;
                                                     }
             | TSUB expr                             {
-                                                        $$ = Expr_SUB_new(Expr_SCONST_new(0, 1), $2);
+                                                        $$ = Expr_SUB_new(Expr_SCONST_new(0, 8), $2);
                                                     }
             | expr TAND expr                        {
                                                         $$ = Expr_AND_new($1, $3);
