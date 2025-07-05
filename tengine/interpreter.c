@@ -754,6 +754,7 @@ static int process_LOCAL_VAR_ASS(InterpreterContext* ctx, Stmt* stmt,
     if (Scope_get_local(scope, stmt->local_name) == NULL) {
         tengine_raise_exception(ctx, "no such local variable '%s",
                                 stmt->local_name);
+        TEngineValue_free(v);
         return 1;
     }
 
