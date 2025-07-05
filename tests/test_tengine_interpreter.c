@@ -1345,6 +1345,35 @@ end:
     return r;
 }
 
+int TEST(invalid_break)(void)
+{
+    // clang-format off
+    const char* expected =
+        "[  ERROR  ] Exception @ line 1, col 10 > unexpected break\n";
+    // clang-format on
+
+    const char* prog = "proc { "
+                       "  break;"
+                       "}";
+
+    int    r     = 1;
+    char*  out   = NULL;
+    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    ASSERT(scope == NULL);
+
+    out = strbuilder_reset(err_sb);
+    ASSERT(compare_strings_ignoring_X(expected, out));
+
+end:
+    if (out)
+        bhex_free(out);
+    return r;
+
+fail:
+    r = 0;
+    goto end;
+}
+
 int TEST(array_1)(void)
 {
     int              r = 0;
