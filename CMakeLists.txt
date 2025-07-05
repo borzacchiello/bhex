@@ -11,6 +11,7 @@ option(ASAN "Compile with asan (only for debug builds)" OFF)
 option(ENABLE_CAPSTONE "Enable Capstone (disas command)" OFF)
 option(ENABLE_KEYSTONE "Enable Keystone (assemble command)" OFF)
 option(ENABLE_TESTS "Compile test binary" OFF)
+option(ENABLE_FUZZ_TESTS "Compile fizz test binaries" OFF)
 option(STATIC_BUILD "Statically link libc" OFF)
 
 set(CMAKE_C_STANDARD 99)
@@ -142,6 +143,27 @@ if (ENABLE_TESTS)
 
     add_dependencies(bhex_tests gen_test_main)
     add_dependencies(bhex_tests copy_templates_to_build)
+endif()
+
+if (ENABLE_FUZZ_TESTS)
+    if ("${CMAKE_C_COMPILER_ID}" STREQUAL "Clang")
+        add_custom_target(copy_corpus ALL
+                COMMAND ${CMAKE_COMMAND} -E copy_directory
+                ${CMAKE_SOURCE_DIR}/templates
+                ${CMAKE_CURRENT_BINARY_DIR}/corpus
+                COMMENT "Copying templates to corpus")
+
+        add_executable(bhex_fuzz_tengine
+            ${common_src}
+            ${tengine_src}
+            ${CMAKE_SOURCE_DIR}/tests/fuzz_test_tengine.c)
+
+        target_compile_options(bhex_fuzz_tengine PRIVATE -fsanitize=address,fuzzer,undefined)
+        target_link_libraries(bhex_fuzz_tengine PRIVATE -fsanitize=address,fuzzer,undefined)
+        add_dependencies(bhex_fuzz_tengine copy_corpus)
+    else()
+        message(FATAL_ERROR "You must use CLANG to compile fuzz tests")
+    endif()
 endif()
 
 # Main executable

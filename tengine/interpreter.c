@@ -31,6 +31,9 @@ static imported_cb_t imported_cb  = NULL;
 
 static int process_stmts(InterpreterContext* ctx, DList* stmts, Scope* scope,
                          int break_allowed);
+static int process_stmts_no_exc(InterpreterContext* ctx, DList* stmts,
+                                Scope* scope, int break_allowed);
+
 static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
                                    Expr* e);
 static int           eval_to_u64(InterpreterContext* ctx, Scope* scope, Expr* e,
@@ -51,11 +54,12 @@ static void interpreter_context_copy_state(InterpreterContext* dst,
 
 void tengine_raise_exception(InterpreterContext* ctx, const char* fmt, ...)
 {
-    if (ctx->exc != NULL)
-        panic("exc should be NULL");
-
-    ctx->exc     = bhex_calloc(sizeof(InterpreterException));
-    ctx->exc->sb = strbuilder_new();
+    if (ctx->exc == NULL) {
+        ctx->exc     = bhex_calloc(sizeof(InterpreterException));
+        ctx->exc->sb = strbuilder_new();
+    } else {
+        strbuilder_append(ctx->exc->sb, ", ");
+    }
 
     va_list argp;
     va_start(argp, fmt);
@@ -65,13 +69,7 @@ void tengine_raise_exception(InterpreterContext* ctx, const char* fmt, ...)
     ctx->halt = 1;
 }
 
-void tengine_raise_exit_request(InterpreterContext* ctx)
-{
-    if (ctx->exc != NULL)
-        panic("exc should be NULL");
-
-    ctx->halt = 1;
-}
+void tengine_raise_exit_request(InterpreterContext* ctx) { ctx->halt = 1; }
 
 static void value_pp(InterpreterContext* e, u32_t off, TEngineValue* v)
 {
@@ -121,7 +119,7 @@ static map* process_struct_type(InterpreterContext* ctx, Type* type)
     Scope* scope = Scope_new();
     interpreter_printf(ctx, "\n");
     ctx->print_off += 4;
-    if (process_stmts(ctx, body->stmts, scope, 0) != 0) {
+    if (process_stmts_no_exc(ctx, body->stmts, scope, 0) != 0) {
         Scope_free(scope);
         goto end;
     }
@@ -240,7 +238,7 @@ static TEngineValue* handle_function_call(InterpreterContext* ctx, Function* fn,
         Scope_add_local(fn_scope, fn->params->data[i],
                         TEngineValue_dup(params_exprs->data[i]));
 
-    if (process_stmts(ctx, fn->block->stmts, fn_scope, 0) != 0)
+    if (process_stmts_no_exc(ctx, fn->block->stmts, fn_scope, 0) != 0)
         goto end;
     result   = Scope_free_and_get_result(fn_scope);
     fn_scope = NULL;
@@ -692,6 +690,8 @@ static int process_array_type(InterpreterContext* ctx, const char* varname,
         map* custom_type_vars = process_struct_type(ctx, type);
         if (custom_type_vars == NULL) {
             tengine_raise_exception(ctx, "unknown type %s", type->name);
+            TEngineValue_free(*oval);
+            *oval = NULL;
             return 1;
         }
         if (printed < size - 1) {
@@ -817,10 +817,10 @@ static int process_STMT_IF_ELIF_ELSE(InterpreterContext* ctx, Stmt* stmt,
         if (eval_to_u64(ctx, scope, ic->cond, &cond) != 0)
             return 1;
         if (cond)
-            return process_stmts(ctx, ic->block->stmts, scope, 0);
+            return process_stmts_no_exc(ctx, ic->block->stmts, scope, 0);
     }
     if (stmt->else_block)
-        return process_stmts(ctx, stmt->else_block->stmts, scope, 0);
+        return process_stmts_no_exc(ctx, stmt->else_block->stmts, scope, 0);
     return 0;
 }
 
@@ -834,7 +834,7 @@ static int process_STMT_WHILE(InterpreterContext* ctx, Stmt* stmt, Scope* scope)
 
     while (cond != 0) {
         DList* stmts = stmt->body->stmts;
-        if (process_stmts(ctx, stmts, scope, 1) != 0)
+        if (process_stmts_no_exc(ctx, stmts, scope, 1) != 0)
             return 1;
         if (ctx->breaked) {
             ctx->breaked = 0;
@@ -850,7 +850,7 @@ static int process_stmt(InterpreterContext* ctx, Stmt* stmt, Scope* scope,
                         int break_allowed)
 {
     // do not use directly this function in a loop, but always use
-    // "process_stmts" because it handles exceptions (or at least it should)
+    // "process_stmts" or "process_stmts_no_exc"
 
     ctx->curr_stmt = stmt;
     ctx->breaked   = 0;
@@ -889,6 +889,21 @@ static int process_stmt(InterpreterContext* ctx, Stmt* stmt, Scope* scope,
         }
     }
     return ret;
+}
+
+static int process_stmts_no_exc(InterpreterContext* ctx, DList* stmts,
+                                Scope* scope, int break_allowed)
+{
+    // this function propagates errors without printing any exception
+    // it must be used while processing inner statements (e.g., while, if, fn)
+    for (u64_t i = 0; i < stmts->size; ++i) {
+        Stmt* stmt = (Stmt*)stmts->data[i];
+        if (process_stmt(ctx, stmt, scope, break_allowed) != 0)
+            return 1;
+        if (ctx->halt || ctx->breaked)
+            return 0;
+    }
+    return 0;
 }
 
 static int process_stmts(InterpreterContext* ctx, DList* stmts, Scope* scope,
