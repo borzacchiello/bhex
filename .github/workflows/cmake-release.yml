@@ -98,7 +98,7 @@ jobs:
         run: git submodule update --init
 
       - name: dependencies
-        run: sudo apt-get update -y && sudo apt-get --assume-yes install build-essential cmake ${{ matrix.dependencies }}
+        run: sudo apt-get update -y && sudo apt-get --assume-yes install python3 python3-dev python-is-python3 build-essential cmake ${{ matrix.dependencies }}
 
       - name: build
         run: >
@@ -111,7 +111,7 @@ jobs:
         run: >
           mkdir release-full &&
           cd release-full &&
-          cmake -DSTATIC_BUILD=on -DCMAKE_BUILD_TYPE=Release -DENABLE_CAPSTONE=on -DENABLE_KEYSTONE=on -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} -DCMAKE_CXX_COMPILER=${{ matrix.cxx_compiler }} ${{ matrix.cmake_flags }} .. &&
+          cmake -DPython_EXECUTABLE=$(which python3) -DSTATIC_BUILD=on -DCMAKE_BUILD_TYPE=Release -DENABLE_CAPSTONE=on -DENABLE_KEYSTONE=on -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} -DCMAKE_CXX_COMPILER=${{ matrix.cxx_compiler }} ${{ matrix.cmake_flags }} .. &&
           make
 
       - name: copy executables
