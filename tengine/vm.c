@@ -142,6 +142,10 @@ int tengine_vm_process_bhe(TEngineVM* ctx, FileBuffer* fb, const char* bhe)
         return 1;
 
     ASTCtx* ast = map_get(ctx->templates, bhe);
+    if (!ast->proc) {
+        error("'%s' has not proc", bhe);
+        return 1;
+    }
     return tengine_interpreter_process_ast(fb, ast);
 }
 

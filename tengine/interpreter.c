@@ -1036,6 +1036,11 @@ int tengine_interpreter_process_ast(FileBuffer* fb, ASTCtx* ast)
     InterpreterContext ctx = {0};
     interpreter_context_init(&ctx, ast, fb);
 
+    if (!ast->proc) {
+        error("the AST has not proc");
+        return 1;
+    }
+
     int r = process_stmts(&ctx, ast->proc->stmts, ctx.proc_scope);
     interpreter_context_deinit(&ctx);
     return r;
