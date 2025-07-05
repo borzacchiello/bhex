@@ -26,10 +26,11 @@ typedef struct InterpreterContext {
     Endianess endianess;
     int       print_in_hex;
     int       quiet_mode;
-    int       should_break;
-    int       stop_execution;
 
+    Stmt*                 curr_stmt;
     InterpreterException* exc;
+    int                   halt;    // halt the execution (exception or exit)
+    int                   breaked; // break in a loop
 } InterpreterContext;
 
 int tengine_interpreter_process_filename(FileBuffer* fb, const char* bhe);
@@ -39,6 +40,7 @@ int tengine_interpreter_process_ast_struct(FileBuffer* fb, ASTCtx* ast,
                                            const char* s);
 
 void tengine_raise_exception(InterpreterContext* ictx, const char* fmt, ...);
+void tengine_raise_exit_request(InterpreterContext* ctx);
 
 struct Scope* tengine_interpreter_run_on_string(FileBuffer* fb,
                                                 const char* str);

@@ -29,8 +29,8 @@
 static void*         imported_ptr = NULL;
 static imported_cb_t imported_cb  = NULL;
 
-static int           process_stmt(InterpreterContext* ctx, Stmt* stmt,
-                                  struct Scope* scope);
+static int process_stmts(InterpreterContext* ctx, DList* stmts, Scope* scope,
+                         int break_allowed);
 static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
                                    Expr* e);
 static int           eval_to_u64(InterpreterContext* ctx, Scope* scope, Expr* e,
@@ -38,27 +38,39 @@ static int           eval_to_u64(InterpreterContext* ctx, Scope* scope, Expr* e,
 static int           eval_to_str(InterpreterContext* ctx, Scope* scope, Expr* e,
                                  const char** o);
 
-static void interpreter_context_soft_clone(InterpreterContext* dst,
+static void interpreter_context_copy_state(InterpreterContext* dst,
                                            InterpreterContext* src)
 {
-    memcpy(dst, src, sizeof(InterpreterContext));
+    dst->alignment_off = src->alignment_off;
+    dst->endianess     = src->endianess;
+    dst->print_in_hex  = src->print_in_hex;
+    dst->print_off     = src->print_off;
+    dst->initial_off   = src->initial_off;
+    dst->ast           = src->ast;
 }
 
-void tengine_raise_exception(InterpreterContext* ictx, const char* fmt, ...)
+void tengine_raise_exception(InterpreterContext* ctx, const char* fmt, ...)
 {
-    if (ictx->exc == NULL) {
-        ictx->exc     = bhex_calloc(sizeof(InterpreterException));
-        ictx->exc->sb = strbuilder_new();
-    } else {
-        strbuilder_append(ictx->exc->sb, ", ");
-    }
+    if (ctx->exc != NULL)
+        panic("exc should be NULL");
 
-    ictx->stop_execution = 1;
+    ctx->exc     = bhex_calloc(sizeof(InterpreterException));
+    ctx->exc->sb = strbuilder_new();
 
     va_list argp;
     va_start(argp, fmt);
-    strbuilder_appendvs(ictx->exc->sb, fmt, argp);
+    strbuilder_appendvs(ctx->exc->sb, fmt, argp);
     va_end(argp);
+
+    ctx->halt = 1;
+}
+
+void tengine_raise_exit_request(InterpreterContext* ctx)
+{
+    if (ctx->exc != NULL)
+        panic("exc should be NULL");
+
+    ctx->halt = 1;
 }
 
 static void value_pp(InterpreterContext* e, u32_t off, TEngineValue* v)
@@ -86,8 +98,8 @@ static Enum* get_enum(ASTCtx* ast, const char* name)
 
 static map* process_struct_type(InterpreterContext* ctx, Type* type)
 {
-    InterpreterContext cloned_ctx;
-    interpreter_context_soft_clone(&cloned_ctx, ctx);
+    InterpreterContext saved_state;
+    interpreter_context_copy_state(&saved_state, ctx);
 
     map* result = NULL;
     if (type->bhe_name != NULL) {
@@ -107,26 +119,17 @@ static map* process_struct_type(InterpreterContext* ctx, Type* type)
         goto end;
 
     Scope* scope = Scope_new();
-
     interpreter_printf(ctx, "\n");
     ctx->print_off += 4;
-    for (u64_t i = 0; i < body->stmts->size; ++i) {
-        Stmt* stmt = (Stmt*)body->stmts->data[i];
-        if (process_stmt(ctx, stmt, scope) != 0) {
-            Scope_free(scope);
-            goto end;
-        }
-        if (ctx->stop_execution) {
-            Scope_free(scope);
-            cloned_ctx.stop_execution = 1;
-            goto end;
-        }
+    if (process_stmts(ctx, body->stmts, scope, 0) != 0) {
+        Scope_free(scope);
+        goto end;
     }
     ctx->print_off -= 4;
     result = Scope_free_and_get_filevars(scope);
 
 end:
-    interpreter_context_soft_clone(ctx, &cloned_ctx);
+    interpreter_context_copy_state(ctx, &saved_state);
     return result;
 }
 
@@ -195,8 +198,6 @@ static TEngineValue* process_type(InterpreterContext* ctx, const char* varname,
     }
 
     map* custom_type_vars = process_struct_type(ctx, type);
-    if (ctx->stop_execution)
-        return NULL;
     if (custom_type_vars != NULL) {
         TEngineValue* v = TEngineValue_OBJ_new(custom_type_vars);
         return v;
@@ -211,8 +212,7 @@ static TEngineValue* process_type(InterpreterContext* ctx, const char* varname,
         return v;
     }
 
-    if (!ctx->stop_execution)
-        tengine_raise_exception(ctx, "unknown type %s", type->name);
+    tengine_raise_exception(ctx, "unknown type %s", type->name);
     return NULL;
 }
 
@@ -240,13 +240,8 @@ static TEngineValue* handle_function_call(InterpreterContext* ctx, Function* fn,
         Scope_add_local(fn_scope, fn->params->data[i],
                         TEngineValue_dup(params_exprs->data[i]));
 
-    for (u64_t i = 0; i < fn->block->stmts->size; ++i) {
-        Stmt* stmt = fn->block->stmts->data[i];
-        if (process_stmt(ctx, stmt, fn_scope) != 0)
-            goto end;
-        if (ctx->stop_execution)
-            goto end;
-    }
+    if (process_stmts(ctx, fn->block->stmts, fn_scope, 0) != 0)
+        goto end;
     result   = Scope_free_and_get_result(fn_scope);
     fn_scope = NULL;
 
@@ -695,8 +690,6 @@ static int process_array_type(InterpreterContext* ctx, const char* varname,
     interpreter_printf(ctx, "[%lld]", printed);
     for (printed = 0; printed < size; ++printed) {
         map* custom_type_vars = process_struct_type(ctx, type);
-        if (ctx->stop_execution)
-            return 1;
         if (custom_type_vars == NULL) {
             tengine_raise_exception(ctx, "unknown type %s", type->name);
             return 1;
@@ -823,27 +816,11 @@ static int process_STMT_IF_ELIF_ELSE(InterpreterContext* ctx, Stmt* stmt,
         u64_t   cond;
         if (eval_to_u64(ctx, scope, ic->cond, &cond) != 0)
             return 1;
-        if (cond) {
-            for (u64_t i = 0; i < ic->block->stmts->size; ++i) {
-                Stmt* s = ic->block->stmts->data[i];
-                if (process_stmt(ctx, s, scope) != 0)
-                    return 1;
-                if (ctx->stop_execution)
-                    break;
-            }
-            return 0;
-        }
+        if (cond)
+            return process_stmts(ctx, ic->block->stmts, scope, 0);
     }
-    if (stmt->else_block) {
-        for (u64_t i = 0; i < stmt->else_block->stmts->size; ++i) {
-            Stmt* s = stmt->else_block->stmts->data[i];
-            if (process_stmt(ctx, s, scope) != 0)
-                return 1;
-            if (ctx->stop_execution)
-                break;
-        }
-        return 0;
-    }
+    if (stmt->else_block)
+        return process_stmts(ctx, stmt->else_block->stmts, scope, 0);
     return 0;
 }
 
@@ -855,102 +832,105 @@ static int process_STMT_WHILE(InterpreterContext* ctx, Stmt* stmt, Scope* scope)
     if (eval_to_u64(ctx, scope, stmt->cond, &cond) != 0)
         return 1;
 
-    int breaked = 0;
     while (cond != 0) {
         DList* stmts = stmt->body->stmts;
-        for (u64_t i = 0; i < stmts->size; ++i) {
-            Stmt* stmt = (Stmt*)stmts->data[i];
-            if (process_stmt(ctx, stmt, scope) != 0)
-                return 1;
-            if (ctx->should_break || ctx->stop_execution) {
-                ctx->should_break = 0;
-                breaked           = 1;
-                break;
-            }
-        }
-        if (breaked)
+        if (process_stmts(ctx, stmts, scope, 1) != 0)
+            return 1;
+        if (ctx->breaked) {
+            ctx->breaked = 0;
             break;
-
+        }
         if (eval_to_u64(ctx, scope, stmt->cond, &cond) != 0)
             return 1;
     }
     return 0;
 }
 
-static int process_stmt_internal(InterpreterContext* ctx, Stmt* stmt,
-                                 Scope* scope)
+static int process_stmt(InterpreterContext* ctx, Stmt* stmt, Scope* scope,
+                        int break_allowed)
 {
+    // do not use directly this function in a loop, but always use
+    // "process_stmts" because it handles exceptions (or at least it should)
+
+    ctx->curr_stmt = stmt;
+    ctx->breaked   = 0;
+
+    int ret = 1;
     switch (stmt->t) {
         case FILE_VAR_DECL:
-            return process_FILE_VAR_DECL(ctx, stmt, scope);
+            ret = process_FILE_VAR_DECL(ctx, stmt, scope);
+            break;
         case LOCAL_VAR_DECL:
-            return process_LOCAL_VAR_DECL(ctx, stmt, scope);
+            ret = process_LOCAL_VAR_DECL(ctx, stmt, scope);
+            break;
         case LOCAL_VAR_ASS:
-            return process_LOCAL_VAR_ASS(ctx, stmt, scope);
+            ret = process_LOCAL_VAR_ASS(ctx, stmt, scope);
+            break;
         case VOID_FUNC_CALL:
-            return process_VOID_FUNC_CALL(ctx, stmt, scope);
+            ret = process_VOID_FUNC_CALL(ctx, stmt, scope);
+            break;
         case STMT_IF_ELIF_ELSE:
-            return process_STMT_IF_ELIF_ELSE(ctx, stmt, scope);
+            ret = process_STMT_IF_ELIF_ELSE(ctx, stmt, scope);
+            break;
         case STMT_WHILE:
-            return process_STMT_WHILE(ctx, stmt, scope);
+            ret = process_STMT_WHILE(ctx, stmt, scope);
+            break;
         case STMT_BREAK:
-            ctx->should_break = 1;
-            return 0;
+            if (!break_allowed) {
+                tengine_raise_exception(ctx, "unexpected break");
+                break;
+            }
+            ctx->breaked = 1;
+            ret          = 0;
+            break;
         default: {
             tengine_raise_exception(ctx, "invalid stmt type %d", stmt->t);
             break;
         }
     }
-    return 1;
+    return ret;
 }
 
-static int process_stmt(InterpreterContext* ctx, Stmt* stmt, Scope* scope)
+static int process_stmts(InterpreterContext* ctx, DList* stmts, Scope* scope,
+                         int break_allowed)
 {
-    int r = process_stmt_internal(ctx, stmt, scope);
-    if (ctx->exc != NULL) {
-        // process the exception, as of today we just print it
-        char* exc_msg = strbuilder_finalize(ctx->exc->sb);
-        error("Exception @ line %d, col %d > %s", stmt->line_of_code,
-              stmt->column, exc_msg);
+    int ret = 0;
+    for (u64_t i = 0; i < stmts->size; ++i) {
+        Stmt* stmt = (Stmt*)stmts->data[i];
+        if (process_stmt(ctx, stmt, scope, break_allowed) != 0) {
+            // it should fail only in case of an exception
+            if (ctx->exc == NULL)
+                panic("process_stmt: unexpected state");
+            goto end;
+        }
+        if (ctx->halt || ctx->breaked)
+            goto end;
+    }
+    return ret;
 
+end:
+    if (ctx->exc) {
+        char* exc_msg = strbuilder_finalize(ctx->exc->sb);
+        error("Exception @ line %d, col %d > %s", ctx->curr_stmt->line_of_code,
+              ctx->curr_stmt->column, exc_msg);
         bhex_free(exc_msg);
         bhex_free(ctx->exc);
         ctx->exc = NULL;
+        ret      = 1;
     }
-    return r;
+    return ret;
 }
 
-static int process_ast(InterpreterContext* ictx)
-{
-    if (!ictx->ast->proc) {
-        tengine_raise_exception(ictx, "no proc");
-        return 1;
-    }
-
-    InterpreterContext cloned_ctx;
-    interpreter_context_soft_clone(&cloned_ctx, ictx);
-
-    DList* stmts = ictx->ast->proc->stmts;
-    for (u64_t i = 0; i < stmts->size; ++i) {
-        Stmt* stmt = (Stmt*)stmts->data[i];
-        if (process_stmt(&cloned_ctx, stmt, ictx->proc_scope) != 0)
-            return 1;
-        if (cloned_ctx.stop_execution)
-            break;
-    }
-    return 0;
-}
-
-static void interpreter_context_init(InterpreterContext* ictx, ASTCtx* ast,
+static void interpreter_context_init(InterpreterContext* ctx, ASTCtx* ast,
                                      FileBuffer* fb)
 {
-    memset(ictx, 0, sizeof(InterpreterContext));
-    ictx->ast           = ast;
-    ictx->alignment_off = ast->max_ident_len;
-    ictx->fb            = fb;
-    ictx->proc_scope    = Scope_new();
-    ictx->endianess     = TE_LITTLE_ENDIAN;
-    ictx->print_in_hex  = 1;
+    memset(ctx, 0, sizeof(InterpreterContext));
+    ctx->ast           = ast;
+    ctx->alignment_off = ast->max_ident_len;
+    ctx->fb            = fb;
+    ctx->proc_scope    = Scope_new();
+    ctx->endianess     = TE_LITTLE_ENDIAN;
+    ctx->print_in_hex  = 1;
 }
 
 static void interpreter_context_deinit(InterpreterContext* ictx)
@@ -999,16 +979,25 @@ Scope* tengine_interpreter_run_on_string(FileBuffer* fb, const char* str)
         return NULL;
     }
 
+    if (!ast->proc) {
+        error("the AST has not proc");
+        ASTCtx_delete(ast);
+        return NULL;
+    }
+
     InterpreterContext ctx = {0};
     interpreter_context_init(&ctx, ast, fb);
 
-    if (process_ast(&ctx) != 0) {
-        ASTCtx_delete(ast);
+    Scope* result = NULL;
+    if (process_stmts(&ctx, ast->proc->stmts, ctx.proc_scope, 0) != 0) {
         interpreter_context_deinit(&ctx);
-        return NULL;
+        goto end;
     }
+    result = ctx.proc_scope;
+
+end:
     ASTCtx_delete(ast);
-    return ctx.proc_scope;
+    return result;
 }
 
 int tengine_interpreter_process_string(FileBuffer* fb, const char* str)
@@ -1024,19 +1013,19 @@ int tengine_interpreter_process_string(FileBuffer* fb, const char* str)
 
 int tengine_interpreter_process_ast(FileBuffer* fb, ASTCtx* ast)
 {
-    InterpreterContext eng = {0};
-    interpreter_context_init(&eng, ast, fb);
+    InterpreterContext ctx = {0};
+    interpreter_context_init(&ctx, ast, fb);
 
-    int r = process_ast(&eng);
-    interpreter_context_deinit(&eng);
+    int r = process_stmts(&ctx, ast->proc->stmts, ctx.proc_scope, 0);
+    interpreter_context_deinit(&ctx);
     return r;
 }
 
 int tengine_interpreter_process_ast_struct(FileBuffer* fb, ASTCtx* ast,
                                            const char* s)
 {
-    InterpreterContext eng = {0};
-    interpreter_context_init(&eng, ast, fb);
+    InterpreterContext ctx = {0};
+    interpreter_context_init(&ctx, ast, fb);
 
     int r = 1;
     if (!map_contains(ast->structs, s)) {
@@ -1044,21 +1033,11 @@ int tengine_interpreter_process_ast_struct(FileBuffer* fb, ASTCtx* ast,
         goto end;
     }
 
-    InterpreterContext cloned_ctx;
-    interpreter_context_soft_clone(&cloned_ctx, &eng);
-
     Block* b = map_get(ast->structs, s);
-    for (u64_t i = 0; i < b->stmts->size; ++i) {
-        Stmt* stmt = (Stmt*)b->stmts->data[i];
-        if (process_stmt(&cloned_ctx, stmt, eng.proc_scope) != 0)
-            goto end;
-        if (cloned_ctx.stop_execution)
-            break;
-    }
-    r = 0;
+    r        = process_stmts(&ctx, b->stmts, ctx.proc_scope, 0);
 
 end:
-    interpreter_context_deinit(&eng);
+    interpreter_context_deinit(&ctx);
     return r;
 }
 

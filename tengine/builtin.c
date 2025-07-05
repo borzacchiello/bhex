@@ -426,7 +426,7 @@ static TEngineValue* builtin_print(InterpreterContext* ctx, DList* params)
 
 static TEngineValue* builtin_exit(InterpreterContext* ctx, DList* params)
 {
-    ctx->stop_execution = 1;
+    tengine_raise_exit_request(ctx);
     return NULL;
 }
 

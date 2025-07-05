@@ -1259,6 +1259,92 @@ end:
     return r;
 }
 
+int TEST(while_2)(void)
+{
+    const char* prog = "proc { "
+                       "  local a = 0;"
+                       "  local b = 0;"
+                       "  while (a < 3) {"
+                       "    local c = 0;"
+                       "    while (c < 3) {"
+                       "      b = b + (a<<1) + (c<<2);"
+                       "      c = c + 1;"
+                       "    }"
+                       "    a = a + 1;"
+                       "  }"
+                       "}";
+
+    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    if (scope == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(scope, "b");
+    IS_TENGINE_SNUM_EQ(r, v, 54);
+
+end:
+    Scope_free(scope);
+    return r;
+}
+
+int TEST(while_3)(void)
+{
+    const char* prog = "proc { "
+                       "  local a = 0;"
+                       "  local b = 0;"
+                       "  while (a < 3) {"
+                       "    local c = 0;"
+                       "    while (c < 3) {"
+                       "      b = b + (a<<1) + (c<<2);"
+                       "      c = c + 1;"
+                       "      break;"
+                       "    }"
+                       "    a = a + 1;"
+                       "  }"
+                       "}";
+
+    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    if (scope == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(scope, "b");
+    IS_TENGINE_SNUM_EQ(r, v, 6);
+
+end:
+    Scope_free(scope);
+    return r;
+}
+
+int TEST(while_4)(void)
+{
+    const char* prog = "proc { "
+                       "  local a = 0;"
+                       "  local b = 0;"
+                       "  while (a < 3) {"
+                       "    local c = 0;"
+                       "    break;"
+                       "    while (c < 3) {"
+                       "      b = b + (a<<1) + (c<<2);"
+                       "      c = c + 1;"
+                       "    }"
+                       "    a = a + 1;"
+                       "  }"
+                       "}";
+
+    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    if (scope == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(scope, "b");
+    IS_TENGINE_SNUM_EQ(r, v, 0);
+
+end:
+    Scope_free(scope);
+    return r;
+}
+
 int TEST(array_1)(void)
 {
     int              r = 0;
@@ -1853,11 +1939,18 @@ int TEST(exit_in_struct)(void)
 
     const char* prog = "struct A { exit(); }"
                        "proc {"
-                       "    A a;"
+                       "    local a = 1u16;"
+                       "    A var;"
+                       "    local b = 2u16;"
                        "}";
 
     Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
-    ASSERT(scope == NULL);
+    ASSERT(scope != NULL);
+
+    TEngineValue* va = Scope_get_local(scope, "a");
+    ASSERT_TENGINE_UNUM_EQ(va, 1);
+    TEngineValue* vb = Scope_get_local(scope, "b");
+    ASSERT(vb == NULL);
 
 end:
     if (scope)

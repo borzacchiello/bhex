@@ -15,14 +15,19 @@ typedef struct test_t {
     u32_t nsucc  = 0;                                                          \
     u32_t i;                                                                   \
     for (i = 0; i < sizeof(tests) / sizeof(test_t); ++i) {                     \
+        if (argc > 1 && strstr(tests[i].name, argv[1]) == NULL)                \
+            continue;                                                          \
+        printf("[+] %s... ", tests[i].name);                                   \
         ntests += 1;                                                           \
         int r = tests[i].fptr();                                               \
         if (!r)                                                                \
-            printf("[!] test %s failed\n", tests[i].name);                     \
-        else                                                                   \
+            printf("\033[91mFAIL\033[0m\n");                                   \
+        else {                                                                 \
             nsucc += 1;                                                        \
+            printf("\033[92mOK\033[0m\n");                                     \
+        }                                                                      \
     }                                                                          \
-    printf("[+] %u/%u tests succeeded\n", nsucc, ntests);                      \
+    printf("\n[+] %u/%u tests succeeded\n", nsucc, ntests);                    \
     return nsucc != ntests;
 
 #define TEST_FAILED    0

@@ -31,6 +31,8 @@ void panic(const char* format, ...)
     va_list argp;
     va_start(argp, format);
 
+    // PANIC always print on stderr
+    g_callback = NULL;
     common_print(" PANIC ", format, argp);
     exit(1);
 }
