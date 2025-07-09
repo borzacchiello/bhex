@@ -1514,6 +1514,37 @@ end:
     return r;
 }
 
+int TEST(array_too_big)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000  buf: [ 4141, 4141, 4141, 4141, 4141, 4141, 4141, 4141, 4141, 4141, 4141, 4141, 4141, 4141, 4141, 4141, ... ]\n";
+    // clang-format on
+
+    int              r = 0;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create((const u8_t*)"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+                                            "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                               64);
+    const char* prog = "proc {"
+                       "    u16 buf[32];"
+                       "}";
+
+    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    if (scope == NULL)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+}
+
 int TEST(elf_1)(void)
 {
     int              r = 0;

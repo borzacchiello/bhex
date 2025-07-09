@@ -45,6 +45,9 @@ static TEngineValue* string_process(InterpreterContext* ctx)
         if (buf == NULL)
             return NULL;
     }
+    // seek after the NULL terminator
+    if (fb_seek(ctx->fb, ctx->fb->off + 1) != 0)
+        goto end;
 
     enlarge_tmp;
     tmp[tmp_size] = '\0';

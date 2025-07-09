@@ -668,7 +668,7 @@ static int process_array_type(InterpreterContext* ctx, const char* varname,
                     if (printed <= size - 1)
                         interpreter_printf(ctx, ", ");
                 }
-                if (printed == MAX_ARR_PRINT_SIZE && size < printed)
+                if (printed == MAX_ARR_PRINT_SIZE && printed < size)
                     interpreter_printf(ctx, "...");
                 TEngineValue_ARRAY_append(*oval, val);
             }

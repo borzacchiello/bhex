@@ -1,0 +1,309 @@
+struct rpmlead
+{
+    u8   magic[4];        // 0xed, 0xab, 0xee, 0xdb
+    u8   major;           // = 3
+    u8   minor;           // = 0
+    u16  type;            // 0 = binary, 1 = source
+    u16  arch_num;        // CPU arch enum (e.g. 1 = i386)
+    char name[66];        // NULL-padded package name
+    u16  os_num;          // OS enum (e.g. 1 = Linux)
+    u16  sig_type;        // always 5 (header+payload signature)
+    u8   reserved[16];    // all zeros
+}
+
+// http://ftp.rpm.org/api/4.4.2.2/rpmlib_8h-source.html
+enum rpmTag_e : u32
+{
+    RPMTAG_HEADERIMAGE       =  61,
+    RPMTAG_HEADERSIGNATURES  =  62,
+    RPMTAG_HEADERIMMUTABLE   =  63,
+    RPMTAG_HEADERREGIONS     =  64,
+    RPMTAG_HEADERI18NTABLE   = 100,
+    RPMTAG_SIG_BASE          = 256,
+    RPMTAG_SIGSIZE           = 257,
+    RPMTAG_SIGLEMD5_1        = 258,
+    RPMTAG_SIGPGP            = 259,
+    RPMTAG_SIGLEMD5_2        = 260,
+    RPMTAG_SIGMD5            = 261,
+    RPMTAG_SIGGPG            = 262,
+    RPMTAG_SIGPGP5           = 263,
+    RPMTAG_BADSHA1_1         = 264,
+    RPMTAG_BADSHA1_2         = 265,
+    RPMTAG_PUBKEYS           = 266,
+    RPMTAG_DSAHEADER         = 267,
+    RPMTAG_RSAHEADER         = 268,
+    RPMTAG_SHA1HEADER        = 269,
+    RPMTAG_NAME              = 1000,
+    RPMTAG_VERSION           = 1001,
+    RPMTAG_RELEASE           = 1002,
+    RPMTAG_EPOCH             = 1003,
+    RPMTAG_SUMMARY           = 1004,
+    RPMTAG_DESCRIPTION       = 1005,
+    RPMTAG_BUILDTIME         = 1006,
+    RPMTAG_BUILDHOST         = 1007,
+    RPMTAG_INSTALLTIME       = 1008,
+    RPMTAG_SIZE              = 1009,
+    RPMTAG_DISTRIBUTION      = 1010,
+    RPMTAG_VENDOR            = 1011,
+    RPMTAG_LICENSE           = 1014,
+    RPMTAG_PACKAGER          = 1015,
+    RPMTAG_GROUP             = 1016,
+    RPMTAG_URL               = 1020,
+    RPMTAG_OS                = 1021,
+    RPMTAG_ARCH              = 1022,
+    RPMTAG_PREIN             = 1023,
+    RPMTAG_POSTIN            = 1024,
+    RPMTAG_PREUN             = 1025,
+    RPMTAG_POSTUN            = 1026,
+    RPMTAG_OLDFILENAMES      = 1027,
+    RPMTAG_FILESIZES         = 1028,
+    RPMTAG_FILESTATES        = 1029,
+    RPMTAG_FILEMODES         = 1030,
+    RPMTAG_FILEUIDS          = 1031,
+    RPMTAG_FILEGIDS          = 1032,
+    RPMTAG_FILERDEVS         = 1033,
+    RPMTAG_FILEMTIMES        = 1034,
+    RPMTAG_FILEDIGESTS       = 1035,
+    RPMTAG_FILELINKTOS       = 1036,
+    RPMTAG_FILEFLAGS         = 1037,
+    RPMTAG_FILEUSERNAME      = 1039,
+    RPMTAG_FILEGROUPNAME     = 1040,
+    RPMTAG_EXCLUDE           = 1041,
+    RPMTAG_EXCLUSIVE         = 1042,
+    RPMTAG_ICON              = 1043,
+    RPMTAG_SOURCERPM         = 1044,
+    RPMTAG_FILEVERIFYFLAGS   = 1045,
+    RPMTAG_ARCHIVESIZE       = 1046,
+    RPMTAG_PROVIDENAME       = 1047,
+    RPMTAG_REQUIREFLAGS      = 1048,
+    RPMTAG_REQUIRENAME       = 1049,
+    RPMTAG_REQUIREVERSION    = 1050,
+    RPMTAG_NOSOURCE          = 1051,
+    RPMTAG_NOPATCH           = 1052,
+    RPMTAG_CONFLICTFLAGS     = 1053,
+    RPMTAG_CONFLICTNAME      = 1054,
+    RPMTAG_CONFLICTVERSION   = 1055,
+    RPMTAG_DEFAULTPREFIX     = 1056,
+    RPMTAG_BUILDROOT         = 1057,
+    RPMTAG_INSTALLPREFIX     = 1058,
+    RPMTAG_EXCLUDEARCH       = 1059,
+    RPMTAG_EXCLUDEOS         = 1060,
+    RPMTAG_EXCLUSIVEARCH     = 1061,
+    RPMTAG_EXCLUSIVEOS       = 1062,
+    RPMTAG_AUTOREQPROV       = 1063,
+    RPMTAG_RPMVERSION        = 1064,
+    RPMTAG_TRIGGERSCRIPTS    = 1065,
+    RPMTAG_TRIGGERNAME       = 1066,
+    RPMTAG_TRIGGERINDEX      = 1067,
+    RPMTAG_TRIGGERFLAGS      = 1068,
+    RPMTAG_TRIGGERINDEX      = 1069,
+    RPMTAG_VERIFYSCRIPT      = 1079,
+    RPMTAG_CHANGELOGTIME     = 1080,
+    RPMTAG_CHANGELOGNAME     = 1081,
+    RPMTAG_CHANGELOGTEXT     = 1082,
+    RPMTAG_BROKENMD5         = 1083,
+    RPMTAG_PREREQ            = 1084,
+    RPMTAG_PREINPROG         = 1085,
+    RPMTAG_POSTINPROG        = 1086,
+    RPMTAG_PREUNPROG         = 1087,
+    RPMTAG_POSTUNPROG        = 1088,
+    RPMTAG_BUILDARCHS        = 1089,
+    RPMTAG_OBSOLETENAME      = 1090,
+    RPMTAG_VERIFYSCRIPTPROG  = 1091,
+    RPMTAG_TRIGGERSCRIPTPROG = 1092,
+    RPMTAG_DOCDIR            = 1093,
+    RPMTAG_COOKIE            = 1094,
+    RPMTAG_FILEDEVICES       = 1095,
+    RPMTAG_FILEINODES        = 1096,
+    RPMTAG_FILELANGS         = 1097,
+    RPMTAG_PREFIXES          = 1098,
+    RPMTAG_INSTPREFIXES      = 1099,
+    RPMTAG_TRIGGERIN         = 1100,
+    RPMTAG_TRIGGERUN         = 1101,
+    RPMTAG_TRIGGERPOSTUN     = 1102,
+    RPMTAG_AUTOREQ           = 1103,
+    RPMTAG_AUTOPROV          = 1104,
+    RPMTAG_CAPABILITY        = 1105,
+    RPMTAG_SOURCEPACKAGE     = 1106,
+    RPMTAG_OLDORIGFILENAMES  = 1107,
+    RPMTAG_BUILDPREREQ       = 1108,
+    RPMTAG_BUILDREQUIRES     = 1109,
+    RPMTAG_BUILDCONFLICTS    = 1110,
+    RPMTAG_BUILDMACROS       = 1111,
+    RPMTAG_PROVIDEFLAGS      = 1112,
+    RPMTAG_PROVIDEVERSION    = 1113,
+    RPMTAG_OBSOLETEFLAGS     = 1114,
+    RPMTAG_OBSOLETEVERSION   = 1115,
+    RPMTAG_DIRINDEXES        = 1116,
+    RPMTAG_BASENAMES         = 1117,
+    RPMTAG_DIRNAMES          = 1118,
+    RPMTAG_PROVIDEFLAGS      = 1112,
+    RPMTAG_PROVIDEVERSION    = 1113,
+    RPMTAG_OBSOLETEFLAGS     = 1114,
+    RPMTAG_OBSOLETEVERSION   = 1115,
+    RPMTAG_OPTFLAGS          = 1122,
+    RPMTAG_DISTURL           = 1123,
+    RPMTAG_PAYLOADFORMAT     = 1124,
+    RPMTAG_PAYLOADCOMPRESSOR = 1125,
+    RPMTAG_PAYLOADFLAGS      = 1126,
+    RPMTAG_INSTALLCOLOR      = 1127,
+    RPMTAG_INSTALLTID        = 1128,
+    RPMTAG_REMOVETID         = 1129,
+    RPMTAG_SHA1RHN           = 1130,
+    RPMTAG_RHNPLATFORM       = 1131,
+    RPMTAG_PLATFORM          = 1132,
+    RPMTAG_PATCHESNAME       = 1133,
+    RPMTAG_PATCHESFLAGS      = 1134,
+    RPMTAG_PATCHESVERSION    = 1135,
+    RPMTAG_CACHECTIME        = 1136,
+    RPMTAG_CACHEPKGPATH      = 1137,
+    RPMTAG_CACHEPKGSIZE      = 1138,
+    RPMTAG_CACHEPKGMTIME     = 1139,
+    RPMTAG_FILECOLORS        = 1140,
+    RPMTAG_FILECLASS         = 1141,
+    RPMTAG_CLASSDICT         = 1142,
+    RPMTAG_FILEDEPENDSX      = 1143,
+    RPMTAG_FILEDEPENDSN      = 1144,
+    RPMTAG_DEPENDSDICT       = 1145,
+    RPMTAG_SOURCEPKGID       = 1146,
+    RPMTAG_FILECONTEXTS      = 1147,
+    RPMTAG_FSCONTEXTS        = 1148,
+    RPMTAG_RECONTEXTS        = 1149,
+    RPMTAG_POLICIES          = 1150,
+    RPMTAG_PRETRANS          = 1151,
+    RPMTAG_POSTTRANS         = 1152,
+    RPMTAG_PRETRANSPROG      = 1153,
+    RPMTAG_POSTTRANSPROG     = 1154,
+    RPMTAG_DISTTAG           = 1155,
+    RPMTAG_SUGGESTSNAME      = 1156,
+    RPMTAG_SUGGESTSVERSION   = 1157,
+    RPMTAG_SUGGESTSFLAGS     = 1158,
+    RPMTAG_ENHANCESNAME      = 1159,
+    RPMTAG_ENHANCESVERSION   = 1160,
+    RPMTAG_ENHANCESFLAGS     = 1161,
+    RPMTAG_PRIORITY          = 1162,
+    RPMTAG_CVSID             = 1163,
+    RPMTAG_LONGSIZE          = 5009,
+    RPMTAG_FILEDIGESTALGO    = 5011,
+    RPMTAG_BUGURL            = 5012,
+    RPMTAG_FILECAPS          = 5010,
+    RPMTAG_MODULARITYLABEL   = 5096,
+    RPMTAG_RPMFORMAT         = 5114,
+    RPMTAG_MIMEDICT          = 5116,
+    RPMTAG_SOURCENEVR        = 5120
+}
+
+// https://github.com/rpm-software-management/rpm/blob/master/include/rpm/rpmtag.h
+enum rpmTagType_e : u32
+{
+    RPM_NULL_TYPE         = 0, // "no value" placeholder
+    RPM_CHAR_TYPE         = 1, // 8-bit unsigned char  (scalar only)
+    RPM_INT8_TYPE         = 2, // signed 8-bit integer array
+    RPM_INT16_TYPE        = 3, // signed 16-bit integer array
+    RPM_INT32_TYPE        = 4, // signed 32-bit integer array
+    RPM_INT64_TYPE        = 5, // signed 64-bit integer array
+    RPM_STRING_TYPE       = 6, // single NUL-terminated UTF-8 string
+    RPM_BIN_TYPE          = 7, // arbitrary binary blob
+    RPM_STRING_ARRAY_TYPE = 8, // array of NUL-terminated UTF-8 strings
+    RPM_I18NSTRING_TYPE   = 9  // string translated to the requested locale when queried
+}
+
+fn get_type_size(t)
+{
+    if (t == rpmTagType_e::RPM_CHAR_TYPE || t == rpmTagType_e::RPM_INT8_TYPE) {
+        result = 1;
+    } elif (t == rpmTagType_e::RPM_INT16_TYPE) {
+        result = 2;
+    } elif (t == rpmTagType_e::RPM_INT32_TYPE) {
+        result = 4;
+    } elif (t == rpmTagType_e::RPM_INT64_TYPE) {
+        result = 8;
+    }
+    result = -1;
+}
+
+struct rpm_index
+{
+    rpmTag_e     tag;     // what piece of info this is (RPMTAG_* enum)
+    rpmTagType_e type;    // data type (RPM_NULL, RPM_INT32, RPM_STRING, ...)
+    u32          offset;  // byte offset into the store area
+    u32          count;   // number of values (array length)
+}
+
+struct rpm_header
+{
+    u8  magic[3];    // 0x8e, 0xad, 0xe8
+    u8  version;     // = 1
+    u32 reserved;    // unused (always 0)
+    u32 index_count; // number of index records
+    u32 store_size;  // size in bytes of the data store
+}
+
+fn get_store_offset(header)
+{
+    local off = off();
+    disable_print();
+
+    rpm_index idx[header.index_count];
+    result = off();
+
+    enable_print();
+    seek(off);
+}
+
+fn process_data_el(store_off, idx_hdr)
+{
+    local off = off();
+
+    seek(store_off + idx_hdr.offset);
+    if (idx_hdr.type == rpmTagType_e::RPM_BIN_TYPE) {
+        u8 data[idx_hdr.count];
+    } elif (idx_hdr.type == rpmTagType_e::RPM_STRING_TYPE || idx_hdr.type == rpmTagType_e::RPM_I18NSTRING_TYPE) {
+        string data;
+    } elif (idx_hdr.type == rpmTagType_e::RPM_STRING_ARRAY_TYPE) {
+        string data[idx_hdr.count];
+    } elif (idx_hdr.type == rpmTagType_e::RPM_CHAR_TYPE) {
+        char data;
+    } elif (idx_hdr.type == rpmTagType_e::RPM_INT8_TYPE) {
+        i8 data;
+    } elif (idx_hdr.type == rpmTagType_e::RPM_INT16_TYPE) {
+        i16 data;
+    } elif (idx_hdr.type == rpmTagType_e::RPM_INT32_TYPE) {
+        i32 data;
+    } elif (idx_hdr.type == rpmTagType_e::RPM_INT64_TYPE) {
+        i64 data;
+    }
+
+    seek(off);
+}
+
+fn process_rpm_block(header)
+{
+    local store_off = get_store_offset(header);
+    local i = 0;
+    while (i < header.index_count) {
+        rpm_index index_entry;
+        process_data_el(store_off, index_entry);
+
+        i = i + 1;
+    }
+
+    u8 raw_data[header.store_size];
+}
+
+proc
+{
+    endianess_be();
+
+    rpmlead    lead;
+    rpm_header sig_hdr;
+    process_rpm_block(sig_hdr);
+    if (off() % 8 != 0) {
+        u8 padding[8 - off() % 8];
+    }
+
+    rpm_header main_hdr;
+    process_rpm_block(main_hdr);
+
+    u8 compressed_cpio[remaining_size()];
+}
