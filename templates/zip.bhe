@@ -203,7 +203,7 @@ fn newline()
     print("");
 }
 
-proc
+fn seek_to_central_dir()
 {
     local magic   = "PK\x05\x06";
     local magic64 = "PK\x06\x06";
@@ -223,6 +223,24 @@ proc
     }
 
     seek(endOfCentralDir.central_dir_offset);
+    result = endOfCentralDir;
+}
+
+proc list_files
+{
+    local endOfCentralDir = seek_to_central_dir();
+
+    local i = 0;
+    while ( i < endOfCentralDir.central_dir_entries ) {
+        CentralDirectoryHeader dirElement;
+        print(dirElement.filename, "[", dirElement.uncompressed_size, "bytes ]");
+        i = i + 1;
+    }
+}
+
+proc
+{
+    local endOfCentralDir = seek_to_central_dir();
     newline();
 
     local i = 0;

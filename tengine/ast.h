@@ -234,6 +234,9 @@ typedef struct ASTCtx {
     // proc { ... } => Block*
     Block* proc;
 
+    // proc NAME { ... } => Block*
+    map* named_procs;
+
     // struct XXX { ... } => Map of name to Block*
     map* structs;
 

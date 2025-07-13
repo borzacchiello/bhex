@@ -36,7 +36,7 @@ static void templatecmd_help(void* obj)
         "     i: interpret inline code\n"
         "\n"
         "  arg: its meaning depends on the mode. It could be\n"
-        "       - the name of the pre-loaded template/struct to use\n"
+        "       - the name of the pre-loaded template/struct/proc to use\n"
         "       - a path to a template file\n"
         "       - a filter (if in list mode)\n"
         "       - inline bhex code (if in interpret mode)\n"
@@ -66,12 +66,12 @@ static void        templates_print_cb(const char* name, ASTCtx* ast)
     }
 }
 
-static void structs_print_cb(const char* name, const char* struct_name,
-                             ASTCtx* ast)
+static void composite_print_cb(const char* name, const char* elname,
+                               ASTCtx* ast)
 {
     if (!print_filter || strstr(name, print_filter) != NULL ||
-        strstr(struct_name, print_filter) != NULL) {
-        display_printf("  %s.%s\n", name, struct_name);
+        strstr(elname, print_filter) != NULL) {
+        display_printf("  %s.%s\n", name, elname);
     }
 }
 
@@ -93,7 +93,9 @@ static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
         display_printf("\nAvailable templates:\n");
         tengine_vm_iter_templates(ctx->vm, templates_print_cb);
         display_printf("\nAvailable template structs:\n");
-        tengine_vm_iter_structs(ctx->vm, structs_print_cb);
+        tengine_vm_iter_structs(ctx->vm, composite_print_cb);
+        display_printf("\nAvailable template named procs:\n");
+        tengine_vm_iter_named_procs(ctx->vm, composite_print_cb);
 
         display_printf("\n");
         return COMMAND_OK;
@@ -134,7 +136,7 @@ static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
         goto end;
     }
 
-    // Pre-loaded struct
+    // Pre-loaded struct or named proc
     char* tname = strtok(bhe, ".");
     if (tname == NULL)
         goto err;
@@ -143,8 +145,16 @@ static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
     if (sname == NULL)
         goto err;
 
-    if (tengine_vm_process_bhe_struct(ctx->vm, fb, tname, sname) != 0) {
-        goto end;
+    if (tengine_vm_has_bhe_struct(ctx->vm, tname, sname)) {
+        if (tengine_vm_process_bhe_struct(ctx->vm, fb, tname, sname) != 0) {
+            goto end;
+        }
+    } else if (tengine_vm_has_bhe_proc(ctx->vm, tname, sname)) {
+        if (tengine_vm_process_bhe_proc(ctx->vm, fb, tname, sname) != 0) {
+            goto end;
+        }
+    } else {
+        goto err;
     }
 
     r = COMMAND_OK;
@@ -154,7 +164,7 @@ end:
     return r;
 
 err:
-    error("'%s' is not a valid template/struct name or filename", bhe);
+    error("'%s' is not a valid template/struct/proc name or filename", bhe);
     goto end;
 }
 

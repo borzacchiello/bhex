@@ -39,6 +39,8 @@ int tengine_interpreter_process_file(FileBuffer* fb, FILE* f);
 int tengine_interpreter_process_ast(FileBuffer* fb, ASTCtx* ast);
 int tengine_interpreter_process_ast_struct(FileBuffer* fb, ASTCtx* ast,
                                            const char* s);
+int tengine_interpreter_process_ast_named_proc(FileBuffer* fb, ASTCtx* ast,
+                                               const char* s);
 
 void tengine_raise_exception(InterpreterContext* ictx, const char* fmt, ...);
 void tengine_raise_exit_request(InterpreterContext* ctx);

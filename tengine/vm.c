@@ -131,9 +131,47 @@ void tengine_vm_iter_structs(TEngineVM* ctx,
     }
 }
 
+void tengine_vm_iter_named_procs(TEngineVM* ctx,
+                                 void (*cb)(const char* bhe, const char* name,
+                                            ASTCtx* ast))
+{
+    for (const char* key = map_first(ctx->templates); key != NULL;
+         key             = map_next(ctx->templates, key)) {
+        ASTCtx* ast = map_get(ctx->templates, key);
+        for (const char* str = map_first(ast->named_procs); str != NULL;
+             str             = map_next(ast->named_procs, str)) {
+            cb(key, str, ast);
+        }
+    }
+}
+
 int tengine_vm_has_template(TEngineVM* ctx, const char* bhe)
 {
     return map_contains(ctx->templates, bhe);
+}
+
+int tengine_vm_has_bhe_struct(TEngineVM* ctx, const char* bhe,
+                              const char* struct_name)
+{
+    if (!map_contains(ctx->templates, bhe))
+        return 0;
+
+    ASTCtx* ast = map_get(ctx->templates, bhe);
+    if (!map_contains(ast->structs, struct_name))
+        return 0;
+    return 1;
+}
+
+int tengine_vm_has_bhe_proc(TEngineVM* ctx, const char* bhe,
+                            const char* proc_name)
+{
+    if (!map_contains(ctx->templates, bhe))
+        return 0;
+
+    ASTCtx* ast = map_get(ctx->templates, bhe);
+    if (!map_contains(ast->named_procs, proc_name))
+        return 0;
+    return 1;
 }
 
 int tengine_vm_process_bhe(TEngineVM* ctx, FileBuffer* fb, const char* bhe)
@@ -159,6 +197,18 @@ int tengine_vm_process_bhe_struct(TEngineVM* ctx, FileBuffer* fb,
     if (!map_contains(ast->structs, struct_name))
         return 1;
     return tengine_interpreter_process_ast_struct(fb, ast, struct_name);
+}
+
+int tengine_vm_process_bhe_proc(TEngineVM* ctx, FileBuffer* fb, const char* bhe,
+                                const char* proc_name)
+{
+    if (!map_contains(ctx->templates, bhe))
+        return 1;
+
+    ASTCtx* ast = map_get(ctx->templates, bhe);
+    if (!map_contains(ast->named_procs, proc_name))
+        return 1;
+    return tengine_interpreter_process_ast_named_proc(fb, ast, proc_name);
 }
 
 int tengine_vm_process_file(TEngineVM* ctx, FileBuffer* fb, const char* fname)

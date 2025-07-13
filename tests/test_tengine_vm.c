@@ -6,6 +6,7 @@
 
 #include "../tengine/vm.h"
 #include "data/net.h"
+#include "data/sample_zip.h"
 
 #ifndef TEST
 #define TEST(name) test_##name
@@ -176,6 +177,42 @@ int TEST(template_tcp)(void)
 end:
     if (tfb)
         dummyfilebuffer_destroy(tfb);
+    tengine_vm_destroy(vm);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(zip_list_files)(void)
+{
+    // clang-format off
+    const char* expected = 
+        "file.txt [ 5 bytes ] \n"
+        "folder/ [ 0 bytes ] \n"
+        "folder/subfolder/ [ 0 bytes ] \n"
+        "folder/subfolder/file_in_subfolder.txt [ 8 bytes ] \n"
+        "folder/file_in_folder.txt [ 12 bytes ] \n";
+    // clang-format on
+
+    int r = TEST_SUCCEEDED;
+
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_zip, sizeof(sample_zip));
+    TEngineVM* vm = tengine_vm_create(empty_dirs);
+
+    ASSERT(tfb != NULL);
+    ASSERT(vm != NULL);
+    ASSERT(tengine_vm_add_template(vm, "zip", "./templates/zip.bhe") == 0);
+    ASSERT(tengine_vm_process_bhe_proc(vm, tfb->fb, "zip", "list_files") == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
     tengine_vm_destroy(vm);
     return r;
 

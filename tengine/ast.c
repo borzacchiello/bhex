@@ -708,7 +708,7 @@ static void STMT_IF_WHILE_free(Stmt* stmt)
 
 static void STMT_IF_ELIF_ELSE_free(Stmt* stmt)
 {
-    DList_destroy(stmt->if_conditions, (void (*)(void*)) & IfCond_free);
+    DList_destroy(stmt->if_conditions, (void (*)(void*))&IfCond_free);
     if (stmt->else_block)
         Block_free(stmt->else_block);
 }
@@ -954,8 +954,11 @@ void Function_free(Function* fn)
 
 ASTCtx* ASTCtx_new(void)
 {
-    ASTCtx* ctx  = bhex_calloc(sizeof(ASTCtx));
-    ctx->proc    = NULL;
+    ASTCtx* ctx = bhex_calloc(sizeof(ASTCtx));
+    ctx->proc   = NULL;
+
+    ctx->named_procs = map_create();
+    map_set_dispose(ctx->named_procs, (void (*)(void*))Block_free);
     ctx->structs = map_create();
     map_set_dispose(ctx->structs, (void (*)(void*))Block_free);
     ctx->enums = map_create();
@@ -973,6 +976,7 @@ void ASTCtx_delete(ASTCtx* ctx)
 
     if (ctx->proc)
         Block_free(ctx->proc);
+    map_destroy(ctx->named_procs);
     map_destroy(ctx->structs);
     map_destroy(ctx->enums);
     map_destroy(ctx->functions);

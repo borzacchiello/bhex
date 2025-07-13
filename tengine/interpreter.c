@@ -1066,6 +1066,27 @@ end:
     return r;
 }
 
+int tengine_interpreter_process_ast_named_proc(FileBuffer* fb, ASTCtx* ast,
+                                               const char* s)
+{
+    InterpreterContext ctx = {0};
+    interpreter_context_init(&ctx, ast, fb);
+    ctx.quiet_mode = 1;
+
+    int r = 1;
+    if (!map_contains(ast->named_procs, s)) {
+        error("no such named proc '%s'", s);
+        goto end;
+    }
+
+    Block* b = map_get(ast->named_procs, s);
+    r        = process_stmts(&ctx, b->stmts, ctx.proc_scope);
+
+end:
+    interpreter_context_deinit(&ctx);
+    return r;
+}
+
 void tengine_interpreter_pp(InterpreterContext* e)
 {
     int orig_quiet_mode = e->quiet_mode;

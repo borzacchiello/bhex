@@ -148,6 +148,11 @@ program     :
                                                             YYABORT;
                                                         g_ctx->proc = Block_new($4);
                                                     }
+            | program TPROC ident TLBRACE stmts TRBRACE 
+                                                    {
+                                                        map_set(g_ctx->named_procs, $3, Block_new($5));
+                                                        bhex_free($3);
+                                                    }
             | program TFN ident TCLBRACE TCRBRACE TLBRACE stmts TRBRACE 
                                                     {
                                                         map_set(g_ctx->functions, $3, Function_new($3, NULL, Block_new($7)));
