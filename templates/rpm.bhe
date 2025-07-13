@@ -291,6 +291,45 @@ fn process_rpm_block(header)
     u8 raw_data[header.store_size];
 }
 
+proc list_files
+{
+    endianess_be();
+
+    // Skip sig
+    rpmlead    lead;
+    rpm_header sig_hdr;
+    u8         sig_index[16 * sig_hdr.index_count];
+    u8         sig_data[sig_hdr.store_size];
+    if (off() % 8 != 0) {
+        u8 padding[8 - off() % 8];
+    }
+
+    rpm_header main_hdr;
+    local      store_off = get_store_offset(main_hdr);
+    disable_print();
+
+    local i = 0;
+    while (i < main_hdr.index_count) {
+        rpm_index entry;
+
+        if (entry.tag == rpmTag_e::RPMTAG_BASENAMES || entry.tag == rpmTag_e::RPMTAG_DIRNAMES) {
+            local off = off();
+            seek(store_off + entry.offset);
+
+            string paths[entry.count];
+
+            local j = 0;
+            while (j < entry.count) {
+                print(paths[j]);
+                j = j + 1;
+            }
+            seek(off);
+        }
+
+        i = i + 1;
+    }
+}
+
 proc
 {
     endianess_be();
