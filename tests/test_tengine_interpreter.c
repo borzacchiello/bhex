@@ -704,7 +704,7 @@ end:
     return r;
 }
 
-int TEST (and)(void)
+int TEST(and)(void)
 {
     const char* prog = "proc { local a = 0xffff; local b = a & 0xf0f0; }";
 
@@ -738,7 +738,7 @@ end:
     return r;
 }
 
-int TEST (xor)(void)
+int TEST(xor)(void)
 {
     const char* prog = "proc { local a = 0xff; local b = a ^ 0xf0; }";
 
@@ -1456,6 +1456,103 @@ end:
 
 int TEST(array_4)(void)
 {
+    // clang-format off
+    const char* expected =
+        "\n"
+        "b+00000000    data: [ \n"
+        "               [0]\n"
+        "b+00000000          n1: 41\n"
+        "b+00000001          n2: 42\n"
+        "b+00000002          n3: 43\n"
+        "               [1]\n"
+        "b+00000003          n1: 44\n"
+        "b+00000004          n2: 45\n"
+        "b+00000005          n3: 46 ]";
+    // clang-format on
+
+    reset_global_state();
+    int              r    = 0;
+    DummyFilebuffer* tfb  = dummyfilebuffer_create((const u8_t*)"ABCDEF", 6);
+    const char*      prog = "struct Triple {"
+                            "   u8 n1;"
+                            "   u8 n2;"
+                            "   u8 n3;"
+                            "}\n"
+                            "proc {"
+                            "    Triple data[2];"
+                            "    local  a = data[1].n2;"
+                            "}";
+
+    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    if (scope == NULL)
+        goto end;
+
+    TEngineValue* v = Scope_get_local(scope, "a");
+    IS_TENGINE_UNUM_EQ(r, v, 'E');
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+}
+
+int TEST(array_5)(void)
+{
+    // clang-format off
+    const char* expected =
+        "\n"
+        "b+00000000        v: \n"
+        "b+00000000           n1: 41\n"
+        "b+00000001           n2: 42\n"
+        "b+00000002           n3: [ 4443, 4645, 4847, 4a49 ]\n"
+        "b+0000000a           n4: 4b";
+    // clang-format on
+
+    reset_global_state();
+    int              r = 0;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create((const u8_t*)"ABCDEFGHIJK", 11);
+    const char* prog = "struct AStruct {"
+                       "   u8  n1;"
+                       "   u8  n2;"
+                       "   u16 n3[4];"
+                       "   u8  n4;"
+                       "}\n"
+                       "proc {"
+                       "    AStruct v;"
+                       "    local   a = v.n4;"
+                       "}";
+
+    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    if (scope == NULL)
+        goto end;
+
+    TEngineValue* v = Scope_get_local(scope, "a");
+    IS_TENGINE_UNUM_EQ(r, v, 'K');
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+}
+
+int TEST(array_noprint)(void)
+{
+    // clang-format off
+    const char* expected = "";
+    // clang-format on
+
+    reset_global_state();
     int              r    = 0;
     DummyFilebuffer* tfb  = dummyfilebuffer_create((const u8_t*)"ABCDEF", 6);
     const char*      prog = "struct Triple {"
@@ -1476,36 +1573,9 @@ int TEST(array_4)(void)
     TEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_UNUM_EQ(r, v, 'E');
 
-end:
-    if (scope)
-        Scope_free(scope);
-    dummyfilebuffer_destroy(tfb);
-    return r;
-}
-
-int TEST(array_5)(void)
-{
-    int              r = 0;
-    DummyFilebuffer* tfb =
-        dummyfilebuffer_create((const u8_t*)"ABCDEFGHIJK", 11);
-    const char* prog = "struct AStruct {"
-                       "   u8  n1;"
-                       "   u8  n2;"
-                       "   u16 n3[4];"
-                       "   u8  n4;"
-                       "}\n"
-                       "proc {"
-                       "    disable_print();"
-                       "    AStruct v;"
-                       "    local   a = v.n4;"
-                       "}";
-
-    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
-    if (scope == NULL)
-        goto end;
-
-    TEngineValue* v = Scope_get_local(scope, "a");
-    IS_TENGINE_UNUM_EQ(r, v, 'K');
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
 
 end:
     if (scope)
@@ -1518,9 +1588,11 @@ int TEST(array_too_big)(void)
 {
     // clang-format off
     const char* expected =
-        "b+00000000  buf: [ 4141, 4141, 4141, 4141, 4141, 4141, 4141, 4141, 4141, 4141, 4141, 4141, 4141, 4141, 4141, 4141, ... ]\n";
+        "\n"    
+        "b+00000000  buf: [ 4141, 4141, 4141, 4141, 4141, 4141, 4141, 4141, 4141, 4141, 4141, 4141, 4141, 4141, 4141, 4141, ... ]";
     // clang-format on
 
+    reset_global_state();
     int              r = 0;
     DummyFilebuffer* tfb =
         dummyfilebuffer_create((const u8_t*)"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"

@@ -897,13 +897,19 @@ static void interpreter_context_init(InterpreterContext* ctx, ASTCtx* ast,
     ctx->fmt->print_in_hex  = 1;
 }
 
-static void interpreter_context_deinit(InterpreterContext* ctx)
+static Scope* interpreter_deinit_and_get_context(InterpreterContext* ctx)
 {
-    Scope_free(ctx->proc_scope);
+    Scope* scope = ctx->proc_scope;
     fmt_dispose(ctx->fmt);
     if (ctx->exc) {
         bhex_free(strbuilder_finalize(ctx->exc->sb));
     }
+    return scope;
+}
+
+static void interpreter_context_deinit(InterpreterContext* ctx)
+{
+    Scope_free(interpreter_deinit_and_get_context(ctx));
 }
 
 void tengine_interpreter_set_imported_types_callback(imported_cb_t cb,
@@ -958,7 +964,7 @@ Scope* tengine_interpreter_run_on_string(FileBuffer* fb, const char* str)
         interpreter_context_deinit(&ctx);
         goto end;
     }
-    result = ctx.proc_scope;
+    result = interpreter_deinit_and_get_context(&ctx);
 
 end:
     ASTCtx_delete(ast);

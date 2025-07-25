@@ -93,6 +93,12 @@ __attribute__((destructor)) static void __deinit(void)
         bhex_free(strbuilder_finalize(err_sb));
 }
 
+__attribute__((unused)) static void reset_global_state()
+{
+    bhex_free(strbuilder_reset(sb));
+    bhex_free(strbuilder_reset(err_sb));
+}
+
 __attribute__((unused)) static int
 exec_commands_on_ex(const char* s, DummyFilebuffer* dummyfb, int split)
 {
@@ -101,11 +107,9 @@ exec_commands_on_ex(const char* s, DummyFilebuffer* dummyfb, int split)
         panic("exec_commands: s is too long");
     strcpy(tmp, s);
 
-    // reset the state, just in case
     fb_seek(dummyfb->fb, 0);
     fb_undo_all(dummyfb->fb);
-    bhex_free(strbuilder_reset(sb));
-    bhex_free(strbuilder_reset(err_sb));
+    reset_global_state();
 
     char* cmd = tmp;
     if (split)

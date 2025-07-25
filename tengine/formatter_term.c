@@ -22,6 +22,7 @@ typedef struct FormatterTerm {
     u32_t print_off;
     // array print context
     int is_first_element;
+    int skip_next;
     int last_array_type_was_builtin;
     int prev_array_type_was_builtin;
 } FormatterTerm;
@@ -71,8 +72,9 @@ static void fmt_term_process_buffer_value(FormatterTerm* this, FileBuffer* fb,
 static void fmt_term_process_value(FormatterTerm* this, TEngineValue* val,
                                    const u8_t* data, u64_t size)
 {
-    if (this->super->quiet_mode)
+    if (this->super->quiet_mode || this->skip_next)
         return;
+    this->skip_next = 0;
 
     if (val->t == TENGINE_ARRAY || val->t == TENGINE_OBJ ||
         val->t == TENGINE_BUF)
@@ -98,15 +100,23 @@ void fmt_term_start_array(FormatterTerm* this, const Type* ty)
 void fmt_term_notify_array_el(FormatterTerm* this, u64_t n)
 {
     if (this->last_array_type_was_builtin) {
+        if (n >= MAX_ARR_PRINT_SIZE) {
+            this->skip_next = 1;
+            if (n == MAX_ARR_PRINT_SIZE && !this->super->quiet_mode)
+                display_printf(", ...");
+            return;
+        }
         if (!this->is_first_element && !this->super->quiet_mode)
             display_printf(", ");
         this->is_first_element = 0;
         return;
     }
 
-    display_printf("\n          ");
-    fmt_term_print_off(this);
-    display_printf("[%llu]", n);
+    if (!this->super->quiet_mode) {
+        display_printf("\n           ");
+        fmt_term_print_off(this);
+        display_printf("[%llu]", n);
+    }
 }
 
 void fmt_term_end_array(FormatterTerm* this)
