@@ -3,6 +3,7 @@
 
 #include <filebuffer.h>
 #include <strbuilder.h>
+#include "formatter.h"
 #include "ast.h"
 
 typedef enum Endianess { TE_LITTLE_ENDIAN = 40, TE_BIG_ENDIAN } Endianess;
@@ -19,14 +20,9 @@ typedef struct InterpreterContext {
     ASTCtx*       ast;
     u64_t         initial_off;
     struct Scope* proc_scope;
+    Formatter*    fmt;
 
-    u32_t alignment_off;
-    u32_t print_off;
-
-    Endianess endianess;
-    int       print_in_hex;
-    int       quiet_mode;
-
+    Endianess             endianess;
     Stmt*                 curr_stmt;
     InterpreterException* exc;
     int                   break_allowed;

@@ -21,10 +21,11 @@ int TEST(use_struct_of_another_file)(void)
     const char* prog = "net#eth_header a;";
     // clang-format off
     const char* expected = 
+        "\n"
         "b+00000000           a: \n"
         "b+00000000                            dst: 7f454c460101\n"
         "b+00000006                            src: 010000000000\n"
-        "b+0000000c                           type: ETH_TYPE_INVALID_ZERO\n";
+        "b+0000000c                           type: ETH_TYPE_INVALID_ZERO";
     // clang-format on
 
     int        r  = TEST_FAILED;
@@ -41,7 +42,7 @@ int TEST(use_struct_of_another_file)(void)
     }
 
     char* out = strbuilder_reset(sb);
-    r         = compare_strings_ignoring_X(expected, out);
+    r = compare_strings_ignoring_X(expected, out);
     bhex_free(out);
 end:
     tengine_vm_destroy(vm);
@@ -55,6 +56,7 @@ int TEST(use_complex_struct_of_another_file)(void)
     const char* prog = "elf#Elf_Ehdr h;";
     // clang-format off
     const char* expected = 
+        "\n"
         "b+00000000         h: \n"
         "b+00000000                   e_ident: \n"
         "b+00000000                        ei_mag: 7f454c46\n"
@@ -77,7 +79,7 @@ int TEST(use_complex_struct_of_another_file)(void)
         "b+0000002c                   e_phnum: 0002\n"
         "b+0000002e               e_shentsize: 0028\n"
         "b+00000030                   e_shnum: 0004\n"
-        "b+00000032                e_shstrndx: 0003\n";
+        "b+00000032                e_shstrndx: 0003";
     // clang-format on
 
     int        r  = TEST_FAILED;
@@ -106,7 +108,8 @@ int TEST(use_enum_of_another_file)(void)
     const char* prog = "fwd(0x12); elf#ElfMachine m;";
     // clang-format off
     const char* expected =
-        "b+00000012           m: EM_386\n";
+        "\n"
+        "b+00000012           m: EM_386";
     // clang-format on
 
     int        r  = TEST_FAILED;
@@ -132,7 +135,8 @@ int TEST(template_tcp)(void)
 {
     // clang-format off
     const char* prog = "net#eth_header eth; net#ipv4_header ip; net#tcp_header tcp;";
-    const char* expected = 
+    const char* expected =
+        "\n"
         "b+00000000          eth: \n"
         "b+00000000                            dst: d4925e9eae53\n"
         "b+00000006                            src: e0d4e86835e9\n"
@@ -157,7 +161,7 @@ int TEST(template_tcp)(void)
         "b+0000002f                          flags: TCP_FLAG_ACK\n"
         "b+00000030                    window_size: 00fa\n"
         "b+00000032                       checksum: ca71\n"
-        "b+00000034                 urgent_pointer: 0000\n";
+        "b+00000034                 urgent_pointer: 0000";
     // clang-format on
 
     int              r   = TEST_SUCCEEDED;

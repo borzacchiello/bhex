@@ -24,4 +24,7 @@ typedef struct TEngineBuiltinFunc {
 
 const TEngineBuiltinFunc* get_builtin_func(const char* name);
 
+#define is_builtin_type(t) (get_builtin_type(t) != NULL)
+#define is_builtin_fun(t)  (get_builtin_func(t) != NULL)
+
 #endif

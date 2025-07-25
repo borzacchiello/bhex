@@ -108,8 +108,6 @@ static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
     char* bhe         = arg_str;
     int   r           = COMMAND_SILENT_ERROR;
 
-    display_printf("\n");
-
     if (mode == MODE_INTERPRET) {
         if (tengine_vm_process_string(ctx->vm, fb, arg_str) != 0) {
             goto end;
@@ -159,7 +157,7 @@ static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
 
     r = COMMAND_OK;
 end:
-    display_printf("\n");
+    display_printf("\n\n");
     fb_seek(fb, initial_off);
     return r;
 

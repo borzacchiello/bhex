@@ -2,6 +2,7 @@
 #include "builtin.h"
 #include "dlist.h"
 #include "filebuffer.h"
+#include "formatter.h"
 #include "strbuilder.h"
 #include "value.h"
 #include "scope.h"
@@ -16,13 +17,6 @@
 #include <map.h>
 
 #define MAX_ARR_PRINT_SIZE 16
-
-#define interpreter_printf(ctx, ...)                                           \
-    do {                                                                       \
-        if (!ctx->quiet_mode) {                                                \
-            display_printf(__VA_ARGS__);                                       \
-        }                                                                      \
-    } while (0)
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 
@@ -39,17 +33,6 @@ static int           eval_to_u64(InterpreterContext* ctx, Scope* scope, Expr* e,
                                  u64_t* o);
 static int           eval_to_str(InterpreterContext* ctx, Scope* scope, Expr* e,
                                  const char** o);
-
-static void interpreter_context_copy_state(InterpreterContext* dst,
-                                           InterpreterContext* src)
-{
-    dst->alignment_off = src->alignment_off;
-    dst->endianess     = src->endianess;
-    dst->print_in_hex  = src->print_in_hex;
-    dst->print_off     = src->print_off;
-    dst->initial_off   = src->initial_off;
-    dst->ast           = src->ast;
-}
 
 void tengine_raise_exception(InterpreterContext* ctx, const char* fmt, ...)
 {
@@ -70,15 +53,6 @@ void tengine_raise_exception(InterpreterContext* ctx, const char* fmt, ...)
 
 void tengine_raise_exit_request(InterpreterContext* ctx) { ctx->halt = 1; }
 
-static void value_pp(InterpreterContext* e, u32_t off, TEngineValue* v)
-{
-    char* value_str = TEngineValue_tostring(v, e->print_in_hex);
-    if (off && count_chars_in_str(value_str, '\n'))
-        value_str = str_indent(value_str, off);
-    interpreter_printf(e, "%s", value_str);
-    bhex_free(value_str);
-}
-
 static Block* get_struct_body(ASTCtx* ast, const char* name)
 {
     if (!map_contains(ast->structs, name))
@@ -95,8 +69,8 @@ static Enum* get_enum(ASTCtx* ast, const char* name)
 
 static map* process_struct_type(InterpreterContext* ctx, Type* type)
 {
-    InterpreterContext saved_state;
-    interpreter_context_copy_state(&saved_state, ctx);
+    ASTCtx* saved_ast           = ctx->ast;
+    u32_t   saved_max_ident_len = ctx->fmt->max_ident_len;
 
     map* result = NULL;
     if (type->bhe_name != NULL) {
@@ -106,7 +80,8 @@ static map* process_struct_type(InterpreterContext* ctx, Type* type)
         }
 
         // from now on, and while parsing this type, use this AST
-        ctx->ast = imported_cb(imported_ptr, type->bhe_name);
+        ctx->ast                = imported_cb(imported_ptr, type->bhe_name);
+        ctx->fmt->max_ident_len = ctx->ast->max_ident_len;
     }
     if (!ctx->ast)
         return NULL;
@@ -116,17 +91,15 @@ static map* process_struct_type(InterpreterContext* ctx, Type* type)
         goto end;
 
     Scope* scope = Scope_new();
-    interpreter_printf(ctx, "\n");
-    ctx->print_off += 4;
     if (process_stmts_no_exc(ctx, body->stmts, scope) != 0) {
         Scope_free(scope);
         goto end;
     }
-    ctx->print_off -= 4;
     result = Scope_free_and_get_filevars(scope);
 
 end:
-    interpreter_context_copy_state(ctx, &saved_state);
+    ctx->ast                = saved_ast;
+    ctx->fmt->max_ident_len = saved_max_ident_len;
     return result;
 }
 
@@ -187,9 +160,7 @@ static TEngineValue* process_type(InterpreterContext* ctx, const char* varname,
             TEngineValue* r = t->process(ctx);
             if (r == NULL)
                 return NULL;
-
-            value_pp(ctx, ctx->print_off, r);
-            interpreter_printf(ctx, "\n");
+            fmt_process_value(ctx->fmt, r);
             return r;
         }
     }
@@ -204,8 +175,7 @@ static TEngineValue* process_type(InterpreterContext* ctx, const char* varname,
     const char* enum_var = process_enum_type(ctx, type, &econst);
     if (enum_var != NULL) {
         TEngineValue* v = TEngineValue_ENUM_VALUE_new(enum_var, econst);
-        value_pp(ctx, ctx->print_off, v);
-        interpreter_printf(ctx, "\n");
+        fmt_process_value(ctx->fmt, v);
         return v;
     }
 
@@ -629,63 +599,43 @@ static int process_array_type(InterpreterContext* ctx, const char* varname,
                 return 1;
             memcpy(tmp, buf, size);
             *oval = TEngineValue_STRING_new(tmp, size);
-            value_pp(ctx, ctx->print_off, *oval);
-            interpreter_printf(ctx, "\n");
+            fmt_process_value(ctx->fmt, *oval);
             bhex_free(tmp);
             fb_seek(ctx->fb, final_off);
             return 0;
         }
         if (strcmp(type->name, "u8") == 0) {
             // Special case, buf
-            u64_t       final_off     = ctx->fb->off + size;
-            u64_t       size_to_print = min(MAX_ARR_PRINT_SIZE, size);
-            const u8_t* buf           = fb_read(ctx->fb, size_to_print);
-            if (buf == NULL)
-                return 1;
-            for (u64_t i = 0; i < size_to_print; ++i)
-                interpreter_printf(ctx, "%02x", buf[i]);
-            if (size_to_print < size)
-                interpreter_printf(ctx, "...");
-            interpreter_printf(ctx, "\n");
-
-            *oval = TEngineValue_BUF_new(ctx->fb->off, size);
+            u64_t final_off = ctx->fb->off + size;
+            *oval           = TEngineValue_BUF_new(ctx->fb->off, size);
+            fmt_process_buffer_value(ctx->fmt, ctx->fb, size);
             fb_seek(ctx->fb, final_off);
             return 0;
         }
+
+        fmt_start_array(ctx->fmt, type);
         const TEngineBuiltinType* t = get_builtin_type(type->name);
         if (t != NULL) {
             // A builtin type
             *oval = TEngineValue_ARRAY_new();
 
-            u64_t printed = 0;
-            interpreter_printf(ctx, "[ ");
-            while (printed < size) {
+            for (u64_t i = 0; i < size; ++i) {
                 TEngineValue* val = t->process(ctx);
                 if (val == NULL)
                     return 1;
-                if (printed++ < MAX_ARR_PRINT_SIZE) {
-                    value_pp(ctx, ctx->print_off, val);
-                    if (printed <= size - 1)
-                        interpreter_printf(ctx, ", ");
-                }
-                if (printed == MAX_ARR_PRINT_SIZE && printed < size)
-                    interpreter_printf(ctx, "...");
+                fmt_notify_array_el(ctx->fmt, i);
+                fmt_process_value(ctx->fmt, val);
                 TEngineValue_ARRAY_append(*oval, val);
             }
-            interpreter_printf(ctx, " ]\n");
+            fmt_end_array(ctx->fmt);
             return 0;
         }
     }
 
     // Array of custom type
-    u64_t printed = 0;
-    *oval         = TEngineValue_ARRAY_new();
-
-    interpreter_printf(ctx, "\n");
-    for (u32_t i = 0; i < ctx->print_off + 11 + ctx->alignment_off; ++i)
-        interpreter_printf(ctx, " ");
-    interpreter_printf(ctx, "[%lld]", printed);
-    for (printed = 0; printed < size; ++printed) {
+    *oval = TEngineValue_ARRAY_new();
+    for (u64_t i = 0; i < size; ++i) {
+        fmt_notify_array_el(ctx->fmt, i);
         map* custom_type_vars = process_struct_type(ctx, type);
         if (custom_type_vars == NULL) {
             tengine_raise_exception(ctx, "unknown type %s", type->name);
@@ -693,26 +643,18 @@ static int process_array_type(InterpreterContext* ctx, const char* varname,
             *oval = NULL;
             return 1;
         }
-        if (printed < size - 1) {
-            for (u32_t i = 0; i < ctx->print_off + 11 + ctx->alignment_off; ++i)
-                interpreter_printf(ctx, " ");
-            interpreter_printf(ctx, "[%lld]", printed + 1);
-        }
 
         TEngineValue* el = TEngineValue_OBJ_new(custom_type_vars);
         TEngineValue_ARRAY_append(*oval, el);
     }
+    fmt_end_array(ctx->fmt);
     return 0;
 }
 
 static int process_FILE_VAR_DECL(InterpreterContext* ctx, Stmt* stmt,
                                  Scope* scope)
 {
-    interpreter_printf(ctx, "b+%08llx ", ctx->fb->off - ctx->initial_off);
-    for (u32_t i = 0; i < ctx->print_off; ++i)
-        interpreter_printf(ctx, " ");
-    interpreter_printf(ctx, " %*s: ", ctx->ast->max_ident_len, stmt->name);
-
+    fmt_start_var(ctx->fmt, stmt->name, ctx->fb->off - ctx->initial_off);
     if (stmt->arr_size == NULL) {
         // Not an array
         TEngineValue* val = process_type(ctx, stmt->name, stmt->type, scope);
@@ -729,6 +671,7 @@ static int process_FILE_VAR_DECL(InterpreterContext* ctx, Stmt* stmt,
             panic("[tengine] process_array_type did not valorize an array");
         Scope_add_filevar(scope, stmt->name, val);
     }
+    fmt_end_var(ctx->fmt);
     return 0;
 }
 
@@ -945,19 +888,21 @@ static void interpreter_context_init(InterpreterContext* ctx, ASTCtx* ast,
                                      FileBuffer* fb)
 {
     memset(ctx, 0, sizeof(InterpreterContext));
-    ctx->ast           = ast;
-    ctx->alignment_off = ast->max_ident_len;
-    ctx->fb            = fb;
-    ctx->proc_scope    = Scope_new();
-    ctx->endianess     = TE_LITTLE_ENDIAN;
-    ctx->print_in_hex  = 1;
+    ctx->ast                = ast;
+    ctx->fb                 = fb;
+    ctx->proc_scope         = Scope_new();
+    ctx->endianess          = TE_LITTLE_ENDIAN;
+    ctx->fmt                = fmt_new(FMT_TERM);
+    ctx->fmt->max_ident_len = ast->max_ident_len;
+    ctx->fmt->print_in_hex  = 1;
 }
 
-static void interpreter_context_deinit(InterpreterContext* ictx)
+static void interpreter_context_deinit(InterpreterContext* ctx)
 {
-    Scope_free(ictx->proc_scope);
-    if (ictx->exc) {
-        bhex_free(strbuilder_finalize(ictx->exc->sb));
+    Scope_free(ctx->proc_scope);
+    fmt_dispose(ctx->fmt);
+    if (ctx->exc) {
+        bhex_free(strbuilder_finalize(ctx->exc->sb));
     }
 }
 
@@ -1071,7 +1016,7 @@ int tengine_interpreter_process_ast_named_proc(FileBuffer* fb, ASTCtx* ast,
 {
     InterpreterContext ctx = {0};
     interpreter_context_init(&ctx, ast, fb);
-    ctx.quiet_mode = 1;
+    ctx.fmt->quiet_mode = 1;
 
     int r = 1;
     if (!map_contains(ast->named_procs, s)) {
@@ -1085,35 +1030,4 @@ int tengine_interpreter_process_ast_named_proc(FileBuffer* fb, ASTCtx* ast,
 end:
     interpreter_context_deinit(&ctx);
     return r;
-}
-
-void tengine_interpreter_pp(InterpreterContext* e)
-{
-    int orig_quiet_mode = e->quiet_mode;
-    e->quiet_mode       = 0;
-
-    printf("InterpreterContext\n\n");
-    ASTCtx_pp(e->ast);
-
-    printf("\nProc File Variables\n");
-    printf("=========\n");
-    for (const char* key = map_first(e->proc_scope->filevars); key != NULL;
-         key             = map_next(e->proc_scope->filevars, key)) {
-        printf("%s ", key);
-        TEngineValue* v = map_get(e->proc_scope->filevars, key);
-        value_pp(e, 0, v);
-    }
-    printf("\n");
-
-    printf("\nProc Local Variables\n");
-    printf("=========\n");
-    for (const char* key = map_first(e->proc_scope->locals); key != NULL;
-         key             = map_next(e->proc_scope->locals, key)) {
-        printf("%s ", key);
-        TEngineValue* v = map_get(e->proc_scope->locals, key);
-        value_pp(e, 0, v);
-    }
-    printf("\n");
-
-    e->quiet_mode = orig_quiet_mode;
 }

@@ -1,0 +1,139 @@
+#include "formatter_term.h"
+#include "filebuffer.h"
+#include "formatter.h"
+#include "builtin.h"
+#include "value.h"
+#include "defs.h"
+
+#include <display.h>
+#include <alloc.h>
+#include <log.h>
+#include <ll.h>
+
+#define min(x, y) ((x) < (y) ? (x) : (y))
+
+#define PRINT_OFF_STEP     4
+#define MAX_ARR_PRINT_SIZE 16
+#define MAX_BUF_PRINT      16
+
+typedef struct FormatterTerm {
+    Formatter* super;
+
+    u32_t print_off;
+    // array print context
+    int is_first_element;
+    int last_array_type_was_builtin;
+    int prev_array_type_was_builtin;
+} FormatterTerm;
+
+static void fmt_term_print_off(FormatterTerm* this)
+{
+    for (u32_t i = 0; i < this->print_off; ++i)
+        display_printf(" ");
+}
+
+static void fmt_term_dispose(FormatterTerm* fmt) { bhex_free(fmt); }
+
+static void fmt_term_start_var(FormatterTerm* this, const char* name, u64_t off)
+{
+    if (!this->super->quiet_mode) {
+        display_printf("\nb+%08llx ", off);
+        fmt_term_print_off(this);
+        display_printf(" %*s: ", this->super->max_ident_len, name);
+    }
+    this->print_off += PRINT_OFF_STEP;
+}
+
+static void fmt_term_end_var(FormatterTerm* this)
+{
+    if (this->print_off < PRINT_OFF_STEP)
+        panic("no var to end");
+
+    this->print_off -= PRINT_OFF_STEP;
+}
+
+static void fmt_term_process_buffer_value(FormatterTerm* this, FileBuffer* fb,
+                                          u64_t size)
+{
+    if (this->super->quiet_mode)
+        return;
+
+    const u8_t* buf = fb_read(fb, min(size, MAX_BUF_PRINT));
+
+    u32_t i = 0;
+    for (; i < min(size, MAX_BUF_PRINT); ++i) {
+        display_printf("%02x", buf[i]);
+    }
+    if (i < size)
+        display_printf("...");
+}
+
+static void fmt_term_process_value(FormatterTerm* this, TEngineValue* val,
+                                   const u8_t* data, u64_t size)
+{
+    if (this->super->quiet_mode)
+        return;
+
+    if (val->t == TENGINE_ARRAY || val->t == TENGINE_OBJ ||
+        val->t == TENGINE_BUF)
+        panic("process value called with an unexpected type");
+
+    char* value_str = TEngineValue_tostring(val, this->super->print_in_hex);
+    display_printf("%s", value_str);
+    bhex_free(value_str);
+}
+
+void fmt_term_start_array(FormatterTerm* this, const Type* ty)
+{
+    if (!this->super->quiet_mode)
+        display_printf("[ ");
+
+    this->is_first_element            = 1;
+    this->prev_array_type_was_builtin = this->last_array_type_was_builtin;
+    this->last_array_type_was_builtin = is_builtin_type(ty->name);
+    if (this->last_array_type_was_builtin)
+        this->print_off += PRINT_OFF_STEP;
+}
+
+void fmt_term_notify_array_el(FormatterTerm* this, u64_t n)
+{
+    if (this->last_array_type_was_builtin) {
+        if (!this->is_first_element && !this->super->quiet_mode)
+            display_printf(", ");
+        this->is_first_element = 0;
+        return;
+    }
+
+    display_printf("\n          ");
+    fmt_term_print_off(this);
+    display_printf("[%llu]", n);
+}
+
+void fmt_term_end_array(FormatterTerm* this)
+{
+    if (!this->super->quiet_mode)
+        display_printf(" ]");
+    if (this->last_array_type_was_builtin) {
+        if (this->print_off < PRINT_OFF_STEP)
+            panic("no array to end");
+        this->print_off -= PRINT_OFF_STEP;
+    }
+    this->last_array_type_was_builtin = this->prev_array_type_was_builtin;
+}
+
+void fmt_term_new(Formatter* obj)
+{
+    FormatterTerm* this = bhex_calloc(sizeof(FormatterTerm));
+    this->super         = obj;
+
+    obj->this              = this;
+    obj->fmt_dispose       = (fmt_dispose_t)fmt_term_dispose;
+    obj->fmt_start_var     = (fmt_start_var_t)fmt_term_start_var;
+    obj->fmt_end_var       = (fmt_end_var_t)fmt_term_end_var;
+    obj->fmt_process_value = (fmt_process_value_t)fmt_term_process_value;
+    obj->fmt_process_buffer_value =
+        (fmt_process_buffer_value_t)fmt_term_process_buffer_value;
+    obj->fmt_start_array     = (fmt_start_array_t)fmt_term_start_array;
+    obj->fmt_notify_array_el = (fmt_notify_array_el_t)fmt_term_notify_array_el;
+    obj->fmt_end_array       = (fmt_end_array_t)fmt_term_end_array;
+}

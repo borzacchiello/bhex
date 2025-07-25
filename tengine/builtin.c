@@ -325,7 +325,7 @@ static TEngineValue* builtin_nums_in_hex(InterpreterContext* ctx, DList* params)
         return NULL;
     }
 
-    ctx->print_in_hex = 1;
+    ctx->fmt->print_in_hex = 1;
     return NULL;
 }
 
@@ -336,7 +336,7 @@ static TEngineValue* builtin_nums_in_dec(InterpreterContext* ctx, DList* params)
         return NULL;
     }
 
-    ctx->print_in_hex = 0;
+    ctx->fmt->print_in_hex = 0;
     return NULL;
 }
 
@@ -348,7 +348,7 @@ static TEngineValue* builtin_disable_print(InterpreterContext* ctx,
         return NULL;
     }
 
-    ctx->quiet_mode = 1;
+    ctx->fmt->quiet_mode = 1;
     return NULL;
 }
 
@@ -360,7 +360,7 @@ static TEngineValue* builtin_enable_print(InterpreterContext* ctx,
         return NULL;
     }
 
-    ctx->quiet_mode = 0;
+    ctx->fmt->quiet_mode = 0;
     return NULL;
 }
 
