@@ -102,8 +102,7 @@ int TEST(template_elf)(void)
         "b+00000138                   sh_info: 00000000\n"
         "b+0000013c              sh_addralign: 00000001\n"
         "b+00000140                sh_entsize: 00000000\n"
-        "b+0000008d            PrevShName: '.shstrtab'\n"
-        "\n";
+        "b+0000008d            PrevShName: '.shstrtab'\n";
     // clang-format on
 
     int r = TEST_FAILED;
@@ -244,8 +243,7 @@ int TEST(template_pe)(void)
         "b+000000be               NumberOfLinenumbers: 0046\n"
         "b+000000c0                   Characteristics: CNT_INITIALIZED_DATA[!] section size [ 258 ] is greater than remaining size [ 120 ], trimming \n"
         "\n"
-        "b+00000094                   SectionData: f4000000180000002e004c8d42c8ebe8...\n"
-        "\n";
+        "b+00000094                   SectionData: f4000000180000002e004c8d42c8ebe8...\n";
     // clang-format on
 
     int r = TEST_FAILED;
@@ -617,7 +615,6 @@ int TEST(template_zip)(void)
         "b+00000189                                             size: 04\n"
         "b+0000018a                                            value: 00000014\n"
         "b+0000018e                                 data: 636f6e74656e74203132330a \n"
-        "\n"
         "\n";
     // clang-format on
 

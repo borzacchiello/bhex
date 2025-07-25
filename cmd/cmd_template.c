@@ -147,7 +147,9 @@ static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
         if (tengine_vm_process_bhe_struct(ctx->vm, fb, tname, sname) != 0) {
             goto end;
         }
+        display_printf("\n");
     } else if (tengine_vm_has_bhe_proc(ctx->vm, tname, sname)) {
+        display_printf("\n");
         if (tengine_vm_process_bhe_proc(ctx->vm, fb, tname, sname) != 0) {
             goto end;
         }
@@ -157,7 +159,7 @@ static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
 
     r = COMMAND_OK;
 end:
-    display_printf("\n\n");
+    display_printf("\n");
     fb_seek(fb, initial_off);
     return r;
 
