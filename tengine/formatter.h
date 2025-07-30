@@ -6,8 +6,9 @@
 #include "value.h"
 #include <defs.h>
 
-typedef void (*fmt_start_var_t)(void* this, const char* name, u64_t off);
-typedef void (*fmt_end_var_t)(void* this);
+typedef void (*fmt_start_var_t)(void* this, const char* name,
+                                const char* tyname, u64_t off);
+typedef void (*fmt_end_var_t)(void* this, const char* name);
 typedef void (*fmt_process_value_t)(void* this, TEngineValue* val);
 typedef void (*fmt_process_buffer_value_t)(void* this, FileBuffer* buf,
                                            u64_t size);
@@ -19,6 +20,7 @@ typedef void (*fmt_dispose_t)(void* obj);
 typedef enum fmt_t {
     FMT_UNK  = 0,
     FMT_TERM = 1,
+    FMT_XML  = 2,
 } fmt_t;
 
 typedef struct Formatter {
@@ -40,9 +42,9 @@ typedef struct Formatter {
 Formatter* fmt_new(fmt_t type);
 void       fmt_dispose(Formatter* fmt);
 
-#define fmt_start_var(obj, n, o)  (obj)->fmt_start_var(obj->this, n, o)
-#define fmt_end_var(obj)          (obj)->fmt_end_var(obj->this)
-#define fmt_process_value(obj, v) (obj)->fmt_process_value(obj->this, v)
+#define fmt_start_var(obj, n, t, o) (obj)->fmt_start_var(obj->this, n, t, o)
+#define fmt_end_var(obj, n)         (obj)->fmt_end_var(obj->this, n)
+#define fmt_process_value(obj, v)   (obj)->fmt_process_value(obj->this, v)
 #define fmt_process_buffer_value(obj, f, s)                                    \
     (obj)->fmt_process_buffer_value(obj->this, f, s)
 #define fmt_start_array(obj, t)     (obj)->fmt_start_array(obj->this, t)

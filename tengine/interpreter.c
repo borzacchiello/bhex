@@ -20,6 +20,7 @@
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 
+static fmt_t         format_type  = FMT_TERM;
 static void*         imported_ptr = NULL;
 static imported_cb_t imported_cb  = NULL;
 
@@ -33,6 +34,8 @@ static int           eval_to_u64(InterpreterContext* ctx, Scope* scope, Expr* e,
                                  u64_t* o);
 static int           eval_to_str(InterpreterContext* ctx, Scope* scope, Expr* e,
                                  const char** o);
+
+void tengine_interpreter_set_fmt_type(fmt_t t) { format_type = t; }
 
 void tengine_raise_exception(InterpreterContext* ctx, const char* fmt, ...)
 {
@@ -654,7 +657,8 @@ static int process_array_type(InterpreterContext* ctx, const char* varname,
 static int process_FILE_VAR_DECL(InterpreterContext* ctx, Stmt* stmt,
                                  Scope* scope)
 {
-    fmt_start_var(ctx->fmt, stmt->name, ctx->fb->off - ctx->initial_off);
+    fmt_start_var(ctx->fmt, stmt->name, stmt->type->name,
+                  ctx->fb->off - ctx->initial_off);
     if (stmt->arr_size == NULL) {
         // Not an array
         TEngineValue* val = process_type(ctx, stmt->name, stmt->type, scope);
@@ -671,7 +675,7 @@ static int process_FILE_VAR_DECL(InterpreterContext* ctx, Stmt* stmt,
             panic("[tengine] process_array_type did not valorize an array");
         Scope_add_filevar(scope, stmt->name, val);
     }
-    fmt_end_var(ctx->fmt);
+    fmt_end_var(ctx->fmt, stmt->name);
     return 0;
 }
 
@@ -892,7 +896,7 @@ static void interpreter_context_init(InterpreterContext* ctx, ASTCtx* ast,
     ctx->fb                 = fb;
     ctx->proc_scope         = Scope_new();
     ctx->endianess          = TE_LITTLE_ENDIAN;
-    ctx->fmt                = fmt_new(FMT_TERM);
+    ctx->fmt                = fmt_new(format_type);
     ctx->fmt->max_ident_len = ast->max_ident_len;
     ctx->fmt->print_in_hex  = 1;
 }

@@ -22,6 +22,8 @@ static ASTCtx* tengine_vm_process_imported(TEngineVM* vm, const char* bhe)
 
 TEngineVM* tengine_vm_create(const char** dirs)
 {
+    tengine_interpreter_set_fmt_type(FMT_TERM);
+
     TEngineVM* ctx = bhex_calloc(sizeof(TEngineVM));
     ctx->templates = map_create();
     map_set_dispose(ctx->templates, (void (*)(void*))ASTCtx_delete);
@@ -81,6 +83,8 @@ TEngineVM* tengine_vm_create(const char** dirs)
         (imported_cb_t)tengine_vm_process_imported, ctx);
     return ctx;
 }
+
+void tengine_vm_set_fmt_type(fmt_t t) { tengine_interpreter_set_fmt_type(t); }
 
 int tengine_vm_add_template(TEngineVM* ctx, const char* name, const char* path)
 {

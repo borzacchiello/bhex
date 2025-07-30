@@ -3,6 +3,8 @@
 
 #include <filebuffer.h>
 #include <map.h>
+
+#include "formatter.h"
 #include "ast.h"
 
 typedef struct TEngineVM {
@@ -11,6 +13,8 @@ typedef struct TEngineVM {
 
 TEngineVM* tengine_vm_create(const char** dirs);
 void       tengine_vm_destroy(TEngineVM* ctx);
+
+void tengine_vm_set_fmt_type(fmt_t t);
 
 int tengine_vm_add_template(TEngineVM* ctx, const char* name, const char* path);
 

@@ -10,9 +10,10 @@
 #include <log.h>
 #include "cmd.h"
 
-#define HINT_STR       "[/l/i] <name or file>"
+#define HINT_STR       "[/l/i/x] <name or file>"
 #define MODE_LIST      0
 #define MODE_INTERPRET 1
+#define XML_SET        0
 
 static const char* search_folders[]       = {"/usr/local/share/bhex/templates",
                                              "../templates", ".", NULL};
@@ -33,6 +34,7 @@ static void templatecmd_help(void* obj)
         "\n"
         "  t" HINT_STR "\n"
         "     l: list available templates and structs\n"
+        "     x: output in XML\n"
         "     i: interpret inline code\n"
         "\n"
         "  arg: its meaning depends on the mode. It could be\n"
@@ -82,7 +84,8 @@ static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
         return COMMAND_INVALID_ARG;
 
     int mode = -1;
-    if (handle_mods(pc, "l,i", &mode) != 0)
+    int xml  = -1;
+    if (handle_mods(pc, "l,i|x", &mode, &xml) != 0)
         return COMMAND_INVALID_MOD;
 
     if (mode == MODE_LIST) {
@@ -103,6 +106,9 @@ static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
 
     if (arg_str == NULL)
         return COMMAND_INVALID_ARG;
+
+    if (xml == XML_SET)
+        tengine_vm_set_fmt_type(FMT_XML);
 
     u64_t initial_off = fb->off;
     char* bhe         = arg_str;
@@ -161,6 +167,7 @@ static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
 end:
     display_printf("\n");
     fb_seek(fb, initial_off);
+    tengine_vm_set_fmt_type(FMT_TERM);
     return r;
 
 err:

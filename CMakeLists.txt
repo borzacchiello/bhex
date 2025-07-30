@@ -105,7 +105,8 @@ set(tengine_src
     tengine/vm.c
     tengine/value.c
     tengine/formatter.c
-    tengine/formatter_term.c)
+    tengine/formatter_term.c
+    tengine/formatter_xml.c)
 
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -Wall -ffunction-sections")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wall -ffunction-sections")

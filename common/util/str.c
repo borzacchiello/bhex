@@ -1,4 +1,5 @@
 #include "str.h"
+#include "defs.h"
 
 #include <string.h>
 #include <alloc.h>
@@ -147,6 +148,24 @@ size_t count_chars_in_str(char* s, char c)
         if (*s++ == c)
             n += 1;
     return n;
+}
+
+void strip_chars(char* s, const char* chars)
+{
+    size_t i    = 0;
+    size_t size = strlen(s);
+    while (i < size) {
+        const char* curr = chars;
+        while (*curr) {
+            if (*curr == s[i]) {
+                memmove(&s[i], &s[i + 1], size - i);
+                size -= 1;
+                break;
+            }
+            curr++;
+        }
+        i += 1;
+    }
 }
 
 char* str_indent(char* s, u32_t spaces)

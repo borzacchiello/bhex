@@ -35,7 +35,7 @@ static void fmt_term_print_off(FormatterTerm* this)
 
 static void fmt_term_dispose(FormatterTerm* fmt) { bhex_free(fmt); }
 
-static void fmt_term_start_var(FormatterTerm* this, const char* name, u64_t off)
+static void fmt_term_start_var(FormatterTerm* this, const char* name, const char* tyname, u64_t off)
 {
     if (!this->super->quiet_mode) {
         display_printf("\nb+%08llx ", off);
@@ -45,7 +45,7 @@ static void fmt_term_start_var(FormatterTerm* this, const char* name, u64_t off)
     this->print_off += PRINT_OFF_STEP;
 }
 
-static void fmt_term_end_var(FormatterTerm* this)
+static void fmt_term_end_var(FormatterTerm* this, const char* name)
 {
     if (this->print_off < PRINT_OFF_STEP)
         panic("no var to end");
@@ -69,8 +69,7 @@ static void fmt_term_process_buffer_value(FormatterTerm* this, FileBuffer* fb,
         display_printf("...");
 }
 
-static void fmt_term_process_value(FormatterTerm* this, TEngineValue* val,
-                                   const u8_t* data, u64_t size)
+static void fmt_term_process_value(FormatterTerm* this, TEngineValue* val)
 {
     if (this->super->quiet_mode || this->skip_next)
         return;

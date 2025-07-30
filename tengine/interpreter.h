@@ -30,6 +30,8 @@ typedef struct InterpreterContext {
     int                   breaked; // break in a loop
 } InterpreterContext;
 
+void tengine_interpreter_set_fmt_type(fmt_t t);
+
 int tengine_interpreter_process_filename(FileBuffer* fb, const char* bhe);
 int tengine_interpreter_process_file(FileBuffer* fb, FILE* f);
 int tengine_interpreter_process_ast(FileBuffer* fb, ASTCtx* ast);

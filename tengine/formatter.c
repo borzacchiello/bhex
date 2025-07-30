@@ -1,5 +1,6 @@
 #include "formatter.h"
 #include "formatter_term.h"
+#include "formatter_xml.h"
 
 #include <alloc.h>
 #include <log.h>
@@ -11,6 +12,9 @@ Formatter* fmt_new(fmt_t type)
     switch (type) {
         case FMT_TERM:
             fmt_term_new(obj);
+            break;
+        case FMT_XML:
+            fmt_xml_new(obj);
             break;
         default:
             bhex_free(obj);
