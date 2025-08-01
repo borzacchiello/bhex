@@ -365,7 +365,7 @@ static int sw_end_line(ScreenWriter* sw)
         return 1;
 
     size_t row_len = sw->cols - sw->curr_col;
-    char* new      = bhex_realloc(sw->lines, sw->len + row_len + 2);
+    char*  new     = bhex_realloc(sw->lines, sw->len + row_len + 2);
 
     for (size_t i = 0; i < row_len; ++i)
         new[sw->len++] = ' ';

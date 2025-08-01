@@ -1,3 +1,4 @@
+#include "dummy_filebuffer.h"
 #include "t_cmd_common.h"
 #include "t.h"
 
@@ -249,11 +250,10 @@ end:
 
 int TEST(insert_1)(void)
 {
-    return TEST_SUCCEEDED;
     const char* expected = "ABAD7F\n";
 
     int r = TEST_FAILED;
-    if (exec_commands("s 0; w/i/x ABAD ; p/r 3 ; u") != 0)
+    if (exec_commands("s 0; w/i/x ABAD ; p/r 3") != 0)
         goto end;
 
     char* out = strbuilder_reset(sb);
@@ -261,5 +261,129 @@ int TEST(insert_1)(void)
     bhex_free(out);
 
 end:
+    return r;
+}
+
+int TEST(insert_and_write_1)(void)
+{
+    const char* expected = "0F\n"
+                           "9F7F\n";
+
+    int r = TEST_FAILED;
+    if (exec_commands("s 0; w/i/x 0F ; p/r 1; w/x 9F; s 0; p/r 2") != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    return r;
+}
+
+int TEST(insert_and_write_2)(void)
+{
+    const char* expected = "01\n"
+                           "0F\n"
+                           "9F01\n";
+
+    int r = TEST_FAILED;
+    if (exec_commands("s 4; p/r 1; w/i/x 0F ; p/r 1; w/x 9F; s 4; p/r 2") != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    return r;
+}
+
+int TEST(insert_and_write_3)(void)
+{
+    const char* expected = "41414141414141414141414141414141\n"
+                           "41414141FD414141414141414141414141\n";
+
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create((const u8_t*)"AAAAAAAAAAAAAAAA", 16);
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("p/r 16; s 4; w/i/x 0D; w/x FD; s 0; p/r 17", tfb) !=
+        0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+}
+
+int TEST(insert_and_write_4)(void)
+{
+    const char* expected = "41414141414141414141414141414141\n"
+                           "41414141FDBBCC414141414141414141414141\n";
+
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create((const u8_t*)"AAAAAAAAAAAAAAAA", 16);
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("p/r 16; s 4; w/i/x 0DBBCC; w/x FD; s 0; p/r 19",
+                         tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+}
+
+int TEST(insert_and_write_5)(void)
+{
+    const char* expected = "41414141414141414141414141414141\n"
+                           "414141FDBB\n";
+
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create((const u8_t*)"AAAAAAAAAAAAAAAA", 16);
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("p/r 16; s 4; w/i/x 0DBBCC; w/x FD; s 1; p/r 5",
+                         tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+}
+
+int TEST(insert_and_write_6)(void)
+{
+    const char* expected = "41414141414141414141414141414141\n"
+                           "41414141FFFF414141414141414141414141\n";
+
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create((const u8_t*)"AAAAAAAAAAAAAAAA", 16);
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("p/r 16; s 4; w/i/x 0F; w/x FF; s 5; w/i/x 0F; w/x "
+                         "FF; s 0; p/r 18",
+                         tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
     return r;
 }

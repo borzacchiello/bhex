@@ -5,7 +5,6 @@
 #define TEST(name) test_##name
 #endif
 
-
 int TEST(delete_off_at_zero)(void)
 {
     const char* expected = "01010100\n";
@@ -67,5 +66,26 @@ int TEST(delete_partial)(void)
     bhex_free(out);
 
 end:
+    return r;
+}
+
+int TEST(delete_and_print_all_1)(void)
+{
+    const char* expected = "41414141414143444541414141414141\n"
+                           "41414141414141414141414141\n";
+
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create((const u8_t*)"AAAAAACDEAAAAAAA", 16);
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("p/r 16; s 6; d 3; s 0; p/r 13", tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
     return r;
 }

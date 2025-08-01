@@ -476,7 +476,6 @@ static int fb_read_internal(FileBuffer* fb, u64_t addr, u64_t fsize, u64_t idx,
                         // Get the data from the insertion
                         fb->block[off - addr + idx] = mod->data[off - mod->off];
                         block_map[off - addr + idx] = 1;
-                        size -= 1;
                     } else {
                         // To get the data past the insertion, read starting
                         // from the *next* modification with a shift equal to
@@ -529,12 +528,8 @@ static int fb_read_internal(FileBuffer* fb, u64_t addr, u64_t fsize, u64_t idx,
         error("fseek failed @ 0x%llx", addr);
         return 0;
     }
-    if (fread(tmp_block, 1, size, fb->file) != size) {
-        error("unable to read bytes in fb_read_internal, off=0x%llx, size=%ld",
-              addr, size);
-        return 0;
-    }
-    for (i = 0; i < size; ++i) {
+    size_t read_size = fread(tmp_block, 1, size, fb->file);
+    for (i = 0; i < read_size; ++i) {
         if (block_map[i + idx])
             continue;
         fb->block[i + idx] = tmp_block[i];
