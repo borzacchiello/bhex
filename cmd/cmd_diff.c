@@ -25,87 +25,103 @@ static void diffcmd_help(void* obj)
                    "  file: path to the file to compare\n\n");
 }
 
-static void print_diff(FileBuffer* self, FileBuffer* other, u64_t start,
-                       u64_t end)
-{
-    u64_t self_rst  = self->off;
-    u64_t other_rst = other->off;
-
-    u64_t addr = start;
-    while (addr < end) {
-        fb_seek(self, addr);
-        fb_seek(other, addr);
-        u64_t n = min(16, end - addr);
-
-        print_hex(fb_read(self, n), n, 0, 0, 0, addr);
-        bold_begin;
-        print_hex(fb_read(other, n), n, 0, 0, 0, addr);
-        bold_end;
-
-        addr += n;
-    }
-    display_printf(" ...\n");
-
-    // restore the read block buffer
-    fb_seek(self, self_rst);
-    fb_seek(other, other_rst);
-    u64_t size =
-        min(min(fb_block_size, self->size - self_rst), other->size - other_rst);
-    fb_read(self, size);
-    fb_read(other, size);
-}
-
 static void print_diffs(FileBuffer* self, FileBuffer* other, int print_diffs)
 {
     fb_seek(self, 0);
     fb_seek(other, 0);
 
-    if (print_diffs)
-        display_printf("\n");
+    if (print_diffs) {
+        display_printf("\n"
+                       "           "
+                       "00 01 02 03 04 05 06 07"
+                       "   "
+                       "00 01 02 03 04 05 06 07\n"
+                       "           "
+                       "-----------------------"
+                       "   "
+                       "-----------------------\n");
+    }
 
-    u64_t ndiffs     = 0;
-    u64_t off        = 0;
-    u64_t start_diff = 0;
-    u64_t end_diff   = 0;
+    u64_t     ndiffs      = 0;
+    u64_t     addr        = 0;
+    const int linelen     = 8;
+    int       was_skipped = 0;
     while (1) {
-        if (off >= self->size || off >= other->size)
+        if (addr >= self->size || addr >= other->size)
             break;
 
         u64_t size =
-            min(min(fb_block_size, self->size - off), other->size - off);
+            min(min(fb_block_size, self->size - addr), other->size - addr);
         const u8_t* self_block  = fb_read(self, size);
         const u8_t* other_block = fb_read(other, size);
-        for (u32_t i = 0; i < size; ++i) {
-            if (self_block[i] == other_block[i]) {
-                if (end_diff != start_diff && print_diffs) {
-                    print_diff(self, other, start_diff, end_diff);
-                }
 
-                end_diff = start_diff = 0;
-            } else {
-                if (start_diff == 0)
-                    end_diff = start_diff = off;
-                end_diff++;
-                ndiffs++;
+        u64_t off = 0;
+        while (1) {
+            if (off >= size)
+                break;
+            u64_t nbytes = min(linelen, size - off);
+            if (memcmp(&self_block[off], &other_block[off], nbytes) == 0) {
+                was_skipped = 1;
+                off += nbytes;
+                continue;
             }
-            off++;
-        }
 
-        fb_seek(self, off);
-        fb_seek(other, off);
+            for (u64_t i = 0; i < nbytes; ++i)
+                if (self_block[off + i] != other_block[off + i])
+                    ndiffs++;
+
+            if (print_diffs) {
+                if (was_skipped)
+                    display_printf("     *\n");
+                display_printf("%010llx ", (u64_t)(addr + off));
+                for (u64_t i = 0; i < linelen; ++i) {
+                    if (i >= nbytes) {
+                        display_printf("   ");
+                        continue;
+                    }
+                    if (self_block[off + i] != other_block[off + i])
+                        bold_begin;
+                    display_printf("%02X ", self_block[off + i]);
+                    if (self_block[off + i] != other_block[off + i])
+                        bold_end;
+                }
+                display_printf("  ");
+                for (u64_t i = 0; i < nbytes; ++i) {
+                    if (self_block[off + i] != other_block[off + i])
+                        bold_begin;
+                    display_printf("%02X ", other_block[off + i]);
+                    if (self_block[off + i] != other_block[off + i])
+                        bold_end;
+                }
+                display_printf("\n");
+                was_skipped = 0;
+            }
+            off += nbytes;
+        }
+        fb_seek(self, addr);
+        fb_seek(other, addr);
+        addr += size;
+    }
+    if (print_diffs) {
+        if (was_skipped)
+            display_printf("     *\n");
     }
 
-    if (end_diff != start_diff && print_diffs)
-        print_diff(self, other, start_diff, end_diff);
-
     display_printf("\n");
-    if (off < self->size)
+    if (addr < self->size)
         display_printf("current file is bigger\n");
-    if (off < other->size)
+    if (addr < other->size)
         display_printf("other file is bigger\n");
+    if (self->size == other->size)
+        display_printf("the files have the same size\n");
 
-    display_printf("%.03lf%% of current file is different\n\n",
-                   (double)ndiffs / (double)min(self->size, other->size) * 100);
+    if (ndiffs != 0) {
+        display_printf("common size is different [ difference %.03lf%% ]\n\n",
+                       (double)ndiffs / (double)min(self->size, other->size) *
+                           100);
+    } else {
+        display_printf("common size is identical\n");
+    }
 }
 
 static int diffcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)

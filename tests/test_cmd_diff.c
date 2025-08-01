@@ -14,8 +14,7 @@ int TEST(equal_smaller)(void)
     const char* expected =
         "\n"
         "current file is bigger\n"
-        "0.000% of current file is different\n"
-        "\n";
+        "common size is identical\n";
     // clang-format on
 
     char cmd[128] = {0};
@@ -40,7 +39,7 @@ int TEST(different_smaller)(void)
     const char* expected =
         "\n"
         "current file is bigger\n"
-        "4.167% of current file is different\n"
+        "common size is different [ difference 4.167% ]\n"
         "\n";
     // clang-format on
 
@@ -64,14 +63,16 @@ int TEST(different_smaller_print)(void)
 {
     // clang-format off
     const char* expected =
-           "\n"
-           " 000f: 00                                                .\n"
-bold_begin " 000f: FF                                                .\n" bold_end
-           " ...\n"
-           "\n"
-           "current file is bigger\n"
-           "4.167% of current file is different\n"
-           "\n";
+       "\n"
+        "           00 01 02 03 04 05 06 07   00 01 02 03 04 05 06 07\n"
+        "           -----------------------   -----------------------\n"
+        "     *\n"
+        "0000000008 00 00 00 00 00 00 00 " bold_begin "00 " bold_end "  00 00 00 00 00 00 00 " bold_begin "FF " bold_end "\n"
+        "     *\n"
+        "\n"
+        "current file is bigger\n"
+        "common size is different [ difference 4.167% ]\n"
+        "\n";
     // clang-format on
 
     char cmd[128] = {0};
