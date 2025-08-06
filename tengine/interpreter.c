@@ -862,6 +862,8 @@ static int process_stmts_no_exc(InterpreterContext* ctx, DList* stmts,
 static int process_stmts(InterpreterContext* ctx, DList* stmts, Scope* scope)
 {
     int ret = 0;
+
+    fmt_start(ctx->fmt);
     for (u64_t i = 0; i < stmts->size; ++i) {
         Stmt* stmt = (Stmt*)stmts->data[i];
         if (process_stmt(ctx, stmt, scope) != 0) {
@@ -873,7 +875,6 @@ static int process_stmts(InterpreterContext* ctx, DList* stmts, Scope* scope)
         if (ctx->halt || ctx->breaked)
             goto end;
     }
-    return ret;
 
 end:
     if (ctx->exc) {
@@ -885,6 +886,7 @@ end:
         ctx->exc = NULL;
         ret      = 1;
     }
+    fmt_end(ctx->fmt);
     return ret;
 }
 

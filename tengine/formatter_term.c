@@ -35,7 +35,8 @@ static void fmt_term_print_off(FormatterTerm* this)
 
 static void fmt_term_dispose(FormatterTerm* fmt) { bhex_free(fmt); }
 
-static void fmt_term_start_var(FormatterTerm* this, const char* name, const char* tyname, u64_t off)
+static void fmt_term_start_var(FormatterTerm* this, const char* name,
+                               const char* tyname, u64_t off)
 {
     if (!this->super->quiet_mode) {
         display_printf("\nb+%08llx ", off);
@@ -84,7 +85,7 @@ static void fmt_term_process_value(FormatterTerm* this, TEngineValue* val)
     bhex_free(value_str);
 }
 
-void fmt_term_start_array(FormatterTerm* this, const Type* ty)
+static void fmt_term_start_array(FormatterTerm* this, const Type* ty)
 {
     if (!this->super->quiet_mode)
         display_printf("[ ");
@@ -96,7 +97,7 @@ void fmt_term_start_array(FormatterTerm* this, const Type* ty)
         this->print_off += PRINT_OFF_STEP;
 }
 
-void fmt_term_notify_array_el(FormatterTerm* this, u64_t n)
+static void fmt_term_notify_array_el(FormatterTerm* this, u64_t n)
 {
     if (this->last_array_type_was_builtin) {
         if (n >= MAX_ARR_PRINT_SIZE) {
@@ -118,7 +119,7 @@ void fmt_term_notify_array_el(FormatterTerm* this, u64_t n)
     }
 }
 
-void fmt_term_end_array(FormatterTerm* this)
+static void fmt_term_end_array(FormatterTerm* this)
 {
     if (!this->super->quiet_mode)
         display_printf(" ]");
@@ -130,6 +131,8 @@ void fmt_term_end_array(FormatterTerm* this)
     this->last_array_type_was_builtin = this->prev_array_type_was_builtin;
 }
 
+static void do_nothing(FormatterTerm* this) {}
+
 void fmt_term_new(Formatter* obj)
 {
     FormatterTerm* this = bhex_calloc(sizeof(FormatterTerm));
@@ -137,6 +140,8 @@ void fmt_term_new(Formatter* obj)
 
     obj->this              = this;
     obj->fmt_dispose       = (fmt_dispose_t)fmt_term_dispose;
+    obj->fmt_start         = (fmt_start_t)do_nothing;
+    obj->fmt_end           = (fmt_end_t)do_nothing;
     obj->fmt_start_var     = (fmt_start_var_t)fmt_term_start_var;
     obj->fmt_end_var       = (fmt_end_var_t)fmt_term_end_var;
     obj->fmt_process_value = (fmt_process_value_t)fmt_term_process_value;

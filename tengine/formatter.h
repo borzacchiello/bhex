@@ -6,6 +6,8 @@
 #include "value.h"
 #include <defs.h>
 
+typedef void (*fmt_start_t)(void* this);
+typedef void (*fmt_end_t)(void* this);
 typedef void (*fmt_start_var_t)(void* this, const char* name,
                                 const char* tyname, u64_t off);
 typedef void (*fmt_end_var_t)(void* this, const char* name);
@@ -26,6 +28,8 @@ typedef enum fmt_t {
 typedef struct Formatter {
     void* this;
     fmt_dispose_t              fmt_dispose;
+    fmt_start_t                fmt_start;
+    fmt_end_t                  fmt_end;
     fmt_start_var_t            fmt_start_var;
     fmt_end_var_t              fmt_end_var;
     fmt_process_value_t        fmt_process_value;
@@ -42,6 +46,8 @@ typedef struct Formatter {
 Formatter* fmt_new(fmt_t type);
 void       fmt_dispose(Formatter* fmt);
 
+#define fmt_start(obj)              (obj)->fmt_start(obj->this)
+#define fmt_end(obj)                (obj)->fmt_end(obj->this)
 #define fmt_start_var(obj, n, t, o) (obj)->fmt_start_var(obj->this, n, t, o)
 #define fmt_end_var(obj, n)         (obj)->fmt_end_var(obj->this, n)
 #define fmt_process_value(obj, v)   (obj)->fmt_process_value(obj->this, v)

@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+
+usage() {
+    cat <<'EOF'
+Usage:
+  tengine [-l] [-x] [<file> <template>]
+
+Options:
+  -l    List available templates
+        Ignores other flags and positional arguments
+  -x    Output in XML
+
+Arguments:
+  <file>      Input file to render with the template
+  <template>  Template name (or path to template file) to use
+EOF
+    exit 1
+}
+
+set -euo pipefail
+
+list=0
+xflag=0
+
+while getopts ":lx" opt; do
+  case "$opt" in
+    l) list=1 ;;
+    x) xflag=1 ;;
+    \?) echo "Unknown option: -$OPTARG" >&2; usage ;;
+  esac
+done
+shift $((OPTIND - 1))
+
+if (( list )); then
+  exec bhex -2c "t/l" /dev/null
+fi
+
+if [ "$#" -ne 2 ]; then
+  usage
+fi
+
+file=$1
+template=$2
+
+cmd="t"
+if (( xflag )); then
+  cmd="t/x"
+fi
+
+exec bhex -2c "$cmd $template" "$file"

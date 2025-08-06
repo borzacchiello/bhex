@@ -25,13 +25,15 @@ typedef struct FormatterXML {
 
 static void fmt_xml_dispose(FormatterXML* fmt) { bhex_free(fmt); }
 
-static void fmt_xml_start_var(FormatterXML* this, const char* name, const char* tyname, u64_t off)
+static void fmt_xml_start_var(FormatterXML* this, const char* name,
+                              const char* tyname, u64_t off)
 {
     char* name_dup = bhex_strdup(name);
     strip_chars(name_dup, "\"'");
     char* tyname_dup = bhex_strdup(tyname);
     strip_chars(tyname_dup, "\"'");
-    printf_if_not_quiet(this, "<var name=\"%s\" type=\"%s\" off=\"%llu\">", name_dup, tyname_dup, off);
+    printf_if_not_quiet(this, "<var name=\"%s\" type=\"%s\" off=\"%llu\">",
+                        name_dup, tyname_dup, off);
     bhex_free(name_dup);
     bhex_free(tyname_dup);
 }
@@ -93,7 +95,7 @@ static void fmt_xml_process_value(FormatterXML* this, TEngineValue* val)
     }
 }
 
-void fmt_xml_start_array(FormatterXML* this, const Type* ty)
+static void fmt_xml_start_array(FormatterXML* this, const Type* ty)
 {
     char* tyname = bhex_strdup(ty->name);
     strip_chars(tyname, "\"'");
@@ -101,11 +103,21 @@ void fmt_xml_start_array(FormatterXML* this, const Type* ty)
     bhex_free(tyname);
 }
 
-void fmt_xml_notify_array_el(FormatterXML* this, u64_t n) {}
+static void fmt_xml_notify_array_el(FormatterXML* this, u64_t n) {}
 
-void fmt_xml_end_array(FormatterXML* this)
+static void fmt_xml_end_array(FormatterXML* this)
 {
     printf_if_not_quiet(this, "</array>");
+}
+
+static void fmt_xml_start(FormatterXML* this)
+{
+    printf_if_not_quiet(this, "<root>");
+}
+
+static void fmt_xml_end(FormatterXML* this)
+{
+    printf_if_not_quiet(this, "</root>");
 }
 
 void fmt_xml_new(Formatter* obj)
@@ -114,6 +126,8 @@ void fmt_xml_new(Formatter* obj)
     this->super        = obj;
 
     obj->this              = this;
+    obj->fmt_start         = (fmt_start_t)fmt_xml_start;
+    obj->fmt_end           = (fmt_end_t)fmt_xml_end;
     obj->fmt_dispose       = (fmt_dispose_t)fmt_xml_dispose;
     obj->fmt_start_var     = (fmt_start_var_t)fmt_xml_start_var;
     obj->fmt_end_var       = (fmt_end_var_t)fmt_xml_end_var;

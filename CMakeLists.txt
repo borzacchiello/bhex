@@ -191,7 +191,9 @@ if (ENABLE_KEYSTONE)
     target_link_libraries(bhex LINK_PUBLIC keystone)
 endif()
 
-install (TARGETS bhex RUNTIME DESTINATION bin)
-install (DIRECTORY templates/
+install(TARGETS bhex RUNTIME DESTINATION bin)
+install(PROGRAMS ${CMAKE_SOURCE_DIR}/bin/bdiff DESTINATION bin)
+install(PROGRAMS ${CMAKE_SOURCE_DIR}/bin/tengine DESTINATION bin)
+install(DIRECTORY templates/
         DESTINATION share/bhex/templates
         FILES_MATCHING PATTERN "*.bhe")

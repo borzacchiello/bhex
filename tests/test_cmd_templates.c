@@ -121,6 +121,7 @@ int TEST(template_elf_xml)(void)
 {
     // clang-format off
     const char* expected =
+        "<root>"
         "<var name=\"header\" type=\"Elf_Ehdr\" off=\"0\"><var name=\"e_ident\" type=\"ElfIdent\" off=\"0\"><var name=\"ei_mag\" type=\"u8\" off=\"0\">7f454c46</var>"
         "<var name=\"ei_class\" type=\"ElfIdentClass\" off=\"4\"><enum_value mnemonic=\"ELFCLASS32\">1</enum_value></var><var name=\"ei_data\" type=\"ElfIdentData\" off=\"5\">"
         "<enum_value mnemonic=\"ELFDATA2LSB\">1</enum_value></var><var name=\"ei_version\" type=\"u8\" off=\"6\"><unum size=\"1\">1</unum></var><var name=\"ei_osabi\" type=\"ElfIdentOsABI\" off=\"7\">"
@@ -165,7 +166,7 @@ int TEST(template_elf_xml)(void)
         "<var name=\"sh_offset\" type=\"u32\" off=\"300\"><unum size=\"4\">140</unum></var><var name=\"sh_size\" type=\"u32\" off=\"304\"><unum size=\"4\">23</unum></var>"
         "<var name=\"sh_link\" type=\"u32\" off=\"308\"><unum size=\"4\">0</unum></var><var name=\"sh_info\" type=\"u32\" off=\"312\"><unum size=\"4\">0</unum></var>"
         "<var name=\"sh_addralign\" type=\"u32\" off=\"316\"><unum size=\"4\">1</unum></var><var name=\"sh_entsize\" type=\"u32\" off=\"320\"><unum size=\"4\">0</unum></var>"
-        "</var><var name=\"PrevShName\" type=\"string\" off=\"141\"><string>2e7368737472746162</string></var>\n";
+        "</var><var name=\"PrevShName\" type=\"string\" off=\"141\"><string>2e7368737472746162</string></var></root>\n";
     // clang-format on
 
     int r = TEST_FAILED;

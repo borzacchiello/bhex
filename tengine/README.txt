@@ -25,4 +25,4 @@ Work in progress template engine
 [X] implement a 'find_next' API (which returns the offset, or -1)
 [X] improve error print
 [ ] print source code context while printing exceptions
-[ ] implement the output in a generic way, so that we can choose different backends (e.g., JSON)
+[X] implement the output in a generic way, so that we can choose different backends (e.g., JSON)
