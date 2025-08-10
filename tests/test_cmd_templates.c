@@ -404,7 +404,7 @@ int TEST(template_zip)(void)
         "b+0000003d                                          gid: \n"
         "b+0000003d                                             size: 04\n"
         "b+0000003e                                            value: 00000014\n"
-        "b+00000042                                 data: 6369616f0a \n"
+        "b+00000042                             data: 6369616f0a \n"
         "\n"
         "b+000001e8                       dirElement: \n"
         "b+000001e8                            signature: 'PK\\x01\\x02'\n"
@@ -609,7 +609,7 @@ int TEST(template_zip)(void)
         "b+0000012e                                          gid: \n"
         "b+0000012e                                             size: 04\n"
         "b+0000012f                                            value: 00000014\n"
-        "b+00000133                                 data: 636f6e74656e740a \n"
+        "b+00000133                             data: 636f6e74656e740a \n"
         "\n"
         "b+000002f8                       dirElement: \n"
         "b+000002f8                            signature: 'PK\\x01\\x02'\n"
@@ -678,7 +678,7 @@ int TEST(template_zip)(void)
         "b+00000189                                          gid: \n"
         "b+00000189                                             size: 04\n"
         "b+0000018a                                            value: 00000014\n"
-        "b+0000018e                                 data: 636f6e74656e74203132330a \n"
+        "b+0000018e                             data: 636f6e74656e74203132330a \n"
         "\n";
     // clang-format on
 

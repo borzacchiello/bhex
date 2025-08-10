@@ -135,9 +135,6 @@ struct LocalFileHeader
     char              filename[filename_len];
 
     parse_extra_fields(extra_field_len);
-    if (compressed_size > 0) {
-        u8 data[compressed_size];
-    }
 }
 
 struct CentralDirectoryHeader
@@ -249,6 +246,9 @@ proc
         local off = off();
         seek(dirElement.local_header_offset);
         LocalFileHeader localElement;
+        if (dirElement.compressed_size > 0) {
+            u8 data[dirElement.compressed_size];
+        }
         seek(off);
         i = i + 1;
 
