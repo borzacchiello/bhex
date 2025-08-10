@@ -410,8 +410,10 @@ static TEngineValue* builtin_fwd(InterpreterContext* ctx, DList* params)
 
 static TEngineValue* builtin_print(InterpreterContext* ctx, DList* params)
 {
-    if (!params || params->size == 0)
+    if (!params || params->size == 0) {
+        tengine_raise_exception(ctx, "print: expected at least a parameter");
         return NULL;
+    }
 
     for (u64_t i = 0; i < params->size; ++i) {
         TEngineValue* p = params->data[i];
@@ -424,6 +426,17 @@ static TEngineValue* builtin_print(InterpreterContext* ctx, DList* params)
         }
     }
     display_printf("\n");
+    return NULL;
+}
+
+static TEngineValue* builtin_error(InterpreterContext* ctx, DList* params)
+{
+    if (!params || params->size != 1) {
+        tengine_raise_exception(ctx, "RUNTIME ERROR");
+        return NULL;
+    }
+    TEngineValue* p = params->data[0];
+    tengine_raise_exception(ctx, "RUNTIME ERROR: %.*s", p->str_size, p->str);
     return NULL;
 }
 
@@ -598,6 +611,7 @@ static TEngineBuiltinFunc builtin_funcs[] = {
     {"size", builtin_size},
     {"remaining_size", builtin_remaining_size},
     {"print", builtin_print},
+    {"error", builtin_error},
     {"atoi", builtin_atoi},
     {"strip", builtin_strip},
     {"strlen", builtin_strlen},

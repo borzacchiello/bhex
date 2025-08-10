@@ -218,8 +218,7 @@ fn seek_to_central_dir()
         print("[!] ZIP64 is poorly supported");
         EndOfCentralDirZIP64 endOfCentralDir;
     } else {
-        print("[!] invalid ZIP");
-        exit();
+        error("invalid ZIP");
     }
 
     seek(endOfCentralDir.central_dir_offset);
@@ -257,6 +256,6 @@ proc
     }
 
     if (off() - endOfCentralDir.central_dir_offset != endOfCentralDir.central_dir_size) {
-        print("[!] invalid central_dir_size");
+        error("invalid central_dir_size");
     }
 }
