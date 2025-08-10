@@ -185,22 +185,29 @@ TEngineValue* TEngineValue_array_sub(InterpreterContext* ctx,
     return NULL;
 }
 
+#define is_snum(e)       ((e)->t == TENGINE_SNUM)
+#define is_unum(e)       ((e)->t == TENGINE_UNUM || (e)->t == TENGINE_ENUM_VALUE)
+#define get_unum_size(e) (((e)->t == TENGINE_UNUM) ? (e)->unum_size : 8)
+#define get_unum_value(e)                                                      \
+    (((e)->t == TENGINE_UNUM) ? (e)->unum : (e)->enum_const)
+
 #define binop_num(op)                                                          \
     if (lhs == NULL || rhs == NULL)                                            \
         return NULL;                                                           \
-    if (lhs->t == TENGINE_UNUM && rhs->t == TENGINE_UNUM) {                    \
-        return TEngineValue_UNUM_new(lhs->unum op rhs->unum,                   \
-                                     max(lhs->unum_size, rhs->unum_size));     \
+    if (is_unum(lhs) && is_unum(rhs)) {                                        \
+        return TEngineValue_UNUM_new(                                          \
+            get_unum_value(lhs) op get_unum_value(rhs),                        \
+            max(get_unum_size(lhs), get_unum_size(rhs)));                      \
     }                                                                          \
-    if (lhs->t == TENGINE_SNUM && rhs->t == TENGINE_UNUM) {                    \
-        return TEngineValue_SNUM_new(lhs->snum op(s64_t) rhs->unum,            \
-                                     max(lhs->snum_size, rhs->unum_size));     \
+    if (is_snum(lhs) && is_unum(rhs)) {                                        \
+        return TEngineValue_SNUM_new(lhs->snum op(s64_t) get_unum_value(rhs),  \
+                                     max(lhs->snum_size, get_unum_size(rhs))); \
     }                                                                          \
-    if (lhs->t == TENGINE_UNUM && rhs->t == TENGINE_SNUM) {                    \
-        return TEngineValue_SNUM_new((s64_t)lhs->unum op rhs->snum,            \
-                                     max(lhs->unum_size, rhs->snum_size));     \
+    if (is_unum(lhs) && is_snum(rhs)) {                                        \
+        return TEngineValue_SNUM_new((s64_t)get_unum_value(lhs) op rhs->snum,  \
+                                     max(get_unum_size(lhs), rhs->snum_size)); \
     }                                                                          \
-    if (lhs->t == TENGINE_SNUM && rhs->t == TENGINE_SNUM) {                    \
+    if (is_snum(lhs) && is_snum(rhs)) {                                        \
         return TEngineValue_SNUM_new(lhs->snum op rhs->snum,                   \
                                      max(lhs->snum_size, rhs->snum_size));     \
     }
@@ -308,18 +315,19 @@ TEngineValue* TEngineValue_shl(InterpreterContext* ctx, const TEngineValue* lhs,
 #define binop_bool(op)                                                         \
     if (lhs == NULL || rhs == NULL)                                            \
         return NULL;                                                           \
-    if (lhs->t == TENGINE_UNUM && rhs->t == TENGINE_UNUM) {                    \
-        return TEngineValue_UNUM_new((lhs->unum op rhs->unum) ? 1 : 0, 1);     \
+    if (is_unum(lhs) && is_unum(rhs)) {                                        \
+        return TEngineValue_UNUM_new(                                          \
+            (get_unum_value(lhs) op get_unum_value(rhs)) ? 1 : 0, 1);          \
     }                                                                          \
-    if (lhs->t == TENGINE_SNUM && rhs->t == TENGINE_UNUM) {                    \
-        return TEngineValue_UNUM_new(((u64_t)lhs->snum op rhs->unum) ? 1 : 0,  \
-                                     1);                                       \
+    if (is_snum(lhs) && is_unum(rhs)) {                                        \
+        return TEngineValue_UNUM_new(                                          \
+            ((u64_t)lhs->snum op get_unum_value(rhs)) ? 1 : 0, 1);             \
     }                                                                          \
-    if (lhs->t == TENGINE_UNUM && rhs->t == TENGINE_SNUM) {                    \
-        return TEngineValue_UNUM_new((lhs->unum op(u64_t) rhs->snum) ? 1 : 0,  \
-                                     1);                                       \
+    if (is_unum(lhs) && is_snum(rhs)) {                                        \
+        return TEngineValue_UNUM_new(                                          \
+            (get_unum_value(lhs) op(u64_t) rhs->snum) ? 1 : 0, 1);             \
     }                                                                          \
-    if (lhs->t == TENGINE_SNUM && rhs->t == TENGINE_SNUM) {                    \
+    if (is_snum(lhs) && is_snum(rhs)) {                                        \
         return TEngineValue_UNUM_new((lhs->snum op rhs->snum) ? 1 : 0, 1);     \
     }
 

@@ -6,6 +6,7 @@
 #include "data/big_buffers.h"
 #include "../tengine/interpreter.h"
 #include "../tengine/scope.h"
+#include "dummy_filebuffer.h"
 #include "strbuilder.h"
 #include "t_cmd_common.h"
 #include "t.h"
@@ -1017,6 +1018,49 @@ int TEST(bnot_1)(void)
     IS_TENGINE_SNUM_EQ(r, v, 42);
 
 end:
+    Scope_free(scope);
+    return r;
+}
+
+int TEST(implicit_conversion_enum_value_unum_1)(void)
+{
+    DummyFilebuffer* tfb = dummyfilebuffer_create((const u8_t*)"\x07\x01", 2);
+
+    const char* prog = "orenum MyEnum : u8 { A = 1, B = 2, C = 4 }"
+                       "proc {"
+                       "  MyEnum a;"
+                       "  MyEnum b;"
+                       "  local res = 0;"
+                       "  if (a & MyEnum::C) {"
+                       "    res = res + 1;"
+                       "  }"
+                       "  if (a & MyEnum::B) {"
+                       "    res = res + 2;"
+                       "  }"
+                       "  if (a & MyEnum::A) {"
+                       "    res = res + 4;"
+                       "  }"
+                       "  if (b & MyEnum::C) {"
+                       "    res = res + 10;"
+                       "  }"
+                       "  if (b & MyEnum::B) {"
+                       "    res = res + 20;"
+                       "  }"
+                       "  if (b & MyEnum::A) {"
+                       "    res = res + 40;"
+                       "  }"
+                       "}";
+
+    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    if (scope == NULL)
+        return 0;
+
+    int           r = 0;
+    TEngineValue* v = Scope_get_local(scope, "res");
+    IS_TENGINE_SNUM_EQ(r, v, 47);
+
+end:
+    dummyfilebuffer_destroy(tfb);
     Scope_free(scope);
     return r;
 }
