@@ -99,7 +99,6 @@ int cmd_help(CmdContext* cc)
 {
     display_printf("\nAvailable commands:\n");
     display_printf("    help [h]\n");
-    display_printf("    interactive [int]\n");
     ll_node_t* curr = cc->commands.head;
     while (curr) {
         Cmd* cmd = (Cmd*)curr->data;
