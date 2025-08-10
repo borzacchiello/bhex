@@ -115,9 +115,9 @@ static void print_diffs(FileBuffer* self, FileBuffer* other, int print_diffs,
             }
             off += nbytes;
         }
+        addr += size;
         fb_seek(self, addr);
         fb_seek(other, addr);
-        addr += size;
     }
     if (print_diffs) {
         if (was_skipped)
