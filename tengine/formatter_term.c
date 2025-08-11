@@ -20,6 +20,7 @@ typedef struct FormatterTerm {
     Formatter* super;
 
     u32_t print_off;
+    int   is_first_var;
     // array print context
     int is_first_element;
     int skip_next;
@@ -39,7 +40,11 @@ static void fmt_term_start_var(FormatterTerm* this, const char* name,
                                const char* tyname, u64_t off)
 {
     if (!this->super->quiet_mode) {
-        display_printf("\nb+%08llx ", off);
+        if (!this->is_first_var)
+            display_printf("\n");
+        else
+            this->is_first_var = 0;
+        display_printf("b+%08llx ", off);
         fmt_term_print_off(this);
         display_printf(" %*s: ", this->super->max_ident_len, name);
     }
@@ -137,6 +142,7 @@ void fmt_term_new(Formatter* obj)
 {
     FormatterTerm* this = bhex_calloc(sizeof(FormatterTerm));
     this->super         = obj;
+    this->is_first_var  = 1;
 
     obj->this              = this;
     obj->fmt_dispose       = (fmt_dispose_t)fmt_term_dispose;

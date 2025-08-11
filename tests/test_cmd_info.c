@@ -9,12 +9,10 @@ int TEST(notkitty)(void)
 {
     // clang-format off
     const char* expected =
-    "\n"
     "  path:    /tmp/testfb_XXXXXXXX\n"
     "  size:    324 Bytes\n"
     "  entropy: 2.509 / 8.000\n"
-    "  md5:     29aedda82de8f860e085d0a3fa7b8b7b\n"
-    "\n";
+    "  md5:     29aedda82de8f860e085d0a3fa7b8b7b\n";
     // clang-format on
 
     int r = TEST_FAILED;
@@ -33,12 +31,10 @@ int TEST(empty)(void)
 {
     // clang-format off
     const char* expected =
-    "\n"
     "  path:    /tmp/testfb_XXXXXXXX\n"
     "  size:    0 Bytes\n"
     "  entropy: 0.000 / 8.000\n"
-    "  md5:     d41d8cd98f00b204e9800998ecf8427e\n"
-    "\n";
+    "  md5:     d41d8cd98f00b204e9800998ecf8427e\n";
     // clang-format on
 
     int r = TEST_FAILED;

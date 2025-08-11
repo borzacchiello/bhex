@@ -15,7 +15,7 @@ static void interactivecmd_dispose(void* obj) {}
 
 static void interactivecmd_help(void* obj)
 {
-    display_printf("\ninteractive: run an interactive session\n");
+    display_printf("interactive: run an interactive session\n");
 }
 
 static int interactivecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)

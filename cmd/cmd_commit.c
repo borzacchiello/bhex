@@ -18,11 +18,10 @@ static void commitcmd_dispose(void* obj) { return; }
 
 static void commitcmd_help(void* obj)
 {
-    display_printf("\ncommit: commit all writes to file\n"
+    display_printf("commit: commit all writes to file\n"
                    "\n"
                    "  c" HINT_STR "\n"
-                   "     l: list uncommited changes\n"
-                   "\n");
+                   "     l: list uncommited changes\n");
 }
 
 static void print_overwrite(FileBuffer* fb, Modification* mod, u32_t nmod)

@@ -18,13 +18,13 @@ static void diffcmd_dispose(void* obj) {}
 
 static void diffcmd_help(void* obj)
 {
-    display_printf("\ndiff: prints the differences with another file\n"
+    display_printf("diff: prints the differences with another file\n"
                    "\n"
                    "  df" HINT_STR "\n"
                    "     p:  print different bytes\n"
                    "     w:  wide print (rows are 16 bytes)\n"
                    "\n"
-                   "  file: path to the file to compare\n\n");
+                   "  file: path to the file to compare\n");
 }
 
 static void print_diffs(FileBuffer* self, FileBuffer* other, int print_diffs,
@@ -35,8 +35,7 @@ static void print_diffs(FileBuffer* self, FileBuffer* other, int print_diffs,
 
     if (print_diffs) {
         if (!wide) {
-            display_printf("\n"
-                           "            "
+            display_printf("            "
                            "00 01 02 03 04 05 06 07"
                            "  "
                            "00 01 02 03 04 05 06 07\n"
@@ -45,8 +44,7 @@ static void print_diffs(FileBuffer* self, FileBuffer* other, int print_diffs,
                            "  "
                            "-----------------------\n");
         } else {
-            display_printf("\n"
-                           "            "
+            display_printf("            "
                            "00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F"
                            "  "
                            "00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F\n"
@@ -122,9 +120,9 @@ static void print_diffs(FileBuffer* self, FileBuffer* other, int print_diffs,
     if (print_diffs) {
         if (was_skipped)
             display_printf("     *\n");
+        display_printf("\n");
     }
 
-    display_printf("\n");
     if (addr < self->size)
         display_printf("current file is bigger\n");
     if (addr < other->size)
@@ -133,7 +131,7 @@ static void print_diffs(FileBuffer* self, FileBuffer* other, int print_diffs,
         display_printf("the files have the same size\n");
 
     if (ndiffs != 0) {
-        display_printf("common size is different [ difference %.03lf%% ]\n\n",
+        display_printf("common size is different [ difference %.03lf%% ]\n",
                        (double)ndiffs / (double)min(self->size, other->size) *
                            100);
     } else {

@@ -29,7 +29,7 @@ typedef struct TemplateCtx {
 static void templatecmd_help(void* obj)
 {
     display_printf(
-        "\ntemplate: parse the file at current offset using a 'bhe' "
+        "template: parse the file at current offset using a 'bhe' "
         "template file\n"
         "\n"
         "  t" HINT_STR "\n"
@@ -41,8 +41,7 @@ static void templatecmd_help(void* obj)
         "       - the name of the pre-loaded template/struct/proc to use\n"
         "       - a path to a template file\n"
         "       - a filter (if in list mode)\n"
-        "       - inline bhex code (if in interpret mode)\n"
-        "\n");
+        "       - inline bhex code (if in interpret mode)\n");
 }
 
 static void templatecmd_dispose(TemplateCtx* ctx)
@@ -91,16 +90,14 @@ static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
     if (mode == MODE_LIST) {
         print_filter = arg_str;
         if (print_filter)
-            display_printf("\n > Filtering using '%s' <\n", arg_str);
+            display_printf(" > Filtering using '%s' <\n\n", arg_str);
 
-        display_printf("\nAvailable templates:\n");
+        display_printf("Available templates:\n");
         tengine_vm_iter_templates(ctx->vm, templates_print_cb);
         display_printf("\nAvailable template structs:\n");
         tengine_vm_iter_structs(ctx->vm, composite_print_cb);
         display_printf("\nAvailable template named procs:\n");
         tengine_vm_iter_named_procs(ctx->vm, composite_print_cb);
-
-        display_printf("\n");
         return COMMAND_OK;
     }
 
@@ -153,9 +150,7 @@ static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
         if (tengine_vm_process_bhe_struct(ctx->vm, fb, tname, sname) != 0) {
             goto end;
         }
-        display_printf("\n");
     } else if (tengine_vm_has_bhe_proc(ctx->vm, tname, sname)) {
-        display_printf("\n");
         if (tengine_vm_process_bhe_proc(ctx->vm, fb, tname, sname) != 0) {
             goto end;
         }

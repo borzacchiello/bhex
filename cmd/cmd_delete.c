@@ -10,11 +10,10 @@ static void deletecmd_dispose(void* obj) { return; }
 
 static void deletecmd_help(void* obj)
 {
-    display_printf("\ndelete: delete bytes at current offset (all remeining "
+    display_printf("delete: delete bytes at current offset (all remeining "
                    "bytes if the argument is omitted)\n"
                    "\n"
-                   "  d " HINT_STR "\n"
-                   "\n");
+                   "  d " HINT_STR "\n");
 }
 
 static int deletecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)

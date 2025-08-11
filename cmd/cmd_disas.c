@@ -71,14 +71,13 @@ static const char* map_arch_names[] = {
 static void disascmd_help(void* obj)
 {
     display_printf(
-        "\ndisas: disassemble code at current offset\n"
+        "disas: disassemble code at current offset\n"
         "\n"
         "  ds" HINT_STR "\n"
         "     l:  list supported architectures\n"
         "\n"
         "  arch:   the architecture to use\n"
-        "  nbytes: the number of opcodes to disassemble, default value: %d\n"
-        "\n",
+        "  nbytes: the number of opcodes to disassemble, default value: %d\n",
         DEFAULT_DISAS_OPCODES);
 }
 
@@ -142,14 +141,12 @@ static void do_disas(int arch, u64_t addr, const u8_t* code, size_t code_size,
 
     count = cs_disasm(handle, code, code_size - 1, addr, 0, &insn);
     if (count > 0) {
-        puts("");
         size_t j;
         for (j = 0; j < min(count, nopcodes); j++) {
             display_printf("0x%08llx: %s %s\t\t%s\n", (u64_t)insn[j].address,
                            bytes_str(&insn[j], 21), insn[j].mnemonic,
                            insn[j].op_str);
         }
-        puts("");
         cs_free(insn, count);
     } else
         display_printf("invalid\n");
@@ -168,12 +165,11 @@ static int disascmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
             return COMMAND_INVALID_ARG;
 
         // list the supported architectures
-        display_printf("\nSupported architectures:\n");
+        display_printf("Supported architectures:\n");
         size_t i;
         for (i = 0; i < sizeof(map_arch_names) / sizeof(void*); ++i) {
             display_printf("    %s\n", map_arch_names[i]);
         }
-        display_printf("\n");
         return COMMAND_OK;
     }
 

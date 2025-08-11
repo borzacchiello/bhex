@@ -77,7 +77,7 @@ static void seekcmd_dispose(void* obj)
 static void seekcmd_help(void* obj)
 {
     display_printf(
-        "\nseek: change current offset\n"
+        "seek: change current offset\n"
         "  s" HINT_STR "\n"
         "    +: sum 'off' to current offset (wrap if greater than filesize)\n"
         "    -: subtract 'off' to current offset (wrap if lower than zero)\n"
@@ -85,8 +85,7 @@ static void seekcmd_help(void* obj)
         "  off: can be either a number or the character '-'.\n"
         "       In the latter case seek to the offset before the last seek.\n"
         "\n"
-        "  NOTE: if called without arguments, print current offset\n"
-        "\n");
+        "  NOTE: if called without arguments, print current offset\n");
 }
 
 static int seekcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)

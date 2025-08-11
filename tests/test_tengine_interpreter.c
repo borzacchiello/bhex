@@ -1502,7 +1502,6 @@ int TEST(array_4)(void)
 {
     // clang-format off
     const char* expected =
-        "\n"
         "b+00000000    data: [ \n"
         "               [0]\n"
         "b+00000000          n1: 41\n"
@@ -1549,7 +1548,6 @@ int TEST(array_5)(void)
 {
     // clang-format off
     const char* expected =
-        "\n"
         "b+00000000        v: \n"
         "b+00000000           n1: 41\n"
         "b+00000001           n2: 42\n"
@@ -1632,7 +1630,6 @@ int TEST(array_too_big)(void)
 {
     // clang-format off
     const char* expected =
-        "\n"    
         "b+00000000  buf: [ 4141, 4141, 4141, 4141, 4141, 4141, 4141, 4141, 4141, 4141, 4141, 4141, 4141, 4141, 4141, 4141, ... ]";
     // clang-format on
 

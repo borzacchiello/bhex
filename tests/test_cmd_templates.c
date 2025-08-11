@@ -11,7 +11,6 @@ int TEST(template_elf)(void)
 {
     // clang-format off
     const char* expected =
-        "\n"
         "b+00000000                header: \n"
         "b+00000000                   e_ident: \n"
         "b+00000000                        ei_mag: 7f454c46\n"
@@ -185,7 +184,6 @@ int TEST(template_pe)(void)
 {
     // clang-format off
     const char* expected = 
-        "\n"
         "b+00000000                     DosHeader: \n"
         "b+00000000                           e_magic: 5a4d\n"
         "b+00000002                            e_cblp: 0000\n"
@@ -326,7 +324,6 @@ int TEST(template_zip)(void)
 {
     // clang-format off
     const char* expected = 
-        "\n"
         "b+00000357                  endOfCentralDir: \n"
         "b+00000357                            signature: 'PK\\x05\\x06'\n"
         "b+0000035b                          disk_number: 0000\n"

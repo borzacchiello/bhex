@@ -63,7 +63,7 @@ static const char* map_arch_names[] = {
 static void assemblecmd_help(void* obj)
 {
     display_printf(
-        "\nassemble: assemble code and write it at current offset\n"
+        "assemble: assemble code and write it at current offset\n"
         "\n"
         "  as" HINT_STR "\n"
         "     l:  list supported architectures\n"
@@ -71,8 +71,7 @@ static void assemblecmd_help(void* obj)
         "     s:  seek to the end of the write\n"
         "\n"
         "  arch: the architecture to use\n"
-        "  code: assembly code string (e.g., \"inc eax; inc ecx; ret\")\n"
-        "\n");
+        "  code: assembly code string (e.g., \"inc eax; inc ecx; ret\")\n");
 }
 
 static void assemblecmd_dispose(void* obj) {}
@@ -129,12 +128,11 @@ static int assemblecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 
     if (list == LIST_SET) {
         // list the supported architectures
-        display_printf("\nSupported architectures:\n");
+        display_printf("Supported architectures:\n");
         size_t i;
         for (i = 0; i < sizeof(map_arch_names) / sizeof(void*); ++i) {
             display_printf("    %s\n", map_arch_names[i]);
         }
-        display_printf("\n");
         return COMMAND_OK;
     }
 

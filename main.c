@@ -137,14 +137,19 @@ static void main_loop(FileBuffer* fb, CmdContext* cc)
         ParsedCommand* pc;
         int            r = cmdline_parse(inp, &pc);
         if (r != PARSER_OK) {
+            printf("\n");
             error("%s", parser_err_to_string(r));
+            printf("\n");
             bhex_free(inp);
             continue;
         }
 
+        printf("\n");
         r = cmdctx_run(cc, pc, fb);
         if (r != COMMAND_OK && r != COMMAND_SILENT_ERROR)
-            error("%s", cmdctx_err_to_string(r));
+            error("%s\n", cmdctx_err_to_string(r));
+        else
+            printf("\n");
 
         parsed_command_destroy(pc);
         bhex_free(inp);

@@ -24,7 +24,7 @@ static void infocmd_dispose(void* obj)
 
 static void infocmd_help(void* obj)
 {
-    display_printf("\ninfo: prints information about the opened binary\n\n");
+    display_printf("info: prints information about the opened binary\n");
 }
 
 static void calc_values(FileBuffer* fb, char** md5, float* entropy)
@@ -110,12 +110,10 @@ static int infocmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
         ctx->version = fb->version;
     }
 
-    display_printf("\n"
-                   "  path:    %s\n"
+    display_printf("  path:    %s\n"
                    "  size:    %s\n"
                    "  entropy: %.03f / 8.000\n"
-                   "  md5:     %s\n"
-                   "\n",
+                   "  md5:     %s\n",
                    fb->path, size_string(fb->size), ctx->entropy, ctx->md5);
 
     return COMMAND_OK;

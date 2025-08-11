@@ -32,7 +32,6 @@ int TEST(hello_p)(void)
         " 0070: 00 10 00 00 B8 01 00 00 00 BB 2A 00 00 00 CD 80   ..........*.....\n"
         " 0080: 68 65 6C 6C 6F 20 77 6F 72 6C 64 00 00 2E 73 68   hello world...sh\n"
         " 0090: 73 74 72 74 61                                    strta\n"
-        "\n"
     ;
     // clang-format on
 

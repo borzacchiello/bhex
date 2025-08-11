@@ -61,7 +61,7 @@ static void printcmd_dispose(void* obj) { return; }
 static void printcmd_help(void* obj)
 {
     display_printf(
-        "\nprint: display the data at current offset in various formats\n"
+        "print: display the data at current offset in various formats\n"
         "\n"
         "  p" HINT_CMDLINE "\n"
         "     x:  hex output (default)\n"
@@ -77,7 +77,7 @@ static void printcmd_help(void* obj)
         "     -:  seek backwards after printing\n"
         "\n"
         "  nelements: the number of elements to display\n"
-        "  (default: enough to display %d bytes)\n\n",
+        "  (default: enough to display %d bytes)\n",
         DEFAULT_PRINT_LEN);
 }
 

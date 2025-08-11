@@ -22,7 +22,7 @@ static void crccmd_dispose(void* obj) { return; }
 static void crccmd_help(void* obj)
 {
     display_printf(
-        "\nimport: calculate the CRC <name> at current offset + <off>\n"
+        "import: calculate the CRC <name> at current offset + <off>\n"
         "\n"
         "  crc" HINT_STR "\n"
         "     l:   list the supported crc names\n"
@@ -31,7 +31,7 @@ static void crccmd_help(void* obj)
         "  size:   number of bytes to include in the crc (if omitted or zero, "
         "import the whole file starting from current offset)\n"
         "  offset: starting offset of the imported file (if "
-        "omitted, import from current offset)\n\n");
+        "omitted, import from current offset)\n");
 }
 
 static u32_t fb_calculate_crc(const crc_params_t* params, FileBuffer* fb,

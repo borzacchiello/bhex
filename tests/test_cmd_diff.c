@@ -12,7 +12,6 @@ int TEST(equal_smaller)(void)
 {
     // clang-format off
     const char* expected =
-        "\n"
         "current file is bigger\n"
         "common size is identical\n";
     // clang-format on
@@ -37,10 +36,8 @@ int TEST(different_smaller)(void)
 {
     // clang-format off
     const char* expected =
-        "\n"
         "current file is bigger\n"
-        "common size is different [ difference 4.167% ]\n"
-        "\n";
+        "common size is different [ difference 4.167% ]\n";
     // clang-format on
 
     char cmd[128] = {0};
@@ -63,7 +60,6 @@ int TEST(different_smaller_print)(void)
 {
     // clang-format off
     const char* expected =
-       "\n"
         "            00 01 02 03 04 05 06 07  00 01 02 03 04 05 06 07\n"
         "            -----------------------  -----------------------\n"
         "     *\n"
@@ -73,8 +69,7 @@ int TEST(different_smaller_print)(void)
         "     *\n"
         "\n"
         "current file is bigger\n"
-        "common size is different [ difference 4.167% ]\n"
-        "\n";
+        "common size is different [ difference 4.167% ]\n";
     // clang-format on
 
     char cmd[128] = {0};
@@ -97,7 +92,6 @@ int TEST(different_smaller_print_wide)(void)
 {
     // clang-format off
     const char* expected =
-        "\n"
         "            00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F  00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F\n"
         "            -----------------------------------------------  -----------------------------------------------\n"
         "0000000000  7F 45 4C 46 01 01 01 00 00 00 00 00 00 00 00 " highlight_begin "00" highlight_end
@@ -106,8 +100,7 @@ int TEST(different_smaller_print_wide)(void)
         "     *\n"
         "\n"
         "current file is bigger\n"
-        "common size is different [ difference 4.167% ]\n"
-        "\n";
+        "common size is different [ difference 4.167% ]\n";
     // clang-format on
 
     char cmd[128] = {0};

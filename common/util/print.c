@@ -46,7 +46,6 @@ void print_hex(const u8_t* bytes, size_t size, int raw_mode, int print_header,
 
     if (!raw_mode && print_header)
         display_printf(
-            "\n"
             "       00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F\n"
             "       -----------------------------------------------\n");
     while (off < size) {
@@ -79,7 +78,7 @@ void print_hex(const u8_t* bytes, size_t size, int raw_mode, int print_header,
         }
         off += block_size;
     }
-    if (print_footer)
+    if (print_footer && raw_mode)
         display_printf("\n");
 }
 
@@ -91,7 +90,6 @@ void print_words(const u8_t* bytes, size_t size, int little_endian,
 
     if (!raw_mode && print_header)
         display_printf(
-            "\n"
             "       00    02    04    06    08    0A    0C    0E   \n"
             "       -----------------------------------------------\n");
     while (off < size) {
@@ -112,7 +110,7 @@ void print_words(const u8_t* bytes, size_t size, int little_endian,
             display_printf("\n");
         off += block_size;
     }
-    if (print_footer)
+    if (print_footer && raw_mode)
         display_printf("\n");
 }
 
@@ -123,8 +121,7 @@ void print_dwords(const u8_t* bytes, size_t size, int little_endian,
     size_t off        = 0;
 
     if (!raw_mode && print_header)
-        display_printf("\n"
-                       "       00        04        08        0C       \n"
+        display_printf("       00        04        08        0C       \n"
                        "       ---------------------------------------\n");
     while (off < size) {
         if (!raw_mode)
@@ -144,7 +141,7 @@ void print_dwords(const u8_t* bytes, size_t size, int little_endian,
             display_printf("\n");
         off += block_size;
     }
-    if (print_footer)
+    if (print_footer && raw_mode)
         display_printf("\n");
 }
 
@@ -155,8 +152,7 @@ void print_qwords(const u8_t* bytes, size_t size, int little_endian,
     size_t off        = 0;
 
     if (!raw_mode && print_header)
-        display_printf("\n"
-                       "       00                08               \n"
+        display_printf("       00                08               \n"
                        "       -----------------------------------\n");
     while (off < size) {
         if (!raw_mode)
@@ -176,6 +172,6 @@ void print_qwords(const u8_t* bytes, size_t size, int little_endian,
             display_printf("\n");
         off += block_size;
     }
-    if (print_footer)
+    if (print_footer && raw_mode)
         display_printf("\n");
 }

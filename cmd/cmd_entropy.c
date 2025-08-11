@@ -20,14 +20,14 @@ static void entropycmd_dispose(void* obj) {}
 
 static void entropycmd_help(void* obj)
 {
-    display_printf("\nentropy: display an entropy graph\n"
+    display_printf("entropy: display an entropy graph\n"
                    "\n"
                    "  e" HINT_CMDLINE "\n"
                    "\n"
                    "  len:  number of bytes to include starting from the "
                    "current offset (if omitted or '-', the whole file)\n"
                    "  rows: number of points in the graph (if omitted, "
-                   "defaults to %d)\n\n",
+                   "defaults to %d)\n",
                    DEFAULT_ROWS);
 }
 
@@ -100,7 +100,6 @@ static int entropycmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     if (rows == 0)
         return COMMAND_OK;
 
-    display_printf("\n");
     u32_t bytes_per_raw = len / rows;
     u64_t addr = fb->off;
     for (u32_t i = 0; i < rows; ++i) {
@@ -119,7 +118,6 @@ static int entropycmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 
         addr += bytes_per_raw;
     }
-    display_printf("\n");
 
     return COMMAND_OK;
 }

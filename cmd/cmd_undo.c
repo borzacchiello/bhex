@@ -14,11 +14,10 @@ static void undocmd_dispose(void* obj) { return; }
 
 static void undocmd_help(void* obj)
 {
-    display_printf("\nundo: undo the last write\n"
+    display_printf("undo: undo the last write\n"
                    "\n"
                    "  u" HINT_STR "\n"
-                   "     a: undo all\n"
-                   "\n");
+                   "     a: undo all\n");
 }
 
 static int undocmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)

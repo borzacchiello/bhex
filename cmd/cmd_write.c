@@ -38,7 +38,7 @@ typedef struct WriteArg {
 static void writecmd_help(void* obj)
 {
     display_printf(
-        "\nwrite: write data at current offset\n"
+        "write: write data at current offset\n"
         "\n"
         "  w" HINT_STR "\n"
         "     s:   string input (default)\n"
@@ -56,8 +56,7 @@ static void writecmd_help(void* obj)
         "        write. Here there are some examples:\n"
         "            w/x \"00 01 02 03\"\n"
         "            w/s \"a string\"\n"
-        "            w/q/be 0x1234\n"
-        "\n");
+        "            w/q/be 0x1234\n");
 }
 
 static int parse_write_arg(ParsedCommand* pc, WriteArg* o_arg)

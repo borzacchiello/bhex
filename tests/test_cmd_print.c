@@ -9,7 +9,6 @@ int TEST(hex_1)(void)
 {
     // clang-format off
     const char* expected =
-    "\n"
     "       00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F\n"
     "       -----------------------------------------------\n"
     " 0000: 7F 45 4C 46 01 01 01 00 00 00 00 00 00 00 00 00   .ELF............\n"
@@ -27,8 +26,7 @@ int TEST(hex_1)(void)
     " 00c0: 00 00 00 00 00 00 00 00 00 00 00 00 0B 00 00 00   ................\n"
     " 00d0: 01 00 00 00 06 00 00 00 74 80 04 08 74 00 00 00   ........t...t...\n"
     " 00e0: 0C 00 00 00 00 00 00 00 00 00 00 00 04 00 00 00   ................\n"
-    " 00f0: 00 00 00 00 11 00 00 00 01 00 00 00 03 00 00 00   ................\n"
-    "\n";
+    " 00f0: 00 00 00 00 11 00 00 00 01 00 00 00 03 00 00 00   ................\n";
     // clang-format on
 
     int r = TEST_FAILED;
@@ -47,11 +45,9 @@ int TEST(hex_2)(void)
 {
     // clang-format off
     const char* expected =
-    "\n"
     "       00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F\n"
     "       -----------------------------------------------\n"
-    " 0000: 7F                                                .\n"
-    "\n";
+    " 0000: 7F                                                .\n";
     // clang-format on
 
     int r = TEST_FAILED;
@@ -86,11 +82,9 @@ int TEST(near_end_2)(void)
 {
     // clang-format off
     const char* expected =
-        "\n"
         "       00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F\n"
         "       -----------------------------------------------\n"
-        " 0000: 00                                                .\n"
-        "\n";
+        " 0000: 00                                                .\n";
     // clang-format on
 
     int r = TEST_FAILED;
@@ -109,11 +103,9 @@ int TEST(word_1)(void)
 {
     // clang-format off
     const char* expected =
-    "\n"
     "       00    02    04    06    08    0A    0C    0E   \n"
     "       -----------------------------------------------\n"
-    " 0000: 457Fh \n"
-    "\n";
+    " 0000: 457Fh \n";
     // clang-format on
 
     int r = TEST_FAILED;
@@ -132,11 +124,9 @@ int TEST(word_2)(void)
 {
     // clang-format off
     const char* expected =
-    "\n"
     "       00    02    04    06    08    0A    0C    0E   \n"
     "       -----------------------------------------------\n"
-    " 0000: 7F45h \n"
-    "\n";
+    " 0000: 7F45h \n";
     // clang-format on
 
     int r = TEST_FAILED;
@@ -155,11 +145,9 @@ int TEST(word_3)(void)
 {
     // clang-format off
     const char* expected =
-    "\n"
     "       00    02    04    06    08    0A    0C    0E   \n"
     "       -----------------------------------------------\n"
-    " 0000: 457Fh 464Ch \n"
-    "\n";
+    " 0000: 457Fh 464Ch \n";
     // clang-format on
 
     int r = TEST_FAILED;
@@ -178,11 +166,9 @@ int TEST(dword_1)(void)
 {
     // clang-format off
     const char* expected =
-    "\n"
     "       00        04        08        0C       \n"
     "       ---------------------------------------\n"
-    " 0000: 464C457Fh \n"
-    "\n";
+    " 0000: 464C457Fh \n";
     // clang-format on
 
     int r = TEST_FAILED;
@@ -201,11 +187,9 @@ int TEST(dword_2)(void)
 {
     // clang-format off
     const char* expected =
-    "\n"
     "       00        04        08        0C       \n"
     "       ---------------------------------------\n"
-    " 0000: 7F454C46h \n"
-    "\n";
+    " 0000: 7F454C46h \n";
     // clang-format on
 
     int r = TEST_FAILED;
@@ -224,11 +208,9 @@ int TEST(qword_1)(void)
 {
     // clang-format off
     const char* expected =
-    "\n"
     "       00                08               \n"
     "       -----------------------------------\n"
-    " 0000: 00010101464C457Fh \n"
-    "\n";
+    " 0000: 00010101464C457Fh \n";
     // clang-format on
 
     int r = TEST_FAILED;
@@ -247,11 +229,9 @@ int TEST(qword_2)(void)
 {
     // clang-format off
     const char* expected =
-    "\n"
     "       00                08               \n"
     "       -----------------------------------\n"
-    " 0000: 7F454C4601010100h \n"
-    "\n";
+    " 0000: 7F454C4601010100h \n";
     // clang-format on
 
     int r = TEST_FAILED;

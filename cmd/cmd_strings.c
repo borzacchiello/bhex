@@ -15,15 +15,13 @@ static void stringscmd_dispose(void* obj) { return; }
 static void stringscmd_help(void* obj)
 {
     display_printf(
-        "\n"
         "enumerate the strings in the file (i.e., sequences of printable "
         "ascii characters)\n"
         "\n"
         "  str" HINT_STR "\n"
         "     n: look for null-terminated strings\n"
         "\n"
-        "  num: minimum length (default: 3)\n"
-        "\n");
+        "  num: minimum length (default: 3)\n");
 }
 
 static int is_printable_ascii(u8_t v) { return v >= 0x20 && v <= 0x7e; }

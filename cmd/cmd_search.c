@@ -55,7 +55,7 @@ static void searchcmd_dispose(void* obj) { bhex_free(obj); }
 static void searchcmd_help(void* obj)
 {
     display_printf(
-        "\nsearch: search a string or a sequence of bytes in the file\n"
+        "search: search a string or a sequence of bytes in the file\n"
         "\n"
         "  src" HINT_STR "\n"
         "     x:  data is an hex string\n"
@@ -63,8 +63,7 @@ static void searchcmd_help(void* obj)
         "     sk: seek to first match\n"
         "     c:  print context\n"
         "\n"
-        "  data: either a string or an hex string\n"
-        "\n");
+        "  data: either a string or an hex string\n");
 }
 
 static void populate_index(SearchCtx* ctx, FileBuffer* fb)
@@ -141,6 +140,8 @@ static void search(SearchCtx* ctx, FileBuffer* fb, const u8_t* data,
         return;
     populate_index(ctx, fb);
 
+    int first_match = 1;
+
     u64_t orig_off = fb->off;
     fb_seek(fb, 0);
 
@@ -195,12 +196,17 @@ static void search(SearchCtx* ctx, FileBuffer* fb, const u8_t* data,
                 break;
         }
         if (eq) {
+            if (!first_match && print_context)
+                display_printf("\n\n");
+            else
+                first_match = 0;
             display_printf(" >> Match @ 0x%07llX\n", begin_addr);
             if (seek_to_match) {
                 seek_to_match = 0;
                 orig_off      = begin_addr;
             }
             if (print_context) {
+                display_printf("\n");
                 u64_t print_addr_begin = begin_addr;
                 u64_t print_addr_end   = begin_addr + size;
 

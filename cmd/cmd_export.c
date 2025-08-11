@@ -15,13 +15,13 @@ static void exportcmd_dispose(void* obj) { return; }
 static void exportcmd_help(void* obj)
 {
     display_printf(
-        "\nexport: write <size> bytes of the file starting from current "
+        "export: write <size> bytes of the file starting from current "
         "offset to <ofile>\n"
         "\n"
         "  ex" HINT_STR "\n"
         "\n"
         "  ofile: output file\n"
-        "  size:  number of bytes to export (if omitted, all the remaining bytes)\n\n");
+        "  size:  number of bytes to export (if omitted, all the remaining bytes)\n");
 }
 
 static int exportcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)

@@ -21,7 +21,7 @@ static void importcmd_dispose(void* obj) { return; }
 static void importcmd_help(void* obj)
 {
     display_printf(
-        "\nimport: import the content of <file> at current offset\n"
+        "import: import the content of <file> at current offset\n"
         "\n"
         "  im" HINT_STR "\n"
         "     i:   insert in current file (default)\n"
@@ -31,7 +31,7 @@ static void importcmd_help(void* obj)
         "  size:   number of bytes to import (if omitted or zero, import "
         "the whole file)\n"
         "  offset: starting offset of the imported file (if "
-        "omitted, import from offset 0)\n\n");
+        "omitted, import from offset 0)\n");
 }
 
 static int read_file(const char* fname, u32_t off, u32_t size, u8_t** o_data,
