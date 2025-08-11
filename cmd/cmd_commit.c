@@ -26,7 +26,8 @@ static void commitcmd_help(void* obj)
 
 static void print_overwrite(FileBuffer* fb, Modification* mod, u32_t nmod)
 {
-    display_printf(" ~ overwrite @ 0x%07llx [ %lu ]\n", mod->off, mod->size);
+    display_printf(" ~ overwrite @ 0x%07llx [ %llu ]\n", mod->off,
+                   (u64_t)mod->size);
 
     const uint8_t* data;
     u64_t          off = fb->off;
@@ -52,7 +53,8 @@ static void print_overwrite(FileBuffer* fb, Modification* mod, u32_t nmod)
 
 static void print_insert(FileBuffer* fb, Modification* mod, u32_t nmod)
 {
-    display_printf(" ~ insert    @ 0x%07llx [ %lu ]\n", mod->off, mod->size);
+    display_printf(" ~ insert    @ 0x%07llx [ %llu ]\n", mod->off,
+                   (u64_t)mod->size);
 
     display_printf("      ");
     u32_t n = min(mod->size, 8);
@@ -65,7 +67,8 @@ static void print_insert(FileBuffer* fb, Modification* mod, u32_t nmod)
 
 static void print_delete(FileBuffer* fb, Modification* mod, u32_t nmod)
 {
-    display_printf(" ~ delete    @ 0x%07llx [ %lu ]\n", mod->off, mod->size);
+    display_printf(" ~ delete    @ 0x%07llx [ %llu ]\n", mod->off,
+                   (u64_t)mod->size);
 
     const uint8_t* data;
     u64_t          off = fb->off;
@@ -96,7 +99,7 @@ static int commitcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
         if (fb->modifications.size)
             display_printf("\n");
 
-        u32_t   nmod = 0;
+        u32_t      nmod = 0;
         ll_node_t* node = fb->modifications.head;
         while (node != NULL) {
             Modification* mod = (Modification*)node->data;
