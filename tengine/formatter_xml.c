@@ -50,6 +50,7 @@ static void fmt_xml_process_buffer_value(FormatterXML* this, FileBuffer* fb,
         return;
 
     u64_t off = 0;
+    display_printf("<buffer>");
     while (off < size) {
         u64_t       to_read = min(size - off, fb_block_size);
         const u8_t* buf     = fb_read(fb, to_read);
@@ -58,6 +59,7 @@ static void fmt_xml_process_buffer_value(FormatterXML* this, FileBuffer* fb,
         }
         off += to_read;
     }
+    display_printf("</buffer>");
 }
 
 static void fmt_xml_process_value(FormatterXML* this, TEngineValue* val)
@@ -75,10 +77,10 @@ static void fmt_xml_process_value(FormatterXML* this, TEngineValue* val)
             printf_if_not_quiet(this, "<char>%d</char>", val->c);
             break;
         case TENGINE_STRING:
-            printf_if_not_quiet(this, "<string>");
+            printf_if_not_quiet(this, "<buffer>");
             for (u32_t i = 0; i < val->str_size; ++i)
                 display_printf("%02x", val->str[i]);
-            printf_if_not_quiet(this, "</string>");
+            printf_if_not_quiet(this, "</buffer>");
             break;
         case TENGINE_ENUM_VALUE: {
             char* enum_mnemonic = bhex_strdup(val->enum_value);

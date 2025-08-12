@@ -654,11 +654,26 @@ static int process_array_type(InterpreterContext* ctx, const char* varname,
     return 0;
 }
 
+char* get_type_name(Stmt* v)
+{
+    if (v->t != FILE_VAR_DECL)
+        return NULL;
+    StringBuilder* sb = strbuilder_new();
+    if (v->type->bhe_name != NULL)
+        strbuilder_appendf(sb, "%s::", v->type->bhe_name);
+    strbuilder_append(sb, v->type->name);
+    if (v->arr_size != NULL)
+        strbuilder_append(sb, "[]");
+    return strbuilder_finalize(sb);
+}
+
 static int process_FILE_VAR_DECL(InterpreterContext* ctx, Stmt* stmt,
                                  Scope* scope)
 {
-    fmt_start_var(ctx->fmt, stmt->name, stmt->type->name,
+    char* ty_name = get_type_name(stmt);
+    fmt_start_var(ctx->fmt, stmt->name, ty_name,
                   ctx->fb->off - ctx->initial_off);
+    bhex_free(ty_name);
     if (stmt->arr_size == NULL) {
         // Not an array
         TEngineValue* val = process_type(ctx, stmt->name, stmt->type, scope);
