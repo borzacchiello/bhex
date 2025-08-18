@@ -19,6 +19,22 @@ struct TarHeader
     u8   padding[12];
 }
 
+proc list_files
+{
+    while (off() + 0x200 < size()) {
+        TarHeader header;
+        if (strlen(header.size) == 0) {
+            break;
+        }
+        print(header.name, "[", atoi(strip(header.size)), "bytes ]");
+        u8    data[atoi(strip(header.size))];
+        local npad = off() % 0x200;
+        if (npad != 0) {
+            fwd(0x200 - npad);
+        }
+    }
+}
+
 proc
 {
     while (off() + 0x200 < size()) {

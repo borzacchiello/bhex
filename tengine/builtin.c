@@ -2,6 +2,7 @@
 #include "defs.h"
 #include "display.h"
 #include "filebuffer.h"
+#include "scope.h"
 #include "strbuilder.h"
 #include "interpreter.h"
 #include "util/str.h"
@@ -294,11 +295,11 @@ static TEngineValue* builtin_strip(InterpreterContext* ctx, DList* params)
     return r;
 }
 
-static TEngineValue* builtin_endianess_le(InterpreterContext* ctx,
-                                          DList*              params)
+static TEngineValue* builtin_little_endian(InterpreterContext* ctx,
+                                           DList*              params)
 {
     if (params && params->size > 0) {
-        tengine_raise_exception(ctx, "endianess_le: expected no parameter");
+        tengine_raise_exception(ctx, "little_endian: expected no parameter");
         return NULL;
     }
 
@@ -306,11 +307,10 @@ static TEngineValue* builtin_endianess_le(InterpreterContext* ctx,
     return NULL;
 }
 
-static TEngineValue* builtin_endianess_be(InterpreterContext* ctx,
-                                          DList*              params)
+static TEngineValue* builtin_big_endian(InterpreterContext* ctx, DList* params)
 {
     if (params && params->size > 0) {
-        tengine_raise_exception(ctx, "endianess_be: expected no parameter");
+        tengine_raise_exception(ctx, "big_endian: expected no parameter");
         return NULL;
     }
 
@@ -599,8 +599,8 @@ static TEngineBuiltinFunc builtin_funcs[] = {
     {"i32", builtin_i32},
     {"i64", builtin_i64},
     {"exit", builtin_exit},
-    {"endianess_le", builtin_endianess_le},
-    {"endianess_be", builtin_endianess_be},
+    {"little_endian", builtin_little_endian},
+    {"big_endian", builtin_big_endian},
     {"nums_in_hex", builtin_nums_in_hex},
     {"nums_in_dec", builtin_nums_in_dec},
     {"disable_print", builtin_disable_print},

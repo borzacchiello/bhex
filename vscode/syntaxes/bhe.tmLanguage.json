@@ -55,7 +55,7 @@
       "patterns": [
         {
           "name": "entity.name.function.builtin.bhe",
-          "match": "\\b(endianess_le|endianess_be|nums_in_hex|nums_in_dec|disable_print|enable_print|seek|fwd|off|size|remaining_size|print|atoi|strip|strlen)(?=\\s*\\()\\b"
+          "match": "\\b(little_endian|big_endian|nums_in_hex|nums_in_dec|disable_print|enable_print|seek|fwd|off|size|remaining_size|print|atoi|strip|strlen)(?=\\s*\\()\\b"
         },
         {
           "name": "entity.name.function.bhe",

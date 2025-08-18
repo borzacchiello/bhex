@@ -1,6 +1,6 @@
 struct eth_header
 {
-    endianess_be();
+    big_endian();
 
     u8         dst[6];
     u8         src[6];
@@ -66,7 +66,7 @@ enum eth_type_t : u16
 
 struct ipv4_header
 {
-    endianess_be();
+    big_endian();
 
     u8            version_ihl;       // Version (4 bits) + Internet Header Length (4 bits)
     u8            type_of_service;   // Type of Service / DSCP + ECN
@@ -234,7 +234,7 @@ enum ip_protocol_t : u8
 
 struct tcp_header
 {
-    endianess_be();
+    big_endian();
 
     u16        source_port;          // Source port number
     u16        dest_port;            // Destination port number

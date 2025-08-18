@@ -74,6 +74,8 @@ static map* process_struct_type(InterpreterContext* ctx, Type* type)
 {
     ASTCtx* saved_ast           = ctx->ast;
     u32_t   saved_max_ident_len = ctx->fmt->max_ident_len;
+    int     saved_endianess     = ctx->endianess;
+    int     saved_quiet_mode    = ctx->fmt->quiet_mode;
 
     map* result = NULL;
     if (type->bhe_name != NULL) {
@@ -101,6 +103,8 @@ static map* process_struct_type(InterpreterContext* ctx, Type* type)
     result = Scope_free_and_get_filevars(scope);
 
 end:
+    ctx->endianess          = saved_endianess;
+    ctx->fmt->quiet_mode    = saved_quiet_mode;
     ctx->ast                = saved_ast;
     ctx->fmt->max_ident_len = saved_max_ident_len;
     return result;
@@ -190,8 +194,10 @@ static TEngineValue* handle_function_call(InterpreterContext* ctx, Function* fn,
                                           DList* params_exprs,
                                           Scope* caller_scope)
 {
-    TEngineValue* result   = NULL;
-    Scope*        fn_scope = NULL;
+    TEngineValue* result           = NULL;
+    Scope*        fn_scope         = NULL;
+    int           saved_quiet_mode = ctx->fmt->quiet_mode;
+    int           saved_endianess  = ctx->endianess;
 
     u64_t nparams         = params_exprs ? params_exprs->size : 0;
     u64_t expected_params = fn->params ? fn->params->size : 0;
@@ -218,6 +224,8 @@ static TEngineValue* handle_function_call(InterpreterContext* ctx, Function* fn,
 end:
     if (fn_scope)
         Scope_free(fn_scope);
+    ctx->fmt->quiet_mode = saved_quiet_mode;
+    ctx->endianess       = saved_endianess;
     return result;
 }
 
@@ -884,7 +892,7 @@ static int process_stmts(InterpreterContext* ctx, DList* stmts, Scope* scope)
         if (process_stmt(ctx, stmt, scope) != 0) {
             // it should fail only in case of an exception
             if (ctx->exc == NULL)
-                panic("process_stmt: unexpected state");
+                tengine_raise_exception(ctx, "RUNTIME ERROR");
             goto end;
         }
         if (ctx->halt || ctx->breaked)

@@ -241,13 +241,12 @@ struct rpm_header
 
 fn get_store_offset(header)
 {
-    local off = off();
     disable_print();
+    local off = off();
 
     rpm_index idx[header.index_count];
     result = off();
 
-    enable_print();
     seek(off);
 }
 
@@ -293,7 +292,7 @@ fn process_rpm_block(header)
 
 proc list_files
 {
-    endianess_be();
+    big_endian();
 
     // Skip sig
     rpmlead    lead;
@@ -306,7 +305,6 @@ proc list_files
 
     rpm_header main_hdr;
     local      store_off = get_store_offset(main_hdr);
-    disable_print();
 
     local i = 0;
     while (i < main_hdr.index_count) {
@@ -332,7 +330,7 @@ proc list_files
 
 proc
 {
-    endianess_be();
+    big_endian();
 
     rpmlead    lead;
     rpm_header sig_hdr;

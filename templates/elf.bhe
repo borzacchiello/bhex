@@ -427,7 +427,6 @@ fn getStringsOffset(header)
     }
 
     seek(off);
-    enable_print();
 
     result = str_off;
 }

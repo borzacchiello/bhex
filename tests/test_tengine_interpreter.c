@@ -705,7 +705,7 @@ end:
     return r;
 }
 
-int TEST(and)(void)
+int TEST (and)(void)
 {
     const char* prog = "proc { local a = 0xffff; local b = a & 0xf0f0; }";
 
@@ -739,7 +739,7 @@ end:
     return r;
 }
 
-int TEST(xor)(void)
+int TEST (xor)(void)
 {
     const char* prog = "proc { local a = 0xff; local b = a ^ 0xf0; }";
 
@@ -1479,7 +1479,7 @@ int TEST(array_3)(void)
         dummyfilebuffer_create((const u8_t*)"AAAAAAAAAB", 10);
     const char* prog = "proc {"
                        "    disable_print();"
-                       "    endianess_be();"
+                       "    big_endian();"
                        "    u16 buf[5];"
                        "    local a = buf[4];"
                        "}";
@@ -2129,6 +2129,92 @@ end:
     if (scope)
         Scope_free(scope);
     dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(saved_quiet_mode)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000001              b: 42\n"
+        "b+00000003              b: 44";
+    // clang-format on
+
+    bhex_free(strbuilder_reset(sb));
+    bhex_free(strbuilder_reset(err_sb));
+
+    int              r   = TEST_SUCCEEDED;
+    char*            out = NULL;
+    DummyFilebuffer* tfb = dummyfilebuffer_create((u8_t*)"ABCD", 4);
+    fb_seek(tfb->fb, 0);
+
+    const char* prog = "fn a() { disable_print(); u8 a; }"
+                       "fn b() { u8 b; }"
+                       "proc {"
+                       "    a();"
+                       "    b();"
+                       "    a();"
+                       "    b();"
+                       "}";
+
+    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope != NULL);
+
+    out = strbuilder_reset(sb);
+    ASSERT(compare_strings_ignoring_X(expected, out));
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    bhex_free(out);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(read_outside_boundaries)(void)
+{
+    // clang-format off
+    const char* expected =
+        "[  ERROR  ] too many bytes to read: 1\n"
+        "[  ERROR  ] Exception @ line 1, col 31 > RUNTIME ERROR\n";
+    // clang-format on
+
+    bhex_free(strbuilder_reset(sb));
+    bhex_free(strbuilder_reset(err_sb));
+
+    int              r   = TEST_SUCCEEDED;
+    char*            out = NULL;
+    DummyFilebuffer* tfb = dummyfilebuffer_create((u8_t*)"ABCD", 4);
+    fb_seek(tfb->fb, 4);
+
+    const char* prog = "fn a() { disable_print(); u8 a; }"
+                       "fn b() { u8 b; }"
+                       "proc {"
+                       "    a();"
+                       "    b();"
+                       "    a();"
+                       "    b();"
+                       "}";
+
+    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope == NULL);
+
+    out = strbuilder_reset(err_sb);
+    ASSERT(compare_strings_ignoring_X(expected, out));
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    bhex_free(out);
     return r;
 
 fail:
