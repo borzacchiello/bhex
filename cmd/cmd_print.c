@@ -1,6 +1,7 @@
 #include "cmd_arg_handler.h"
 #include "cmd_print.h"
 #include "cmd.h"
+#include "filebuffer.h"
 
 #include <util/byte_to_num.h>
 #include <util/print.h>
@@ -115,6 +116,7 @@ static int printcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 
     u64_t  addr           = 0;
     size_t remaining_size = size;
+    u64_t  orig_off       = fb->off;
     while (remaining_size != 0) {
         size_t      read_size = min(remaining_size, fb_block_size);
         const u8_t* bytes     = fb_read(fb, read_size);
@@ -153,7 +155,9 @@ static int printcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
         }
         remaining_size -= read_size;
         addr += read_size;
+        fb_seek(fb, fb->off + read_size);
     }
+    fb_seek(fb, orig_off);
     if (args.seek == SEEK_FORWARD && fb->off + size < fb->size)
         fb_seek(fb, fb->off + size);
     else if (args.seek == SEEK_BACKWARD && size <= fb->off)
