@@ -389,8 +389,8 @@ int TEST(template_pe)(void)
         "b+000000b8              PointerToLinenumbers: 00440043\n"
         "b+000000bc               NumberOfRelocations: 0045\n"
         "b+000000be               NumberOfLinenumbers: 0046\n"
-        "b+000000c0                   Characteristics: CNT_INITIALIZED_DATA[!] section size [ 258 ] is greater than remaining size [ 120 ], trimming \n"
-        "\n"
+        "b+000000c0                   Characteristics: CNT_INITIALIZED_DATA\n"
+        "[!] section size [ 258 ] is greater than remaining size [ 120 ], trimming \n"
         "b+00000094                   SectionData: f4000000180000002e004c8d42c8ebe8...\n";
     // clang-format on
 
@@ -418,8 +418,8 @@ int TEST(template_zip)(void)
         "b+00000361                        total_entries: 0005\n"
         "b+00000363                     central_dir_size: 000001bd\n"
         "b+00000367                   central_dir_offset: 0000019a\n"
-        "b+0000036b                       comment_length: 0000 \n"
-        "\n"
+        "b+0000036b                       comment_length: 0000\n"
+        " \n"
         "b+0000019a                       dirElement: \n"
         "b+0000019a                            signature: 'PK\\x01\\x02'\n"
         "b+0000019e                      version_made_by: 031e\n"
@@ -487,8 +487,8 @@ int TEST(template_zip)(void)
         "b+0000003d                                          gid: \n"
         "b+0000003d                                             size: 04\n"
         "b+0000003e                                            value: 00000014\n"
-        "b+00000042                             data: 6369616f0a \n"
-        "\n"
+        "b+00000042                             data: 6369616f0a\n"
+        " \n"
         "b+000001e8                       dirElement: \n"
         "b+000001e8                            signature: 'PK\\x01\\x02'\n"
         "b+000001ec                      version_made_by: 031e\n"
@@ -555,8 +555,8 @@ int TEST(template_zip)(void)
         "b+0000007f                                            value: 000001f5\n"
         "b+00000083                                          gid: \n"
         "b+00000083                                             size: 04\n"
-        "b+00000084                                            value: 00000014 \n"
-        "\n"
+        "b+00000084                                            value: 00000014\n"
+        " \n"
         "b+00000235                       dirElement: \n"
         "b+00000235                            signature: 'PK\\x01\\x02'\n"
         "b+00000239                      version_made_by: 031e\n"
@@ -623,8 +623,8 @@ int TEST(template_zip)(void)
         "b+000000ca                                            value: 000001f5\n"
         "b+000000ce                                          gid: \n"
         "b+000000ce                                             size: 04\n"
-        "b+000000cf                                            value: 00000014 \n"
-        "\n"
+        "b+000000cf                                            value: 00000014\n"
+        " \n"
         "b+0000028c                       dirElement: \n"
         "b+0000028c                            signature: 'PK\\x01\\x02'\n"
         "b+00000290                      version_made_by: 031e\n"
@@ -692,8 +692,8 @@ int TEST(template_zip)(void)
         "b+0000012e                                          gid: \n"
         "b+0000012e                                             size: 04\n"
         "b+0000012f                                            value: 00000014\n"
-        "b+00000133                             data: 636f6e74656e740a \n"
-        "\n"
+        "b+00000133                             data: 636f6e74656e740a\n"
+        " \n"
         "b+000002f8                       dirElement: \n"
         "b+000002f8                            signature: 'PK\\x01\\x02'\n"
         "b+000002fc                      version_made_by: 031e\n"
@@ -761,8 +761,7 @@ int TEST(template_zip)(void)
         "b+00000189                                          gid: \n"
         "b+00000189                                             size: 04\n"
         "b+0000018a                                            value: 00000014\n"
-        "b+0000018e                             data: 636f6e74656e74203132330a \n"
-        "\n";
+        "b+0000018e                             data: 636f6e74656e74203132330a\n";
     // clang-format on
 
     int              r = TEST_SUCCEEDED;

@@ -1,7 +1,7 @@
 #include "builtin.h"
 #include "defs.h"
-#include "display.h"
 #include "filebuffer.h"
+#include "formatter.h"
 #include "strbuilder.h"
 #include "interpreter.h"
 #include "util/str.h"
@@ -497,17 +497,23 @@ static TEngineValue* builtin_print(InterpreterContext* ctx, DList* params)
         return NULL;
     }
 
+    fmt_start_print(ctx->fmt);
+    StringBuilder* sb = strbuilder_new();
     for (u64_t i = 0; i < params->size; ++i) {
         TEngineValue* p = params->data[i];
         if (p->t == TENGINE_STRING) {
-            display_printf("%.*s ", p->str_size, p->str);
+            strbuilder_appendf(sb, "%.*s ", p->str_size, p->str);
         } else {
             char* p_str = TEngineValue_tostring(p, 0);
-            display_printf("%s ", p_str);
+            strbuilder_appendf(sb, "%s ", p_str);
             bhex_free(p_str);
         }
     }
-    display_printf("\n");
+    strbuilder_append_char(sb, '\n');
+    char* str = strbuilder_finalize(sb);
+    fmt_print(ctx->fmt, str);
+    bhex_free(str);
+    fmt_end_print(ctx->fmt);
     return NULL;
 }
 

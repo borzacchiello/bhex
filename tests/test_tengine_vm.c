@@ -41,7 +41,7 @@ int TEST(use_struct_of_another_file)(void)
     }
 
     char* out = strbuilder_reset(sb);
-    r = compare_strings_ignoring_X(expected, out);
+    r         = compare_strings_ignoring_X(expected, out);
     bhex_free(out);
 end:
     tengine_vm_destroy(vm);

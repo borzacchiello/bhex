@@ -20,7 +20,7 @@ typedef struct FormatterTerm {
     Formatter* super;
 
     u32_t print_off;
-    int   is_first_var;
+    int   on_a_new_line;
     // array print context
     int is_first_element;
     int skip_next;
@@ -40,10 +40,10 @@ static void fmt_term_start_var(FormatterTerm* this, const char* name,
                                const char* tyname, u64_t off)
 {
     if (!this->super->quiet_mode) {
-        if (!this->is_first_var)
+        if (!this->on_a_new_line)
             display_printf("\n");
         else
-            this->is_first_var = 0;
+            this->on_a_new_line = 0;
         display_printf("b+%08llx ", off);
         fmt_term_print_off(this);
         display_printf(" %*s: ", this->super->max_ident_len, name);
@@ -136,13 +136,28 @@ static void fmt_term_end_array(FormatterTerm* this)
     this->last_array_type_was_builtin = this->prev_array_type_was_builtin;
 }
 
+static void fmt_term_start_print(FormatterTerm* this)
+{
+    // Print in TERM mode ignores the quiet mode...
+    if (!this->on_a_new_line) {
+        this->on_a_new_line = 1;
+        display_printf("\n");
+    }
+}
+
+static void fmt_term_print(FormatterTerm* this, const char* str)
+{
+    // Print in TERM mode ignores the quiet mode...
+    display_printf("%s", str);
+}
+
 static void do_nothing(FormatterTerm* this) {}
 
 void fmt_term_new(Formatter* obj)
 {
     FormatterTerm* this = bhex_calloc(sizeof(FormatterTerm));
     this->super         = obj;
-    this->is_first_var  = 1;
+    this->on_a_new_line = 1;
 
     obj->this              = this;
     obj->fmt_dispose       = (fmt_dispose_t)fmt_term_dispose;
@@ -156,4 +171,7 @@ void fmt_term_new(Formatter* obj)
     obj->fmt_start_array     = (fmt_start_array_t)fmt_term_start_array;
     obj->fmt_notify_array_el = (fmt_notify_array_el_t)fmt_term_notify_array_el;
     obj->fmt_end_array       = (fmt_end_array_t)fmt_term_end_array;
+    obj->fmt_start_print     = (fmt_start_print_t)fmt_term_start_print;
+    obj->fmt_print           = (fmt_print_t)fmt_term_print;
+    obj->fmt_end_print       = (fmt_end_print_t)do_nothing;
 }

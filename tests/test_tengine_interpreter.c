@@ -2384,7 +2384,7 @@ int TEST(wstrings_eq)(void)
     const char* expected =
         "b+00000000     str1: 'AB'\n"
         "b+00000006     str2: 'AB'\n"
-        "b+0000000c     str3: 'AD' \n"
+        "b+0000000c     str3: 'AD'\n"
         "yes 1 \n";
     // clang-format on
 
@@ -2402,7 +2402,6 @@ int TEST(wstrings_eq)(void)
                        "    wstring str1;"
                        "    wstring str2;"
                        "    wstring str3;"
-                       "    print(\"\");"
                        "    if (str1 == str2) { print(\"yes 1\"); }"
                        "    if (str1 == str3) { print(\"yes 2\"); }"
                        "}";

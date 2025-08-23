@@ -130,6 +130,24 @@ static void fmt_xml_end(FormatterXML* this)
     printf_if_not_quiet(this, "</root>");
 }
 
+static void fmt_xml_start_print(FormatterXML* this)
+{
+    printf_if_not_quiet(this, "<!--");
+}
+
+static void fmt_xml_end_print(FormatterXML* this)
+{
+    printf_if_not_quiet(this, "-->");
+}
+
+static void fmt_xml_print(FormatterXML* this, const char* str)
+{
+    char* stripped_str = bhex_strdup(str);
+    strip_chars(stripped_str, "<>");
+    printf_if_not_quiet(this, "%s", stripped_str);
+    bhex_free(stripped_str);
+}
+
 void fmt_xml_new(Formatter* obj)
 {
     FormatterXML* this = bhex_calloc(sizeof(FormatterXML));
@@ -147,4 +165,7 @@ void fmt_xml_new(Formatter* obj)
     obj->fmt_start_array     = (fmt_start_array_t)fmt_xml_start_array;
     obj->fmt_notify_array_el = (fmt_notify_array_el_t)fmt_xml_notify_array_el;
     obj->fmt_end_array       = (fmt_end_array_t)fmt_xml_end_array;
+    obj->fmt_start_print     = (fmt_start_print_t)fmt_xml_start_print;
+    obj->fmt_print           = (fmt_print_t)fmt_xml_print;
+    obj->fmt_end_print       = (fmt_end_print_t)fmt_xml_end_print;
 }

@@ -237,10 +237,10 @@ proc list_files
 proc
 {
     local endOfCentralDir = seek_to_central_dir();
-    newline();
-
+    
     local i = 0;
     while ( i < endOfCentralDir.central_dir_entries ) {
+        newline();
         CentralDirectoryHeader dirElement;
 
         local off = off();
@@ -251,8 +251,6 @@ proc
         }
         seek(off);
         i = i + 1;
-
-        newline();
     }
 
     if (off() - endOfCentralDir.central_dir_offset != endOfCentralDir.central_dir_size) {
