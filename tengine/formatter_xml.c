@@ -85,7 +85,7 @@ static void fmt_xml_process_value(FormatterXML* this, TEngineValue* val)
         case TENGINE_WSTRING:
             printf_if_not_quiet(this, "<buffer>");
             for (u32_t i = 0; i < val->wstr_size; ++i) {
-                u16_t tmp = htons(val->wstr[i]);
+                u16_t tmp = val->wstr[i];
                 display_printf("%02x%02x", (tmp >> 8) & 0xff, tmp & 0xff);
             }
             printf_if_not_quiet(this, "</buffer>");
