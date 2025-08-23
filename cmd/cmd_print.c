@@ -78,11 +78,12 @@ static void printcmd_help(void* obj)
         "     -:  seek backwards after printing\n"
         "\n"
         "  nelements: the number of elements to display\n"
-        "  (default: enough to display %d bytes)\n",
+        "  (default: enough to display %d bytes, if '-' the whole file)\n",
         DEFAULT_PRINT_LEN);
 }
 
-static int printcmd_parse_args(ParsedCommand* pc, PrintCmdArgs* o_args)
+static int printcmd_parse_args(ParsedCommand* pc, PrintCmdArgs* o_args,
+                               u64_t total_size)
 {
     o_args->width     = WIDTH_BYTE;
     o_args->endianess = ENDIANESS_LITTLE;
@@ -99,6 +100,8 @@ static int printcmd_parse_args(ParsedCommand* pc, PrintCmdArgs* o_args)
         return COMMAND_INVALID_ARG;
     if (s == NULL)
         o_args->n_els = DEFAULT_PRINT_LEN / get_width_bytes(o_args->width);
+    else if (strcmp(s, "-") == 0)
+        o_args->n_els = total_size / get_width_bytes(o_args->width);
     else if (!str_to_uint64(s, &o_args->n_els))
         return COMMAND_INVALID_ARG;
     return COMMAND_OK;
@@ -107,7 +110,7 @@ static int printcmd_parse_args(ParsedCommand* pc, PrintCmdArgs* o_args)
 static int printcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 {
     PrintCmdArgs args;
-    int          r = printcmd_parse_args(pc, &args);
+    int          r = printcmd_parse_args(pc, &args, fb->size);
     if (r != COMMAND_OK)
         return r;
 
@@ -150,7 +153,7 @@ static int printcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
                 print_c_buffer(bytes, read_size, print_header, print_footer);
                 break;
             case WIDTH_ASCII:
-                print_ascii(bytes, read_size);
+                print_ascii(bytes, read_size, print_footer);
                 break;
         }
         remaining_size -= read_size;

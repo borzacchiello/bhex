@@ -4,7 +4,7 @@
 
 #include <display.h>
 
-void print_ascii(const u8_t* bytes, size_t size)
+void print_ascii(const u8_t* bytes, size_t size, int print_footer)
 {
     u64_t off = 0;
     while (off < size) {
@@ -18,7 +18,8 @@ void print_ascii(const u8_t* bytes, size_t size)
         }
         off += 1;
     }
-    display_printf("\n");
+    if (print_footer)
+        display_printf("\n");
 }
 
 void print_c_buffer(const u8_t* bytes, size_t size, int print_header,
