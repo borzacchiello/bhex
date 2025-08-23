@@ -615,6 +615,25 @@ static int process_array_type(InterpreterContext* ctx, const char* varname,
             fb_seek(ctx->fb, final_off);
             return 0;
         }
+        if (strcmp(type->name, "wchar") == 0) {
+            // Special case, the output variable is a wstring
+            u64_t       final_off = ctx->fb->off + size * 2;
+            u16_t*      tmp       = bhex_calloc(size * 2 + 2);
+            const u8_t* buf       = fb_read(ctx->fb, size * 2);
+            if (buf == NULL)
+                return 1;
+            for (u32_t i = 0; i < size; ++i) {
+                tmp[i] =
+                    ctx->endianess == TE_BIG_ENDIAN
+                        ? (((u16_t)buf[i * 2] << 8) | (u16_t)buf[i * 2 + 1])
+                        : (((u16_t)buf[i * 2 + 1] << 8) | (u16_t)buf[i * 2]);
+            }
+            *oval = TEngineValue_WSTRING_new(tmp, size);
+            fmt_process_value(ctx->fmt, *oval);
+            bhex_free(tmp);
+            fb_seek(ctx->fb, final_off);
+            return 0;
+        }
         if (strcmp(type->name, "u8") == 0) {
             // Special case, buf
             u64_t final_off = ctx->fb->off + size;

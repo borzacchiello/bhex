@@ -12,7 +12,9 @@ typedef enum TEngineValueType {
     TENGINE_UNUM = 500,
     TENGINE_SNUM,
     TENGINE_CHAR,
+    TENGINE_WCHAR,
     TENGINE_STRING,
+    TENGINE_WSTRING,
     TENGINE_ENUM_VALUE,
     TENGINE_BUF,
     TENGINE_ARRAY,
@@ -37,9 +39,18 @@ typedef struct TEngineValue {
             char c;
         };
         struct {
+            // TENGINE_WCHAR
+            u16_t wc;
+        };
+        struct {
             // TENGINE_STRING
             u8_t* str;
             u32_t str_size;
+        };
+        struct {
+            // TENGINE_WSTRING
+            u16_t* wstr;
+            u32_t  wstr_size;
         };
         struct {
             // TENGINE_ENUM_VALUE
@@ -65,7 +76,9 @@ typedef struct TEngineValue {
 TEngineValue* TEngineValue_UNUM_new(u64_t v, u32_t size);
 TEngineValue* TEngineValue_SNUM_new(s64_t v, u32_t size);
 TEngineValue* TEngineValue_CHAR_new(char c);
+TEngineValue* TEngineValue_WCHAR_new(u16_t c);
 TEngineValue* TEngineValue_STRING_new(const u8_t* str, u32_t size);
+TEngineValue* TEngineValue_WSTRING_new(const u16_t* str, u32_t size);
 TEngineValue* TEngineValue_ENUM_VALUE_new(const char* ename, u64_t econst);
 TEngineValue* TEngineValue_BUF_new(u64_t off, u64_t size);
 TEngineValue* TEngineValue_ARRAY_new();

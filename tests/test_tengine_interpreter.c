@@ -705,7 +705,7 @@ end:
     return r;
 }
 
-int TEST (and)(void)
+int TEST(and)(void)
 {
     const char* prog = "proc { local a = 0xffff; local b = a & 0xf0f0; }";
 
@@ -739,7 +739,7 @@ end:
     return r;
 }
 
-int TEST (xor)(void)
+int TEST(xor)(void)
 {
     const char* prog = "proc { local a = 0xff; local b = a ^ 0xf0; }";
 
@@ -2208,6 +2208,209 @@ int TEST(read_outside_boundaries)(void)
     ASSERT(scope == NULL);
 
     out = strbuilder_reset(err_sb);
+    ASSERT(compare_strings_ignoring_X(expected, out));
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    bhex_free(out);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(wchars)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000      a: A\n"
+        "b+00000002      b: B\n"
+        "b+00000004      c: '\\u0201'";
+    // clang-format on
+
+    bhex_free(strbuilder_reset(sb));
+    bhex_free(strbuilder_reset(err_sb));
+
+    int              r      = TEST_SUCCEEDED;
+    char*            out    = NULL;
+    u8_t             data[] = {'A', 0, 'B', 0, 1, 2};
+    DummyFilebuffer* tfb    = dummyfilebuffer_create(data, sizeof(data));
+    fb_seek(tfb->fb, 0);
+
+    const char* prog = "proc {"
+                       "    wchar a;"
+                       "    wchar b;"
+                       "    wchar c;"
+                       "}";
+
+    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope != NULL);
+
+    out = strbuilder_reset(sb);
+    ASSERT(compare_strings_ignoring_X(expected, out));
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    bhex_free(out);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(wchar_array)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000      c: 'AB\\u0201C'";
+    // clang-format on
+
+    bhex_free(strbuilder_reset(sb));
+    bhex_free(strbuilder_reset(err_sb));
+
+    int              r      = TEST_SUCCEEDED;
+    char*            out    = NULL;
+    u8_t             data[] = {'A', 0, 'B', 0, 1, 2, 'C', 0};
+    DummyFilebuffer* tfb    = dummyfilebuffer_create(data, sizeof(data));
+    fb_seek(tfb->fb, 0);
+
+    const char* prog = "proc {"
+                       "    wchar c[4];"
+                       "}";
+
+    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope != NULL);
+
+    out = strbuilder_reset(sb);
+    ASSERT(compare_strings_ignoring_X(expected, out));
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    bhex_free(out);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(wstring_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000      str: 'ABCD'";
+    // clang-format on
+
+    bhex_free(strbuilder_reset(sb));
+    bhex_free(strbuilder_reset(err_sb));
+
+    int              r      = TEST_SUCCEEDED;
+    char*            out    = NULL;
+    u8_t             data[] = {'A', 0, 'B', 0, 'C', 0, 'D', 0, 0, 0};
+    DummyFilebuffer* tfb    = dummyfilebuffer_create(data, sizeof(data));
+    fb_seek(tfb->fb, 0);
+
+    const char* prog = "proc {"
+                       "    wstring str;"
+                       "}";
+
+    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope != NULL);
+
+    out = strbuilder_reset(sb);
+    ASSERT(compare_strings_ignoring_X(expected, out));
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    bhex_free(out);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(wstring_2)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000      str: 'ABCD\\u0101'";
+    // clang-format on
+
+    bhex_free(strbuilder_reset(sb));
+    bhex_free(strbuilder_reset(err_sb));
+
+    int              r      = TEST_SUCCEEDED;
+    char*            out    = NULL;
+    u8_t             data[] = {'A', 0, 'B', 0, 'C', 0, 'D', 0, 1, 1, 0, 0};
+    DummyFilebuffer* tfb    = dummyfilebuffer_create(data, sizeof(data));
+    fb_seek(tfb->fb, 0);
+
+    const char* prog = "proc {"
+                       "    wstring str;"
+                       "}";
+
+    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope != NULL);
+
+    out = strbuilder_reset(sb);
+    ASSERT(compare_strings_ignoring_X(expected, out));
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    bhex_free(out);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(wstrings_eq)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000     str1: 'AB'\n"
+        "b+00000006     str2: 'AB'\n"
+        "b+0000000c     str3: 'AD' \n"
+        "yes 1 \n";
+    // clang-format on
+
+    bhex_free(strbuilder_reset(sb));
+    bhex_free(strbuilder_reset(err_sb));
+
+    int              r      = TEST_SUCCEEDED;
+    char*            out    = NULL;
+    u8_t             data[] = {'A', 0, 'B', 0,   0, 0,   'A', 0, 'B',
+                               0,   0, 0,   'A', 0, 'D', 0,   0, 0};
+    DummyFilebuffer* tfb    = dummyfilebuffer_create(data, sizeof(data));
+    fb_seek(tfb->fb, 0);
+
+    const char* prog = "proc {"
+                       "    wstring str1;"
+                       "    wstring str2;"
+                       "    wstring str3;"
+                       "    print(\"\");"
+                       "    if (str1 == str2) { print(\"yes 1\"); }"
+                       "    if (str1 == str3) { print(\"yes 2\"); }"
+                       "}";
+
+    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope != NULL);
+
+    out = strbuilder_reset(sb);
     ASSERT(compare_strings_ignoring_X(expected, out));
 
 end:

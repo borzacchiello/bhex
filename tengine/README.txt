@@ -26,3 +26,4 @@ Work in progress template engine
 [X] improve error print
 [ ] print source code context while printing exceptions
 [X] implement the output in a generic way, so that we can choose different backends (e.g., JSON)
+[ ] use polymorphic structs to model values

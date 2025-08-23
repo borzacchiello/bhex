@@ -77,6 +77,14 @@ TEngineValue* TEngineValue_CHAR_new(char c)
     return r;
 }
 
+TEngineValue* TEngineValue_WCHAR_new(u16_t c)
+{
+    TEngineValue* r = bhex_calloc(sizeof(TEngineValue));
+    r->t            = TENGINE_WCHAR;
+    r->wc           = c;
+    return r;
+}
+
 TEngineValue* TEngineValue_STRING_new(const u8_t* str, u32_t size)
 {
     TEngineValue* r = bhex_calloc(sizeof(TEngineValue));
@@ -84,6 +92,16 @@ TEngineValue* TEngineValue_STRING_new(const u8_t* str, u32_t size)
     r->str          = bhex_calloc(size + 1);
     r->str_size     = size;
     memcpy(r->str, str, size);
+    return r;
+}
+
+TEngineValue* TEngineValue_WSTRING_new(const u16_t* str, u32_t size)
+{
+    TEngineValue* r = bhex_calloc(sizeof(TEngineValue));
+    r->t            = TENGINE_WSTRING;
+    r->wstr         = bhex_calloc(2 * size + 2);
+    r->wstr_size    = size;
+    memcpy(r->wstr, str, size * 2);
     return r;
 }
 
@@ -175,6 +193,15 @@ TEngineValue* TEngineValue_array_sub(InterpreterContext* ctx,
                 return NULL;
             }
             return TEngineValue_UNUM_new(e->str[n_val], 1);
+        }
+        case TENGINE_WSTRING: {
+            if (e->wstr_size <= n_val) {
+                tengine_raise_exception(
+                    ctx, "out of bound in string (size %llu, index %llu)",
+                    e->wstr_size, n_val);
+                return NULL;
+            }
+            return TEngineValue_UNUM_new(e->wstr[n_val], 2);
         }
         default:
             break;
@@ -382,8 +409,17 @@ TEngineValue* TEngineValue_beq(InterpreterContext* ctx, const TEngineValue* lhs,
             return TEngineValue_UNUM_new(0, 8);
         return TEngineValue_UNUM_new(1, 8);
     }
+    if (lhs->t == TENGINE_WSTRING && rhs->t == TENGINE_WSTRING) {
+        if (lhs->wstr_size != rhs->wstr_size ||
+            memcmp(lhs->wstr, rhs->wstr, lhs->wstr_size * 2) != 0)
+            return TEngineValue_UNUM_new(0, 8);
+        return TEngineValue_UNUM_new(1, 8);
+    }
     if (lhs->t == TENGINE_CHAR && rhs->t == TENGINE_CHAR) {
         return TEngineValue_UNUM_new((lhs->c == rhs->c) ? 1 : 0, 1);
+    }
+    if (lhs->t == TENGINE_WCHAR && rhs->t == TENGINE_WCHAR) {
+        return TEngineValue_UNUM_new((lhs->wc == rhs->wc) ? 1 : 0, 1);
     }
     if (lhs->t == TENGINE_ENUM_VALUE && rhs->t == TENGINE_ENUM_VALUE) {
         return TEngineValue_UNUM_new(
@@ -465,9 +501,13 @@ int TEngineValue_as_u64(InterpreterContext* ctx, const TEngineValue* v,
         case TENGINE_CHAR:
             *o = (u64_t)v->c;
             return 0;
+        case TENGINE_WCHAR:
+            *o = (u64_t)v->wc;
+            return 0;
         case TENGINE_ENUM_VALUE:
             *o = (u64_t)v->enum_const;
             return 0;
+        case TENGINE_WSTRING:
         case TENGINE_STRING:
         case TENGINE_OBJ:
             tengine_raise_exception(ctx, "%s not a numeric type",
@@ -486,9 +526,10 @@ int TEngineValue_as_string(InterpreterContext* ctx, const TEngineValue* v,
         *o = (char*)v->str;
         return 0;
     }
+    // TODO: maybe implement something for wstrings? so that we can use string
+    // builtins (e.g., strlen) with wstrings
 
-    tengine_raise_exception(ctx, "%s is not a string type",
-                            type_to_string(v->t));
+    tengine_raise_exception(ctx, "%s is not a string", type_to_string(v->t));
     return 1;
 }
 
@@ -512,10 +553,14 @@ int TEngineValue_as_s64(InterpreterContext* ctx, const TEngineValue* v,
         case TENGINE_CHAR:
             *o = (s64_t)v->c;
             return 0;
+        case TENGINE_WCHAR:
+            *o = (s64_t)v->wc;
+            return 0;
         case TENGINE_ENUM_VALUE:
             *o = (s64_t)v->enum_const;
             return 0;
         case TENGINE_STRING:
+        case TENGINE_WSTRING:
         case TENGINE_OBJ:
             tengine_raise_exception(ctx, "%s not a numeric type",
                                     type_to_string(v->t));
@@ -535,10 +580,14 @@ void TEngineValue_free(TEngineValue* v)
         case TENGINE_UNUM:
         case TENGINE_SNUM:
         case TENGINE_CHAR:
+        case TENGINE_WCHAR:
         case TENGINE_BUF:
             break;
         case TENGINE_STRING:
             bhex_free(v->str);
+            break;
+        case TENGINE_WSTRING:
+            bhex_free(v->wstr);
             break;
         case TENGINE_ENUM_VALUE:
             bhex_free(v->enum_value);
@@ -567,8 +616,12 @@ TEngineValue* TEngineValue_dup(TEngineValue* v)
             return TEngineValue_SNUM_new(v->snum, v->snum_size);
         case TENGINE_CHAR:
             return TEngineValue_CHAR_new(v->c);
+        case TENGINE_WCHAR:
+            return TEngineValue_WCHAR_new(v->wc);
         case TENGINE_STRING:
             return TEngineValue_STRING_new(v->str, v->str_size);
+        case TENGINE_WSTRING:
+            return TEngineValue_WSTRING_new(v->wstr, v->wstr_size);
         case TENGINE_ENUM_VALUE:
             return TEngineValue_ENUM_VALUE_new(v->enum_value, v->enum_const);
         case TENGINE_OBJ: {
@@ -601,13 +654,6 @@ TEngineValue* TEngineValue_dup(TEngineValue* v)
     return NULL;
 }
 
-static char ascii_or_space(char c)
-{
-    if (c >= 0x20 && c <= 0x7e)
-        return c;
-    return ' ';
-}
-
 void TEngineValue_pp(const TEngineValue* v, int hex)
 {
     char* str = TEngineValue_tostring(v, hex);
@@ -633,7 +679,16 @@ char* TEngineValue_tostring(const TEngineValue* v, int hex)
                 strbuilder_appendf(sb, "%lld", v->snum);
             break;
         case TENGINE_CHAR:
-            strbuilder_appendf(sb, "%c", ascii_or_space(v->c));
+            if (is_printable_ascii(v->c))
+                strbuilder_appendf(sb, "%c", v->c);
+            else
+                strbuilder_appendf(sb, "'\\x%02X'", v->c);
+            break;
+        case TENGINE_WCHAR:
+            if (v->wc < 128 && is_printable_ascii(v->wc))
+                strbuilder_appendf(sb, "%c", (char)v->wc);
+            else
+                strbuilder_appendf(sb, "'\\u%04x'", v->wc);
             break;
         case TENGINE_STRING: {
             strbuilder_append_char(sb, '\'');
@@ -644,6 +699,19 @@ char* TEngineValue_tostring(const TEngineValue* v, int hex)
                     strbuilder_append_char(sb, v->str[i]);
                 else
                     strbuilder_appendf(sb, "\\x%02x", v->str[i]);
+            }
+            strbuilder_append_char(sb, '\'');
+            break;
+        }
+        case TENGINE_WSTRING: {
+            strbuilder_append_char(sb, '\'');
+            for (u32_t i = 0; i < v->wstr_size; ++i) {
+                if (!v->wstr[i])
+                    break;
+                if (v->wstr[i] < 128 && is_printable_ascii(v->wstr[i]))
+                    strbuilder_append_char(sb, v->wstr[i]);
+                else
+                    strbuilder_appendf(sb, "\\u%04x", v->wstr[i]);
             }
             strbuilder_append_char(sb, '\'');
             break;

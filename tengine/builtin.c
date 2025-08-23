@@ -2,7 +2,6 @@
 #include "defs.h"
 #include "display.h"
 #include "filebuffer.h"
-#include "scope.h"
 #include "strbuilder.h"
 #include "interpreter.h"
 #include "util/str.h"
@@ -57,6 +56,52 @@ static TEngineValue* string_process(InterpreterContext* ctx)
 end:
     bhex_free(tmp);
     return r;
+
+#undef enlarge_tmp
+}
+
+static TEngineValue* wstring_process(InterpreterContext* ctx)
+{
+    u64_t  tmp_capacity = 8;
+    u64_t  tmp_size     = 0;
+    u16_t* tmp          = bhex_calloc(tmp_capacity * 2);
+
+#define enlarge_tmp                                                            \
+    if (tmp_size == tmp_capacity) {                                            \
+        tmp_capacity *= 2;                                                     \
+        tmp = bhex_realloc(tmp, tmp_capacity * 2);                             \
+    }
+
+    const u8_t* buf = fb_read(ctx->fb, 2);
+    if (buf == NULL)
+        return NULL;
+
+    TEngineValue* r = NULL;
+    while (*buf) {
+        enlarge_tmp;
+
+        tmp[tmp_size++] = ctx->endianess == TE_BIG_ENDIAN
+                              ? (((u16_t)buf[0] << 8) | (u16_t)buf[1])
+                              : (((u16_t)buf[1] << 8) | (u16_t)buf[0]);
+        if (fb_seek(ctx->fb, ctx->fb->off + 2) != 0)
+            goto end;
+        buf = fb_read(ctx->fb, 2);
+        if (buf == NULL)
+            return NULL;
+    }
+    // seek after the NULL terminator
+    if (fb_seek(ctx->fb, ctx->fb->off + 2) != 0)
+        goto end;
+
+    enlarge_tmp;
+    tmp[tmp_size] = 0;
+    r             = TEngineValue_WSTRING_new(tmp, tmp_size);
+
+end:
+    bhex_free(tmp);
+    return r;
+
+#undef enlarge_tmp
 }
 
 static TEngineValue* char_process(InterpreterContext* ctx)
@@ -67,6 +112,18 @@ static TEngineValue* char_process(InterpreterContext* ctx)
     if (fb_seek(ctx->fb, ctx->fb->off + 1) != 0)
         return NULL;
     return TEngineValue_CHAR_new(*buf);
+}
+
+static TEngineValue* wchar_process(InterpreterContext* ctx)
+{
+    const u8_t* buf = fb_read(ctx->fb, 2);
+    if (buf == NULL)
+        return NULL;
+    if (fb_seek(ctx->fb, ctx->fb->off + 2) != 0)
+        return NULL;
+    if (ctx->endianess == TE_BIG_ENDIAN)
+        return TEngineValue_WCHAR_new(((u16_t)buf[0] << 8) | (u16_t)buf[1]);
+    return TEngineValue_WCHAR_new(((u16_t)buf[1] << 8) | (u16_t)buf[0]);
 }
 
 static TEngineValue* uint_process(InterpreterContext* e, const u8_t* buf,
@@ -142,6 +199,7 @@ static TEngineBuiltinType builtin_types[] = {
     {"int64_t", i64_process},  {"int32_t", i32_process},
     {"int16_t", i16_process},  {"int8_t", i8_process},
     {"char", char_process},    {"string", string_process},
+    {"wchar", wchar_process},  {"wstring", wstring_process},
 };
 
 const TEngineBuiltinType* get_builtin_type(const char* type)
