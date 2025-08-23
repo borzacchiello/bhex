@@ -2424,3 +2424,32 @@ fail:
     r = TEST_FAILED;
     goto end;
 }
+
+int TEST(string_to_wstring)(void)
+{
+    const char* prog = "proc { "
+                       "    local a = \"abcd\";"
+                       "    local b = wstring(\"abcd\");"
+                       "    local c = wstring(\"abcd\");"
+                       "    local d = a == b;"
+                       "    local e = b == c;"
+                       "}";
+
+    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    ASSERT(scope != NULL);
+
+    int           r  = TEST_SUCCEEDED;
+    TEngineValue* vd = Scope_get_local(scope, "d");
+    ASSERT_TENGINE_UNUM_EQ(vd, 0);
+    TEngineValue* ve = Scope_get_local(scope, "e");
+    ASSERT_TENGINE_UNUM_EQ(ve, 1);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}

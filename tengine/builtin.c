@@ -255,6 +255,30 @@ GEN_INT_CAST(i16, 2, 1)
 GEN_INT_CAST(i32, 4, 1)
 GEN_INT_CAST(i64, 8, 1)
 
+static TEngineValue* builtin_wstring(InterpreterContext* ctx, DList* params)
+{
+    if (!params || params->size != 1) {
+        tengine_raise_exception(ctx, "wstring: missing required parameter");
+        return NULL;
+    }
+
+    TEngineValue* param = params->data[0];
+    const char*   param_str;
+    if (TEngineValue_as_string(ctx, param, &param_str) != 0) {
+        tengine_raise_exception(ctx, "wstring: expected a string parameter");
+        return NULL;
+    }
+
+    size_t str_len = strlen(param_str);
+    u16_t* tmp     = bhex_calloc(str_len * 2 + 2);
+    for (size_t i = 0; i < str_len; ++i) {
+        tmp[i] = param_str[i];
+    }
+    TEngineValue* res = TEngineValue_WSTRING_new(tmp, str_len);
+    bhex_free(tmp);
+    return res;
+}
+
 static TEngineValue* builtin_off(InterpreterContext* ctx, DList* params)
 {
     if (params && params->size > 0) {
@@ -656,6 +680,7 @@ static TEngineBuiltinFunc builtin_funcs[] = {
     {"i16", builtin_i16},
     {"i32", builtin_i32},
     {"i64", builtin_i64},
+    {"wstring", builtin_wstring},
     {"exit", builtin_exit},
     {"little_endian", builtin_little_endian},
     {"big_endian", builtin_big_endian},

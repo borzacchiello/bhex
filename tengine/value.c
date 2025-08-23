@@ -24,10 +24,14 @@ static const char* type_to_string(TEngineValueType t)
             return "snum";
         case TENGINE_CHAR:
             return "char";
+        case TENGINE_WCHAR:
+            return "wchar";
         case TENGINE_ENUM_VALUE:
             return "enum_value";
         case TENGINE_STRING:
             return "string";
+        case TENGINE_WSTRING:
+            return "wstring";
         case TENGINE_OBJ:
             return "custom_type";
         default:
@@ -440,9 +444,8 @@ TEngineValue* TEngineValue_beq(InterpreterContext* ctx, const TEngineValue* lhs,
         return TEngineValue_UNUM_new((lhs->unum == rhs->enum_const) ? 1 : 0, 1);
     }
 
-    tengine_raise_exception(ctx, "beq undefined for types %s and %s",
-                            type_to_string(lhs->t), type_to_string(rhs->t));
-    return NULL;
+    // Uncomparable objects, return false
+    return TEngineValue_UNUM_new(0, 8);
 }
 
 TEngineValue* TEngineValue_bnot(InterpreterContext* ctx,
