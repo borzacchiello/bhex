@@ -13,22 +13,21 @@
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 
-#define DEFAULT_ROWS 32
-#define HINT_CMDLINE " [<len> <rows>]"
+#define AUTO_MAX_ROWS 32
+#define HINT_CMDLINE  " [<rows> <len>]"
 
 static void entropycmd_dispose(void* obj) {}
 
 static void entropycmd_help(void* obj)
 {
-    display_printf("entropy: display an entropy graph\n"
-                   "\n"
-                   "  e" HINT_CMDLINE "\n"
-                   "\n"
-                   "  len:  number of bytes to include starting from the "
-                   "current offset (if omitted or '-', the whole file)\n"
-                   "  rows: number of points in the graph (if omitted, "
-                   "defaults to %d)\n",
-                   DEFAULT_ROWS);
+    display_printf(
+        "entropy: display an entropy graph\n"
+        "\n"
+        "  e" HINT_CMDLINE "\n"
+        "\n"
+        "  rows: number of points in the graph (if omitted or '-', auto mode)\n"
+        "  len:  number of bytes to include starting from the current offset "
+        "(if omitted, use the whole file)\n");
 }
 
 static float calc_entropy(FileBuffer* fb, u64_t addr, u64_t size)
@@ -71,18 +70,18 @@ static int entropycmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 {
     char* len_str  = NULL;
     char* rows_str = NULL;
-    if (handle_args(pc, 2, 0, &len_str, &rows_str) != 0)
+    if (handle_args(pc, 2, 0, &rows_str, &len_str) != 0)
         return COMMAND_INVALID_ARG;
 
     u32_t len  = fb->size - fb->off;
-    u32_t rows = DEFAULT_ROWS;
-    if (len_str && strcmp(len_str, "-") != 0) {
+    u32_t rows = 0;
+    if (len_str) {
         if (!str_to_uint32(len_str, &len)) {
             warning("not a number: '%s'", len_str);
             return COMMAND_INVALID_ARG;
         }
     }
-    if (rows_str) {
+    if (rows_str && strcmp(rows_str, "-") != 0) {
         if (!str_to_uint32(rows_str, &rows)) {
             warning("not a number: '%s'", rows_str);
             return COMMAND_INVALID_ARG;
@@ -93,6 +92,17 @@ static int entropycmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
         warning("len is too high, trimming it to %llu", fb->size - fb->off);
         len = fb->size - fb->off;
     }
+    if (rows == 0) {
+        // choose a number so that we have at least 4096 values for each point,
+        // with min: 1 and max: AUTO_MAX_ROWS.
+        rows = len / 4096;
+        if (rows == 0) {
+            warning("the file is too small for entropy to be meaningful");
+            rows = 1;
+        }
+        if (rows > AUTO_MAX_ROWS)
+            rows = AUTO_MAX_ROWS;
+    }
     u64_t last_addr = fb->off + len;
 
     if (rows > len)
@@ -101,7 +111,7 @@ static int entropycmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
         return COMMAND_OK;
 
     u32_t bytes_per_raw = len / rows;
-    u64_t addr = fb->off;
+    u64_t addr          = fb->off;
     for (u32_t i = 0; i < rows; ++i) {
         if (i == rows - 1)
             // if we have remaining bytes, include them in the last point

@@ -2144,9 +2144,6 @@ int TEST(saved_quiet_mode)(void)
         "b+00000003              b: 44";
     // clang-format on
 
-    bhex_free(strbuilder_reset(sb));
-    bhex_free(strbuilder_reset(err_sb));
-
     int              r   = TEST_SUCCEEDED;
     char*            out = NULL;
     DummyFilebuffer* tfb = dummyfilebuffer_create((u8_t*)"ABCD", 4);
@@ -2187,8 +2184,6 @@ int TEST(read_outside_boundaries)(void)
         "[  ERROR  ] Exception @ line 1, col 31 > RUNTIME ERROR\n";
     // clang-format on
 
-    bhex_free(strbuilder_reset(sb));
-    bhex_free(strbuilder_reset(err_sb));
 
     int              r   = TEST_SUCCEEDED;
     char*            out = NULL;
@@ -2231,8 +2226,6 @@ int TEST(wchars)(void)
         "b+00000004      c: '\\u0201'";
     // clang-format on
 
-    bhex_free(strbuilder_reset(sb));
-    bhex_free(strbuilder_reset(err_sb));
 
     int              r      = TEST_SUCCEEDED;
     char*            out    = NULL;
@@ -2271,8 +2264,6 @@ int TEST(wchar_array)(void)
         "b+00000000      c: 'AB\\u0201C'";
     // clang-format on
 
-    bhex_free(strbuilder_reset(sb));
-    bhex_free(strbuilder_reset(err_sb));
 
     int              r      = TEST_SUCCEEDED;
     char*            out    = NULL;
@@ -2309,8 +2300,6 @@ int TEST(wstring_1)(void)
         "b+00000000      str: 'ABCD'";
     // clang-format on
 
-    bhex_free(strbuilder_reset(sb));
-    bhex_free(strbuilder_reset(err_sb));
 
     int              r      = TEST_SUCCEEDED;
     char*            out    = NULL;
@@ -2347,8 +2336,6 @@ int TEST(wstring_2)(void)
         "b+00000000      str: 'ABCD\\u0101'";
     // clang-format on
 
-    bhex_free(strbuilder_reset(sb));
-    bhex_free(strbuilder_reset(err_sb));
 
     int              r      = TEST_SUCCEEDED;
     char*            out    = NULL;
@@ -2387,9 +2374,6 @@ int TEST(wstrings_eq)(void)
         "b+0000000c     str3: 'AD'\n"
         "yes 1 \n";
     // clang-format on
-
-    bhex_free(strbuilder_reset(sb));
-    bhex_free(strbuilder_reset(err_sb));
 
     int              r      = TEST_SUCCEEDED;
     char*            out    = NULL;

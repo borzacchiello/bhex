@@ -44,7 +44,7 @@ int TEST(notkitty)(void)
     // clang-format on
 
     int r = TEST_FAILED;
-    if (exec_commands("entropy") != 0)
+    if (exec_commands("entropy 32") != 0)
         goto end;
 
     char* out = strbuilder_reset(sb);
@@ -64,7 +64,7 @@ int TEST(notkitty_rows_2)(void)
     // clang-format on
 
     int r = TEST_FAILED;
-    if (exec_commands("entropy - 2") != 0)
+    if (exec_commands("entropy 2") != 0)
         goto end;
 
     char* out = strbuilder_reset(sb);
@@ -79,18 +79,11 @@ int TEST(notkitty_len_8)(void)
 {
     // clang-format off
     const char* expected =
-        "[ 00000000 - 00000001 ] (0.000) +\n"
-        "[ 00000001 - 00000002 ] (0.000) +\n"
-        "[ 00000002 - 00000003 ] (0.000) +\n"
-        "[ 00000003 - 00000004 ] (0.000) +\n"
-        "[ 00000004 - 00000005 ] (0.000) +\n"
-        "[ 00000005 - 00000006 ] (0.000) +\n"
-        "[ 00000006 - 00000007 ] (0.000) +\n"
-        "[ 00000007 - 00000008 ] (0.000) +\n";
+        "[ 00000000 - 00000008 ] (2.402) -------------+\n";
     // clang-format on
 
     int r = TEST_FAILED;
-    if (exec_commands("entropy 8") != 0)
+    if (exec_commands("entropy - 8") != 0)
         goto end;
 
     char* out = strbuilder_reset(sb);
@@ -110,7 +103,7 @@ int TEST(notkitty_len_8_rows_2)(void)
     // clang-format on
 
     int r = TEST_FAILED;
-    if (exec_commands("entropy 8 2") != 0)
+    if (exec_commands("entropy 2 8") != 0)
         goto end;
 
     char* out = strbuilder_reset(sb);

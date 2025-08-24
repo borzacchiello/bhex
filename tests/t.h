@@ -17,6 +17,7 @@ typedef struct test_t {
     for (i = 0; i < sizeof(tests) / sizeof(test_t); ++i) {                     \
         if (argc > 1 && strstr(tests[i].name, argv[1]) == NULL)                \
             continue;                                                          \
+        reset_global_state();                                                  \
         printf("[+] %s... ", tests[i].name);                                   \
         ntests += 1;                                                           \
         int r = tests[i].fptr();                                               \
