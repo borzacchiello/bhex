@@ -75,7 +75,7 @@ static void fmt_term_process_buffer_value(FormatterTerm* this, FileBuffer* fb,
         display_printf("...");
 }
 
-static void fmt_term_process_value(FormatterTerm* this, TEngineValue* val)
+static void fmt_term_process_value(FormatterTerm* this, BHEngineValue* val)
 {
     if (this->super->quiet_mode || this->skip_next)
         return;
@@ -85,7 +85,7 @@ static void fmt_term_process_value(FormatterTerm* this, TEngineValue* val)
         val->t == TENGINE_BUF)
         panic("process value called with an unexpected type");
 
-    char* value_str = TEngineValue_tostring(val, this->super->print_in_hex);
+    char* value_str = BHEngineValue_tostring(val, this->super->print_in_hex);
     display_printf("%s", value_str);
     bhex_free(value_str);
 }

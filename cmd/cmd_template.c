@@ -1,6 +1,6 @@
 #include "cmd_arg_handler.h"
 #include "cmd_template.h"
-#include "../tengine/vm.h"
+#include "../bhengine/vm.h"
 
 #include <sys/stat.h>
 #include <display.h>
@@ -23,7 +23,7 @@ static const char* search_folders_empty[] = {NULL};
 int template_skip_search = 0;
 
 typedef struct TemplateCtx {
-    TEngineVM* vm;
+    BHEngineVM* vm;
 } TemplateCtx;
 
 static void templatecmd_help(void* obj)
@@ -46,7 +46,7 @@ static void templatecmd_help(void* obj)
 
 static void templatecmd_dispose(TemplateCtx* ctx)
 {
-    tengine_vm_destroy(ctx->vm);
+    bhengine_vm_destroy(ctx->vm);
     bhex_free(ctx);
     return;
 }
@@ -93,11 +93,11 @@ static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
             display_printf(" > Filtering using '%s' <\n\n", arg_str);
 
         display_printf("Available templates:\n");
-        tengine_vm_iter_templates(ctx->vm, templates_print_cb);
+        bhengine_vm_iter_templates(ctx->vm, templates_print_cb);
         display_printf("\nAvailable template structs:\n");
-        tengine_vm_iter_structs(ctx->vm, composite_print_cb);
+        bhengine_vm_iter_structs(ctx->vm, composite_print_cb);
         display_printf("\nAvailable template named procs:\n");
-        tengine_vm_iter_named_procs(ctx->vm, composite_print_cb);
+        bhengine_vm_iter_named_procs(ctx->vm, composite_print_cb);
         return COMMAND_OK;
     }
 
@@ -105,14 +105,14 @@ static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
         return COMMAND_INVALID_ARG;
 
     if (xml == XML_SET)
-        tengine_vm_set_fmt_type(FMT_XML);
+        bhengine_vm_set_fmt_type(FMT_XML);
 
     u64_t initial_off = fb->off;
     char* bhe         = arg_str;
     int   r           = COMMAND_SILENT_ERROR;
 
     if (mode == MODE_INTERPRET) {
-        if (tengine_vm_process_string(ctx->vm, fb, arg_str) != 0) {
+        if (bhengine_vm_process_string(ctx->vm, fb, arg_str) != 0) {
             goto end;
         }
         r = COMMAND_OK;
@@ -121,16 +121,16 @@ static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
 
     if (file_exists(bhe)) {
         // Template file
-        if (tengine_vm_process_file(ctx->vm, fb, bhe) != 0) {
+        if (bhengine_vm_process_file(ctx->vm, fb, bhe) != 0) {
             goto end;
         }
         r = COMMAND_OK;
         goto end;
     }
 
-    if (tengine_vm_has_template(ctx->vm, bhe)) {
+    if (bhengine_vm_has_template(ctx->vm, bhe)) {
         // Template name
-        if (tengine_vm_process_bhe(ctx->vm, fb, bhe) != 0) {
+        if (bhengine_vm_process_bhe(ctx->vm, fb, bhe) != 0) {
             goto end;
         }
         r = COMMAND_OK;
@@ -147,12 +147,12 @@ static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
     if (sname == NULL)
         goto err;
 
-    if (tengine_vm_has_bhe_struct(ctx->vm, tname, sname)) {
-        if (tengine_vm_process_bhe_struct(ctx->vm, fb, tname, sname) != 0) {
+    if (bhengine_vm_has_bhe_struct(ctx->vm, tname, sname)) {
+        if (bhengine_vm_process_bhe_struct(ctx->vm, fb, tname, sname) != 0) {
             goto end;
         }
-    } else if (tengine_vm_has_bhe_proc(ctx->vm, tname, sname)) {
-        if (tengine_vm_process_bhe_proc(ctx->vm, fb, tname, sname) != 0) {
+    } else if (bhengine_vm_has_bhe_proc(ctx->vm, tname, sname)) {
+        if (bhengine_vm_process_bhe_proc(ctx->vm, fb, tname, sname) != 0) {
             goto end;
         }
     } else {
@@ -163,7 +163,7 @@ static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
 end:
     display_printf("\n");
     fb_seek(fb, initial_off);
-    tengine_vm_set_fmt_type(FMT_TERM);
+    bhengine_vm_set_fmt_type(FMT_TERM);
     return r;
 
 err:
@@ -176,7 +176,7 @@ Cmd* templatecmd_create(void)
     Cmd* cmd = bhex_malloc(sizeof(Cmd));
 
     TemplateCtx* ctx = bhex_calloc(sizeof(TemplateCtx));
-    ctx->vm    = tengine_vm_create(template_skip_search ? search_folders_empty
+    ctx->vm    = bhengine_vm_create(template_skip_search ? search_folders_empty
                                                         : search_folders);
     cmd->obj   = ctx;
     cmd->name  = "template";

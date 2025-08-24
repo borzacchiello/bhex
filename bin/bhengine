@@ -3,11 +3,11 @@
 usage() {
     cat <<'EOF'
 Usage:
-  tengine [-l] [-x] [<file> <template>]
+  bhengine [-l] [-x] [<file> <template>]
 
 Options:
   -l    List available templates
-        Ignores other flags and positional arguments
+        Use first argument as filter (if provided)
   -x    Output in XML
 
 Arguments:
@@ -32,7 +32,11 @@ done
 shift $((OPTIND - 1))
 
 if (( list )); then
-  exec bhex -2c "t/l" /dev/null
+  filter=""
+  if [ "$#" -ge 1 ]; then
+    filter=$1
+  fi
+  exec bhex -2c "t/l $filter" /dev/null
 fi
 
 if [ "$#" -ne 2 ]; then

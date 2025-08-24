@@ -4,7 +4,7 @@
 #include "alloc.h"
 #include "t.h"
 
-#include "../tengine/vm.h"
+#include "../bhengine/vm.h"
 #include "data/net.h"
 #include "data/sample_zip.h"
 
@@ -27,16 +27,16 @@ int TEST(use_struct_of_another_file)(void)
         "b+0000000c                           type: ETH_TYPE_INVALID_ZERO";
     // clang-format on
 
-    int        r  = TEST_FAILED;
-    TEngineVM* vm = tengine_vm_create(empty_dirs);
+    int         r  = TEST_FAILED;
+    BHEngineVM* vm = bhengine_vm_create(empty_dirs);
     if (vm == NULL) {
         return 0;
     }
-    if (tengine_vm_add_template(vm, "net", "./templates/net.bhe") != 0) {
+    if (bhengine_vm_add_template(vm, "net", "./templates/net.bhe") != 0) {
         print_err_sb();
         goto end;
     }
-    if (tengine_vm_process_string(vm, elf_fb->fb, prog) != 0) {
+    if (bhengine_vm_process_string(vm, elf_fb->fb, prog) != 0) {
         goto end;
     }
 
@@ -44,7 +44,7 @@ int TEST(use_struct_of_another_file)(void)
     r         = compare_strings_ignoring_X(expected, out);
     bhex_free(out);
 end:
-    tengine_vm_destroy(vm);
+    bhengine_vm_destroy(vm);
     return r;
 }
 
@@ -80,14 +80,14 @@ int TEST(use_complex_struct_of_another_file)(void)
         "b+00000032                e_shstrndx: 0003";
     // clang-format on
 
-    int        r  = TEST_FAILED;
-    TEngineVM* vm = tengine_vm_create(empty_dirs);
+    int         r  = TEST_FAILED;
+    BHEngineVM* vm = bhengine_vm_create(empty_dirs);
     if (vm == NULL)
         return 0;
-    if (tengine_vm_add_template(vm, "elf", "./templates/elf.bhe") != 0)
+    if (bhengine_vm_add_template(vm, "elf", "./templates/elf.bhe") != 0)
         goto end;
 
-    if (tengine_vm_process_string(vm, elf_fb->fb, prog) != 0)
+    if (bhengine_vm_process_string(vm, elf_fb->fb, prog) != 0)
         goto end;
 
     char* out = strbuilder_reset(sb);
@@ -95,7 +95,7 @@ int TEST(use_complex_struct_of_another_file)(void)
     bhex_free(out);
 
 end:
-    tengine_vm_destroy(vm);
+    bhengine_vm_destroy(vm);
     return r;
 }
 
@@ -109,14 +109,14 @@ int TEST(use_enum_of_another_file)(void)
         "b+00000012           m: EM_386";
     // clang-format on
 
-    int        r  = TEST_FAILED;
-    TEngineVM* vm = tengine_vm_create(empty_dirs);
+    int         r  = TEST_FAILED;
+    BHEngineVM* vm = bhengine_vm_create(empty_dirs);
     if (vm == NULL)
         return 0;
-    if (tengine_vm_add_template(vm, "elf", "./templates/elf.bhe") != 0)
+    if (bhengine_vm_add_template(vm, "elf", "./templates/elf.bhe") != 0)
         goto end;
 
-    if (tengine_vm_process_string(vm, elf_fb->fb, prog) != 0)
+    if (bhengine_vm_process_string(vm, elf_fb->fb, prog) != 0)
         goto end;
 
     char* out = strbuilder_reset(sb);
@@ -124,7 +124,7 @@ int TEST(use_enum_of_another_file)(void)
     bhex_free(out);
 
 end:
-    tengine_vm_destroy(vm);
+    bhengine_vm_destroy(vm);
     return r;
 }
 
@@ -162,13 +162,13 @@ int TEST(template_tcp)(void)
 
     int              r   = TEST_SUCCEEDED;
     DummyFilebuffer* tfb = NULL;
-    TEngineVM*       vm  = tengine_vm_create(empty_dirs);
+    BHEngineVM*      vm  = bhengine_vm_create(empty_dirs);
     ASSERT(vm != NULL);
-    ASSERT(tengine_vm_add_template(vm, "net", "./templates/net.bhe") == 0);
+    ASSERT(bhengine_vm_add_template(vm, "net", "./templates/net.bhe") == 0);
 
     tfb = dummyfilebuffer_create(tcp_pkt, sizeof(tcp_pkt));
     ASSERT(tfb != NULL);
-    ASSERT(tengine_vm_process_string(vm, tfb->fb, prog) == 0);
+    ASSERT(bhengine_vm_process_string(vm, tfb->fb, prog) == 0);
 
     char* out = strbuilder_reset(sb);
     r         = compare_strings_ignoring_X(expected, out);
@@ -177,7 +177,7 @@ int TEST(template_tcp)(void)
 end:
     if (tfb)
         dummyfilebuffer_destroy(tfb);
-    tengine_vm_destroy(vm);
+    bhengine_vm_destroy(vm);
     return r;
 
 fail:
@@ -200,12 +200,12 @@ int TEST(zip_list_files)(void)
 
     DummyFilebuffer* tfb =
         dummyfilebuffer_create(sample_zip, sizeof(sample_zip));
-    TEngineVM* vm = tengine_vm_create(empty_dirs);
+    BHEngineVM* vm = bhengine_vm_create(empty_dirs);
 
     ASSERT(tfb != NULL);
     ASSERT(vm != NULL);
-    ASSERT(tengine_vm_add_template(vm, "zip", "./templates/zip.bhe") == 0);
-    ASSERT(tengine_vm_process_bhe_proc(vm, tfb->fb, "zip", "list_files") == 0);
+    ASSERT(bhengine_vm_add_template(vm, "zip", "./templates/zip.bhe") == 0);
+    ASSERT(bhengine_vm_process_bhe_proc(vm, tfb->fb, "zip", "list_files") == 0);
 
     char* out = strbuilder_reset(sb);
     r         = compare_strings_ignoring_X(expected, out);
@@ -213,7 +213,7 @@ int TEST(zip_list_files)(void)
 
 end:
     dummyfilebuffer_destroy(tfb);
-    tengine_vm_destroy(vm);
+    bhengine_vm_destroy(vm);
     return r;
 
 fail:

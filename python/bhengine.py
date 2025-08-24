@@ -99,7 +99,7 @@ def process(fname: str, template: str):
     if not os.path.isfile(fname):
         raise ValueError(f"{fname} is not a valid file")
     proc = subprocess.Popen(
-        ["tengine", "-x", fname, template], stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+        ["bhengine", "-x", fname, template], stderr=subprocess.PIPE, stdout=subprocess.PIPE)
     stdout, stderr = proc.communicate()
     if stderr != b"":
         raise ValueError(stderr.decode("ascii"))

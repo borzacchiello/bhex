@@ -95,18 +95,18 @@ set(command_src
     cmd/cmd_interactive.c
     cmd/tui.c)
 
-set(tengine_src
-    tengine/ast.c
-    tengine/builtin.c
-    tengine/scope.c
-    tengine/lexer.c
-    tengine/parser.c
-    tengine/interpreter.c
-    tengine/vm.c
-    tengine/value.c
-    tengine/formatter.c
-    tengine/formatter_term.c
-    tengine/formatter_xml.c)
+set(bhengine_src
+    bhengine/ast.c
+    bhengine/builtin.c
+    bhengine/scope.c
+    bhengine/lexer.c
+    bhengine/parser.c
+    bhengine/interpreter.c
+    bhengine/vm.c
+    bhengine/value.c
+    bhengine/formatter.c
+    bhengine/formatter_term.c
+    bhengine/formatter_xml.c)
 
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -Wall -ffunction-sections")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wall -ffunction-sections")
@@ -139,7 +139,7 @@ if (ENABLE_TESTS)
 
     add_executable(bhex_tests
         ${common_src}
-        ${tengine_src}
+        ${bhengine_src}
         ${command_src}
         tests/dummy_filebuffer.c
         ${CMAKE_SOURCE_DIR}/tests/main.c)
@@ -158,7 +158,7 @@ if (ENABLE_FUZZ_TESTS)
 
         add_executable(bhex_fuzz_tengine
             ${common_src}
-            ${tengine_src}
+            ${bhengine_src}
             ${CMAKE_SOURCE_DIR}/tests/fuzz_test_tengine.c)
 
         target_compile_options(bhex_fuzz_tengine PRIVATE -fsanitize=address,fuzzer,undefined)
@@ -173,7 +173,7 @@ endif()
 add_executable(bhex
     ${common_src}
     ${command_src}
-    ${tengine_src}
+    ${bhengine_src}
     linenoise/linenoise.c
     completion.c
     main.c)
@@ -193,7 +193,7 @@ endif()
 
 install(TARGETS bhex RUNTIME DESTINATION bin)
 install(PROGRAMS ${CMAKE_SOURCE_DIR}/bin/bdiff DESTINATION bin)
-install(PROGRAMS ${CMAKE_SOURCE_DIR}/bin/tengine DESTINATION bin)
+install(PROGRAMS ${CMAKE_SOURCE_DIR}/bin/bhengine DESTINATION bin)
 install(DIRECTORY templates/
         DESTINATION share/bhex/templates
         FILES_MATCHING PATTERN "*.bhe")

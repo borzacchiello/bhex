@@ -1,5 +1,5 @@
-TEngine
--------
+BHEngine
+--------
 
 Work in progress template engine
 
@@ -21,7 +21,7 @@ Work in progress template engine
 [X] make 'proc' not mandatory
 [X] refactor tengine interpreter
 	- parsing helpers should be moved to ast.c
-	- the TEngineInterpreter struct should be merged with ProcessContext and made private
+	- the BHEngineInterpreter struct should be merged with ProcessContext and made private
 [X] implement a 'find_next' API (which returns the offset, or -1)
 [X] improve error print
 [X] print source code context while printing exceptions

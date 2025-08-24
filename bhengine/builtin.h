@@ -5,24 +5,24 @@
 #include "interpreter.h"
 
 struct InterpreterContext;
-struct TEngineValue;
+struct BHEngineValue;
 struct FileBuffer;
 struct DList;
 
-typedef struct TEngineBuiltinType {
+typedef struct BHEngineBuiltinType {
     char name[MAX_IDENT_SIZE];
-    struct TEngineValue* (*process)(struct InterpreterContext* ctx);
-} TEngineBuiltinType;
+    struct BHEngineValue* (*process)(struct InterpreterContext* ctx);
+} BHEngineBuiltinType;
 
-const TEngineBuiltinType* get_builtin_type(const char* type);
+const BHEngineBuiltinType* get_builtin_type(const char* type);
 
-typedef struct TEngineBuiltinFunc {
+typedef struct BHEngineBuiltinFunc {
     char name[MAX_IDENT_SIZE];
-    struct TEngineValue* (*process)(struct InterpreterContext* ctx,
+    struct BHEngineValue* (*process)(struct InterpreterContext* ctx,
                                     struct DList*              params);
-} TEngineBuiltinFunc;
+} BHEngineBuiltinFunc;
 
-const TEngineBuiltinFunc* get_builtin_func(const char* name);
+const BHEngineBuiltinFunc* get_builtin_func(const char* name);
 
 #define is_builtin_type(t) (get_builtin_type(t) != NULL)
 #define is_builtin_fun(t)  (get_builtin_func(t) != NULL)

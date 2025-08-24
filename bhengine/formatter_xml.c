@@ -62,7 +62,7 @@ static void fmt_xml_process_buffer_value(FormatterXML* this, FileBuffer* fb,
     display_printf("</buffer>");
 }
 
-static void fmt_xml_process_value(FormatterXML* this, TEngineValue* val)
+static void fmt_xml_process_value(FormatterXML* this, BHEngineValue* val)
 {
     switch (val->t) {
         case TENGINE_UNUM:

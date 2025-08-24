@@ -11,7 +11,7 @@
 #include "ast.h"
 #include "vm.h"
 
-static ASTCtx* tengine_vm_process_imported(TEngineVM* vm, const char* bhe)
+static ASTCtx* bhengine_vm_process_imported(BHEngineVM* vm, const char* bhe)
 {
     if (!map_contains(vm->templates, bhe)) {
         error("no such template file '%s'", bhe);
@@ -20,12 +20,12 @@ static ASTCtx* tengine_vm_process_imported(TEngineVM* vm, const char* bhe)
     return map_get(vm->templates, bhe);
 }
 
-TEngineVM* tengine_vm_create(const char** dirs)
+BHEngineVM* bhengine_vm_create(const char** dirs)
 {
-    tengine_interpreter_set_fmt_type(FMT_TERM);
+    bhengine_interpreter_set_fmt_type(FMT_TERM);
 
-    TEngineVM* ctx = bhex_calloc(sizeof(TEngineVM));
-    ctx->templates = map_create();
+    BHEngineVM* ctx = bhex_calloc(sizeof(BHEngineVM));
+    ctx->templates  = map_create();
     map_set_dispose(ctx->templates, (void (*)(void*))ASTCtx_delete);
 
     char tmp[1024];
@@ -61,7 +61,7 @@ TEngineVM* tengine_vm_create(const char** dirs)
                 continue;
             }
 
-            ASTCtx* ast = tengine_parse_filename(tmp);
+            ASTCtx* ast = bhengine_parse_filename(tmp);
             if (ast == NULL) {
                 // Invalid bhe file
                 warning("template '%s' invalid, skipping file '%s'",
@@ -79,21 +79,22 @@ TEngineVM* tengine_vm_create(const char** dirs)
         curr++;
     }
 
-    tengine_interpreter_set_imported_types_callback(
-        (imported_cb_t)tengine_vm_process_imported, ctx);
+    bhengine_interpreter_set_imported_types_callback(
+        (imported_cb_t)bhengine_vm_process_imported, ctx);
     return ctx;
 }
 
-void tengine_vm_set_fmt_type(fmt_t t) { tengine_interpreter_set_fmt_type(t); }
+void bhengine_vm_set_fmt_type(fmt_t t) { bhengine_interpreter_set_fmt_type(t); }
 
-int tengine_vm_add_template(TEngineVM* ctx, const char* name, const char* path)
+int bhengine_vm_add_template(BHEngineVM* ctx, const char* name,
+                             const char* path)
 {
     if (map_contains(ctx->templates, name)) {
         warning("template '%s' already loaded, overwriting template '%s'",
                 name);
     }
 
-    ASTCtx* ast = tengine_parse_filename(path);
+    ASTCtx* ast = bhengine_parse_filename(path);
     if (ast == NULL) {
         // Invalid bhe file
         warning("template @ '%s' invalid", path);
@@ -104,15 +105,15 @@ int tengine_vm_add_template(TEngineVM* ctx, const char* name, const char* path)
     return 0;
 }
 
-void tengine_vm_destroy(TEngineVM* ctx)
+void bhengine_vm_destroy(BHEngineVM* ctx)
 {
-    tengine_interpreter_set_imported_types_callback(NULL, NULL);
+    bhengine_interpreter_set_imported_types_callback(NULL, NULL);
     map_destroy(ctx->templates);
     bhex_free(ctx);
 }
 
-void tengine_vm_iter_templates(TEngineVM* ctx,
-                               void (*cb)(const char* name, ASTCtx* ast))
+void bhengine_vm_iter_templates(BHEngineVM* ctx,
+                                void (*cb)(const char* name, ASTCtx* ast))
 {
     for (const char* key = map_first(ctx->templates); key != NULL;
          key             = map_next(ctx->templates, key)) {
@@ -121,9 +122,9 @@ void tengine_vm_iter_templates(TEngineVM* ctx,
     }
 }
 
-void tengine_vm_iter_structs(TEngineVM* ctx,
-                             void (*cb)(const char* bhe, const char* name,
-                                        ASTCtx* ast))
+void bhengine_vm_iter_structs(BHEngineVM* ctx,
+                              void (*cb)(const char* bhe, const char* name,
+                                         ASTCtx* ast))
 {
     for (const char* key = map_first(ctx->templates); key != NULL;
          key             = map_next(ctx->templates, key)) {
@@ -135,9 +136,9 @@ void tengine_vm_iter_structs(TEngineVM* ctx,
     }
 }
 
-void tengine_vm_iter_named_procs(TEngineVM* ctx,
-                                 void (*cb)(const char* bhe, const char* name,
-                                            ASTCtx* ast))
+void bhengine_vm_iter_named_procs(BHEngineVM* ctx,
+                                  void (*cb)(const char* bhe, const char* name,
+                                             ASTCtx* ast))
 {
     for (const char* key = map_first(ctx->templates); key != NULL;
          key             = map_next(ctx->templates, key)) {
@@ -149,13 +150,13 @@ void tengine_vm_iter_named_procs(TEngineVM* ctx,
     }
 }
 
-int tengine_vm_has_template(TEngineVM* ctx, const char* bhe)
+int bhengine_vm_has_template(BHEngineVM* ctx, const char* bhe)
 {
     return map_contains(ctx->templates, bhe);
 }
 
-int tengine_vm_has_bhe_struct(TEngineVM* ctx, const char* bhe,
-                              const char* struct_name)
+int bhengine_vm_has_bhe_struct(BHEngineVM* ctx, const char* bhe,
+                               const char* struct_name)
 {
     if (!map_contains(ctx->templates, bhe))
         return 0;
@@ -166,8 +167,8 @@ int tengine_vm_has_bhe_struct(TEngineVM* ctx, const char* bhe,
     return 1;
 }
 
-int tengine_vm_has_bhe_proc(TEngineVM* ctx, const char* bhe,
-                            const char* proc_name)
+int bhengine_vm_has_bhe_proc(BHEngineVM* ctx, const char* bhe,
+                             const char* proc_name)
 {
     if (!map_contains(ctx->templates, bhe))
         return 0;
@@ -178,7 +179,7 @@ int tengine_vm_has_bhe_proc(TEngineVM* ctx, const char* bhe,
     return 1;
 }
 
-int tengine_vm_process_bhe(TEngineVM* ctx, FileBuffer* fb, const char* bhe)
+int bhengine_vm_process_bhe(BHEngineVM* ctx, FileBuffer* fb, const char* bhe)
 {
     if (!map_contains(ctx->templates, bhe))
         return 1;
@@ -188,11 +189,11 @@ int tengine_vm_process_bhe(TEngineVM* ctx, FileBuffer* fb, const char* bhe)
         error("'%s' has not proc", bhe);
         return 1;
     }
-    return tengine_interpreter_process_ast(fb, ast);
+    return bhengine_interpreter_process_ast(fb, ast);
 }
 
-int tengine_vm_process_bhe_struct(TEngineVM* ctx, FileBuffer* fb,
-                                  const char* bhe, const char* struct_name)
+int bhengine_vm_process_bhe_struct(BHEngineVM* ctx, FileBuffer* fb,
+                                   const char* bhe, const char* struct_name)
 {
     if (!map_contains(ctx->templates, bhe))
         return 1;
@@ -200,11 +201,11 @@ int tengine_vm_process_bhe_struct(TEngineVM* ctx, FileBuffer* fb,
     ASTCtx* ast = map_get(ctx->templates, bhe);
     if (!map_contains(ast->structs, struct_name))
         return 1;
-    return tengine_interpreter_process_ast_struct(fb, ast, struct_name);
+    return bhengine_interpreter_process_ast_struct(fb, ast, struct_name);
 }
 
-int tengine_vm_process_bhe_proc(TEngineVM* ctx, FileBuffer* fb, const char* bhe,
-                                const char* proc_name)
+int bhengine_vm_process_bhe_proc(BHEngineVM* ctx, FileBuffer* fb,
+                                 const char* bhe, const char* proc_name)
 {
     if (!map_contains(ctx->templates, bhe))
         return 1;
@@ -212,15 +213,16 @@ int tengine_vm_process_bhe_proc(TEngineVM* ctx, FileBuffer* fb, const char* bhe,
     ASTCtx* ast = map_get(ctx->templates, bhe);
     if (!map_contains(ast->named_procs, proc_name))
         return 1;
-    return tengine_interpreter_process_ast_named_proc(fb, ast, proc_name);
+    return bhengine_interpreter_process_ast_named_proc(fb, ast, proc_name);
 }
 
-int tengine_vm_process_file(TEngineVM* ctx, FileBuffer* fb, const char* fname)
+int bhengine_vm_process_file(BHEngineVM* ctx, FileBuffer* fb, const char* fname)
 {
-    return tengine_interpreter_process_filename(fb, fname);
+    return bhengine_interpreter_process_filename(fb, fname);
 }
 
-int tengine_vm_process_string(TEngineVM* ctx, FileBuffer* fb, const char* code)
+int bhengine_vm_process_string(BHEngineVM* ctx, FileBuffer* fb,
+                               const char* code)
 {
     u64_t orig_off = fb->off;
 
@@ -228,7 +230,7 @@ int tengine_vm_process_string(TEngineVM* ctx, FileBuffer* fb, const char* code)
     char*  prog      = bhex_calloc(prog_size);
     snprintf(prog, prog_size - 1, "proc { %s }", code);
 
-    Scope* scope = tengine_interpreter_run_on_string(fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(fb, prog);
     if (!scope) {
         bhex_free(prog);
         fb->off = orig_off;

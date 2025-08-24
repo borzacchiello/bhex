@@ -29,16 +29,16 @@ static int process_stmts(InterpreterContext* ctx, DList* stmts, Scope* scope);
 static int process_stmts_no_exc(InterpreterContext* ctx, DList* stmts,
                                 Scope* scope);
 
-static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
-                                   Expr* e);
-static int           eval_to_u64(InterpreterContext* ctx, Scope* scope, Expr* e,
-                                 u64_t* o);
-static int           eval_to_str(InterpreterContext* ctx, Scope* scope, Expr* e,
-                                 const char** o);
+static BHEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
+                                    Expr* e);
+static int eval_to_u64(InterpreterContext* ctx, Scope* scope, Expr* e,
+                       u64_t* o);
+static int eval_to_str(InterpreterContext* ctx, Scope* scope, Expr* e,
+                       const char** o);
 
-void tengine_interpreter_set_fmt_type(fmt_t t) { format_type = t; }
+void bhengine_interpreter_set_fmt_type(fmt_t t) { format_type = t; }
 
-void tengine_raise_exception(InterpreterContext* ctx, const char* fmt, ...)
+void bhengine_raise_exception(InterpreterContext* ctx, const char* fmt, ...)
 {
     if (ctx->exc == NULL) {
         ctx->exc     = bhex_calloc(sizeof(InterpreterException));
@@ -55,7 +55,7 @@ void tengine_raise_exception(InterpreterContext* ctx, const char* fmt, ...)
     ctx->halt = 1;
 }
 
-void tengine_raise_exit_request(InterpreterContext* ctx) { ctx->halt = 1; }
+void bhengine_raise_exit_request(InterpreterContext* ctx) { ctx->halt = 1; }
 
 static Block* get_struct_body(ASTCtx* ast, const char* name)
 {
@@ -132,21 +132,21 @@ static const char* process_enum_type(InterpreterContext* ctx, Type* type,
     if (e == NULL)
         return NULL;
 
-    const TEngineBuiltinType* t = get_builtin_type(e->type);
+    const BHEngineBuiltinType* t = get_builtin_type(e->type);
     if (t == NULL) {
-        tengine_raise_exception(ctx, "Enum %s has an invalid source type [%s]",
-                                type->name, e->type);
+        bhengine_raise_exception(ctx, "Enum %s has an invalid source type [%s]",
+                                 type->name, e->type);
         return NULL;
     }
 
-    TEngineValue* v = t->process(ctx);
+    BHEngineValue* v = t->process(ctx);
     if (v == NULL)
         return NULL;
 
     u64_t val = v->t == TENGINE_UNUM ? v->unum : (u64_t)v->snum;
     if (econst)
         *econst = val;
-    TEngineValue_free(v);
+    BHEngineValue_free(v);
 
     const char* name = Enum_find_const(e, val);
     if (name == NULL) {
@@ -159,13 +159,13 @@ static const char* process_enum_type(InterpreterContext* ctx, Type* type,
     return name;
 }
 
-static TEngineValue* process_type(InterpreterContext* ctx, const char* varname,
-                                  Type* type, Scope* scope)
+static BHEngineValue* process_type(InterpreterContext* ctx, const char* varname,
+                                   Type* type, Scope* scope)
 {
     if (type->bhe_name == NULL) {
-        const TEngineBuiltinType* t = get_builtin_type(type->name);
+        const BHEngineBuiltinType* t = get_builtin_type(type->name);
         if (t != NULL) {
-            TEngineValue* r = t->process(ctx);
+            BHEngineValue* r = t->process(ctx);
             if (r == NULL)
                 return NULL;
             fmt_process_value(ctx->fmt, r);
@@ -175,35 +175,35 @@ static TEngineValue* process_type(InterpreterContext* ctx, const char* varname,
 
     map* custom_type_vars = process_struct_type(ctx, type);
     if (custom_type_vars != NULL) {
-        TEngineValue* v = TEngineValue_OBJ_new(custom_type_vars);
+        BHEngineValue* v = BHEngineValue_OBJ_new(custom_type_vars);
         return v;
     }
 
     u64_t       econst;
     const char* enum_var = process_enum_type(ctx, type, &econst);
     if (enum_var != NULL) {
-        TEngineValue* v = TEngineValue_ENUM_VALUE_new(enum_var, econst);
+        BHEngineValue* v = BHEngineValue_ENUM_VALUE_new(enum_var, econst);
         fmt_process_value(ctx->fmt, v);
         return v;
     }
 
-    tengine_raise_exception(ctx, "error while parsing %s", type->name);
+    bhengine_raise_exception(ctx, "error while parsing %s", type->name);
     return NULL;
 }
 
-static TEngineValue* handle_function_call(InterpreterContext* ctx, Function* fn,
-                                          DList* params_exprs,
-                                          Scope* caller_scope)
+static BHEngineValue* handle_function_call(InterpreterContext* ctx,
+                                           Function* fn, DList* params_exprs,
+                                           Scope* caller_scope)
 {
-    TEngineValue* result           = NULL;
-    Scope*        fn_scope         = NULL;
-    int           saved_quiet_mode = ctx->fmt->quiet_mode;
-    int           saved_endianess  = ctx->endianess;
+    BHEngineValue* result           = NULL;
+    Scope*         fn_scope         = NULL;
+    int            saved_quiet_mode = ctx->fmt->quiet_mode;
+    int            saved_endianess  = ctx->endianess;
 
     u64_t nparams         = params_exprs ? params_exprs->size : 0;
     u64_t expected_params = fn->params ? fn->params->size : 0;
     if (nparams != expected_params) {
-        tengine_raise_exception(
+        bhengine_raise_exception(
             ctx,
             "invalid number of parameters while calling %s: "
             "expected %llu, got %llu",
@@ -212,10 +212,10 @@ static TEngineValue* handle_function_call(InterpreterContext* ctx, Function* fn,
     }
 
     fn_scope = Scope_new();
-    Scope_add_local(fn_scope, "result", TEngineValue_UNUM_new(0, 8));
+    Scope_add_local(fn_scope, "result", BHEngineValue_UNUM_new(0, 8));
     for (u64_t i = 0; i < nparams; ++i)
         Scope_add_local(fn_scope, fn->params->data[i],
-                        TEngineValue_dup(params_exprs->data[i]));
+                        BHEngineValue_dup(params_exprs->data[i]));
 
     if (process_stmts_no_exc(ctx, fn->block->stmts, fn_scope) != 0)
         goto end;
@@ -237,9 +237,9 @@ static DList* evaluate_list_of_exprs(InterpreterContext* ctx, Scope* scope,
     if (l) {
         r = DList_new();
         for (u64_t i = 0; i < l->size; ++i) {
-            TEngineValue* el = evaluate_expr(ctx, scope, l->data[i]);
+            BHEngineValue* el = evaluate_expr(ctx, scope, l->data[i]);
             if (el == NULL) {
-                DList_destroy(r, (void (*)(void*))TEngineValue_free);
+                DList_destroy(r, (void (*)(void*))BHEngineValue_free);
                 return NULL;
             }
             DList_add(r, el);
@@ -248,85 +248,88 @@ static DList* evaluate_list_of_exprs(InterpreterContext* ctx, Scope* scope,
     return r;
 }
 
-static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
-                                   Expr* e)
+static BHEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
+                                    Expr* e)
 {
 #define evaluate_check_null                                                    \
     if (!lhs || !rhs) {                                                        \
-        TEngineValue_free(lhs);                                                \
-        TEngineValue_free(rhs);                                                \
+        BHEngineValue_free(lhs);                                               \
+        BHEngineValue_free(rhs);                                               \
         return NULL;                                                           \
     }
 
     switch (e->t) {
         case EXPR_SCONST:
-            return TEngineValue_SNUM_new(e->sconst_value, e->sconst_size);
+            return BHEngineValue_SNUM_new(e->sconst_value, e->sconst_size);
         case EXPR_UCONST:
-            return TEngineValue_UNUM_new(e->uconst_value, e->uconst_size);
+            return BHEngineValue_UNUM_new(e->uconst_value, e->uconst_size);
         case EXPR_ENUM_CONST: {
             if (!map_contains(ctx->ast->enums, e->enum_name)) {
-                tengine_raise_exception(ctx, "no such enum '%s'", e->enum_name);
+                bhengine_raise_exception(ctx, "no such enum '%s'",
+                                         e->enum_name);
                 return NULL;
             }
             u64_t v;
             Enum* enumptr = map_get(ctx->ast->enums, e->enum_name);
             if (Enum_find_value(enumptr, e->enum_field, &v) != 0) {
-                tengine_raise_exception(ctx, "enum '%s' has no such field '%s'",
-                                        e->enum_name, e->enum_field);
+                bhengine_raise_exception(ctx,
+                                         "enum '%s' has no such field '%s'",
+                                         e->enum_name, e->enum_field);
                 return NULL;
             }
-            return TEngineValue_UNUM_new(v, 8);
+            return BHEngineValue_UNUM_new(v, 8);
         }
         case EXPR_STRING:
-            return TEngineValue_STRING_new(e->str, e->str_len);
+            return BHEngineValue_STRING_new(e->str, e->str_len);
         case EXPR_VAR: {
-            TEngineValue* value = Scope_get_anyvar(scope, e->name);
+            BHEngineValue* value = Scope_get_anyvar(scope, e->name);
             if (!value) {
-                tengine_raise_exception(ctx, "no such variable '%s'", e->name);
+                bhengine_raise_exception(ctx, "no such variable '%s'", e->name);
                 return NULL;
             }
-            return TEngineValue_dup(value);
+            return BHEngineValue_dup(value);
         }
         case EXPR_SUBSCR: {
-            TEngineValue* lhs = evaluate_expr(ctx, scope, e->subscr_e);
+            BHEngineValue* lhs = evaluate_expr(ctx, scope, e->subscr_e);
             if (!lhs)
                 return NULL;
             if (lhs->t != TENGINE_OBJ) {
-                TEngineValue_free(lhs);
-                tengine_raise_exception(
+                BHEngineValue_free(lhs);
+                bhengine_raise_exception(
                     ctx, "invalid subscription operator: e is not an "
                          "object");
                 return NULL;
             }
 
             if (!map_contains(lhs->subvals, e->subscr_name)) {
-                TEngineValue_free(lhs);
-                tengine_raise_exception(
+                BHEngineValue_free(lhs);
+                bhengine_raise_exception(
                     ctx,
                     "invalid subscription operator: e does not "
                     "contain '%s'",
                     e->subscr_name);
                 return NULL;
             }
-            TEngineValue* val = map_get(lhs->subvals, e->subscr_name);
+            BHEngineValue* val = map_get(lhs->subvals, e->subscr_name);
             if (val == NULL)
                 panic("[tengine] NULL during subscription operator");
-            TEngineValue* res = TEngineValue_dup(val);
-            TEngineValue_free(lhs);
+            BHEngineValue* res = BHEngineValue_dup(val);
+            BHEngineValue_free(lhs);
             return res;
         }
         case EXPR_ARRAY_SUB: {
-            TEngineValue* lhs = evaluate_expr(ctx, scope, e->array_sub_e);
-            TEngineValue* rhs = evaluate_expr(ctx, scope, e->array_sub_n);
+            BHEngineValue* lhs = evaluate_expr(ctx, scope, e->array_sub_e);
+            BHEngineValue* rhs = evaluate_expr(ctx, scope, e->array_sub_n);
             evaluate_check_null;
 
-            TEngineValue* res = TEngineValue_array_sub(ctx, lhs, rhs);
-            TEngineValue_free(lhs);
-            TEngineValue_free(rhs);
+            BHEngineValue* res = BHEngineValue_array_sub(ctx, lhs, rhs);
+            BHEngineValue_free(lhs);
+            BHEngineValue_free(rhs);
             return res;
         }
         case EXPR_FUN_CALL: {
-            const TEngineBuiltinFunc* builtin_func = get_builtin_func(e->fname);
+            const BHEngineBuiltinFunc* builtin_func =
+                get_builtin_func(e->fname);
             if (builtin_func != NULL) {
                 DList* params_vals = NULL;
                 if (e->params) {
@@ -334,13 +337,13 @@ static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
                     if (params_vals == NULL)
                         return NULL;
                 }
-                TEngineValue* r = builtin_func->process(ctx, params_vals);
+                BHEngineValue* r = builtin_func->process(ctx, params_vals);
                 if (params_vals)
                     DList_destroy(params_vals,
-                                  (void (*)(void*))TEngineValue_free);
+                                  (void (*)(void*))BHEngineValue_free);
                 if (r == NULL)
-                    tengine_raise_exception(ctx, "call to '%s' failed",
-                                            e->fname);
+                    bhengine_raise_exception(ctx, "call to '%s' failed",
+                                             e->fname);
                 return r;
             }
             if (map_contains(ctx->ast->functions, e->fname)) {
@@ -351,198 +354,198 @@ static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
                     if (params_vals == NULL)
                         return NULL;
                 }
-                Function*     fn = map_get(ctx->ast->functions, e->fname);
-                TEngineValue* result =
+                Function*      fn = map_get(ctx->ast->functions, e->fname);
+                BHEngineValue* result =
                     handle_function_call(ctx, fn, params_vals, scope);
                 if (params_vals)
                     DList_destroy(params_vals,
-                                  (void (*)(void*))TEngineValue_free);
+                                  (void (*)(void*))BHEngineValue_free);
                 if (!result)
                     return NULL;
                 return result;
             }
 
-            tengine_raise_exception(ctx, "no such non-void function '%s'",
-                                    e->fname);
+            bhengine_raise_exception(ctx, "no such non-void function '%s'",
+                                     e->fname);
             return NULL;
         }
         case EXPR_ADD: {
-            TEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
-            TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
+            BHEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
+            BHEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
             evaluate_check_null;
 
-            TEngineValue* res = TEngineValue_add(ctx, lhs, rhs);
-            TEngineValue_free(lhs);
-            TEngineValue_free(rhs);
+            BHEngineValue* res = BHEngineValue_add(ctx, lhs, rhs);
+            BHEngineValue_free(lhs);
+            BHEngineValue_free(rhs);
             return res;
         }
         case EXPR_SUB: {
-            TEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
-            TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
+            BHEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
+            BHEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
             evaluate_check_null;
 
-            TEngineValue* res = TEngineValue_sub(ctx, lhs, rhs);
-            TEngineValue_free(lhs);
-            TEngineValue_free(rhs);
+            BHEngineValue* res = BHEngineValue_sub(ctx, lhs, rhs);
+            BHEngineValue_free(lhs);
+            BHEngineValue_free(rhs);
             return res;
         }
         case EXPR_MUL: {
-            TEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
-            TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
+            BHEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
+            BHEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
             evaluate_check_null;
 
-            TEngineValue* res = TEngineValue_mul(ctx, lhs, rhs);
-            TEngineValue_free(lhs);
-            TEngineValue_free(rhs);
+            BHEngineValue* res = BHEngineValue_mul(ctx, lhs, rhs);
+            BHEngineValue_free(lhs);
+            BHEngineValue_free(rhs);
             return res;
         }
         case EXPR_DIV: {
-            TEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
-            TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
+            BHEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
+            BHEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
             evaluate_check_null;
 
-            TEngineValue* res = TEngineValue_div(ctx, lhs, rhs);
-            TEngineValue_free(lhs);
-            TEngineValue_free(rhs);
+            BHEngineValue* res = BHEngineValue_div(ctx, lhs, rhs);
+            BHEngineValue_free(lhs);
+            BHEngineValue_free(rhs);
             return res;
         }
         case EXPR_MOD: {
-            TEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
-            TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
+            BHEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
+            BHEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
             evaluate_check_null;
 
-            TEngineValue* res = TEngineValue_mod(ctx, lhs, rhs);
-            TEngineValue_free(lhs);
-            TEngineValue_free(rhs);
+            BHEngineValue* res = BHEngineValue_mod(ctx, lhs, rhs);
+            BHEngineValue_free(lhs);
+            BHEngineValue_free(rhs);
             return res;
         }
         case EXPR_AND: {
-            TEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
-            TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
+            BHEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
+            BHEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
             evaluate_check_null;
 
-            TEngineValue* res = TEngineValue_and(ctx, lhs, rhs);
-            TEngineValue_free(lhs);
-            TEngineValue_free(rhs);
+            BHEngineValue* res = BHEngineValue_and(ctx, lhs, rhs);
+            BHEngineValue_free(lhs);
+            BHEngineValue_free(rhs);
             return res;
         }
         case EXPR_OR: {
-            TEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
-            TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
+            BHEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
+            BHEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
             evaluate_check_null;
 
-            TEngineValue* res = TEngineValue_or(ctx, lhs, rhs);
-            TEngineValue_free(lhs);
-            TEngineValue_free(rhs);
+            BHEngineValue* res = BHEngineValue_or(ctx, lhs, rhs);
+            BHEngineValue_free(lhs);
+            BHEngineValue_free(rhs);
             return res;
         }
         case EXPR_XOR: {
-            TEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
-            TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
+            BHEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
+            BHEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
             evaluate_check_null;
 
-            TEngineValue* res = TEngineValue_xor(ctx, lhs, rhs);
-            TEngineValue_free(lhs);
-            TEngineValue_free(rhs);
+            BHEngineValue* res = BHEngineValue_xor(ctx, lhs, rhs);
+            BHEngineValue_free(lhs);
+            BHEngineValue_free(rhs);
             return res;
         }
         case EXPR_BEQ: {
-            TEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
-            TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
+            BHEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
+            BHEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
             evaluate_check_null;
 
-            TEngineValue* res = TEngineValue_beq(ctx, lhs, rhs);
-            TEngineValue_free(lhs);
-            TEngineValue_free(rhs);
+            BHEngineValue* res = BHEngineValue_beq(ctx, lhs, rhs);
+            BHEngineValue_free(lhs);
+            BHEngineValue_free(rhs);
             return res;
         }
         case EXPR_BLT: {
-            TEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
-            TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
+            BHEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
+            BHEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
             evaluate_check_null;
 
-            TEngineValue* res = TEngineValue_blt(ctx, lhs, rhs);
-            TEngineValue_free(lhs);
-            TEngineValue_free(rhs);
+            BHEngineValue* res = BHEngineValue_blt(ctx, lhs, rhs);
+            BHEngineValue_free(lhs);
+            BHEngineValue_free(rhs);
             return res;
         }
         case EXPR_BLE: {
-            TEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
-            TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
+            BHEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
+            BHEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
             evaluate_check_null;
 
-            TEngineValue* res = TEngineValue_ble(ctx, lhs, rhs);
-            TEngineValue_free(lhs);
-            TEngineValue_free(rhs);
+            BHEngineValue* res = BHEngineValue_ble(ctx, lhs, rhs);
+            BHEngineValue_free(lhs);
+            BHEngineValue_free(rhs);
             return res;
         }
         case EXPR_BGT: {
-            TEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
-            TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
+            BHEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
+            BHEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
             evaluate_check_null;
 
-            TEngineValue* res = TEngineValue_bgt(ctx, lhs, rhs);
-            TEngineValue_free(lhs);
-            TEngineValue_free(rhs);
+            BHEngineValue* res = BHEngineValue_bgt(ctx, lhs, rhs);
+            BHEngineValue_free(lhs);
+            BHEngineValue_free(rhs);
             return res;
         }
         case EXPR_BGE: {
-            TEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
-            TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
+            BHEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
+            BHEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
             evaluate_check_null;
 
-            TEngineValue* res = TEngineValue_bge(ctx, lhs, rhs);
-            TEngineValue_free(lhs);
-            TEngineValue_free(rhs);
+            BHEngineValue* res = BHEngineValue_bge(ctx, lhs, rhs);
+            BHEngineValue_free(lhs);
+            BHEngineValue_free(rhs);
             return res;
         }
         case EXPR_BAND: {
-            TEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
-            TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
+            BHEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
+            BHEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
             evaluate_check_null;
 
-            TEngineValue* res = TEngineValue_band(ctx, lhs, rhs);
-            TEngineValue_free(lhs);
-            TEngineValue_free(rhs);
+            BHEngineValue* res = BHEngineValue_band(ctx, lhs, rhs);
+            BHEngineValue_free(lhs);
+            BHEngineValue_free(rhs);
             return res;
         }
         case EXPR_BOR: {
-            TEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
-            TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
+            BHEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
+            BHEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
             evaluate_check_null;
 
-            TEngineValue* res = TEngineValue_bor(ctx, lhs, rhs);
-            TEngineValue_free(lhs);
-            TEngineValue_free(rhs);
+            BHEngineValue* res = BHEngineValue_bor(ctx, lhs, rhs);
+            BHEngineValue_free(lhs);
+            BHEngineValue_free(rhs);
             return res;
         }
         case EXPR_SHR: {
-            TEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
-            TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
+            BHEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
+            BHEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
             evaluate_check_null;
 
-            TEngineValue* res = TEngineValue_shr(ctx, lhs, rhs);
-            TEngineValue_free(lhs);
-            TEngineValue_free(rhs);
+            BHEngineValue* res = BHEngineValue_shr(ctx, lhs, rhs);
+            BHEngineValue_free(lhs);
+            BHEngineValue_free(rhs);
             return res;
         }
         case EXPR_SHL: {
-            TEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
-            TEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
+            BHEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
+            BHEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
             evaluate_check_null;
 
-            TEngineValue* res = TEngineValue_shl(ctx, lhs, rhs);
-            TEngineValue_free(lhs);
-            TEngineValue_free(rhs);
+            BHEngineValue* res = BHEngineValue_shl(ctx, lhs, rhs);
+            BHEngineValue_free(lhs);
+            BHEngineValue_free(rhs);
             return res;
         }
         case EXPR_BNOT: {
-            TEngineValue* child = evaluate_expr(ctx, scope, e->child);
+            BHEngineValue* child = evaluate_expr(ctx, scope, e->child);
             if (!child)
                 return NULL;
 
-            TEngineValue* res = TEngineValue_bnot(ctx, child);
-            TEngineValue_free(child);
+            BHEngineValue* res = BHEngineValue_bnot(ctx, child);
+            BHEngineValue_free(child);
             return res;
         }
         default:
@@ -555,36 +558,36 @@ static TEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
 
 static int eval_to_u64(InterpreterContext* ctx, Scope* scope, Expr* e, u64_t* o)
 {
-    TEngineValue* v = evaluate_expr(ctx, scope, e);
+    BHEngineValue* v = evaluate_expr(ctx, scope, e);
     if (v == NULL)
         return 1;
 
-    if (TEngineValue_as_u64(ctx, v, o) != 0) {
-        TEngineValue_free(v);
+    if (BHEngineValue_as_u64(ctx, v, o) != 0) {
+        BHEngineValue_free(v);
         return 1;
     }
-    TEngineValue_free(v);
+    BHEngineValue_free(v);
     return 0;
 }
 
 __attribute__((unused)) static int
 eval_to_str(InterpreterContext* ctx, Scope* scope, Expr* e, const char** o)
 {
-    TEngineValue* v = evaluate_expr(ctx, scope, e);
+    BHEngineValue* v = evaluate_expr(ctx, scope, e);
     if (v == NULL)
         return 1;
 
-    if (TEngineValue_as_string(ctx, v, o) != 0) {
-        TEngineValue_free(v);
+    if (BHEngineValue_as_string(ctx, v, o) != 0) {
+        BHEngineValue_free(v);
         return 1;
     }
-    TEngineValue_free(v);
+    BHEngineValue_free(v);
     return 0;
 }
 
 static int process_array_type(InterpreterContext* ctx, const char* varname,
                               Type* type, Expr* esize, Scope* scope,
-                              TEngineValue** oval)
+                              BHEngineValue** oval)
 {
     *oval = NULL;
 
@@ -593,7 +596,7 @@ static int process_array_type(InterpreterContext* ctx, const char* varname,
         return 1;
 
     if (size > ctx->fb->size - ctx->fb->off) {
-        tengine_raise_exception(
+        bhengine_raise_exception(
             ctx,
             "invalid array size: %lld, it is bigger than the "
             "remaining file size",
@@ -610,7 +613,7 @@ static int process_array_type(InterpreterContext* ctx, const char* varname,
             if (buf == NULL)
                 return 1;
             memcpy(tmp, buf, size);
-            *oval = TEngineValue_STRING_new(tmp, size);
+            *oval = BHEngineValue_STRING_new(tmp, size);
             fmt_process_value(ctx->fmt, *oval);
             bhex_free(tmp);
             fb_seek(ctx->fb, final_off);
@@ -629,7 +632,7 @@ static int process_array_type(InterpreterContext* ctx, const char* varname,
                         ? (((u16_t)buf[i * 2] << 8) | (u16_t)buf[i * 2 + 1])
                         : (((u16_t)buf[i * 2 + 1] << 8) | (u16_t)buf[i * 2]);
             }
-            *oval = TEngineValue_WSTRING_new(tmp, size);
+            *oval = BHEngineValue_WSTRING_new(tmp, size);
             fmt_process_value(ctx->fmt, *oval);
             bhex_free(tmp);
             fb_seek(ctx->fb, final_off);
@@ -638,25 +641,25 @@ static int process_array_type(InterpreterContext* ctx, const char* varname,
         if (strcmp(type->name, "u8") == 0) {
             // Special case, buf
             u64_t final_off = ctx->fb->off + size;
-            *oval           = TEngineValue_BUF_new(ctx->fb->off, size);
+            *oval           = BHEngineValue_BUF_new(ctx->fb->off, size);
             fmt_process_buffer_value(ctx->fmt, ctx->fb, size);
             fb_seek(ctx->fb, final_off);
             return 0;
         }
 
         fmt_start_array(ctx->fmt, type);
-        const TEngineBuiltinType* t = get_builtin_type(type->name);
+        const BHEngineBuiltinType* t = get_builtin_type(type->name);
         if (t != NULL) {
             // A builtin type
-            *oval = TEngineValue_ARRAY_new();
+            *oval = BHEngineValue_ARRAY_new();
 
             for (u64_t i = 0; i < size; ++i) {
-                TEngineValue* val = t->process(ctx);
+                BHEngineValue* val = t->process(ctx);
                 if (val == NULL)
                     return 1;
                 fmt_notify_array_el(ctx->fmt, i);
                 fmt_process_value(ctx->fmt, val);
-                TEngineValue_ARRAY_append(*oval, val);
+                BHEngineValue_ARRAY_append(*oval, val);
             }
             fmt_end_array(ctx->fmt);
             return 0;
@@ -664,19 +667,19 @@ static int process_array_type(InterpreterContext* ctx, const char* varname,
     }
 
     // Array of custom type
-    *oval = TEngineValue_ARRAY_new();
+    *oval = BHEngineValue_ARRAY_new();
     for (u64_t i = 0; i < size; ++i) {
         fmt_notify_array_el(ctx->fmt, i);
         map* custom_type_vars = process_struct_type(ctx, type);
         if (custom_type_vars == NULL) {
-            tengine_raise_exception(ctx, "error while parsing %s", type->name);
-            TEngineValue_free(*oval);
+            bhengine_raise_exception(ctx, "error while parsing %s", type->name);
+            BHEngineValue_free(*oval);
             *oval = NULL;
             return 1;
         }
 
-        TEngineValue* el = TEngineValue_OBJ_new(custom_type_vars);
-        TEngineValue_ARRAY_append(*oval, el);
+        BHEngineValue* el = BHEngineValue_OBJ_new(custom_type_vars);
+        BHEngineValue_ARRAY_append(*oval, el);
     }
     fmt_end_array(ctx->fmt);
     return 0;
@@ -704,13 +707,13 @@ static int process_FILE_VAR_DECL(InterpreterContext* ctx, Stmt* stmt,
     bhex_free(ty_name);
     if (stmt->arr_size == NULL) {
         // Not an array
-        TEngineValue* val = process_type(ctx, stmt->name, stmt->type, scope);
+        BHEngineValue* val = process_type(ctx, stmt->name, stmt->type, scope);
         if (val == NULL)
             return 1;
         Scope_add_filevar(scope, stmt->name, val);
     } else {
         // Array type
-        TEngineValue* val = NULL;
+        BHEngineValue* val = NULL;
         if (process_array_type(ctx, stmt->name, stmt->type, stmt->arr_size,
                                scope, &val) != 0)
             return 1;
@@ -725,7 +728,7 @@ static int process_FILE_VAR_DECL(InterpreterContext* ctx, Stmt* stmt,
 static int process_LOCAL_VAR_DECL(InterpreterContext* ctx, Stmt* stmt,
                                   Scope* scope)
 {
-    TEngineValue* v = evaluate_expr(ctx, scope, stmt->local_value);
+    BHEngineValue* v = evaluate_expr(ctx, scope, stmt->local_value);
     if (v == NULL)
         return 1;
 
@@ -736,14 +739,14 @@ static int process_LOCAL_VAR_DECL(InterpreterContext* ctx, Stmt* stmt,
 static int process_LOCAL_VAR_ASS(InterpreterContext* ctx, Stmt* stmt,
                                  Scope* scope)
 {
-    TEngineValue* v = evaluate_expr(ctx, scope, stmt->local_value);
+    BHEngineValue* v = evaluate_expr(ctx, scope, stmt->local_value);
     if (v == NULL)
         return 1;
 
     if (Scope_get_local(scope, stmt->local_name) == NULL) {
-        tengine_raise_exception(ctx, "no such local variable '%s",
-                                stmt->local_name);
-        TEngineValue_free(v);
+        bhengine_raise_exception(ctx, "no such local variable '%s",
+                                 stmt->local_name);
+        BHEngineValue_free(v);
         return 1;
     }
 
@@ -754,7 +757,7 @@ static int process_LOCAL_VAR_ASS(InterpreterContext* ctx, Stmt* stmt,
 static int process_VOID_FUNC_CALL(InterpreterContext* ctx, Stmt* stmt,
                                   Scope* scope)
 {
-    const TEngineBuiltinFunc* builtin_func = get_builtin_func(stmt->fname);
+    const BHEngineBuiltinFunc* builtin_func = get_builtin_func(stmt->fname);
     if (builtin_func != NULL) {
         DList* params_vals = NULL;
         if (stmt->params) {
@@ -762,10 +765,10 @@ static int process_VOID_FUNC_CALL(InterpreterContext* ctx, Stmt* stmt,
             if (params_vals == NULL)
                 return 1;
         }
-        TEngineValue* r = builtin_func->process(ctx, params_vals);
+        BHEngineValue* r = builtin_func->process(ctx, params_vals);
         if (params_vals)
-            DList_destroy(params_vals, (void (*)(void*))TEngineValue_free);
-        TEngineValue_free(r);
+            DList_destroy(params_vals, (void (*)(void*))BHEngineValue_free);
+        BHEngineValue_free(r);
         return 0;
     }
     if (map_contains(ctx->ast->functions, stmt->fname)) {
@@ -776,18 +779,18 @@ static int process_VOID_FUNC_CALL(InterpreterContext* ctx, Stmt* stmt,
             if (params_vals == NULL)
                 return 1;
         }
-        Function*     fn = map_get(ctx->ast->functions, stmt->fname);
-        TEngineValue* result =
+        Function*      fn = map_get(ctx->ast->functions, stmt->fname);
+        BHEngineValue* result =
             handle_function_call(ctx, fn, params_vals, scope);
         if (params_vals)
-            DList_destroy(params_vals, (void (*)(void*))TEngineValue_free);
+            DList_destroy(params_vals, (void (*)(void*))BHEngineValue_free);
         if (!result)
             return 1;
-        TEngineValue_free(result);
+        BHEngineValue_free(result);
         return 0;
     }
 
-    tengine_raise_exception(ctx, "no such function '%s'", stmt->fname);
+    bhengine_raise_exception(ctx, "no such function '%s'", stmt->fname);
     return 1;
 }
 
@@ -873,14 +876,14 @@ static int process_stmt(InterpreterContext* ctx, Stmt* stmt, Scope* scope)
             break;
         case STMT_BREAK:
             if (!ctx->break_allowed) {
-                tengine_raise_exception(ctx, "unexpected break");
+                bhengine_raise_exception(ctx, "unexpected break");
                 break;
             }
             ctx->breaked = 1;
             ret          = 0;
             break;
         default: {
-            tengine_raise_exception(ctx, "invalid stmt type %d", stmt->t);
+            bhengine_raise_exception(ctx, "invalid stmt type %d", stmt->t);
             break;
         }
     }
@@ -942,7 +945,7 @@ static int process_stmts(InterpreterContext* ctx, DList* stmts, Scope* scope)
         if (process_stmt(ctx, stmt, scope) != 0) {
             // it should fail only in case of an exception
             if (ctx->exc == NULL)
-                tengine_raise_exception(ctx, "RUNTIME ERROR");
+                bhengine_raise_exception(ctx, "RUNTIME ERROR");
             goto end;
         }
         if (ctx->halt || ctx->breaked)
@@ -993,14 +996,14 @@ static void interpreter_context_deinit(InterpreterContext* ctx)
     Scope_free(interpreter_deinit_and_get_context(ctx));
 }
 
-void tengine_interpreter_set_imported_types_callback(imported_cb_t cb,
-                                                     void*         userptr)
+void bhengine_interpreter_set_imported_types_callback(imported_cb_t cb,
+                                                      void*         userptr)
 {
     imported_ptr = userptr;
     imported_cb  = cb;
 }
 
-int tengine_interpreter_process_filename(FileBuffer* fb, const char* bhe)
+int bhengine_interpreter_process_filename(FileBuffer* fb, const char* bhe)
 {
     FILE* f = fopen(bhe, "r");
     if (f == NULL) {
@@ -1008,25 +1011,25 @@ int tengine_interpreter_process_filename(FileBuffer* fb, const char* bhe)
         return 1;
     }
 
-    int r = tengine_interpreter_process_file(fb, f);
+    int r = bhengine_interpreter_process_file(fb, f);
     fclose(f);
     return r;
 }
 
-int tengine_interpreter_process_file(FileBuffer* fb, FILE* f)
+int bhengine_interpreter_process_file(FileBuffer* fb, FILE* f)
 {
-    ASTCtx* ast = tengine_parse_file(f);
+    ASTCtx* ast = bhengine_parse_file(f);
     if (ast == NULL)
         return 1;
 
-    int r = tengine_interpreter_process_ast(fb, ast);
+    int r = bhengine_interpreter_process_ast(fb, ast);
     ASTCtx_delete(ast);
     return r;
 }
 
-Scope* tengine_interpreter_run_on_string(FileBuffer* fb, const char* str)
+Scope* bhengine_interpreter_run_on_string(FileBuffer* fb, const char* str)
 {
-    ASTCtx* ast = tengine_parse_string(str);
+    ASTCtx* ast = bhengine_parse_string(str);
     if (ast == NULL) {
         return NULL;
     }
@@ -1052,18 +1055,18 @@ end:
     return result;
 }
 
-int tengine_interpreter_process_string(FileBuffer* fb, const char* str)
+int bhengine_interpreter_process_string(FileBuffer* fb, const char* str)
 {
-    ASTCtx* ast = tengine_parse_string(str);
+    ASTCtx* ast = bhengine_parse_string(str);
     if (ast == NULL)
         return 1;
 
-    int r = tengine_interpreter_process_ast(fb, ast);
+    int r = bhengine_interpreter_process_ast(fb, ast);
     ASTCtx_delete(ast);
     return r;
 }
 
-int tengine_interpreter_process_ast(FileBuffer* fb, ASTCtx* ast)
+int bhengine_interpreter_process_ast(FileBuffer* fb, ASTCtx* ast)
 {
     InterpreterContext ctx = {0};
     interpreter_context_init(&ctx, ast, fb);
@@ -1078,8 +1081,8 @@ int tengine_interpreter_process_ast(FileBuffer* fb, ASTCtx* ast)
     return r;
 }
 
-int tengine_interpreter_process_ast_struct(FileBuffer* fb, ASTCtx* ast,
-                                           const char* s)
+int bhengine_interpreter_process_ast_struct(FileBuffer* fb, ASTCtx* ast,
+                                            const char* s)
 {
     InterpreterContext ctx = {0};
     interpreter_context_init(&ctx, ast, fb);
@@ -1098,8 +1101,8 @@ end:
     return r;
 }
 
-int tengine_interpreter_process_ast_named_proc(FileBuffer* fb, ASTCtx* ast,
-                                               const char* s)
+int bhengine_interpreter_process_ast_named_proc(FileBuffer* fb, ASTCtx* ast,
+                                                const char* s)
 {
     InterpreterContext ctx = {0};
     interpreter_context_init(&ctx, ast, fb);

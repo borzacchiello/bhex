@@ -1016,7 +1016,7 @@ void ASTCtx_pp(ASTCtx* ctx)
     printf("}\n");
 }
 
-ASTCtx* tengine_parse_filename(const char* bhe)
+ASTCtx* bhengine_parse_filename(const char* bhe)
 {
     FILE* f = fopen(bhe, "r");
     if (f == NULL) {
@@ -1024,7 +1024,7 @@ ASTCtx* tengine_parse_filename(const char* bhe)
         return NULL;
     }
 
-    ASTCtx* ast = tengine_parse_file(f);
+    ASTCtx* ast = bhengine_parse_file(f);
     fclose(f);
     return ast;
 }
@@ -1045,7 +1045,7 @@ static void read_whole_source(ASTCtx* ast, FILE* f)
     rewind(f);
 }
 
-ASTCtx* tengine_parse_file(FILE* f)
+ASTCtx* bhengine_parse_file(FILE* f)
 {
     // Register all the allocations, so that we can free them in case of errors.
     // I did not find any other way to handle this scenario...
@@ -1072,7 +1072,7 @@ ASTCtx* tengine_parse_file(FILE* f)
     return ast;
 }
 
-ASTCtx* tengine_parse_string(const char* str)
+ASTCtx* bhengine_parse_string(const char* str)
 {
     // Register all the allocations, so that we can free them in case of errors.
     // I did not find any other way to handle this scenario...

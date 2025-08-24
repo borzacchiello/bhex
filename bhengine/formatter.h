@@ -14,7 +14,7 @@ typedef void (*fmt_start_print_t)(void* this);
 typedef void (*fmt_print_t)(void* this, const char* str);
 typedef void (*fmt_end_print_t)(void* this);
 typedef void (*fmt_end_var_t)(void* this, const char* name);
-typedef void (*fmt_process_value_t)(void* this, TEngineValue* val);
+typedef void (*fmt_process_value_t)(void* this, BHEngineValue* val);
 typedef void (*fmt_process_buffer_value_t)(void* this, FileBuffer* buf,
                                            u64_t size);
 typedef void (*fmt_start_array_t)(void* this, const Type* ty);

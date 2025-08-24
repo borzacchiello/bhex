@@ -4,8 +4,8 @@
 #include <defs.h>
 
 #include "data/big_buffers.h"
-#include "../tengine/interpreter.h"
-#include "../tengine/scope.h"
+#include "../bhengine/interpreter.h"
+#include "../bhengine/scope.h"
 #include "dummy_filebuffer.h"
 #include "strbuilder.h"
 #include "t_cmd_common.h"
@@ -71,12 +71,12 @@ int TEST(const)(void)
 {
     const char* prog = "proc { local a = 0; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "a");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_SNUM_EQ(r, v, 0);
 
 end:
@@ -88,12 +88,12 @@ int TEST(const_s8)(void)
 {
     const char* prog = "proc { local a = 42s8; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "a");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_SNUM_EQ(r, v, 42);
 
 end:
@@ -105,12 +105,12 @@ int TEST(const_s16)(void)
 {
     const char* prog = "proc { local a = 42s16; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "a");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_SNUM_EQ(r, v, 42);
 
 end:
@@ -122,12 +122,12 @@ int TEST(const_s32)(void)
 {
     const char* prog = "proc { local a = 42s32; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "a");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_SNUM_EQ(r, v, 42);
 
 end:
@@ -139,12 +139,12 @@ int TEST(const_u8)(void)
 {
     const char* prog = "proc { local a = 16u8; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "a");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_UNUM_EQ(r, v, 16);
 
 end:
@@ -156,12 +156,12 @@ int TEST(const_u16)(void)
 {
     const char* prog = "proc { local a = 300u16; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "a");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_UNUM_EQ(r, v, 300);
 
 end:
@@ -173,12 +173,12 @@ int TEST(const_u32)(void)
 {
     const char* prog = "proc { local a = 100000u32; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "a");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_UNUM_EQ(r, v, 100000);
 
 end:
@@ -190,12 +190,12 @@ int TEST(const_u64)(void)
 {
     const char* prog = "proc { local a = 1099511627537u64; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "a");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_UNUM_EQ(r, v, 1099511627537ull);
 
 end:
@@ -207,12 +207,12 @@ int TEST(hex_const)(void)
 {
     const char* prog = "proc { local a = 0xdeadbeef; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "a");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_SNUM_EQ(r, v, 0xdeadbeef);
 
 end:
@@ -224,12 +224,12 @@ int TEST(hex_const_u8)(void)
 {
     const char* prog = "proc { local a = 0xffu8; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "a");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_UNUM_EQ(r, v, 255);
 
 end:
@@ -241,12 +241,12 @@ int TEST(hex_const_u16)(void)
 {
     const char* prog = "proc { local a = 0xfffu16; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "a");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_UNUM_EQ(r, v, 0xfff);
 
 end:
@@ -258,12 +258,12 @@ int TEST(hex_const_u32)(void)
 {
     const char* prog = "proc { local a = 0xffffffu32; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "a");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_UNUM_EQ(r, v, 0xffffff);
 
 end:
@@ -275,12 +275,12 @@ int TEST(hex_const_u64)(void)
 {
     const char* prog = "proc { local a = 0xffffffffffu64; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "a");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_UNUM_EQ(r, v, 0xffffffffffull);
 
 end:
@@ -295,12 +295,12 @@ int TEST(cast_u8)(void)
                        "  local b = u8(a);"
                        "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "b");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
     IS_TENGINE_UNUM_EQ(r, v, 0xff);
 
 end:
@@ -315,12 +315,12 @@ int TEST(cast_i8)(void)
                        "  local b = i8(a);"
                        "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "b");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
     IS_TENGINE_SNUM_EQ(r, v, -1);
 
 end:
@@ -332,12 +332,12 @@ int TEST(const_limit_1)(void)
 {
     const char* prog = "proc { local a = 0x7fffffffffffffff; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "a");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_SNUM_EQ(r, v, 0x7fffffffffffffffl);
 
 end:
@@ -349,12 +349,12 @@ int TEST(const_limit_2)(void)
 {
     const char* prog = "proc { local a = -0x7fffffffffffffff-1; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "a");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_SNUM_EQ(r, v, (int64_t)-0x8000000000000000l);
 
 end:
@@ -366,12 +366,12 @@ int TEST(neg_const)(void)
 {
     const char* prog = "proc { local a = -42; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "a");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_SNUM_EQ(r, v, -42);
 
 end:
@@ -383,12 +383,12 @@ int TEST(str_const_1)(void)
 {
     const char* prog = "proc { local a = \"ciao\"; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "a");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_STRING_EQ(r, v, "ciao");
 
 end:
@@ -400,12 +400,12 @@ int TEST(str_const_2)(void)
 {
     const char* prog = "proc { local a = \"ciao\xde\xad\xbe\xef\"; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "a");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_STRING_EQ(r, v, "ciao\xde\xad\xbe\xef");
 
 end:
@@ -418,12 +418,12 @@ int TEST(eq_str)(void)
     const char* prog =
         "proc { local a = \"ciao\"; local b = \"ciao\"; local c = a == b; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "c");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "c");
     IS_TENGINE_UNUM_EQ(r, v, 1);
 
 end:
@@ -435,12 +435,12 @@ int TEST(sub)(void)
 {
     const char* prog = "proc { local a = 4; local b = a - 5; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "b");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
     IS_TENGINE_SNUM_EQ(r, v, -1);
 
 end:
@@ -452,12 +452,12 @@ int TEST(sub_no_space)(void)
 {
     const char* prog = "proc { local a = 4; local b = a-5; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "b");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
     IS_TENGINE_SNUM_EQ(r, v, -1);
 
 end:
@@ -470,12 +470,12 @@ int TEST(add)(void)
 {
     const char* prog = "proc { local a = 4; local b = a + 10; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "b");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
     IS_TENGINE_SNUM_EQ(r, v, 14);
 
 end:
@@ -487,12 +487,12 @@ int TEST(add_no_space)(void)
 {
     const char* prog = "proc { local a = 4; local b = a+10; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "b");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
     IS_TENGINE_SNUM_EQ(r, v, 14);
 
 end:
@@ -504,12 +504,12 @@ int TEST(add_wrap_s8)(void)
 {
     const char* prog = "proc { local a = 127s8; local b = a + 1s8; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "b");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
     IS_TENGINE_SNUM_EQ(r, v, -0x80);
 
 end:
@@ -521,12 +521,12 @@ int TEST(add_wrap_s16)(void)
 {
     const char* prog = "proc { local a = 0x7fffs16; local b = a + 1s16; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "b");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
     IS_TENGINE_SNUM_EQ(r, v, -0x8000);
 
 end:
@@ -538,12 +538,12 @@ int TEST(add_wrap_s32)(void)
 {
     const char* prog = "proc { local a = 0x7fffffffs32; local b = a + 1s32; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "b");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
     IS_TENGINE_SNUM_EQ(r, v, -0x80000000ll);
 
 end:
@@ -555,12 +555,12 @@ int TEST(add_wrap_u8)(void)
 {
     const char* prog = "proc { local a = 250u8; local b = a + 6u8; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "b");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
     IS_TENGINE_UNUM_EQ(r, v, 0);
 
 end:
@@ -572,12 +572,12 @@ int TEST(add_wrap_u16)(void)
 {
     const char* prog = "proc { local a = 0xffffu16; local b = a + 1u16; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "b");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
     IS_TENGINE_UNUM_EQ(r, v, 0);
 
 end:
@@ -589,12 +589,12 @@ int TEST(add_wrap_u32)(void)
 {
     const char* prog = "proc { local a = 0xffffffffu32; local b = a + 1u32; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "b");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
     IS_TENGINE_UNUM_EQ(r, v, 0);
 
 end:
@@ -607,12 +607,12 @@ int TEST(add_wrap_u64)(void)
     const char* prog =
         "proc { local a = 0xffffffffffffffffu64; local b = a + 1u64; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "b");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
     IS_TENGINE_UNUM_EQ(r, v, 0);
 
 end:
@@ -624,12 +624,12 @@ int TEST(mul)(void)
 {
     const char* prog = "proc { local a = 4; local b = a * 10; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "b");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
     IS_TENGINE_SNUM_EQ(r, v, 40);
 
 end:
@@ -641,12 +641,12 @@ int TEST(div_1)(void)
 {
     const char* prog = "proc { local a = 44; local b = a / 10; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "b");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
     IS_TENGINE_SNUM_EQ(r, v, 4);
 
 end:
@@ -658,12 +658,12 @@ int TEST(div_2)(void)
 {
     const char* prog = "proc { local a = 16; local b = a / 4; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "b");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
     IS_TENGINE_SNUM_EQ(r, v, 4);
 
 end:
@@ -675,12 +675,12 @@ int TEST(mod_1)(void)
 {
     const char* prog = "proc { local a = 43; local b = a % 10; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "b");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
     IS_TENGINE_SNUM_EQ(r, v, 3);
 
 end:
@@ -692,12 +692,12 @@ int TEST(mod_2)(void)
 {
     const char* prog = "proc { local a = 16; local b = a % 4; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "b");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
     IS_TENGINE_SNUM_EQ(r, v, 0);
 
 end:
@@ -709,12 +709,12 @@ int TEST(and)(void)
 {
     const char* prog = "proc { local a = 0xffff; local b = a & 0xf0f0; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "b");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
     IS_TENGINE_SNUM_EQ(r, v, 0xf0f0);
 
 end:
@@ -726,12 +726,12 @@ int TEST(or)(void)
 {
     const char* prog = "proc { local a = 0xf0f0; local b = a | 0x0f0f; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "b");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
     IS_TENGINE_SNUM_EQ(r, v, 0xffff);
 
 end:
@@ -743,12 +743,12 @@ int TEST(xor)(void)
 {
     const char* prog = "proc { local a = 0xff; local b = a ^ 0xf0; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "b");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
     IS_TENGINE_SNUM_EQ(r, v, 0x0f);
 
 end:
@@ -760,12 +760,12 @@ int TEST(shr_1)(void)
 {
     const char* prog = "proc { local a = 0xff; local b = a >> 1; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "b");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
     IS_TENGINE_SNUM_EQ(r, v, 0xff >> 1);
 
 end:
@@ -777,12 +777,12 @@ int TEST(shr_2)(void)
 {
     const char* prog = "proc { local a = 0xff; local b = a >> 2; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "b");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
     IS_TENGINE_SNUM_EQ(r, v, 0xff >> 2);
 
 end:
@@ -794,12 +794,12 @@ int TEST(shr_3)(void)
 {
     const char* prog = "proc { local a = 0xff; local b = a >> 10; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "b");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
     IS_TENGINE_SNUM_EQ(r, v, 0);
 
 end:
@@ -811,12 +811,12 @@ int TEST(shl_1)(void)
 {
     const char* prog = "proc { local a = 1; local b = a << 1; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "b");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
     IS_TENGINE_SNUM_EQ(r, v, 1 << 1);
 
 end:
@@ -828,12 +828,12 @@ int TEST(shl_2)(void)
 {
     const char* prog = "proc { local a = 1; local b = a << 2; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "b");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
     IS_TENGINE_SNUM_EQ(r, v, 1 << 2);
 
 end:
@@ -845,12 +845,12 @@ int TEST(shl_3)(void)
 {
     const char* prog = "proc { local a = 1u8; local b = a << 10u8; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "b");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
     IS_TENGINE_UNUM_EQ(r, v, 0);
 
 end:
@@ -862,12 +862,12 @@ int TEST(neg_1)(void)
 {
     const char* prog = "proc { local a = -(42+16); }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "a");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_SNUM_EQ(r, v, -58);
 
 end:
@@ -879,12 +879,12 @@ int TEST(neg_2)(void)
 {
     const char* prog = "proc { local a = 43 + -(42+16); }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "a");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_SNUM_EQ(r, v, -58 + 43);
 
 end:
@@ -900,12 +900,12 @@ int TEST(band_1)(void)
                        "  local c = a && b;"
                        "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "c");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "c");
     IS_TENGINE_BOOL_EQ(r, v, 0);
 
 end:
@@ -921,12 +921,12 @@ int TEST(band_2)(void)
                        "  local c = a && b;"
                        "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "c");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "c");
     IS_TENGINE_BOOL_EQ(r, v, 1);
 
 end:
@@ -942,12 +942,12 @@ int TEST(bor_1)(void)
                        "  local c = a || b;"
                        "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "c");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "c");
     IS_TENGINE_BOOL_EQ(r, v, 1);
 
 end:
@@ -963,12 +963,12 @@ int TEST(bor_2)(void)
                        "  local c = a || b;"
                        "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "c");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "c");
     IS_TENGINE_BOOL_EQ(r, v, 0);
 
 end:
@@ -986,12 +986,12 @@ int TEST(bneq_1)(void)
                        "  }"
                        "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "b");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
     IS_TENGINE_SNUM_EQ(r, v, 42);
 
 end:
@@ -1009,12 +1009,12 @@ int TEST(bnot_1)(void)
                        "  }"
                        "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "b");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
     IS_TENGINE_SNUM_EQ(r, v, 42);
 
 end:
@@ -1051,12 +1051,12 @@ int TEST(implicit_conversion_enum_value_unum_1)(void)
                        "  }"
                        "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "res");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "res");
     IS_TENGINE_SNUM_EQ(r, v, 47);
 
 end:
@@ -1069,13 +1069,13 @@ int TEST(precedence_op_1)(void)
 {
     const char* prog = "proc { local a = 4 + 3 * 8; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r     = 0;
-    TEngineValue* v     = Scope_get_local(scope, "a");
-    char*         str_v = TEngineValue_tostring(v, 0);
+    int            r     = 0;
+    BHEngineValue* v     = Scope_get_local(scope, "a");
+    char*          str_v = BHEngineValue_tostring(v, 0);
     bhex_free(str_v);
     IS_TENGINE_SNUM_EQ(r, v, 28);
 
@@ -1088,12 +1088,12 @@ int TEST(precedence_op_2)(void)
 {
     const char* prog = "proc { local a = 4 - 3 * 8; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "a");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_SNUM_EQ(r, v, -20);
 
 end:
@@ -1105,12 +1105,12 @@ int TEST(precedence_op_3)(void)
 {
     const char* prog = "proc { local a = 4 - 3 + 3 * 2; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "a");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_SNUM_EQ(r, v, 7);
 
 end:
@@ -1122,12 +1122,12 @@ int TEST(precedence_op_4)(void)
 {
     const char* prog = "proc { local a = 4 * 3 - 1; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "a");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_SNUM_EQ(r, v, 11);
 
 end:
@@ -1139,13 +1139,13 @@ int TEST(precedence_op_5)(void)
 {
     const char* prog = "proc { local a = (4 + 3) * 8; }";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r     = 0;
-    TEngineValue* v     = Scope_get_local(scope, "a");
-    char*         str_v = TEngineValue_tostring(v, 0);
+    int            r     = 0;
+    BHEngineValue* v     = Scope_get_local(scope, "a");
+    char*          str_v = BHEngineValue_tostring(v, 0);
     bhex_free(str_v);
     IS_TENGINE_SNUM_EQ(r, v, 56);
 
@@ -1164,12 +1164,12 @@ int TEST(if_1)(void)
                        "  }"
                        "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "b");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
     IS_TENGINE_SNUM_EQ(r, v, 45);
 
 end:
@@ -1187,12 +1187,12 @@ int TEST(if_2)(void)
                        "  }"
                        "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "b");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
     IS_TENGINE_SNUM_EQ(r, v, 3);
 
 end:
@@ -1214,12 +1214,12 @@ int TEST(if_3)(void)
                        "  }"
                        "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "b");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
     IS_TENGINE_SNUM_EQ(r, v, 46);
 
 end:
@@ -1239,12 +1239,12 @@ int TEST(if_4)(void)
                        "  }"
                        "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "b");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
     IS_TENGINE_SNUM_EQ(r, v, 3);
 
 end:
@@ -1266,12 +1266,12 @@ int TEST(if_5)(void)
                        "  }"
                        "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "b");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
     IS_TENGINE_SNUM_EQ(r, v, 47);
 
 end:
@@ -1290,12 +1290,12 @@ int TEST(while_1)(void)
                        "  }"
                        "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "b");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
     IS_TENGINE_SNUM_EQ(r, v, 90);
 
 end:
@@ -1318,12 +1318,12 @@ int TEST(while_2)(void)
                        "  }"
                        "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "b");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
     IS_TENGINE_SNUM_EQ(r, v, 54);
 
 end:
@@ -1347,12 +1347,12 @@ int TEST(while_3)(void)
                        "  }"
                        "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "b");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
     IS_TENGINE_SNUM_EQ(r, v, 6);
 
 end:
@@ -1376,12 +1376,12 @@ int TEST(while_4)(void)
                        "  }"
                        "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         return 0;
 
-    int           r = 0;
-    TEngineValue* v = Scope_get_local(scope, "b");
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
     IS_TENGINE_SNUM_EQ(r, v, 0);
 
 end:
@@ -1404,7 +1404,7 @@ int TEST(invalid_break)(void)
 
     int    r     = 1;
     char*  out   = NULL;
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     ASSERT(scope == NULL);
 
     out = strbuilder_reset(err_sb);
@@ -1431,11 +1431,11 @@ int TEST(array_1)(void)
                        "    local a = buf[9];"
                        "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
     if (scope == NULL)
         goto end;
 
-    TEngineValue* v = Scope_get_local(scope, "a");
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_UNUM_EQ(r, v, 'B');
 
 end:
@@ -1457,14 +1457,14 @@ int TEST(array_2)(void)
                        "    local a = buf[4];"
                        "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
     if (scope == NULL)
         goto end;
 
-    TEngineValue* va = Scope_get_local(scope, "a");
+    BHEngineValue* va = Scope_get_local(scope, "a");
     IS_TENGINE_UNUM_EQ(r, va, ((u32_t)'B' << 8) | 'A');
 
-    TEngineValue* vb = Scope_get_local(scope, "b");
+    BHEngineValue* vb = Scope_get_local(scope, "b");
     IS_TENGINE_UNUM_EQ(r, vb, 'C');
 
 end:
@@ -1486,11 +1486,11 @@ int TEST(array_3)(void)
                        "    local a = buf[4];"
                        "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
     if (scope == NULL)
         goto end;
 
-    TEngineValue* v = Scope_get_local(scope, "a");
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_UNUM_EQ(r, v, ((u32_t)'A' << 8) | 'B');
 
 end:
@@ -1528,11 +1528,11 @@ int TEST(array_4)(void)
                             "    local  a = data[1].n2;"
                             "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
     if (scope == NULL)
         goto end;
 
-    TEngineValue* v = Scope_get_local(scope, "a");
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_UNUM_EQ(r, v, 'E');
 
     char* out = strbuilder_reset(sb);
@@ -1572,11 +1572,11 @@ int TEST(array_5)(void)
                        "    local   a = v.n4;"
                        "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
     if (scope == NULL)
         goto end;
 
-    TEngineValue* v = Scope_get_local(scope, "a");
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_UNUM_EQ(r, v, 'K');
 
     char* out = strbuilder_reset(sb);
@@ -1610,11 +1610,11 @@ int TEST(array_noprint)(void)
                             "    local  a = data[1].n2;"
                             "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
     if (scope == NULL)
         goto end;
 
-    TEngineValue* v = Scope_get_local(scope, "a");
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_UNUM_EQ(r, v, 'E');
 
     char* out = strbuilder_reset(sb);
@@ -1645,7 +1645,7 @@ int TEST(array_too_big)(void)
                        "    u16 buf[32];"
                        "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
     if (scope == NULL)
         goto end;
 
@@ -1703,11 +1703,11 @@ int TEST(elf_1)(void)
                        "    local    a = header.e_entry;"
                        "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
     if (scope == NULL)
         goto end;
 
-    TEngineValue* v = Scope_get_local(scope, "a");
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_UNUM_EQ(r, v, 0x08048074);
 
 end:
@@ -1726,11 +1726,11 @@ int TEST(strip)(void)
                             "    local a = strip(\"  ciao  \t\n\");"
                             "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
     if (scope == NULL)
         goto end;
 
-    TEngineValue* v = Scope_get_local(scope, "a");
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_STRING_EQ(r, v, "ciao");
 
 end:
@@ -1749,11 +1749,11 @@ int TEST(strip_nonascii)(void)
                             "    local a = strip(\"  cia\x01o  \t\n\");"
                             "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
     if (scope == NULL)
         goto end;
 
-    TEngineValue* v = Scope_get_local(scope, "a");
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_STRING_EQ(r, v, "ciao");
 
 end:
@@ -1775,11 +1775,11 @@ int TEST(fn_1)(void)
                        "}";
 
     int    r     = 0;
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         goto end;
 
-    TEngineValue* v = Scope_get_local(scope, "a");
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_SNUM_EQ(r, v, 42);
 
 end:
@@ -1800,11 +1800,11 @@ int TEST(fn_2)(void)
                        "}";
 
     int    r     = 0;
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         goto end;
 
-    TEngineValue* v = Scope_get_local(scope, "a");
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_UNUM_EQ(r, v, 84);
 
 end:
@@ -1825,11 +1825,11 @@ int TEST(fn_3)(void)
                        "}";
 
     int    r     = 0;
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         goto end;
 
-    TEngineValue* v = Scope_get_local(scope, "a");
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_UNUM_EQ(r, v, 42 * 3);
 
 end:
@@ -1850,11 +1850,11 @@ int TEST(comment_line_1)(void)
                        "}";
 
     int    r     = 0;
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         goto end;
 
-    TEngineValue* v = Scope_get_local(scope, "a");
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_UNUM_EQ(r, v, 42 * 3);
 
 end:
@@ -1875,11 +1875,11 @@ int TEST(comment_multiline_1)(void)
                        "}";
 
     int    r     = 0;
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         goto end;
 
-    TEngineValue* v = Scope_get_local(scope, "a");
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_UNUM_EQ(r, v, 42 * 3);
 
 end:
@@ -1902,11 +1902,11 @@ int TEST(comment_multiline_2)(void)
         "}";
 
     int    r     = 0;
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         goto end;
 
-    TEngineValue* v = Scope_get_local(scope, "a");
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_UNUM_EQ(r, v, 42 * 3);
 
 end:
@@ -1928,11 +1928,11 @@ int TEST(enum_const)(void)
                        "}";
 
     int    r     = 0;
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope == NULL)
         goto end;
 
-    TEngineValue* v = Scope_get_local(scope, "a");
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_UNUM_EQ(r, v, 42 + 44 + 16);
 
 end:
@@ -1954,7 +1954,7 @@ int TEST(syntax_error)(void)
     const char* prog = "@,,";
 
     int    r     = TEST_FAILED;
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope != NULL)
         goto end;
 
@@ -1980,7 +1980,7 @@ int TEST(interpreter_error_invalid_op_1)(void)
     const char* prog = "proc { local a = 1u8 * \"a\"; }";
 
     int    r     = TEST_FAILED;
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     if (scope != NULL)
         goto end;
 
@@ -2003,10 +2003,10 @@ int TEST(find_forward_match)(void)
                        "    local a = find(\"ciao\");"
                        "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
     ASSERT(scope != NULL);
 
-    TEngineValue* v = Scope_get_local(scope, "a");
+    BHEngineValue* v = Scope_get_local(scope, "a");
     ASSERT_TENGINE_UNUM_EQ(v, 1);
     ASSERT(tfb->fb->off == 4);
 
@@ -2031,10 +2031,10 @@ int TEST(find_forward_no_match)(void)
                        "    local a = find(\"ciao\");"
                        "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
     ASSERT(scope != NULL);
 
-    TEngineValue* v = Scope_get_local(scope, "a");
+    BHEngineValue* v = Scope_get_local(scope, "a");
     ASSERT_TENGINE_UNUM_EQ(v, 0);
     ASSERT(tfb->fb->off == tfb->fb->size);
 
@@ -2060,10 +2060,10 @@ int TEST(find_backward_match)(void)
                        "    local a = find(\"ciao\", 1);"
                        "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
     ASSERT(scope != NULL);
 
-    TEngineValue* v = Scope_get_local(scope, "a");
+    BHEngineValue* v = Scope_get_local(scope, "a");
     ASSERT_TENGINE_UNUM_EQ(v, 1);
     ASSERT(tfb->fb->off == 4);
 
@@ -2089,10 +2089,10 @@ int TEST(find_backward_no_match)(void)
                        "    local a = find(\"ugo\", 1);"
                        "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
     ASSERT(scope != NULL);
 
-    TEngineValue* v = Scope_get_local(scope, "a");
+    BHEngineValue* v = Scope_get_local(scope, "a");
     ASSERT_TENGINE_UNUM_EQ(v, 0);
     ASSERT(tfb->fb->off == tfb->fb->size);
 
@@ -2121,12 +2121,12 @@ int TEST(exit_in_struct)(void)
                        "    local b = 2u16;"
                        "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
     ASSERT(scope != NULL);
 
-    TEngineValue* va = Scope_get_local(scope, "a");
+    BHEngineValue* va = Scope_get_local(scope, "a");
     ASSERT_TENGINE_UNUM_EQ(va, 1);
-    TEngineValue* vb = Scope_get_local(scope, "b");
+    BHEngineValue* vb = Scope_get_local(scope, "b");
     ASSERT(vb == NULL);
 
 end:
@@ -2162,7 +2162,7 @@ int TEST(saved_quiet_mode)(void)
                        "    b();"
                        "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
     ASSERT(scope != NULL);
 
     out = strbuilder_reset(sb);
@@ -2206,7 +2206,7 @@ int TEST(read_outside_boundaries)(void)
                        "    b();\n"
                        "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
     ASSERT(scope == NULL);
 
     out = strbuilder_reset(err_sb);
@@ -2245,7 +2245,7 @@ int TEST(wchars)(void)
                        "    wchar c;"
                        "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
     ASSERT(scope != NULL);
 
     out = strbuilder_reset(sb);
@@ -2280,7 +2280,7 @@ int TEST(wchar_array)(void)
                        "    wchar c[4];"
                        "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
     ASSERT(scope != NULL);
 
     out = strbuilder_reset(sb);
@@ -2315,7 +2315,7 @@ int TEST(wstring_1)(void)
                        "    wstring str;"
                        "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
     ASSERT(scope != NULL);
 
     out = strbuilder_reset(sb);
@@ -2350,7 +2350,7 @@ int TEST(wstring_2)(void)
                        "    wstring str;"
                        "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
     ASSERT(scope != NULL);
 
     out = strbuilder_reset(sb);
@@ -2393,7 +2393,7 @@ int TEST(wstrings_eq)(void)
                        "    if (str1 == str3) { print(\"yes 2\"); }"
                        "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
     ASSERT(scope != NULL);
 
     out = strbuilder_reset(sb);
@@ -2421,13 +2421,13 @@ int TEST(string_to_wstring)(void)
                        "    local e = b == c;"
                        "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     ASSERT(scope != NULL);
 
-    int           r  = TEST_SUCCEEDED;
-    TEngineValue* vd = Scope_get_local(scope, "d");
+    int            r  = TEST_SUCCEEDED;
+    BHEngineValue* vd = Scope_get_local(scope, "d");
     ASSERT_TENGINE_UNUM_EQ(vd, 0);
-    TEngineValue* ve = Scope_get_local(scope, "e");
+    BHEngineValue* ve = Scope_get_local(scope, "e");
     ASSERT_TENGINE_UNUM_EQ(ve, 1);
 
 end:
@@ -2462,7 +2462,7 @@ int TEST(syntax_error_with_newlines)(void)
                        "    abcd@@\n"
                        "}";
 
-    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     ASSERT(scope == NULL);
 
     int   r   = TEST_SUCCEEDED;
@@ -2470,6 +2470,7 @@ int TEST(syntax_error_with_newlines)(void)
     ASSERT(compare_strings_ignoring_X(expected, out));
 
 end:
+    bhex_free(out);
     if (scope)
         Scope_free(scope);
     return r;
