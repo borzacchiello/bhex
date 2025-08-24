@@ -112,8 +112,9 @@ exec_commands_on_ex(const char* s, DummyFilebuffer* dummyfb, int split)
     reset_global_state();
 
     char* cmd = tmp;
+    char* strtok_ctx;
     if (split)
-        cmd = strtok(tmp, ";");
+        cmd = strtok_r(tmp, ";", &strtok_ctx);
     while (cmd) {
         ParsedCommand* pc;
         if (cmdline_parse(cmd, &pc) != 0)
@@ -124,7 +125,7 @@ exec_commands_on_ex(const char* s, DummyFilebuffer* dummyfb, int split)
             return 1;
         }
         parsed_command_destroy(pc);
-        cmd = strtok(NULL, ";");
+        cmd = strtok_r(NULL, ";", &strtok_ctx);
     }
     return 0;
 }

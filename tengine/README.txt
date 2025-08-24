@@ -24,6 +24,6 @@ Work in progress template engine
 	- the TEngineInterpreter struct should be merged with ProcessContext and made private
 [X] implement a 'find_next' API (which returns the offset, or -1)
 [X] improve error print
-[ ] print source code context while printing exceptions
+[X] print source code context while printing exceptions
 [X] implement the output in a generic way, so that we can choose different backends (e.g., JSON)
 [ ] use polymorphic structs to model values

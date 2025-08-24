@@ -161,7 +161,8 @@ static void command_loop(FileBuffer* fb, CmdContext* cc, char* commands)
     int            r;
     ParsedCommand* pc;
 
-    char* token = strtok(commands, ";");
+    char* strtok_ctx;
+    char* token = strtok_r(commands, ";", &strtok_ctx);
     while (token) {
         if ((r = cmdline_parse(token, &pc)) != PARSER_OK) {
             error("%s", parser_err_to_string(r));
@@ -173,7 +174,7 @@ static void command_loop(FileBuffer* fb, CmdContext* cc, char* commands)
             parsed_command_destroy(pc);
             return;
         }
-        token = strtok(NULL, ";");
+        token = strtok_r(NULL, ";", &strtok_ctx);
         parsed_command_destroy(pc);
     }
 }

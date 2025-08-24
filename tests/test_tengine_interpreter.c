@@ -1393,6 +1393,8 @@ int TEST(invalid_break)(void)
 {
     // clang-format off
     const char* expected =
+        "[  ERROR  ] 001: proc {   break;}\n"
+        "[  ERROR  ]      _________^\n"
         "[  ERROR  ] Exception @ line 1, col 10 > unexpected break\n";
     // clang-format on
 
@@ -1970,6 +1972,8 @@ int TEST(interpreter_error_invalid_op_1)(void)
 {
     // clang-format off
     const char* expected =
+        "[  ERROR  ] 001: proc { local a = 1u8 * \"a\"; }\n"
+        "[  ERROR  ]      __________________________^\n"
         "[  ERROR  ] Exception @ line 1, col 27 > mul undefined for types unum and string\n";
     // clang-format on
 
@@ -2181,22 +2185,25 @@ int TEST(read_outside_boundaries)(void)
     // clang-format off
     const char* expected =
         "[  ERROR  ] too many bytes to read: 1\n"
+        "[  ERROR  ] 001: fn a() { disable_print(); u8 a; }\n"
+        "[  ERROR  ]      ______________________________^\n"
+        "[  ERROR  ] 002: fn b() { u8 b; }\n"
+        "[  ERROR  ] 003: proc {\n"
         "[  ERROR  ] Exception @ line 1, col 31 > RUNTIME ERROR\n";
     // clang-format on
-
 
     int              r   = TEST_SUCCEEDED;
     char*            out = NULL;
     DummyFilebuffer* tfb = dummyfilebuffer_create((u8_t*)"ABCD", 4);
     fb_seek(tfb->fb, 4);
 
-    const char* prog = "fn a() { disable_print(); u8 a; }"
-                       "fn b() { u8 b; }"
-                       "proc {"
-                       "    a();"
-                       "    b();"
-                       "    a();"
-                       "    b();"
+    const char* prog = "fn a() { disable_print(); u8 a; }\n"
+                       "fn b() { u8 b; }\n"
+                       "proc {\n"
+                       "    a();\n"
+                       "    b();\n"
+                       "    a();\n"
+                       "    b();\n"
                        "}";
 
     Scope* scope = tengine_interpreter_run_on_string(tfb->fb, prog);
@@ -2225,7 +2232,6 @@ int TEST(wchars)(void)
         "b+00000002      b: B\n"
         "b+00000004      c: '\\u0201'";
     // clang-format on
-
 
     int              r      = TEST_SUCCEEDED;
     char*            out    = NULL;
@@ -2264,7 +2270,6 @@ int TEST(wchar_array)(void)
         "b+00000000      c: 'AB\\u0201C'";
     // clang-format on
 
-
     int              r      = TEST_SUCCEEDED;
     char*            out    = NULL;
     u8_t             data[] = {'A', 0, 'B', 0, 1, 2, 'C', 0};
@@ -2300,7 +2305,6 @@ int TEST(wstring_1)(void)
         "b+00000000      str: 'ABCD'";
     // clang-format on
 
-
     int              r      = TEST_SUCCEEDED;
     char*            out    = NULL;
     u8_t             data[] = {'A', 0, 'B', 0, 'C', 0, 'D', 0, 0, 0};
@@ -2335,7 +2339,6 @@ int TEST(wstring_2)(void)
     const char* expected =
         "b+00000000      str: 'ABCD\\u0101'";
     // clang-format on
-
 
     int              r      = TEST_SUCCEEDED;
     char*            out    = NULL;
@@ -2426,6 +2429,45 @@ int TEST(string_to_wstring)(void)
     ASSERT_TENGINE_UNUM_EQ(vd, 0);
     TEngineValue* ve = Scope_get_local(scope, "e");
     ASSERT_TENGINE_UNUM_EQ(ve, 1);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(syntax_error_with_newlines)(void)
+{
+    // clang-format off
+    const char* expected =
+        "[  ERROR  ] syntax error, unexpected invalid token, expecting TIDENTIFIER @ line 6, column 9\n"
+        "[  ERROR  ] 004:     \n"
+        "[  ERROR  ] 005:     \n"
+        "[  ERROR  ] 006:     abcd@@\n"
+        "[  ERROR  ]      ________^\n"
+        "[  ERROR  ] 007: }\n"
+        "[  ERROR  ] parsing failed\n";
+    // clang-format on
+
+    const char* prog = "proc { "
+                       "    \n"
+                       "    \n"
+                       "    \n"
+                       "    \n"
+                       "    \n"
+                       "    abcd@@\n"
+                       "}";
+
+    Scope* scope = tengine_interpreter_run_on_string(elf_fb->fb, prog);
+    ASSERT(scope == NULL);
+
+    int   r   = TEST_SUCCEEDED;
+    char* out = strbuilder_reset(err_sb);
+    ASSERT(compare_strings_ignoring_X(expected, out));
 
 end:
     if (scope)

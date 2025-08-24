@@ -19,6 +19,7 @@
 #define MAX_ARR_PRINT_SIZE 16
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
+#define max(x, y) ((x) > (y) ? (x) : (y))
 
 static fmt_t         format_type  = FMT_TERM;
 static void*         imported_ptr = NULL;
@@ -186,7 +187,7 @@ static TEngineValue* process_type(InterpreterContext* ctx, const char* varname,
         return v;
     }
 
-    tengine_raise_exception(ctx, "unknown type %s", type->name);
+    tengine_raise_exception(ctx, "error while parsing %s", type->name);
     return NULL;
 }
 
@@ -668,7 +669,7 @@ static int process_array_type(InterpreterContext* ctx, const char* varname,
         fmt_notify_array_el(ctx->fmt, i);
         map* custom_type_vars = process_struct_type(ctx, type);
         if (custom_type_vars == NULL) {
-            tengine_raise_exception(ctx, "unknown type %s", type->name);
+            tengine_raise_exception(ctx, "error while parsing %s", type->name);
             TEngineValue_free(*oval);
             *oval = NULL;
             return 1;
@@ -901,6 +902,36 @@ static int process_stmts_no_exc(InterpreterContext* ctx, DList* stmts,
     return 0;
 }
 
+static void print_exception_context(InterpreterContext* ctx, int lineno,
+                                    int column)
+{
+    if (!ctx->ast->source)
+        return;
+    char *line, *curr, *tofree;
+    tofree = curr = bhex_strdup(ctx->ast->source);
+
+    int curr_lineno      = 1;
+    int min_print_lineno = max(lineno - 2, 0);
+    int max_print_lineno = lineno + 2;
+    while ((line = strsep(&curr, "\n")) != NULL) {
+        if (curr_lineno >= min_print_lineno && curr_lineno <= max_print_lineno)
+            error("%03d: %s", curr_lineno, line);
+        if (curr_lineno == lineno) {
+            StringBuilder* sb = strbuilder_new();
+            strbuilder_append(sb, "     ");
+            for (int i = 0; i < column - 1; ++i)
+                strbuilder_append_char(sb, '_');
+            strbuilder_append_char(sb, '^');
+            char* errstr = strbuilder_finalize(sb);
+            error("%s", errstr);
+            bhex_free(errstr);
+        }
+
+        curr_lineno += 1;
+    }
+    bhex_free(tofree);
+}
+
 static int process_stmts(InterpreterContext* ctx, DList* stmts, Scope* scope)
 {
     int ret = 0;
@@ -920,6 +951,8 @@ static int process_stmts(InterpreterContext* ctx, DList* stmts, Scope* scope)
 
 end:
     if (ctx->exc) {
+        print_exception_context(ctx, ctx->curr_stmt->line_of_code,
+                                ctx->curr_stmt->column);
         char* exc_msg = strbuilder_finalize(ctx->exc->sb);
         error("Exception @ line %d, col %d > %s", ctx->curr_stmt->line_of_code,
               ctx->curr_stmt->column, exc_msg);

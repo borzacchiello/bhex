@@ -60,13 +60,13 @@ static void print_error_from_file(int yylineno, int yy_column)
 
 static void print_error_from_string(int yylineno, int yy_column)
 {
-    char* str  = bhex_strdup(yy_string_to_parse);
-    char* line = strtok(str, "\n");
+    char *line, *curr, *tofree;
+    tofree = curr = bhex_strdup(yy_string_to_parse);
 
     int linenum          = 1;
     int min_print_lineno = max(yylineno-2, 0);
     int max_print_lineno = yylineno+2;
-    while (line) {
+    while ((line = strsep(&curr, "\n")) != NULL) {
         if (linenum >= min_print_lineno && linenum <= max_print_lineno)
             error("%03d: %s", linenum, line);
         if (linenum == yylineno) {
@@ -81,9 +81,8 @@ static void print_error_from_string(int yylineno, int yy_column)
         }
 
         linenum += 1;
-        line     = strtok(NULL, "\n");
     }
-    bhex_free(str);
+    bhex_free(tofree);
 }
 
 void yyerror(const char *s)

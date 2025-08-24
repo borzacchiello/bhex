@@ -138,11 +138,12 @@ static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
     }
 
     // Pre-loaded struct or named proc
-    char* tname = strtok(bhe, ".");
+    char* strtok_ctx;
+    char* tname = strtok_r(bhe, ".", &strtok_ctx);
     if (tname == NULL)
         goto err;
 
-    char* sname = strtok(NULL, ".");
+    char* sname = strtok_r(NULL, ".", &strtok_ctx);
     if (sname == NULL)
         goto err;
 

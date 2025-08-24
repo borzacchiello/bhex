@@ -9,6 +9,7 @@
 #include <log.h>
 #include <dlist.h>
 #include <map.h>
+#include <strbuilder.h>
 
 typedef struct yy_buffer_state* YY_BUFFER_STATE;
 extern YY_BUFFER_STATE          yy_scan_string(const char* str);
@@ -956,6 +957,7 @@ ASTCtx* ASTCtx_new(void)
 {
     ASTCtx* ctx = bhex_calloc(sizeof(ASTCtx));
     ctx->proc   = NULL;
+    ctx->source = NULL;
 
     ctx->named_procs = map_create();
     map_set_dispose(ctx->named_procs, (void (*)(void*))Block_free);
@@ -976,6 +978,7 @@ void ASTCtx_delete(ASTCtx* ctx)
 
     if (ctx->proc)
         Block_free(ctx->proc);
+    bhex_free(ctx->source);
     map_destroy(ctx->named_procs);
     map_destroy(ctx->structs);
     map_destroy(ctx->enums);
@@ -1026,12 +1029,29 @@ ASTCtx* tengine_parse_filename(const char* bhe)
     return ast;
 }
 
+static void read_whole_source(ASTCtx* ast, FILE* f)
+{
+    rewind(f);
+
+    StringBuilder* sb = strbuilder_new();
+
+    u64_t nread;
+    char  tmp[2048];
+    while ((nread = fread(tmp, 1, sizeof(tmp), f)) != 0) {
+        strbuilder_appendf(sb, "%.*s", nread, tmp);
+    }
+
+    ast->source = strbuilder_finalize(sb);
+    rewind(f);
+}
+
 ASTCtx* tengine_parse_file(FILE* f)
 {
     // Register all the allocations, so that we can free them in case of errors.
     // I did not find any other way to handle this scenario...
     bhex_alloc_track_start();
     ASTCtx* ast = ASTCtx_new();
+    read_whole_source(ast, f);
     yyrestart(f);
 
     yyset_in(f);
@@ -1058,6 +1078,7 @@ ASTCtx* tengine_parse_string(const char* str)
     // I did not find any other way to handle this scenario...
     bhex_alloc_track_start();
     ASTCtx* ast = ASTCtx_new();
+    ast->source = bhex_strdup(str);
 
     yy_custom_init(ast, str);
     YY_BUFFER_STATE state = yy_scan_string(str);

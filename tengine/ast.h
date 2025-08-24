@@ -248,6 +248,9 @@ typedef struct ASTCtx {
 
     // the maximum length of any ident found while parsing this AST
     int max_ident_len;
+
+    // source code, can be NULL
+    char* source;
 } ASTCtx;
 
 ASTCtx* ASTCtx_new();
