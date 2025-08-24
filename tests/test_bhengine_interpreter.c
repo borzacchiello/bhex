@@ -2461,12 +2461,13 @@ int TEST(syntax_error_with_newlines)(void)
                        "    \n"
                        "    abcd@@\n"
                        "}";
+    char*       out  = NULL;
 
     Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
     ASSERT(scope == NULL);
 
-    int   r   = TEST_SUCCEEDED;
-    char* out = strbuilder_reset(err_sb);
+    int r = TEST_SUCCEEDED;
+    out   = strbuilder_reset(err_sb);
     ASSERT(compare_strings_ignoring_X(expected, out));
 
 end:
