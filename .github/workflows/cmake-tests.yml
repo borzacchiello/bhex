@@ -102,3 +102,7 @@ jobs:
 
       - name: run_tests
         run: ${{ matrix.test_cmdline }}
+
+      - name: gen coverage report
+        if: matrix.name == 'linux-x64'
+        run: ctest -T Coverage

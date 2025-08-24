@@ -11,7 +11,7 @@ option(ASAN "Compile with asan (only for debug builds)" OFF)
 option(ENABLE_CAPSTONE "Enable Capstone (disas command)" OFF)
 option(ENABLE_KEYSTONE "Enable Keystone (assemble command)" OFF)
 option(ENABLE_TESTS "Compile test binary" OFF)
-option(ENABLE_FUZZ_TESTS "Compile fizz test binaries" OFF)
+option(ENABLE_FUZZ_TESTS "Compile fuzz test binaries" OFF)
 option(STATIC_BUILD "Statically link libc" OFF)
 
 set(CMAKE_C_STANDARD 99)
@@ -121,6 +121,8 @@ if(ASAN)
 endif()
 
 if (ENABLE_TESTS)
+    include(CTest)
+
     add_custom_command(
             OUTPUT ${CMAKE_SOURCE_DIR}/tests/main.c
             COMMAND ${CMAKE_COMMAND} -E remove -f ${CMAKE_SOURCE_DIR}/tests/main.c
@@ -144,8 +146,13 @@ if (ENABLE_TESTS)
         tests/dummy_filebuffer.c
         ${CMAKE_SOURCE_DIR}/tests/main.c)
 
+    target_compile_options(bhex_tests PRIVATE -coverage)
+    target_link_options(bhex_tests PRIVATE -coverage)
+
     add_dependencies(bhex_tests gen_test_main)
     add_dependencies(bhex_tests copy_templates_to_build)
+
+    add_test(NAME bhex_tests COMMAND bhex_tests)
 endif()
 
 if (ENABLE_FUZZ_TESTS)
