@@ -1,3 +1,4 @@
+#include "data/big_buffers.h"
 #include "t_cmd_common.h"
 #include "t.h"
 
@@ -79,6 +80,31 @@ int TEST(delete_and_print_all_1)(void)
 
     int r = TEST_FAILED;
     if (exec_commands_on("p/r 16; s 6; d 3; s 0; p/r 13", tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+}
+
+int TEST(delete_big_chunk)(void)
+{
+    // clang-format off
+    const char* expected =
+        "5854454E4A504847435451594C4C4C42\n"
+        "5456505757545A474C575951454E4254\n"
+        "5854454E4A504847435451594C4C4C42\n";
+    // clang-format on
+
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(pseudo_random, sizeof(pseudo_random));
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("p/r 16; d 6000; p/r 16; u; p/r 16", tfb) != 0)
         goto end;
 
     char* out = strbuilder_reset(sb);

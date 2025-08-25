@@ -129,7 +129,10 @@ exec_commands_on_ex(const char* s, DummyFilebuffer* dummyfb, int split)
             return 1;
         }
         parsed_command_destroy(pc);
-        cmd = strtok_r(NULL, ";", &strtok_ctx);
+        if (split)
+            cmd = strtok_r(NULL, ";", &strtok_ctx);
+        else
+            break;
     }
     return 0;
 }

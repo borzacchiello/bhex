@@ -1,5 +1,8 @@
+#include "dummy_filebuffer.h"
 #include "t_cmd_common.h"
 #include "t.h"
+
+#include "data/big_buffers.h"
 
 #ifndef TEST
 #define TEST(name) test_##name
@@ -117,5 +120,38 @@ int TEST(commit_list_multiple)(void)
     bhex_free(out);
 
 end:
+    return r;
+}
+
+int TEST(commit_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "\n"
+        " ~ delete    @ 0x0000000 [ 2 ]\n"
+        "      2b 2b \n"
+        " ~ insert    @ 0x0000000 [ 7 ]\n"
+        "      2b 2b 68 65 79 2c 20 \n"
+        " ~ overwrite @ 0x0000000 [ 5 ]\n"
+        "      58 54 45 4e 4a -> 63 69 61 6f 00 \n"
+        "\n"
+        "hey, ciao\n"
+        "hey, ciao\n";
+    // clang-format on
+
+    DummyFilebuffer* dfb =
+        dummyfilebuffer_create(pseudo_random, sizeof(pseudo_random));
+    int r = TEST_FAILED;
+    if (exec_commands_on(
+            "w \"ciao\\0\"; w/i \"++hey, \"; d 2; c/l; p/a; c; c/l; p/a",
+            dfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(dfb);
     return r;
 }

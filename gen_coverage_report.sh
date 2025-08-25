@@ -2,6 +2,7 @@
 
 cd "$(dirname "$0")"
 
+rm -rf ./build_coverage
 mkdir ./build_coverage
 
 cd ./build_coverage

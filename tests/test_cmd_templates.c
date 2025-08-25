@@ -1,3 +1,4 @@
+#include "data/big_buffers.h"
 #include "t_cmd_common.h"
 #include "t.h"
 
@@ -769,6 +770,33 @@ int TEST(template_zip)(void)
         dummyfilebuffer_create(sample_zip, sizeof(sample_zip));
     ASSERT(tfb != NULL);
     ASSERT(exec_commands_on("t ./templates/zip.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_interactive_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000    a: 4e455458\n"
+        "b+00000004    b: 4748504a\n";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(pseudo_random, sizeof(pseudo_random));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on_ex("t/i \"u32 a; u32 b;\"", tfb, 0) == 0);
 
     char* out = strbuilder_reset(sb);
     r         = compare_strings_ignoring_X(expected, out);
