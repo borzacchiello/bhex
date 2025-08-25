@@ -267,9 +267,19 @@ if_elif     : TIF TCLBRACE expr TCRBRACE TLBRACE stmts TRBRACE
                                                         $$ = Stmt_STMT_IF_new($3, Block_new($6));
                                                         Stmt_set_source_info($$, yy_line, yy_column);
                                                     }
+            | TIF TCLBRACE expr TCRBRACE TLBRACE TRBRACE
+                                                    {
+                                                        $$ = Stmt_STMT_IF_new($3, Block_new(DList_new()));
+                                                        Stmt_set_source_info($$, yy_line, yy_column);
+                                                    }
             | if_elif TELIF TCLBRACE expr TCRBRACE TLBRACE stmts TRBRACE
                                                     {
                                                         Stmt_STMT_IF_add_cond($1, $4, Block_new($7));
+                                                        $$ = $1;
+                                                    }
+            | if_elif TELIF TCLBRACE expr TCRBRACE TLBRACE TRBRACE
+                                                    {
+                                                        Stmt_STMT_IF_add_cond($1, $4, Block_new(DList_new()));
                                                         $$ = $1;
                                                     }
     ;
@@ -277,6 +287,9 @@ if_elif     : TIF TCLBRACE expr TCRBRACE TLBRACE stmts TRBRACE
 else        : if_elif TELSE TLBRACE stmts TRBRACE
                                                     {
                                                         Stmt_STMT_IF_add_else($1, Block_new($4));
+                                                        $$ = $1;
+                                                    }
+            | if_elif TELSE TLBRACE TRBRACE         {
                                                         $$ = $1;
                                                     }
     ;

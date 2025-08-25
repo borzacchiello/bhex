@@ -1279,6 +1279,110 @@ end:
     return r;
 }
 
+int TEST(if_6)(void)
+{
+    const char* prog = "proc { "
+                       "  local a = 8;"
+                       "  local b = 3;"
+                       "  if (a == 1) {"
+                       "  } elif (a == 4) {"
+                       "    b = b + 43;"
+                       "  } else {"
+                       "    b = b + 44;"
+                       "  }"
+                       "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    if (scope == NULL)
+        return 0;
+
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
+    IS_TENGINE_SNUM_EQ(r, v, 47);
+
+end:
+    Scope_free(scope);
+    return r;
+}
+
+int TEST(if_7)(void)
+{
+    const char* prog = "proc { "
+                       "  local a = 8;"
+                       "  local b = 3;"
+                       "  if (a == 1) {"
+                       "    b = b + 42;"
+                       "  } elif (a == 4) {"
+                       "  } else {"
+                       "    b = b + 44;"
+                       "  }"
+                       "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    if (scope == NULL)
+        return 0;
+
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
+    IS_TENGINE_SNUM_EQ(r, v, 47);
+
+end:
+    Scope_free(scope);
+    return r;
+}
+
+int TEST(if_8)(void)
+{
+    const char* prog = "proc { "
+                       "  local a = 4;"
+                       "  local b = 3;"
+                       "  if (a == 1) {"
+                       "    b = b + 42;"
+                       "  } elif (a == 4) {"
+                       "    b = b + 43;"
+                       "  } else {"
+                       "  }"
+                       "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    if (scope == NULL)
+        return 0;
+
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
+    IS_TENGINE_SNUM_EQ(r, v, 46);
+
+end:
+    Scope_free(scope);
+    return r;
+}
+
+int TEST(if_9)(void)
+{
+    const char* prog = "proc { "
+                       "  local a = 8;"
+                       "  local b = 3;"
+                       "  if (a == 1) {"
+                       "    b = b + 42;"
+                       "  } elif (a == 4) {"
+                       "    b = b + 43;"
+                       "  } else {"
+                       "  }"
+                       "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    if (scope == NULL)
+        return 0;
+
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
+    IS_TENGINE_SNUM_EQ(r, v, 3);
+
+end:
+    Scope_free(scope);
+    return r;
+}
+
 int TEST(while_1)(void)
 {
     const char* prog = "proc { "
