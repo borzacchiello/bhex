@@ -199,6 +199,7 @@ if (ENABLE_KEYSTONE)
 endif()
 
 install(TARGETS bhex RUNTIME DESTINATION bin)
+install(PROGRAMS ${CMAKE_SOURCE_DIR}/bin/bxxd DESTINATION bin)
 install(PROGRAMS ${CMAKE_SOURCE_DIR}/bin/bdiff DESTINATION bin)
 install(PROGRAMS ${CMAKE_SOURCE_DIR}/bin/bhengine DESTINATION bin)
 install(DIRECTORY templates/

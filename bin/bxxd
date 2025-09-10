@@ -1,0 +1,45 @@
+#!/bin/bash
+
+usage()
+{
+    cat <<'EOF'
+Usage:
+  bxxd [-h] [-w] <file>
+
+Options:
+  -h    Pipe to head (print only the beginning of the file)
+  -w    Wide mode, every row has 32 bytes
+
+Arguments:
+  <file>      Input file
+EOF
+    exit 1
+}
+
+set -euo pipefail
+
+wide=""
+head=0
+
+while getopts ":wh" opt; do
+  case "$opt" in
+    w) wide="/W" ;;
+    h) head=1 ;;
+    \?) echo "Unknown option: -$OPTARG" >&2; usage ;;
+  esac
+done
+shift $((OPTIND - 1))
+
+
+if (( $# != 1 )); then
+    usage
+    exit 1
+fi
+
+if ((head)); then
+    echo
+    bhex -2c "p$wide 256" "$1"
+    echo
+else
+    bhex -2c "p$wide -" "$1" | less
+fi
