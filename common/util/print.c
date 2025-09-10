@@ -3,6 +3,7 @@
 #include "byte_to_str.h"
 
 #include <display.h>
+#include <log.h>
 
 void print_ascii(const u8_t* bytes, size_t size, int print_footer)
 {
@@ -40,15 +41,25 @@ void print_c_buffer(const u8_t* bytes, size_t size, int print_header,
 }
 
 void print_hex(const u8_t* bytes, size_t size, int raw_mode, int print_header,
-               int print_footer, u64_t addr)
+               int print_footer, int row_width, u64_t addr)
 {
-    int    block_size = 16;
-    size_t off        = 0;
+    int block_size = row_width;
+    if (row_width > 256 || row_width < 16)
+        panic("print_hex(): row_width must be in [16,256]");
 
-    if (!raw_mode && print_header)
-        display_printf(
-            "       00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F\n"
-            "       -----------------------------------------------\n");
+    if (!raw_mode && print_header) {
+        display_printf("       ");
+        for (int i = 0; i < block_size; i += 1) {
+            display_printf("%02X ", i);
+        }
+        display_printf("\n       ");
+        for (int i = 0; i < block_size - 1; i += 1) {
+            display_printf("---");
+        }
+        display_printf("--\n");
+    }
+
+    size_t off = 0;
     while (off < size) {
         if (!raw_mode)
             display_printf(" %04llx: ", (u64_t)off + addr);
@@ -84,15 +95,27 @@ void print_hex(const u8_t* bytes, size_t size, int raw_mode, int print_header,
 }
 
 void print_words(const u8_t* bytes, size_t size, int little_endian,
-                 int raw_mode, int print_header, int print_footer, u64_t addr)
+                 int raw_mode, int print_header, int print_footer,
+                 int row_width, u64_t addr)
 {
-    int    block_size = 16;
-    size_t off        = 0;
+    int block_size = row_width;
+    if (row_width > 256 || row_width < 16 || row_width % 2 != 0)
+        panic("print_words(): row_width must be in [16,256] and must be a "
+              "multiple of 2 [%d]", row_width);
 
-    if (!raw_mode && print_header)
-        display_printf(
-            "       00    02    04    06    08    0A    0C    0E   \n"
-            "       -----------------------------------------------\n");
+    if (!raw_mode && print_header) {
+        display_printf("       ");
+        for (int i = 0; i < block_size; i += 2) {
+            display_printf("%02X    ", i);
+        }
+        display_printf("\n       ");
+        for (int i = 0; i < block_size - 2; i += 2) {
+            display_printf("------");
+        }
+        display_printf("-----\n");
+    }
+
+    size_t off = 0;
     while (off < size) {
         if (!raw_mode)
             display_printf(" %04llx: ", (u64_t)off + addr);
@@ -116,14 +139,27 @@ void print_words(const u8_t* bytes, size_t size, int little_endian,
 }
 
 void print_dwords(const u8_t* bytes, size_t size, int little_endian,
-                  int raw_mode, int print_header, int print_footer, u64_t addr)
+                  int raw_mode, int print_header, int print_footer,
+                  int row_width, u64_t addr)
 {
-    int    block_size = 16;
-    size_t off        = 0;
+    int block_size = row_width;
+    if (row_width > 256 || row_width < 16 || row_width % 4 != 0)
+        panic("print_dwords(): width must be in [16,256] and must be a "
+              "multiple of 4");
 
-    if (!raw_mode && print_header)
-        display_printf("       00        04        08        0C       \n"
-                       "       ---------------------------------------\n");
+    if (!raw_mode && print_header) {
+        display_printf("       ");
+        for (int i = 0; i < block_size; i += 4) {
+            display_printf("%02X        ", i);
+        }
+        display_printf("\n       ");
+        for (int i = 0; i < block_size - 4; i += 4) {
+            display_printf("----------");
+        }
+        display_printf("---------\n");
+    }
+
+    size_t off = 0;
     while (off < size) {
         if (!raw_mode)
             display_printf(" %04llx: ", (u64_t)off + addr);
@@ -147,14 +183,27 @@ void print_dwords(const u8_t* bytes, size_t size, int little_endian,
 }
 
 void print_qwords(const u8_t* bytes, size_t size, int little_endian,
-                  int raw_mode, int print_header, int print_footer, u64_t addr)
+                  int raw_mode, int print_header, int print_footer,
+                  int row_width, u64_t addr)
 {
-    int    block_size = 16;
-    size_t off        = 0;
+    int block_size = row_width;
+    if (row_width > 256 || row_width < 16 || row_width % 8 != 0)
+        panic("print_qwords(): row_width must be in [16,256] and must be a "
+              "multiple of 8");
 
-    if (!raw_mode && print_header)
-        display_printf("       00                08               \n"
-                       "       -----------------------------------\n");
+    if (!raw_mode && print_header) {
+        display_printf("       ");
+        for (int i = 0; i < block_size; i += 8) {
+            display_printf("%02X                ", i);
+        }
+        display_printf("\n       ");
+        for (int i = 0; i < block_size - 8; i += 8) {
+            display_printf("------------------");
+        }
+        display_printf("-----------------\n");
+    }
+
+    size_t off = 0;
     while (off < size) {
         if (!raw_mode)
             display_printf(" %04llx: ", (u64_t)off + addr);

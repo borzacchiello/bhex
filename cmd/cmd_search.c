@@ -224,7 +224,7 @@ static void search(SearchCtx* ctx, FileBuffer* fb, const u8_t* data,
                 const u8_t* data_to_print =
                     fb_read(fb, print_addr_end - print_addr_begin);
                 print_hex(data_to_print, print_addr_end - print_addr_begin, 0,
-                          1, 1, print_addr_begin);
+                          1, 1, 16, print_addr_begin);
             }
         }
 

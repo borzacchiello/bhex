@@ -268,7 +268,7 @@ disas: disassemble code at current offset
 
 print: display the data at current offset in various formats
 
-  p[/{x,w,d,q,a,C}/{le,be}/r/{+,-}] <nelements>
+  p[/{x,w,d,q,a,C}/{le,be}/r/W/{+,-}] <nelements>
      x:  hex output (default)
      w:  words
      d:  dwords
@@ -278,11 +278,12 @@ print: display the data at current offset in various formats
      le: little-endian (default)
      be: big-endian
      r:  raw mode (no ascii, no header and no addresses)
+     W:  wide mode (print 32 bytes per line)
      +:  seek forward after printing
      -:  seek backwards after printing
 
   nelements: the number of elements to display
-  (default: enough to display 256 bytes)
+  (default: enough to display 256 bytes, if '-' the whole file)
 ```
 
 ### Diff

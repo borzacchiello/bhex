@@ -29,7 +29,10 @@
 #define RAW_UNSET -1
 #define RAW_SET   0
 
-#define HINT_CMDLINE "[/{x,w,d,q,a,C}/{le,be}/r/{+,-}] <nelements>"
+#define WIDE_UNSET -1
+#define WIDE_SET   0
+
+#define HINT_CMDLINE "[/{x,w,d,q,a,C}/{le,be}/r/W/{+,-}] <nelements>"
 
 // must be lower than fb_block_size
 #define DEFAULT_PRINT_LEN 256
@@ -40,6 +43,7 @@ typedef struct PrintCmdArgs {
     int   width;
     int   endianess;
     int   raw_mode;
+    int   wide_mode;
     int   seek;
     u64_t n_els;
 } PrintCmdArgs;
@@ -74,6 +78,7 @@ static void printcmd_help(void* obj)
         "     le: little-endian (default)\n"
         "     be: big-endian\n"
         "     r:  raw mode (no ascii, no header and no addresses)\n"
+        "     W:  wide mode (print 32 bytes per line)\n"
         "     +:  seek forward after printing\n"
         "     -:  seek backwards after printing\n"
         "\n"
@@ -88,12 +93,15 @@ static int printcmd_parse_args(ParsedCommand* pc, PrintCmdArgs* o_args,
     o_args->width     = WIDTH_BYTE;
     o_args->endianess = ENDIANESS_LITTLE;
     o_args->raw_mode  = RAW_UNSET;
+    o_args->wide_mode = WIDE_UNSET;
     o_args->seek      = SEEK_UNSET;
     o_args->n_els     = 0;
-    if (handle_mods(pc, "x,w,d,q,a,C|le,be|r|+,-", &o_args->width,
-                    &o_args->endianess, &o_args->raw_mode, &o_args->seek) != 0)
+    if (handle_mods(pc, "x,w,d,q,a,C|le,be|r|W|+,-", &o_args->width,
+                    &o_args->endianess, &o_args->raw_mode, &o_args->wide_mode,
+                    &o_args->seek) != 0)
         return COMMAND_INVALID_MOD;
-    o_args->raw_mode = o_args->raw_mode == RAW_UNSET ? 0 : 1;
+    o_args->raw_mode  = o_args->raw_mode == RAW_UNSET ? 0 : 1;
+    o_args->wide_mode = o_args->wide_mode == WIDE_UNSET ? 0 : 1;
 
     char* s = NULL;
     if (handle_args(pc, 1, 0, &s) != 0)
@@ -132,22 +140,25 @@ static int printcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
             case WIDTH_UNSET:
             case WIDTH_BYTE:
                 print_hex(bytes, read_size, args.raw_mode, print_header,
-                          print_footer, addr);
+                          print_footer, args.wide_mode ? 32 : 16, addr);
                 break;
             case WIDTH_WORD:
                 print_words(bytes, read_size,
                             args.endianess == ENDIANESS_LITTLE, args.raw_mode,
-                            print_header, print_footer, addr);
+                            print_header, print_footer,
+                            args.wide_mode ? 32 : 16, addr);
                 break;
             case WIDTH_DWORD:
                 print_dwords(bytes, read_size,
                              args.endianess == ENDIANESS_LITTLE, args.raw_mode,
-                             print_header, print_footer, addr);
+                             print_header, print_footer,
+                             args.wide_mode ? 32 : 16, addr);
                 break;
             case WIDTH_QWORD:
                 print_qwords(bytes, read_size,
                              args.endianess == ENDIANESS_LITTLE, args.raw_mode,
-                             print_header, print_footer, addr);
+                             print_header, print_footer,
+                             args.wide_mode ? 32 : 16, addr);
                 break;
             case WIDTH_CBUFFER:
                 print_c_buffer(bytes, read_size, print_header, print_footer);
