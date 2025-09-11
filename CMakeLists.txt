@@ -12,6 +12,7 @@ option(ENABLE_CAPSTONE "Enable Capstone (disas command)" OFF)
 option(ENABLE_KEYSTONE "Enable Keystone (assemble command)" OFF)
 option(ENABLE_TESTS "Compile test binary" OFF)
 option(ENABLE_FUZZ_TESTS "Compile fuzz test binaries" OFF)
+option(ENABLE_COVERAGE "Compile with coverage collection (only for test builds)" OFF)
 option(STATIC_BUILD "Statically link libc" OFF)
 
 set(CMAKE_C_STANDARD 99)
@@ -146,8 +147,10 @@ if (ENABLE_TESTS)
         tests/dummy_filebuffer.c
         ${CMAKE_SOURCE_DIR}/tests/main.c)
 
-    target_compile_options(bhex_tests PRIVATE -coverage)
-    target_link_options(bhex_tests PRIVATE -coverage)
+    if (ENABLE_COVERAGE)
+        target_compile_options(bhex_tests PRIVATE -coverage)
+        target_link_options(bhex_tests PRIVATE -coverage)
+    endif()
 
     add_dependencies(bhex_tests gen_test_main)
     add_dependencies(bhex_tests copy_templates_to_build)

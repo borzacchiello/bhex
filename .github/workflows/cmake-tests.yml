@@ -23,7 +23,7 @@ jobs:
             arch: x64
             os: ubuntu-24.04
             c_compiler: gcc
-            cmake_flags: -DASAN=on
+            cmake_flags: -DASAN=on -DENABLE_COVERAGE=on
             test_cmdline: ./bhex_tests
             dependencies:
           - name: linux-i386
@@ -105,4 +105,8 @@ jobs:
 
       - name: gen coverage report
         if: matrix.name == 'linux-x64'
-        run: ctest -T Coverage
+        run: >
+          mkdir -p Testing/CoverageInfo/ &&
+          cp bhengine/lexer.* Testing/CoverageInfo/ &&
+          cp bhengine/parser.* Testing/CoverageInfo/ &&
+          ctest -T Coverage
