@@ -884,44 +884,45 @@ int Enum_find_value(Enum* e, const char* name, u64_t* o_value)
     return 1;
 }
 
-const char* Enum_find_const(Enum* e, u64_t c)
+char* Enum_find_const(Enum* e, u64_t c)
 {
     if (!e->isor) {
         for (u64_t i = 0; i < e->entries->size; ++i) {
             EnumEntry* ee = e->entries->data[i];
             if (ee->value == c)
-                return ee->name;
+                return bhex_strdup(ee->name);
         }
     } else {
         if (c == 0)
-            return "NONE";
+            return bhex_strdup("NONE");
 
-        // TODO: fix this code, it is horrible
-        static char  tmp[1024];
-        static u64_t written = 0;
-        memset(tmp, 0, sizeof(tmp));
-        written = 0;
+        StringBuilder* res_sb    = strbuilder_new();
+        const u64_t    max_width = 128;
+        u64_t          written   = 0;
 
         for (u64_t i = 0; i < e->entries->size; ++i) {
             EnumEntry* ee = e->entries->data[i];
             if (ee->value & c) {
                 u64_t n = strlen(ee->name);
-                if (n + 3 + written > sizeof(tmp) - 5) {
-                    written += 4;
-                    strcat(tmp, " ...");
+                if (n + 3 + written > max_width) {
+                    strbuilder_append(res_sb, "...");
                     break;
                 }
                 if (written > 0) {
-                    strcat(tmp, " | ");
+                    strbuilder_append(res_sb, " | ");
                     written += 3;
                 }
-                strcat(tmp, ee->name);
+                strbuilder_append(res_sb, ee->name);
                 written += n;
             }
         }
-        if (written == 0)
+
+        char* res = strbuilder_finalize(res_sb);
+        if (written == 0) {
+            bhex_free(res);
             return NULL;
-        return tmp;
+        }
+        return res;
     }
     return NULL;
 }

@@ -216,10 +216,10 @@ EnumEntry* EnumEntry_new(const char* name, u64_t value);
 void       EnumEntry_free(EnumEntry* ee);
 void       EnumEntry_pp(EnumEntry* ee);
 
-Enum*       Enum_new(const char* type, DList* entries, int isor);
-int         Enum_find_value(Enum* e, const char* name, u64_t* o_value);
-const char* Enum_find_const(Enum* e, u64_t c);
-void        Enum_free(Enum* ee);
+Enum* Enum_new(const char* type, DList* entries, int isor);
+int   Enum_find_value(Enum* e, const char* name, u64_t* o_value);
+char* Enum_find_const(Enum* e, u64_t c);
+void  Enum_free(Enum* ee);
 
 typedef struct Function {
     char*  name;

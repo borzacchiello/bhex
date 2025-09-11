@@ -111,8 +111,8 @@ end:
     return result;
 }
 
-static const char* process_enum_type(InterpreterContext* ctx, Type* type,
-                                     u64_t* econst)
+static char* process_enum_type(InterpreterContext* ctx, Type* type,
+                               u64_t* econst)
 {
     ASTCtx* ast = NULL;
     if (type->bhe_name != NULL) {
@@ -148,13 +148,12 @@ static const char* process_enum_type(InterpreterContext* ctx, Type* type,
         *econst = val;
     BHEngineValue_free(v);
 
-    const char* name = Enum_find_const(e, val);
+    char* name = Enum_find_const(e, val);
     if (name == NULL) {
         warning("[tengine] Enum %s has no value %llu", type->name, val);
-        static char tmpbuf[1024];
-        memset(tmpbuf, 0, sizeof(tmpbuf));
-        snprintf(tmpbuf, sizeof(tmpbuf) - 1, "UNK [%llu ~ 0x%llx]", val, val);
-        return tmpbuf;
+        StringBuilder* sb = strbuilder_new();
+        strbuilder_appendf(sb, "UNK [%llu ~ 0x%llx]", val, val);
+        return strbuilder_finalize(sb);
     }
     return name;
 }
@@ -179,10 +178,11 @@ static BHEngineValue* process_type(InterpreterContext* ctx, const char* varname,
         return v;
     }
 
-    u64_t       econst;
-    const char* enum_var = process_enum_type(ctx, type, &econst);
+    u64_t econst;
+    char* enum_var = process_enum_type(ctx, type, &econst);
     if (enum_var != NULL) {
         BHEngineValue* v = BHEngineValue_ENUM_VALUE_new(enum_var, econst);
+        bhex_free(enum_var);
         fmt_process_value(ctx->fmt, v);
         return v;
     }
