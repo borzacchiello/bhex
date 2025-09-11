@@ -123,6 +123,28 @@ end:
     return r;
 }
 
+int TEST(commit_list_after_delete)(void)
+{
+    // clang-format off
+    const char* expected =
+    "\n"
+    " ~ delete    @ 0x0000000 [ 24 ]\n"
+    "      7f 45 4c 46 01 01 01 00 ... \n"
+    "\n";
+    // clang-format on
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("d 24; c/l", dfb_alt_1) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    return r;
+}
+
 int TEST(commit_1)(void)
 {
     // clang-format off

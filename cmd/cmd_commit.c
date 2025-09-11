@@ -6,6 +6,7 @@
 
 #include <display.h>
 #include <alloc.h>
+#include <log.h>
 
 #define min(x, y)          ((x) < (y) ? (x) : (y))
 #define HINT_STR           "[/l]"
@@ -36,18 +37,27 @@ static void print_overwrite(FileBuffer* fb, Modification* mod, u32_t nmod)
     display_printf("      ");
     u32_t n = min(mod->size, 8);
     data    = fb_read_ex(fb, n, nmod + 1);
+    if (data == NULL) {
+        error("unable to read data while printing an overwrite");
+        goto end;
+    }
     for (u32_t i = 0; i < n; ++i)
         display_printf("%02x ", data[i]);
     if (n != mod->size)
         display_printf("... ");
     display_printf("-> ");
     data = fb_read_ex(fb, n, nmod);
+    if (data == NULL) {
+        error("unable to read data while printing an overwrite");
+        goto end;
+    }
     for (u32_t i = 0; i < n; ++i)
         display_printf("%02x ", data[i]);
     if (n != mod->size)
         display_printf("... ");
     display_printf("\n");
 
+end:
     fb_seek(fb, off);
 }
 
@@ -77,12 +87,17 @@ static void print_delete(FileBuffer* fb, Modification* mod, u32_t nmod)
     display_printf("      ");
     u32_t n = min(mod->size, 8);
     data    = fb_read_ex(fb, n, nmod + 1);
+    if (data == NULL) {
+        error("unable to read data while printing a delete");
+        goto end;
+    }
     for (u32_t i = 0; i < n; ++i)
         display_printf("%02x ", data[i]);
     if (n != mod->size)
         display_printf("... ");
     display_printf("\n");
 
+end:
     fb_seek(fb, off);
 }
 

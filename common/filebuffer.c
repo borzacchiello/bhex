@@ -438,13 +438,8 @@ static int overlaps(u64_t startA, u64_t endA, u64_t startB, u64_t endB)
 }
 
 static int fb_read_internal(FileBuffer* fb, u64_t addr, u64_t fsize, u64_t idx,
-                            int nmod)
+                            int nmod, s8_t* block_map)
 {
-    static s8_t block_map[fb_block_size];
-
-    if (idx == 0)
-        memset(block_map, 0, sizeof(block_map));
-
     size_t size = min(fb_block_size - idx, fsize - addr);
 
     int        n    = 0;
@@ -483,7 +478,8 @@ static int fb_read_internal(FileBuffer* fb, u64_t addr, u64_t fsize, u64_t idx,
                         u64_t n_addr = off - mod->size;
                         u64_t n_size = fsize - mod->size;
                         u64_t n_idx  = off - addr + idx;
-                        fb_read_internal(fb, n_addr, n_size, n_idx, n + 1);
+                        fb_read_internal(fb, n_addr, n_size, n_idx, n + 1,
+                                         block_map);
                         u64_t i;
                         for (i = n_idx; i < size; ++i)
                             block_map[i] = 1;
@@ -495,7 +491,8 @@ static int fb_read_internal(FileBuffer* fb, u64_t addr, u64_t fsize, u64_t idx,
                     u64_t n_addr = off + mod->size;
                     u64_t n_size = fsize + mod->size;
                     u64_t n_idx  = off - addr + idx;
-                    fb_read_internal(fb, n_addr, n_size, n_idx, n + 1);
+                    fb_read_internal(fb, n_addr, n_size, n_idx, n + 1,
+                                     block_map);
                     u64_t i;
                     for (i = n_idx; i < size; ++i)
                         block_map[i] = 1;
@@ -513,7 +510,7 @@ static int fb_read_internal(FileBuffer* fb, u64_t addr, u64_t fsize, u64_t idx,
     u64_t i;
     int   should_read = 0;
     for (i = 0; i < size; ++i) {
-        if (i + idx >= fb->size)
+        if (i + idx >= fsize)
             break;
         if (!block_map[i + idx]) {
             should_read = 1;
@@ -550,10 +547,6 @@ const u8_t* fb_read_ex(FileBuffer* fb, size_t size, u32_t mod_idx)
         error("you cannot read more than %lu bytes", fb_block_size);
         return NULL;
     }
-    if (size + fb->off > fb->size) {
-        error("too many bytes to read: %lu", size);
-        return NULL;
-    }
 
     size_t fsize = fb->size;
     if (mod_idx != 0) {
@@ -576,8 +569,14 @@ const u8_t* fb_read_ex(FileBuffer* fb, size_t size, u32_t mod_idx)
         }
     }
 
+    if (size + fb->off > fsize) {
+        error("too many bytes to read: %lu", size);
+        return NULL;
+    }
+
     if (fb->block_dirty) {
-        if (!fb_read_internal(fb, fb->off, fsize, 0, mod_idx)) {
+        s8_t block_map[fb_block_size] = {0};
+        if (!fb_read_internal(fb, fb->off, fsize, 0, mod_idx, block_map)) {
             error("something went wrong while reading the file. Reloading it");
             fb->version += 1 + fb->modifications.size;
             if (!fb_reload(fb))
