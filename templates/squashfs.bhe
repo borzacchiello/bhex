@@ -1,0 +1,324 @@
+// ---------- SUPERBLOCK ----------
+
+enum compr_t : u16
+{
+    GZIP = 1,
+    LZMA = 2,
+    LZO  = 3,
+    XZ   = 4,
+    LZ4  = 5,
+    ZSTD = 6
+}
+
+orenum flag_t : u16
+{
+    INODE_UNCOMPRESSED          = 0x1,
+    DATA_BLOCKS_UNCOMPRESSED    = 0x2,
+    FRAGMENTS_UNCOMPRESSED      = 0x8,
+    FRAGMENTS_UNUSED            = 0x10,
+    FRAGMENTS_ALWAYS_GENERATED  = 0x20,
+    DATA_DEDUPLICATED           = 0x40,
+    NFS_EXPORT_TABLE_EXISTS     = 0x80,
+    XATTRS_UNCOMPRESSED         = 0x100,
+    COMPRESSION_OPTIONS_PRESENT = 0x400,
+    ID_TABLE_UNCOMPRESSED       = 0x800
+}
+
+struct superblock_t
+{
+    char    magic[4];
+    u32     inode_count;
+    u32     mod_time;
+    u32     block_size;
+    u32     frag_count;
+    compr_t compressor;
+    u16     block_log;
+    flag_t  flags;
+    u16     id_count;
+    u16     version_major;
+    u16     version_minor;
+    u64     root_inode;
+    u64     bytes_used;
+    u64     id_table;
+    u64     xattr_table;
+    u64     inode_table;
+    u64     dir_table;
+    u64     frag_table;
+    u64     export_table;
+}
+
+orenum gzip_strategy_t : u16
+{
+    DEFAULT            = 0x1,
+    FILTERED           = 0x2,
+    HUFFMAN_ONLY       = 0x4,
+    RUN_LENGTH_ENCODED = 0x8,
+    FIXED              = 0x10
+}
+
+struct gzip_option_t
+{
+    u32             compression_level;
+    u16             window_size;
+    gzip_strategy_t strategies;
+}
+
+orenum xz_filter_t : u32
+{
+    x86       = 0x1,
+    PowerPC   = 0x2,
+    IA64      = 0x4,
+    ARM       = 0x8,
+    ARM_thumb = 0x10,
+    SPARC     = 0x20
+}
+
+struct xz_option_t
+{
+    u32         dict_size;
+    xz_filter_t filters;
+}
+
+orenum lz4_flag_t : u32
+{
+    LZ4_HIGH_COMPRESSION = 0x1
+}
+
+struct lz4_option_t
+{
+    u32        version;
+    lz4_flag_t flags;
+}
+
+struct zstd_option_t
+{
+    u32 compression_level;
+}
+
+enum lzo_algo_t : u32
+{
+    lzo1x_1    = 0,
+    lzo1x_1_11 = 1,
+    lzo1x_1_12 = 2,
+    lzo1x_1_15 = 3,
+    lzo1x_999  = 4
+}
+
+struct lzo_option_t
+{
+    lzo_algo_t algorithm;
+    u32        compression_level;
+}
+
+// ---------- DIR TAB ----------
+
+struct dir_tab_t
+{
+    u32 count;
+    u32 start;
+    u32 inode_number;
+}
+
+struct dir_tab_item_t
+{
+    u16  offset;
+    i16  inode_offset;
+    u16  type;
+    u16  name_size;
+    char name[name_size + 1];
+}
+
+fn parse_directory_table(superblock, offset)
+{
+    seek(superblock.dir_table + 2 + offset);
+    dir_tab_t      dir_header;
+    dir_tab_item_t dir_items[dir_header.count + 1];
+}
+
+// ---------- INODES ----------
+
+enum inode_type_t : u16
+{
+    DIRECTORY      = 1,
+    FILE           = 2,
+    SYMLINK        = 3,
+    BLOCK_DEV      = 4,
+    CHAR_DEV       = 5,
+    NAMED_PIPE     = 6,
+    SOCKET         = 7,
+    EXT_DIRECTORY  = 8,
+    EXT_FILE       = 9,
+    EXT_SYMLINK    = 10,
+    EXT_BLOCK_DEV  = 11,
+    EXT_CHAR_DEV   = 12,
+    EXT_NAMED_PIPE = 13,
+    EXT_SOCKET     = 14
+}
+
+struct inode_header_t
+{
+    inode_type_t type;
+    u16          permissions;
+    u16          uid;
+    u16          gid;
+    u32          mtime;
+    u32          inode_number;
+}
+
+struct inode_dir_t
+{
+    u32 block_index;
+    u32 link_count;
+    u16 file_size;
+    u16 block_offset;
+    u32 parent_inode;
+}
+
+struct inode_dir_ext_t
+{
+    u32 block_index;
+    u32 link_count;
+    u16 file_size;
+    u16 block_offset;
+    u32 parent_inode;
+    u16 index_count;
+    u16 block_offset;
+    u32 xattr_index;
+}
+
+struct inode_file_t
+{
+    u32 blocks_start;
+    u32 frag_index;
+    u32 block_offset;
+    u32 file_size;
+    // block sizes must be calculated dynamically!
+    // it depends on block_size (in superblock)
+}
+
+struct inode_file_ext_t
+{
+    u64 blocks_start;
+    u64 file_size;
+    u64 sparse;
+    u32 link_count;
+    u32 frag_index;
+    u32 block_offset;
+    u32 xattr_index;
+    // block sizes must be calculated dynamically!
+    // it depends on block_size (in superblock)
+}
+
+struct inode_symlink_t
+{
+    u32 link_count;
+    u32 target_size;
+    u8  target_path[target_size];
+}
+
+struct inode_symlink_ext_t
+{
+    u32 link_count;
+    u32 target_size;
+    u8  target_path[target_size];
+    u32 xattr_index;
+}
+
+struct inode_spec_t
+{
+    u32 link_count;
+    u32 dev_num;
+}
+
+struct inode_spec_ext_t
+{
+    u32 link_count;
+    u32 dev_num;
+    u32 xattr_index;
+}
+
+struct inode_ipc_t
+{
+    u32 link_count;
+}
+
+struct inode_ipc_ext_t
+{
+    u32 link_count;
+    u32 xattr_index;
+}
+
+fn calculate_n_blocks(block_size, file_size, frag_index)
+{
+    result = file_size / block_size;
+    if ((file_size % block_size) != 0 && frag_index == 0xffffffff) {
+        result = result + 1;
+    }
+}
+
+fn parse_inode_entries(superblock)
+{
+    seek(superblock.inode_table + 2);
+
+    local i = 0;
+    while (i < superblock.inode_count) {
+        inode_header_t inode_h;
+        if (inode_h.type == inode_type_t::DIRECTORY) {
+            inode_dir_t inode_dir;
+            parse_directory_table(superblock, inode_dir.block_index);
+        } elif (inode_h.type == inode_type_t::EXT_DIRECTORY) {
+            inode_dir_ext_t inode_dir_ext;
+            parse_directory_table(superblock, inode_dir_ext.block_index);
+        } elif (inode_h.type == inode_type_t::FILE) {
+            inode_file_t inode_file;
+
+            local n_blocks = calculate_n_blocks(superblock.block_size, inode_file.file_size, inode_file.frag_index);
+            u32   block_sizes[n_blocks];
+        } elif (inode_h.type == inode_type_t::EXT_FILE) {
+            inode_file_ext_t inode_file_ext;
+
+            local n_blocks = calculate_n_blocks(superblock.block_size, inode_file_ext.file_size, inode_file_ext.frag_index);
+            u32   block_sizes[n_blocks];
+        } elif (inode_h.type == inode_type_t::SYMLINK) {
+            inode_symlink_t inode_symlink;
+        } elif (inode_h.type == inode_type_t::EXT_SYMLINK) {
+            inode_symlink_ext_t inode_symlink_ext;
+        } elif (inode_h.type == inode_type_t::BLOCK_DEV || inode_h.type == inode_type_t::CHAR_DEV) {
+            inode_spec_t inode_spec;
+        } elif (inode_h.type == inode_type_t::EXT_BLOCK_DEV || inode_h.type == inode_type_t::EXT_CHAR_DEV) {
+            inode_spec_ext_t inode_spec_ext;
+        } elif (inode_h.type == inode_type_t::NAMED_PIPE || inode_h.type == inode_type_t::SOCKET) {
+            inode_ipc_t inode_ipc;
+        } elif (inode_h.type == inode_type_t::EXT_NAMED_PIPE || inode_h.type == inode_type_t::EXT_SOCKET) {
+            inode_ipc_ext_t inode_ipc_ext;
+        }
+
+        i = i + 1;
+    }
+}
+
+// ---------- MAIN ----------
+
+proc
+{
+    superblock_t superblock;
+    if (superblock.flags & flag_t::COMPRESSION_OPTIONS_PRESENT) {
+        if (superblock.compressor == compr_t::GZIP) {
+            gzip_option_t opt;
+        } elif (superblock.compressor == compr_t::LZO) {
+            lzo_option_t opt;
+        } elif (superblock.compressor == compr_t::XZ) {
+            xz_option_t opt;
+        } elif (superblock.compressor == compr_t::LZ4) {
+            lz4_option_t opt;
+        } elif (superblock.compressor == compr_t::LZ4) {
+            zstd_option_t opt;
+        } else {
+            error("invalid compressor type");
+        }
+    }
+
+    if (superblock.flags & flag_t::INODE_UNCOMPRESSED) {
+        parse_inode_entries(superblock);
+    }
+}

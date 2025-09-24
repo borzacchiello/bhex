@@ -2,6 +2,7 @@
 #include "t_cmd_common.h"
 #include "t.h"
 
+#include "data/sample_squashfs.h"
 #include "data/sample_zip.h"
 
 #ifndef TEST
@@ -770,6 +771,159 @@ int TEST(template_zip)(void)
         dummyfilebuffer_create(sample_zip, sizeof(sample_zip));
     ASSERT(tfb != NULL);
     ASSERT(exec_commands_on("t ./templates/zip.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_squashfs_1)(void)
+{
+    // clang-format off
+    const char* expected =
+    "b+00000000                   superblock: \n"
+    "b+00000000                            magic: 'hsqs'\n"
+    "b+00000004                      inode_count: 00000009\n"
+    "b+00000008                         mod_time: 68d43dba\n"
+    "b+0000000c                       block_size: 00020000\n"
+    "b+00000010                       frag_count: 00000001\n"
+    "b+00000014                       compressor: GZIP\n"
+    "b+00000016                        block_log: 0011\n"
+    "b+00000018                            flags: INODE_UNCOMPRESSED | DATA_DEDUPLICATED | NFS_EXPORT_TABLE_EXISTS\n"
+    "b+0000001a                         id_count: 0002\n"
+    "b+0000001c                    version_major: 0004\n"
+    "b+0000001e                    version_minor: 0000\n"
+    "b+00000020                       root_inode: 00000000000000d9\n"
+    "b+00000028                       bytes_used: 000000000000026f\n"
+    "b+00000030                         id_table: 0000000000000267\n"
+    "b+00000038                      xattr_table: ffffffffffffffff\n"
+    "b+00000040                      inode_table: 000000000000006a\n"
+    "b+00000048                        dir_table: 0000000000000165\n"
+    "b+00000050                       frag_table: 0000000000000203\n"
+    "b+00000058                     export_table: 0000000000000255\n"
+    "b+0000006c                      inode_h: \n"
+    "b+0000006c                             type: NAMED_PIPE\n"
+    "b+0000006e                      permissions: 01b4\n"
+    "b+00000070                              uid: 0000\n"
+    "b+00000072                              gid: 0000\n"
+    "b+00000074                            mtime: 68d43ce4\n"
+    "b+00000078                     inode_number: 00000001\n"
+    "b+0000007c                    inode_ipc: \n"
+    "b+0000007c                       link_count: 00000001\n"
+    "b+00000080                      inode_h: \n"
+    "b+00000080                             type: SOCKET\n"
+    "b+00000082                      permissions: 01fd\n"
+    "b+00000084                              uid: 0000\n"
+    "b+00000086                              gid: 0000\n"
+    "b+00000088                            mtime: 68d43d1e\n"
+    "b+0000008c                     inode_number: 00000002\n"
+    "b+00000090                    inode_ipc: \n"
+    "b+00000090                       link_count: 00000001\n"
+    "b+00000094                      inode_h: \n"
+    "b+00000094                             type: BLOCK_DEV\n"
+    "b+00000096                      permissions: 01a4\n"
+    "b+00000098                              uid: 0001\n"
+    "b+0000009a                              gid: 0001\n"
+    "b+0000009c                            mtime: 68d43d4a\n"
+    "b+000000a0                     inode_number: 00000003\n"
+    "b+000000a4                   inode_spec: \n"
+    "b+000000a4                       link_count: 00000001\n"
+    "b+000000a8                          dev_num: 000007c8\n"
+    "b+000000ac                      inode_h: \n"
+    "b+000000ac                             type: CHAR_DEV\n"
+    "b+000000ae                      permissions: 01a4\n"
+    "b+000000b0                              uid: 0001\n"
+    "b+000000b2                              gid: 0001\n"
+    "b+000000b4                            mtime: 68d43d66\n"
+    "b+000000b8                     inode_number: 00000004\n"
+    "b+000000bc                   inode_spec: \n"
+    "b+000000bc                       link_count: 00000001\n"
+    "b+000000c0                          dev_num: 00005901\n"
+    "b+000000c4                      inode_h: \n"
+    "b+000000c4                             type: FILE\n"
+    "b+000000c6                      permissions: 01b4\n"
+    "b+000000c8                              uid: 0000\n"
+    "b+000000ca                              gid: 0000\n"
+    "b+000000cc                            mtime: 68d43d77\n"
+    "b+000000d0                     inode_number: 00000005\n"
+    "b+000000d4                   inode_file: \n"
+    "b+000000d4                     blocks_start: 00000000\n"
+    "b+000000d8                       frag_index: 00000000\n"
+    "b+000000dc                     block_offset: 00000000\n"
+    "b+000000e0                        file_size: 00000005\n"
+    "b+000000e4                  block_sizes: [  ]\n"
+    "b+000000e4                      inode_h: \n"
+    "b+000000e4                             type: SYMLINK\n"
+    "b+000000e6                      permissions: 01ff\n"
+    "b+000000e8                              uid: 0000\n"
+    "b+000000ea                              gid: 0000\n"
+    "b+000000ec                            mtime: 68d43daf\n"
+    "b+000000f0                     inode_number: 00000006\n"
+    "b+000000f4                inode_symlink: \n"
+    "b+000000f4                       link_count: 00000001\n"
+    "b+000000f8                      target_size: 00000009\n"
+    "b+000000fc                      target_path: 66696c65312e747874\n"
+    "b+00000105                      inode_h: \n"
+    "b+00000105                             type: FILE\n"
+    "b+00000107                      permissions: 01b4\n"
+    "b+00000109                              uid: 0000\n"
+    "b+0000010b                              gid: 0000\n"
+    "b+0000010d                            mtime: 68d43cbb\n"
+    "b+00000111                     inode_number: 00000008\n"
+    "b+00000115                   inode_file: \n"
+    "b+00000115                     blocks_start: 00000000\n"
+    "b+00000119                       frag_index: 00000000\n"
+    "b+0000011d                     block_offset: 00000005\n"
+    "b+00000121                        file_size: 00000005\n"
+    "b+00000125                  block_sizes: [  ]\n"
+    "b+00000125                      inode_h: \n"
+    "b+00000125                             type: DIRECTORY\n"
+    "b+00000127                      permissions: 01fd\n"
+    "b+00000129                              uid: 0000\n"
+    "b+0000012b                              gid: 0000\n"
+    "b+0000012d                            mtime: 68d43cbb\n"
+    "b+00000131                     inode_number: 00000007\n"
+    "b+00000135                    inode_dir: \n"
+    "b+00000135                      block_index: 00000000\n"
+    "b+00000139                       link_count: 00000002\n"
+    "b+0000013d                        file_size: 0020\n"
+    "b+0000013f                     block_offset: 0000\n"
+    "b+00000141                     parent_inode: 00000009\n"
+    "b+00000167                   dir_header: \n"
+    "b+00000167                            count: 00000000\n"
+    "b+0000016b                            start: 00000000\n"
+    "b+0000016f                     inode_number: 00000008\n"
+    "b+00000173                    dir_items: [ \n"
+    "               [0]\n"
+    "b+00000173                           offset: 0099\n"
+    "b+00000175                     inode_offset: 0000\n"
+    "b+00000177                             type: 0002\n"
+    "b+00000179                        name_size: 0008\n"
+    "b+0000017b                             name: 'file0.txt' ]\n"
+    "b+00000184                      inode_h: \n"
+    "b+00000184                             type: NAMED_PIPE\n"
+    "b+00000186                      permissions: 0000\n"
+    "b+00000188                              uid: 0000\n"
+    "b+0000018a                              gid: 0000\n"
+    "b+0000018c                            mtime: 00000001\n"
+    "b+00000190                     inode_number: 00000000\n"
+    "b+00000194                    inode_ipc: \n"
+    "b+00000194                       link_count: 00030006\n";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_squashfs, sizeof(sample_squashfs));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/squashfs.bhe", tfb) == 0);
 
     char* out = strbuilder_reset(sb);
     r         = compare_strings_ignoring_X(expected, out);
