@@ -135,7 +135,7 @@ BHEngineValue* BHEngineValue_BUF_new(u64_t off, u64_t size)
     return r;
 }
 
-BHEngineValue* BHEngineValue_ARRAY_new()
+BHEngineValue* BHEngineValue_ARRAY_new(void)
 {
     BHEngineValue* r = bhex_calloc(sizeof(BHEngineValue));
     r->t             = TENGINE_ARRAY;
@@ -222,9 +222,14 @@ BHEngineValue* BHEngineValue_array_sub(InterpreterContext*  ctx,
 #define get_unum_value(e)                                                      \
     (((e)->t == TENGINE_UNUM) ? (e)->unum : (e)->enum_const)
 
-#define binop_num(op)                                                          \
+#define binop_num_ext(ctx, op, check_zero)                                     \
     if (lhs == NULL || rhs == NULL)                                            \
         return NULL;                                                           \
+    if (check_zero && ((is_unum(rhs) && get_unum_value(rhs) == 0) ||           \
+                       (is_snum(rhs) && rhs->snum == 0))) {                    \
+        bhengine_raise_exception(ctx, "div by zero");                          \
+        return NULL;                                                           \
+    }                                                                          \
     if (is_unum(lhs) && is_unum(rhs)) {                                        \
         return BHEngineValue_UNUM_new(                                         \
             get_unum_value(lhs) op get_unum_value(rhs),                        \
@@ -245,11 +250,13 @@ BHEngineValue* BHEngineValue_array_sub(InterpreterContext*  ctx,
                                       max(lhs->snum_size, rhs->snum_size));    \
     }
 
+#define binop_num(ctx, op) binop_num_ext(ctx, op, 0)
+
 BHEngineValue* BHEngineValue_add(InterpreterContext*  ctx,
                                  const BHEngineValue* lhs,
                                  const BHEngineValue* rhs)
 {
-    binop_num(+);
+    binop_num(ctx, +);
 
     bhengine_raise_exception(ctx, "add undefined for types %s and %s",
                              type_to_string(lhs->t), type_to_string(rhs->t));
@@ -260,7 +267,7 @@ BHEngineValue* BHEngineValue_sub(InterpreterContext*  ctx,
                                  const BHEngineValue* lhs,
                                  const BHEngineValue* rhs)
 {
-    binop_num(-);
+    binop_num(ctx, -);
 
     bhengine_raise_exception(ctx, "sub undefined for types %s and %s",
                              type_to_string(lhs->t), type_to_string(rhs->t));
@@ -271,7 +278,7 @@ BHEngineValue* BHEngineValue_mul(InterpreterContext*  ctx,
                                  const BHEngineValue* lhs,
                                  const BHEngineValue* rhs)
 {
-    binop_num(*);
+    binop_num(ctx, *);
 
     bhengine_raise_exception(ctx, "mul undefined for types %s and %s",
                              type_to_string(lhs->t), type_to_string(rhs->t));
@@ -282,7 +289,7 @@ BHEngineValue* BHEngineValue_div(InterpreterContext*  ctx,
                                  const BHEngineValue* lhs,
                                  const BHEngineValue* rhs)
 {
-    binop_num(/);
+    binop_num_ext(ctx, /, 1);
 
     bhengine_raise_exception(ctx, "div undefined for types %s and %s",
                              type_to_string(lhs->t), type_to_string(rhs->t));
@@ -293,7 +300,7 @@ BHEngineValue* BHEngineValue_mod(InterpreterContext*  ctx,
                                  const BHEngineValue* lhs,
                                  const BHEngineValue* rhs)
 {
-    binop_num(%);
+    binop_num_ext(ctx, %, 1);
 
     bhengine_raise_exception(ctx, "mod undefined for types %s and %s",
                              type_to_string(lhs->t), type_to_string(rhs->t));
@@ -304,7 +311,7 @@ BHEngineValue* BHEngineValue_and(InterpreterContext*  ctx,
                                  const BHEngineValue* lhs,
                                  const BHEngineValue* rhs)
 {
-    binop_num(&);
+    binop_num(ctx, &);
 
     bhengine_raise_exception(ctx, "and undefined for types %s and %s",
                              type_to_string(lhs->t), type_to_string(rhs->t));
@@ -315,7 +322,7 @@ BHEngineValue* BHEngineValue_or(InterpreterContext*  ctx,
                                 const BHEngineValue* lhs,
                                 const BHEngineValue* rhs)
 {
-    binop_num(|);
+    binop_num(ctx, |);
 
     bhengine_raise_exception(ctx, "or undefined for types %s and %s",
                              type_to_string(lhs->t), type_to_string(rhs->t));
@@ -326,7 +333,7 @@ BHEngineValue* BHEngineValue_xor(InterpreterContext*  ctx,
                                  const BHEngineValue* lhs,
                                  const BHEngineValue* rhs)
 {
-    binop_num(^);
+    binop_num(ctx, ^);
 
     bhengine_raise_exception(ctx, "xor undefined for types %s and %s",
                              type_to_string(lhs->t), type_to_string(rhs->t));
@@ -337,7 +344,7 @@ BHEngineValue* BHEngineValue_shr(InterpreterContext*  ctx,
                                  const BHEngineValue* lhs,
                                  const BHEngineValue* rhs)
 {
-    binop_num(>>);
+    binop_num(ctx, >>);
 
     bhengine_raise_exception(ctx, "shr undefined for types %s and %s",
                              type_to_string(lhs->t), type_to_string(rhs->t));
@@ -348,7 +355,7 @@ BHEngineValue* BHEngineValue_shl(InterpreterContext*  ctx,
                                  const BHEngineValue* lhs,
                                  const BHEngineValue* rhs)
 {
-    binop_num(<<);
+    binop_num(ctx, <<);
 
     bhengine_raise_exception(ctx, "shl undefined for types %s and %s",
                              type_to_string(lhs->t), type_to_string(rhs->t));

@@ -671,6 +671,37 @@ end:
     return r;
 }
 
+int TEST(div_3)(void)
+{
+    // clang-format off
+    const char* expected =
+        "[  ERROR  ] 001: proc {   local a = 1 / 0;}\n"
+        "[  ERROR  ]      ________________________^\n"
+        "[  ERROR  ] Exception @ line 1, col 25 > div by zero\n";
+    // clang-format on
+
+    const char* prog = "proc { "
+                       "  local a = 1 / 0;"
+                       "}";
+
+    int    r     = 1;
+    char*  out   = NULL;
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    ASSERT(scope == NULL);
+
+    out = strbuilder_reset(err_sb);
+    ASSERT(compare_strings_ignoring_X(expected, out));
+
+end:
+    if (out)
+        bhex_free(out);
+    return r;
+
+fail:
+    r = 0;
+    goto end;
+}
+
 int TEST(mod_1)(void)
 {
     const char* prog = "proc { local a = 43; local b = a % 10; }";
@@ -703,6 +734,37 @@ int TEST(mod_2)(void)
 end:
     Scope_free(scope);
     return r;
+}
+
+int TEST(mod_3)(void)
+{
+    // clang-format off
+    const char* expected =
+        "[  ERROR  ] 001: proc {   local a = 1 % 0;}\n"
+        "[  ERROR  ]      ________________________^\n"
+        "[  ERROR  ] Exception @ line 1, col 25 > div by zero\n";
+    // clang-format on
+
+    const char* prog = "proc { "
+                       "  local a = 1 % 0;"
+                       "}";
+
+    int    r     = 1;
+    char*  out   = NULL;
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    ASSERT(scope == NULL);
+
+    out = strbuilder_reset(err_sb);
+    ASSERT(compare_strings_ignoring_X(expected, out));
+
+end:
+    if (out)
+        bhex_free(out);
+    return r;
+
+fail:
+    r = 0;
+    goto end;
 }
 
 int TEST(and)(void)
