@@ -764,7 +764,9 @@ char* BHEngineValue_tostring(const BHEngineValue* v, int hex)
             char* content = strbuilder_finalize(sb);
             sb            = strbuilder_new();
             strbuilder_append_char(sb, '\n');
-            strbuilder_append(sb, str_indent(content, 4));
+            char* indented = str_indent(content, 4);
+            strbuilder_append(sb, indented);
+            bhex_free(indented);
             break;
         }
         case TENGINE_BUF:
@@ -777,7 +779,9 @@ char* BHEngineValue_tostring(const BHEngineValue* v, int hex)
                 strbuilder_appendf(sb, "[%u]\n", i);
                 char* subel =
                     BHEngineValue_tostring(v->array_data->data[i], hex);
-                strbuilder_append(sb, str_indent(subel, 4));
+                char* indented = str_indent(subel, 4);
+                strbuilder_append(sb, indented);
+                bhex_free(indented);
             }
             break;
         }

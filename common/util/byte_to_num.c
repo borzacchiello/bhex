@@ -6,12 +6,17 @@
 
 int str_to_uint64(const char* str, u64_t* o_num)
 {
+    if (!str)
+        return 0;
+
     errno = 0;
 
     char* endptr = NULL;
     u64_t r      = strtoull(str, &endptr, 0);
     *o_num       = 0;
 
+    if (!endptr)
+        return 0;
     if (str == endptr)
         // No digits found
         return 0;
@@ -70,12 +75,17 @@ int str_to_uint8(const char* str, u8_t* o_num)
 
 int str_to_int64(const char* str, s64_t* o_num)
 {
+    if (!str)
+        return 0;
+
     errno = 0;
 
     char* endptr = NULL;
     s64_t r      = strtoll(str, &endptr, 0);
     *o_num       = 0;
 
+    if (!endptr)
+        return 0;
     if (str == endptr)
         // No digits found
         return 0;

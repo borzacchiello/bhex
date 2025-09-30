@@ -281,7 +281,7 @@ Expr* Expr_dup(Expr* e)
             break;
         case EXPR_STRING:
             r->str     = bhex_calloc(e->str_len + 1);
-            r->str_len = r->str_len;
+            r->str_len = e->str_len;
             memcpy(r->str, e->str, e->str_len);
             break;
         case EXPR_VAR:

@@ -29,6 +29,12 @@ static void infocmd_help(void* obj)
 
 static void calc_values(FileBuffer* fb, char** md5, float* entropy)
 {
+    if (fb->size == 0) {
+        *md5     = strdup("");
+        *entropy = 0;
+        return;
+    }
+
     u64_t orig_off = fb->off;
 
     MD5_CTX ctx;

@@ -34,7 +34,7 @@ int TEST(empty)(void)
     "  path:    /tmp/testfb_XXXXXXXX\n"
     "  size:    0 Bytes\n"
     "  entropy: 0.000 / 8.000\n"
-    "  md5:     d41d8cd98f00b204e9800998ecf8427e\n";
+    "  md5:     \n";
     // clang-format on
 
     int r = TEST_FAILED;

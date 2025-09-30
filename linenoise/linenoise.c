@@ -930,8 +930,8 @@ int linenoiseEditStart(struct linenoiseState* l, int stdin_fd, int stdout_fd,
     /* Populate the linenoise state that we pass to functions implementing
      * specific editing functionalities. */
     l->in_completion = 0;
-    l->ifd           = stdin_fd != -1 ? stdin_fd : STDIN_FILENO;
-    l->ofd           = stdout_fd != -1 ? stdout_fd : STDOUT_FILENO;
+    l->ifd           = stdin_fd >= 0 ? stdin_fd : STDIN_FILENO;
+    l->ofd           = stdout_fd >= 0 ? stdout_fd : STDOUT_FILENO;
     l->buf           = buf;
     l->buflen        = buflen;
     l->prompt        = prompt;
@@ -943,7 +943,7 @@ int linenoiseEditStart(struct linenoiseState* l, int stdin_fd, int stdout_fd,
     if (enableRawMode(l->ifd) == -1)
         return -1;
 
-    l->cols          = getColumns(stdin_fd, stdout_fd);
+    l->cols          = getColumns(l->ifd, l->ofd);
     l->oldrows       = 0;
     l->history_index = 0;
 
@@ -1422,7 +1422,10 @@ int linenoiseHistorySave(const char* filename)
     umask(old_umask);
     if (fp == NULL)
         return -1;
-    chmod(filename, S_IRUSR | S_IWUSR);
+    if (chmod(filename, S_IRUSR | S_IWUSR) != 0) {
+        fclose(fp);
+        return -1;
+    }
     for (j = 0; j < history_len; j++)
         fprintf(fp, "%s\n", history[j]);
     fclose(fp);

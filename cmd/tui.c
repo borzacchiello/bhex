@@ -404,6 +404,12 @@ static int refresh_screen(void)
     char         buf[2048] = {0};
 
     sw_init(&sw);
+    if (sw.cols <= 0 || sw.rows <= 0) {
+        sw_add_line(&sw, "");
+        sw_add_line(&sw, " unable to fetch cols and rows");
+        sw_flush(&sw);
+        return 0;
+    }
     if (sw.cols < min_width || sw.rows < min_height) {
         sw_add_line(&sw, "");
         sw_add_line(&sw, " screen too small");
@@ -419,8 +425,12 @@ static int refresh_screen(void)
     size_t read_size  = min(g_chunk_size * (sw.rows - 5), fb_block_size);
     read_size         = min(g_fb->size - g_fb->off, read_size);
     const u8_t* bytes = fb_read(g_fb, read_size);
-    if (!bytes)
+    if (!bytes) {
+        sw_add_line(&sw, "");
+        sw_add_line(&sw, " unable to read the file");
+        sw_flush(&sw);
         return -1;
+    }
 
     g_min_visible_addr = g_fb->off;
     g_max_visible_addr = g_min_visible_addr +
@@ -692,6 +702,10 @@ int tui_enter_loop(FileBuffer* fb)
 
     // clear the screen
     get_window_size(&rows, &cols);
+    if (rows < 0 || rows > 4096)
+        // Just a random maximum value
+        rows = 4096;
+
     for (int i = 0; i < rows; ++i)
         puts("");
     printf("\x1b[H");

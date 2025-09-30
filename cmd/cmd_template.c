@@ -54,7 +54,8 @@ static void templatecmd_dispose(TemplateCtx* ctx)
 static int file_exists(const char* path)
 {
     struct stat path_stat;
-    stat(path, &path_stat);
+    if (stat(path, &path_stat) != 0)
+        return 0;
     return S_ISREG(path_stat.st_mode);
 }
 
@@ -177,7 +178,7 @@ Cmd* templatecmd_create(void)
 
     TemplateCtx* ctx = bhex_calloc(sizeof(TemplateCtx));
     ctx->vm    = bhengine_vm_create(template_skip_search ? search_folders_empty
-                                                        : search_folders);
+                                                         : search_folders);
     cmd->obj   = ctx;
     cmd->name  = "template";
     cmd->alias = "t";

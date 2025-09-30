@@ -90,8 +90,7 @@ int bhengine_vm_add_template(BHEngineVM* ctx, const char* name,
                              const char* path)
 {
     if (map_contains(ctx->templates, name)) {
-        warning("template '%s' already loaded, overwriting template '%s'",
-                name);
+        warning("template '%s' already loaded, overwriting template", name);
     }
 
     ASTCtx* ast = bhengine_parse_filename(path);

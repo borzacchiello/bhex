@@ -57,7 +57,7 @@ int unescape_ascii_string(char* str, u8_t** o_buf, size_t* o_size)
     size_t str_len = strlen(str);
 
     // Result is AT LEAST long as much as the stirng, but can be less
-    u8_t* res = bhex_malloc(str_len);
+    u8_t* res = bhex_malloc(str_len+1);
 
     size_t i, j = 0;
     for (i = 0; i < str_len; ++i) {
@@ -90,9 +90,7 @@ int unescape_ascii_string(char* str, u8_t** o_buf, size_t* o_size)
         }
     }
 
-    if (j != str_len)
-        res = bhex_realloc(res, j);
-
+    res[j] = 0;
     *o_size = j;
     *o_buf  = res;
     return 1;

@@ -30,11 +30,11 @@ static BHEngineValue* string_process(InterpreterContext* ctx)
         tmp = bhex_realloc(tmp, tmp_capacity);                                 \
     }
 
-    const u8_t* buf = fb_read(ctx->fb, 1);
+    BHEngineValue* r   = NULL;
+    const u8_t*    buf = fb_read(ctx->fb, 1);
     if (buf == NULL)
-        return NULL;
+        goto end;
 
-    BHEngineValue* r = NULL;
     while (*buf) {
         enlarge_tmp;
 
@@ -43,7 +43,7 @@ static BHEngineValue* string_process(InterpreterContext* ctx)
             goto end;
         buf = fb_read(ctx->fb, 1);
         if (buf == NULL)
-            return NULL;
+            goto end;
     }
     // seek after the NULL terminator
     if (fb_seek(ctx->fb, ctx->fb->off + 1) != 0)
@@ -72,11 +72,11 @@ static BHEngineValue* wstring_process(InterpreterContext* ctx)
         tmp = bhex_realloc(tmp, tmp_capacity * 2);                             \
     }
 
-    const u8_t* buf = fb_read(ctx->fb, 2);
+    BHEngineValue* r   = NULL;
+    const u8_t*    buf = fb_read(ctx->fb, 2);
     if (buf == NULL)
-        return NULL;
+        goto end;
 
-    BHEngineValue* r = NULL;
     while (*buf) {
         enlarge_tmp;
 
@@ -87,7 +87,7 @@ static BHEngineValue* wstring_process(InterpreterContext* ctx)
             goto end;
         buf = fb_read(ctx->fb, 2);
         if (buf == NULL)
-            return NULL;
+            goto end;
     }
     // seek after the NULL terminator
     if (fb_seek(ctx->fb, ctx->fb->off + 2) != 0)

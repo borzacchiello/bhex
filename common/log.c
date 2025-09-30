@@ -34,6 +34,8 @@ void panic(const char* format, ...)
     // PANIC always print on stderr
     g_callback = NULL;
     common_print(" PANIC ", format, argp);
+    va_end(argp);
+
     exit(1);
 }
 
@@ -46,6 +48,7 @@ void warning(const char* format, ...)
     va_start(argp, format);
 
     common_print("WARNING", format, argp);
+    va_end(argp);
 }
 
 void info(const char* format, ...)
@@ -57,6 +60,7 @@ void info(const char* format, ...)
     va_start(argp, format);
 
     common_print(" INFO  ", format, argp);
+    va_end(argp);
 }
 
 void error(const char* format, ...)
@@ -65,6 +69,7 @@ void error(const char* format, ...)
     va_start(argp, format);
 
     common_print(" ERROR ", format, argp);
+    va_end(argp);
 }
 
 void register_log_callback(void (*callback)(const char*))
