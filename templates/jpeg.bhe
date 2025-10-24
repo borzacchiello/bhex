@@ -1,0 +1,185 @@
+enum JPEG_Marker : u16
+{
+    TEM          = 0xff01,
+    SOF0         = 0xffc0,
+    SOF1         = 0xffc1,
+    SOF2         = 0xffc2,
+    SOF3         = 0xffc3,
+    DHT          = 0xffc4,
+    SOF5         = 0xffc5,
+    SOF6         = 0xffc6,
+    SOF7         = 0xffc7,
+    JPG_RESERVED = 0xffc8,
+    SOF9         = 0xffc9,
+    SOF10        = 0xffca,
+    SOF11        = 0xffcb,
+    DAC          = 0xffcc,
+    SOF13        = 0xffcd,
+    SOF14        = 0xffce,
+    SOF15        = 0xffcf,
+    RST0         = 0xffd0,
+    RST1         = 0xffd1,
+    RST2         = 0xffd2,
+    RST3         = 0xffd3,
+    RST4         = 0xffd4,
+    RST5         = 0xffd5,
+    RST6         = 0xffd6,
+    RST7         = 0xffd7,
+    SOI          = 0xffd8,
+    EOI          = 0xffd9,
+    SOS          = 0xffda,
+    DQT          = 0xffdb,
+    DNL          = 0xffdc,
+    DRI          = 0xffdd,
+    DHP          = 0xffde,
+    EXP          = 0xffdf,
+    APP0         = 0xffe0,
+    APP1         = 0xffe1,
+    APP2         = 0xffe2,
+    APP3         = 0xffe3,
+    APP4         = 0xffe4,
+    APP5         = 0xffe5,
+    APP6         = 0xffe6,
+    APP7         = 0xffe7,
+    APP8         = 0xffe8,
+    APP9         = 0xffe9,
+    APP10        = 0xffea,
+    APP11        = 0xffeb,
+    APP12        = 0xffec,
+    APP13        = 0xffed,
+    APP14        = 0xffee,
+    APP15        = 0xffef,
+    VER          = 0xfff0,
+    DTI          = 0xfff1,
+    DTT          = 0xfff2,
+    SRF          = 0xfff3,
+    SRS          = 0xfff4,
+    DCR          = 0xfff5,
+    DQS          = 0xfff6,
+    JPG0         = 0xfff7,
+    JPG1         = 0xfff8,
+    JPG2         = 0xfff9,
+    JPG3         = 0xfffa,
+    JPG4         = 0xfffb,
+    JPG5         = 0xfffc,
+    JPG6         = 0xfffd,
+    COM          = 0xfffe
+}
+
+struct unsized_marker_t
+{
+    JPEG_Marker id;
+}
+
+struct sized_marker_t
+{
+    JPEG_Marker id;
+    u16         size;
+    u8          data[size - 2];
+}
+
+struct pixel_t
+{
+    u8 R;
+    u8 G;
+    u8 B;
+}
+
+struct APP0
+{
+    JPEG_Marker id;
+    u16         size;
+    char        identifier[5];
+    u16         JFIF_version;
+    u8          density_units;
+    u16         x_density;
+    u16         y_density;
+    u8          x_thumbnail;
+    u8          y_thumbnail;
+    if (x_thumbnail * y_thumbnail > 0) {
+        pixel_t thumbnail_data[x_thumbnail * y_thumbnail];
+    }
+}
+
+struct SOS
+{
+    JPEG_Marker id;
+    u16         size;
+    uint8_t     ns;
+    uint8_t     ss;
+    uint8_t     se;
+    uint8_t     ah_al;
+}
+
+fn is_zero_len_marker(id)
+{
+    result = 0;
+    if (id == JPEG_Marker::TEM) {
+        result = 1;
+    } elif (id >= JPEG_Marker::RST0 && id <= JPEG_Marker::RST7) {
+        result = 1;
+    } elif (id == JPEG_Marker::SOI) {
+        result = 1;
+    } elif (id == JPEG_Marker::EOI) {
+        result = 1;
+    }
+}
+
+fn get_chunk_id()
+{
+    disable_print();
+    u16 chunk_id;
+
+    seek(off() - 2);
+    result = chunk_id;
+}
+
+fn calc_SOS_size()
+{
+    // https://stackoverflow.com/questions/26715684/parsing-jpeg-sos-marker
+
+    disable_print();
+
+    local begin = off();
+    while (1) {
+        if (!find("\xff")) {
+            error("invalid SOS chunk");
+        }
+
+        u8 ff;
+        u8 c;
+        if (c != 0 && !(c >= 0xd0 && c <= 0xd7)) {
+            result = off() - begin - 2;
+            break;
+        }
+    }
+
+    seek(begin);
+}
+
+fn parse_chunk()
+{
+    local id = get_chunk_id();
+
+    if (id == JPEG_Marker::APP0) {
+        APP0 app0_chunk;
+    } elif (id == JPEG_Marker::SOS) {
+        SOS sos_header;
+        local sos_size = calc_SOS_size();
+        u8 sos_data[sos_size];
+    } elif (is_zero_len_marker(id)) {
+        unsized_marker_t chunk;
+    } else {
+        sized_marker_t chunk;
+    }
+}
+
+proc
+{
+    nums_in_dec();
+    big_endian();
+
+    while (off() < size()) {
+        parse_chunk();
+    }
+}

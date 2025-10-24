@@ -3,6 +3,7 @@
 #include "t.h"
 
 #include "data/sample_squashfs.h"
+#include "data/sample_jpeg.h"
 #include "data/sample_zip.h"
 
 #ifndef TEST
@@ -924,6 +925,81 @@ int TEST(template_squashfs_1)(void)
         dummyfilebuffer_create(sample_squashfs, sizeof(sample_squashfs));
     ASSERT(tfb != NULL);
     ASSERT(exec_commands_on("t ./templates/squashfs.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_jpeg_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000               chunk: \n"
+        "b+00000000                      id: SOI\n"
+        "b+00000002          app0_chunk: \n"
+        "b+00000002                      id: APP0\n"
+        "b+00000004                    size: 16\n"
+        "b+00000006              identifier: 'JFIF'\n"
+        "b+0000000b            JFIF_version: 257\n"
+        "b+0000000d           density_units: 1\n"
+        "b+0000000e               x_density: 72\n"
+        "b+00000010               y_density: 72\n"
+        "b+00000012             x_thumbnail: 0\n"
+        "b+00000013             y_thumbnail: 0\n"
+        "b+00000014               chunk: \n"
+        "b+00000014                      id: DQT\n"
+        "b+00000016                    size: 67\n"
+        "b+00000018                    data: 0050373c463c32504641465a55505f78...\n"
+        "b+00000059               chunk: \n"
+        "b+00000059                      id: DQT\n"
+        "b+0000005b                    size: 67\n"
+        "b+0000005d                    data: 01555a5a786978eb8282ebffffffffff...\n"
+        "b+0000009e               chunk: \n"
+        "b+0000009e                      id: SOF0\n"
+        "b+000000a0                    size: 17\n"
+        "b+000000a2                    data: 080020002003012200021101031101\n"
+        "b+000000b1               chunk: \n"
+        "b+000000b1                      id: DHT\n"
+        "b+000000b3                    size: 23\n"
+        "b+000000b5                    data: 00000301000000000000000000000000...\n"
+        "b+000000ca               chunk: \n"
+        "b+000000ca                      id: DHT\n"
+        "b+000000cc                    size: 37\n"
+        "b+000000ce                    data: 10010002000503040300000000000000...\n"
+        "b+000000f1               chunk: \n"
+        "b+000000f1                      id: DHT\n"
+        "b+000000f3                    size: 22\n"
+        "b+000000f5                    data: 01010101000000000000000000000000...\n"
+        "b+00000109               chunk: \n"
+        "b+00000109                      id: DHT\n"
+        "b+0000010b                    size: 23\n"
+        "b+0000010d                    data: 11010101010000000000000000000000...\n"
+        "b+00000122          sos_header: \n"
+        "b+00000122                      id: SOS\n"
+        "b+00000124                    size: 12\n"
+        "b+00000126                      ns: 3\n"
+        "b+00000127                      ss: 1\n"
+        "b+00000128                      se: 0\n"
+        "b+00000129                   ah_al: 2\n"
+        "b+0000012a            sos_data: 110311003f00d7f6556d8e29a593aa74...\n"
+        "b+0000019b               chunk: \n"
+        "b+0000019b                      id: EOI\n";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(not_kitty_jpeg, sizeof(not_kitty_jpeg));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/jpeg.bhe", tfb) == 0);
 
     char* out = strbuilder_reset(sb);
     r         = compare_strings_ignoring_X(expected, out);
