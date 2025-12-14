@@ -9,6 +9,7 @@
 #include "defs.h"
 #include "ast.h"
 
+#include <stdint.h>
 #include <util/str.h>
 #include <display.h>
 #include <string.h>
@@ -86,7 +87,11 @@ static map* process_struct_type(InterpreterContext* ctx, Type* type)
         }
 
         // from now on, and while parsing this type, use this AST
-        ctx->ast                = imported_cb(imported_ptr, type->bhe_name);
+        ctx->ast = imported_cb(imported_ptr, type->bhe_name);
+        if (ctx->ast == NULL) {
+            ctx->ast = saved_ast;
+            return NULL;
+        }
         ctx->fmt->max_ident_len = ctx->ast->max_ident_len;
     }
     if (!ctx->ast)

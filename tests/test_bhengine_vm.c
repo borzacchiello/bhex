@@ -48,6 +48,37 @@ end:
     return r;
 }
 
+int TEST(use_non_existent_struct_of_another_file)(void)
+{
+    fb_undo_all(elf_fb->fb);
+
+    const char* prog = "abcdefg#abc a;";
+    // clang-format off
+    const char* expected =
+        "[  ERROR  ] no such template file 'abcdefg'\n"
+        "[  ERROR  ] no such template file 'abcdefg'\n"
+        "[  ERROR  ] 001: proc { abcdefg#abc a; }\n"
+        "[  ERROR  ]      ____________________^\n"
+        "[  ERROR  ] Exception @ line 1, col 21 > error while parsing abc\n";
+    // clang-format on
+
+    int         r  = TEST_FAILED;
+    BHEngineVM* vm = bhengine_vm_create(empty_dirs);
+    if (vm == NULL) {
+        return 0;
+    }
+    if (bhengine_vm_process_string(vm, elf_fb->fb, prog) == 0) {
+        goto end;
+    }
+
+    char* out = strbuilder_reset(err_sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+end:
+    bhengine_vm_destroy(vm);
+    return r;
+}
+
 int TEST(use_complex_struct_of_another_file)(void)
 {
     fb_undo_all(elf_fb->fb);

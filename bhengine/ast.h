@@ -161,7 +161,7 @@ typedef struct Stmt {
             DList* params;
         };
         struct {
-            // STMT_IF, STMT_WHILE
+            // STMT_WHILE
             Expr*         cond;
             struct Block* body;
         };
