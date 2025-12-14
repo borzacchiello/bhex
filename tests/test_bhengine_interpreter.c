@@ -1135,10 +1135,8 @@ int TEST(precedence_op_1)(void)
     if (scope == NULL)
         return 0;
 
-    int            r     = 0;
-    BHEngineValue* v     = Scope_get_local(scope, "a");
-    char*          str_v = BHEngineValue_tostring(v, 0);
-    bhex_free(str_v);
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_SNUM_EQ(r, v, 28);
 
 end:
@@ -1205,10 +1203,8 @@ int TEST(precedence_op_5)(void)
     if (scope == NULL)
         return 0;
 
-    int            r     = 0;
-    BHEngineValue* v     = Scope_get_local(scope, "a");
-    char*          str_v = BHEngineValue_tostring(v, 0);
-    bhex_free(str_v);
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "a");
     IS_TENGINE_SNUM_EQ(r, v, 56);
 
 end:
@@ -1670,15 +1666,15 @@ int TEST(array_4)(void)
 {
     // clang-format off
     const char* expected =
-        "b+00000000    data: [ \n"
+        "b+00000000  data: [ \n"
         "               [0]\n"
-        "b+00000000          n1: 41\n"
-        "b+00000001          n2: 42\n"
-        "b+00000002          n3: 43\n"
+        "b+00000000      n1: 41\n"
+        "b+00000001      n2: 42\n"
+        "b+00000002      n3: 43\n"
         "               [1]\n"
-        "b+00000003          n1: 44\n"
-        "b+00000004          n2: 45\n"
-        "b+00000005          n3: 46 ]";
+        "b+00000003      n1: 44\n"
+        "b+00000004      n2: 45\n"
+        "b+00000005      n3: 46 ]";
     // clang-format on
 
     reset_global_state();
@@ -1716,11 +1712,11 @@ int TEST(array_5)(void)
 {
     // clang-format off
     const char* expected =
-        "b+00000000        v: \n"
-        "b+00000000           n1: 41\n"
-        "b+00000001           n2: 42\n"
-        "b+00000002           n3: [ 4443, 4645, 4847, 4a49 ]\n"
-        "b+0000000a           n4: 4b";
+        "b+00000000   v: \n"
+        "b+00000000      n1: 41\n"
+        "b+00000001      n2: 42\n"
+        "b+00000002      n3: [ 4443, 4645, 4847, 4a49 ]\n"
+        "b+0000000a      n4: 4b";
     // clang-format on
 
     reset_global_state();
@@ -2310,8 +2306,8 @@ int TEST(saved_quiet_mode)(void)
 {
     // clang-format off
     const char* expected =
-        "b+00000001              b: 42\n"
-        "b+00000003              b: 44";
+        "b+00000001  b: 42\n"
+        "b+00000003  b: 44";
     // clang-format on
 
     int              r   = TEST_SUCCEEDED;
@@ -2394,9 +2390,9 @@ int TEST(wchars)(void)
 {
     // clang-format off
     const char* expected =
-        "b+00000000      a: A\n"
-        "b+00000002      b: B\n"
-        "b+00000004      c: '\\u0201'";
+        "b+00000000  a: A\n"
+        "b+00000002  b: B\n"
+        "b+00000004  c: '\\u0201'";
     // clang-format on
 
     int              r      = TEST_SUCCEEDED;
@@ -2433,7 +2429,7 @@ int TEST(wchar_array)(void)
 {
     // clang-format off
     const char* expected =
-        "b+00000000      c: 'AB\\u0201C'";
+        "b+00000000  c: 'AB\\u0201C'";
     // clang-format on
 
     int              r      = TEST_SUCCEEDED;
@@ -2468,7 +2464,7 @@ int TEST(wstring_1)(void)
 {
     // clang-format off
     const char* expected =
-        "b+00000000      str: 'ABCD'";
+        "b+00000000  str: 'ABCD'";
     // clang-format on
 
     int              r      = TEST_SUCCEEDED;
@@ -2503,7 +2499,7 @@ int TEST(wstring_2)(void)
 {
     // clang-format off
     const char* expected =
-        "b+00000000      str: 'ABCD\\u0101'";
+        "b+00000000  str: 'ABCD\\u0101'";
     // clang-format on
 
     int              r      = TEST_SUCCEEDED;
@@ -2538,9 +2534,9 @@ int TEST(wstrings_eq)(void)
 {
     // clang-format off
     const char* expected =
-        "b+00000000     str1: 'AB'\n"
-        "b+00000006     str2: 'AB'\n"
-        "b+0000000c     str3: 'AD'\n"
+        "b+00000000  str1: 'AB'\n"
+        "b+00000006  str2: 'AB'\n"
+        "b+0000000c  str3: 'AD'\n"
         "yes 1 \n";
     // clang-format on
 

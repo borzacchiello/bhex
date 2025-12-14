@@ -246,8 +246,8 @@ typedef struct ASTCtx {
     // fn XXX ( ... ) { ... } => Map of name to Function*
     map* functions;
 
-    // the maximum length of any ident found while parsing this AST
-    int max_ident_len;
+    // the maximum length of any file var name found while parsing the AST
+    u64_t max_fvar_len;
 
     // source code, can be NULL
     char* source;

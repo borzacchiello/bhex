@@ -46,7 +46,7 @@ typedef struct Formatter {
 
     int   quiet_mode;
     int   print_in_hex;
-    u32_t max_ident_len;
+    u64_t max_fvar_len;
 } Formatter;
 
 Formatter* fmt_new(fmt_t type);

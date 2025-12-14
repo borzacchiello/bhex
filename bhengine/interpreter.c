@@ -9,7 +9,6 @@
 #include "defs.h"
 #include "ast.h"
 
-#include <stdint.h>
 #include <util/str.h>
 #include <display.h>
 #include <string.h>
@@ -74,10 +73,10 @@ static Enum* get_enum(ASTCtx* ast, const char* name)
 
 static map* process_struct_type(InterpreterContext* ctx, Type* type)
 {
-    ASTCtx* saved_ast           = ctx->ast;
-    u32_t   saved_max_ident_len = ctx->fmt->max_ident_len;
-    int     saved_endianess     = ctx->endianess;
-    int     saved_quiet_mode    = ctx->fmt->quiet_mode;
+    ASTCtx* saved_ast          = ctx->ast;
+    u64_t   saved_max_fvar_len = ctx->fmt->max_fvar_len;
+    int     saved_endianess    = ctx->endianess;
+    int     saved_quiet_mode   = ctx->fmt->quiet_mode;
 
     map* result = NULL;
     if (type->bhe_name != NULL) {
@@ -92,7 +91,7 @@ static map* process_struct_type(InterpreterContext* ctx, Type* type)
             ctx->ast = saved_ast;
             return NULL;
         }
-        ctx->fmt->max_ident_len = ctx->ast->max_ident_len;
+        ctx->fmt->max_fvar_len = ctx->ast->max_fvar_len;
     }
     if (!ctx->ast)
         return NULL;
@@ -109,10 +108,10 @@ static map* process_struct_type(InterpreterContext* ctx, Type* type)
     result = Scope_free_and_get_filevars(scope);
 
 end:
-    ctx->endianess          = saved_endianess;
-    ctx->fmt->quiet_mode    = saved_quiet_mode;
-    ctx->ast                = saved_ast;
-    ctx->fmt->max_ident_len = saved_max_ident_len;
+    ctx->endianess         = saved_endianess;
+    ctx->fmt->quiet_mode   = saved_quiet_mode;
+    ctx->ast               = saved_ast;
+    ctx->fmt->max_fvar_len = saved_max_fvar_len;
     return result;
 }
 
@@ -977,13 +976,13 @@ static void interpreter_context_init(InterpreterContext* ctx, ASTCtx* ast,
                                      FileBuffer* fb)
 {
     memset(ctx, 0, sizeof(InterpreterContext));
-    ctx->ast                = ast;
-    ctx->fb                 = fb;
-    ctx->proc_scope         = Scope_new();
-    ctx->endianess          = TE_LITTLE_ENDIAN;
-    ctx->fmt                = fmt_new(format_type);
-    ctx->fmt->max_ident_len = ast->max_ident_len;
-    ctx->fmt->print_in_hex  = 1;
+    ctx->ast               = ast;
+    ctx->fb                = fb;
+    ctx->proc_scope        = Scope_new();
+    ctx->endianess         = TE_LITTLE_ENDIAN;
+    ctx->fmt               = fmt_new(format_type);
+    ctx->fmt->max_fvar_len = ast->max_fvar_len;
+    ctx->fmt->print_in_hex = 1;
 }
 
 static Scope* interpreter_deinit_and_get_context(InterpreterContext* ctx)

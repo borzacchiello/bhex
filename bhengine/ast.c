@@ -20,7 +20,7 @@ extern void                     yy_switch_to_buffer(YY_BUFFER_STATE new_buffer);
 extern int                      yyparse(void);
 extern void                     yyset_in(FILE*);
 extern void                     yy_custom_init(ASTCtx* ctx, const char* str);
-extern int                      yymax_ident_len;
+extern u64_t                    yymax_fvar_name_len;
 
 Expr* Expr_SCONST_new(s64_t v, u8_t size)
 {
@@ -968,7 +968,7 @@ ASTCtx* ASTCtx_new(void)
     map_set_dispose(ctx->enums, (void (*)(void*))Enum_free);
     ctx->functions = map_create();
     map_set_dispose(ctx->functions, (void (*)(void*))Function_free);
-    ctx->max_ident_len = 0;
+    ctx->max_fvar_len = 0;
     return ctx;
 }
 
@@ -1065,8 +1065,8 @@ ASTCtx* bhengine_parse_file(FILE* f)
         yylex_destroy();
         return NULL;
     }
-    ast->max_ident_len = yymax_ident_len;
-    yymax_ident_len    = 0;
+    ast->max_fvar_len   = yymax_fvar_name_len;
+    yymax_fvar_name_len = 0;
 
     bhex_alloc_track_stop();
     yylex_destroy();
@@ -1091,8 +1091,8 @@ ASTCtx* bhengine_parse_string(const char* str)
         yy_delete_buffer(state);
         return NULL;
     }
-    ast->max_ident_len = yymax_ident_len;
-    yymax_ident_len    = 0;
+    ast->max_fvar_len   = yymax_fvar_name_len;
+    yymax_fvar_name_len = 0;
 
     yy_delete_buffer(state);
     bhex_alloc_track_stop();

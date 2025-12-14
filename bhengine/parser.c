@@ -88,13 +88,14 @@ extern u8_t* yyheapbuf;
 extern u32_t yyheapbuf_len;
 extern s64_t yysnumval;
 extern u64_t yyunumval;
-extern int   yymax_ident_len;
 
 extern int     yy_line;
 extern int     yy_column;
 extern FILE*   yyin;
 extern char*   yy_string_to_parse;
 extern ASTCtx* g_ctx;
+
+u64_t yymax_fvar_name_len;
 
 static void print_error_from_file(int yylineno, int yy_column)
 {
@@ -165,7 +166,7 @@ void yyerror(const char *s)
 }
 
 
-#line 169 "parser.c"
+#line 170 "parser.c"
 
 # ifndef YY_CAST
 #  ifdef __cplusplus
@@ -662,14 +663,14 @@ static const yytype_int8 yytranslate[] =
 /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_int16 yyrline[] =
 {
-       0,   143,   143,   144,   150,   155,   160,   165,   170,   176,
-     184,   189,   195,   199,   204,   205,   206,   207,   208,   209,
-     210,   211,   214,   218,   226,   231,   239,   246,   253,   258,
-     265,   270,   275,   280,   287,   292,   297,   304,   310,   311,
-     314,   318,   323,   327,   330,   334,   338,   341,   344,   347,
-     350,   353,   356,   359,   362,   365,   368,   371,   374,   377,
-     380,   383,   386,   389,   392,   395,   398,   403,   407,   411,
-     415,   420,   423,   426,   429,   432,   435,   438,   441,   446
+       0,   144,   144,   145,   151,   156,   161,   166,   171,   177,
+     185,   190,   196,   200,   205,   206,   207,   208,   209,   210,
+     211,   212,   215,   219,   227,   236,   244,   251,   258,   263,
+     270,   275,   280,   285,   292,   297,   302,   309,   315,   316,
+     319,   323,   328,   332,   335,   339,   343,   346,   349,   352,
+     355,   358,   361,   364,   367,   370,   373,   376,   379,   382,
+     385,   388,   391,   394,   397,   400,   403,   408,   412,   416,
+     420,   425,   428,   431,   434,   437,   440,   443,   446,   451
 };
 #endif
 
@@ -1751,596 +1752,600 @@ yyreduce:
   switch (yyn)
     {
   case 3: /* program: program TPROC TLBRACE stmts TRBRACE  */
-#line 144 "parser.y"
+#line 145 "parser.y"
                                                     {
                                                         if (g_ctx->proc != NULL)
                                                             // You can only have one proc
                                                             YYABORT;
                                                         g_ctx->proc = Block_new((yyvsp[-1].stmts));
                                                     }
-#line 1762 "parser.c"
+#line 1763 "parser.c"
     break;
 
   case 4: /* program: program TPROC ident TLBRACE stmts TRBRACE  */
-#line 151 "parser.y"
+#line 152 "parser.y"
                                                     {
                                                         map_set(g_ctx->named_procs, (yyvsp[-3].ident), Block_new((yyvsp[-1].stmts)));
                                                         bhex_free((yyvsp[-3].ident));
                                                     }
-#line 1771 "parser.c"
+#line 1772 "parser.c"
     break;
 
   case 5: /* program: program TFN ident TCLBRACE TCRBRACE TLBRACE stmts TRBRACE  */
-#line 156 "parser.y"
+#line 157 "parser.y"
                                                     {
                                                         map_set(g_ctx->functions, (yyvsp[-5].ident), Function_new((yyvsp[-5].ident), NULL, Block_new((yyvsp[-1].stmts))));
                                                         bhex_free((yyvsp[-5].ident));
                                                     }
-#line 1780 "parser.c"
+#line 1781 "parser.c"
     break;
 
   case 6: /* program: program TFN ident TCLBRACE name_params TCRBRACE TLBRACE stmts TRBRACE  */
-#line 161 "parser.y"
+#line 162 "parser.y"
                                                     {
                                                         map_set(g_ctx->functions, (yyvsp[-6].ident), Function_new((yyvsp[-6].ident), (yyvsp[-4].params), Block_new((yyvsp[-1].stmts))));
                                                         bhex_free((yyvsp[-6].ident));
                                                     }
-#line 1789 "parser.c"
+#line 1790 "parser.c"
     break;
 
   case 7: /* program: program TSTRUCT ident TLBRACE stmts TRBRACE  */
-#line 166 "parser.y"
+#line 167 "parser.y"
                                                     {
                                                         map_set(g_ctx->structs, (yyvsp[-3].ident), Block_new((yyvsp[-1].stmts)));
                                                         bhex_free((yyvsp[-3].ident));
                                                     }
-#line 1798 "parser.c"
+#line 1799 "parser.c"
     break;
 
   case 8: /* program: program TENUM ident TCOLON ident TLBRACE enum_list TRBRACE  */
-#line 171 "parser.y"
+#line 172 "parser.y"
                                                     {
                                                         map_set(g_ctx->enums, (yyvsp[-5].ident), Enum_new((yyvsp[-3].ident), (yyvsp[-1].enum_list), 0));
                                                         bhex_free((yyvsp[-5].ident));
                                                         bhex_free((yyvsp[-3].ident));
                                                     }
-#line 1808 "parser.c"
+#line 1809 "parser.c"
     break;
 
   case 9: /* program: program TORENUM ident TCOLON ident TLBRACE enum_list TRBRACE  */
-#line 177 "parser.y"
+#line 178 "parser.y"
                                                     {
                                                         map_set(g_ctx->enums, (yyvsp[-5].ident), Enum_new((yyvsp[-3].ident), (yyvsp[-1].enum_list), 1));
                                                         bhex_free((yyvsp[-5].ident));
                                                         bhex_free((yyvsp[-3].ident));
                                                     }
-#line 1818 "parser.c"
+#line 1819 "parser.c"
     break;
 
   case 10: /* enum_list: ident TEQUAL TSNUM64  */
-#line 184 "parser.y"
+#line 185 "parser.y"
                                                     {
                                                         (yyval.enum_list) = DList_new();
                                                         DList_add((yyval.enum_list), EnumEntry_new((yyvsp[-2].ident), yysnumval));
                                                         bhex_free((yyvsp[-2].ident));
                                                     }
-#line 1828 "parser.c"
+#line 1829 "parser.c"
     break;
 
   case 11: /* enum_list: enum_list TCOMMA ident TEQUAL TSNUM64  */
-#line 189 "parser.y"
+#line 190 "parser.y"
                                                     {
                                                         DList_add((yyvsp[-4].enum_list), EnumEntry_new((yyvsp[-2].ident), yysnumval));
                                                         bhex_free((yyvsp[-2].ident));
                                                     }
-#line 1837 "parser.c"
+#line 1838 "parser.c"
     break;
 
   case 12: /* stmts: stmt  */
-#line 195 "parser.y"
+#line 196 "parser.y"
                                                    {
                                                         (yyval.stmts) = DList_new();
                                                         DList_add((yyval.stmts), (yyvsp[0].stmt));
                                                     }
-#line 1846 "parser.c"
+#line 1847 "parser.c"
     break;
 
   case 13: /* stmts: stmts stmt  */
-#line 199 "parser.y"
+#line 200 "parser.y"
                                                     {
                                                         DList_add((yyvsp[-1].stmts), (yyvsp[0].stmt));
                                                     }
-#line 1854 "parser.c"
+#line 1855 "parser.c"
     break;
 
   case 22: /* fvar_type: ident  */
-#line 214 "parser.y"
+#line 215 "parser.y"
                                                     {
                                                         (yyval.fvar_type) = Type_new((yyvsp[0].ident), NULL);
                                                         bhex_free((yyvsp[0].ident));
                                                     }
-#line 1863 "parser.c"
+#line 1864 "parser.c"
     break;
 
   case 23: /* fvar_type: ident THASHTAG ident  */
-#line 218 "parser.y"
+#line 219 "parser.y"
                                                     {
                                                         (yyval.fvar_type) = Type_new((yyvsp[0].ident), (yyvsp[-2].ident));
                                                         bhex_free((yyvsp[-2].ident));
                                                         bhex_free((yyvsp[0].ident));
                                                     }
-#line 1873 "parser.c"
+#line 1874 "parser.c"
     break;
 
   case 24: /* fvar_decl: fvar_type ident  */
-#line 226 "parser.y"
+#line 227 "parser.y"
                                                     {
+                                                        size_t fvar_name_len = strlen((yyvsp[0].ident));
+                                                        if ((u64_t)fvar_name_len > yymax_fvar_name_len)
+                                                            yymax_fvar_name_len = (u64_t)fvar_name_len;
+
                                                         (yyval.stmt) = Stmt_FILE_VAR_DECL_new((yyvsp[-1].fvar_type), (yyvsp[0].ident), NULL);
                                                         Stmt_set_source_info((yyval.stmt), yy_line, yy_column);
                                                         bhex_free((yyvsp[0].ident));
                                                     }
-#line 1883 "parser.c"
+#line 1888 "parser.c"
     break;
 
   case 25: /* fvar_decl: fvar_type ident SQLBRACE expr SQRBRACE  */
-#line 232 "parser.y"
+#line 237 "parser.y"
                                                     {
                                                         (yyval.stmt) = Stmt_FILE_VAR_DECL_new((yyvsp[-4].fvar_type), (yyvsp[-3].ident), (yyvsp[-1].expr));
                                                         Stmt_set_source_info((yyval.stmt), yy_line, yy_column);
                                                         bhex_free((yyvsp[-3].ident));
                                                     }
-#line 1893 "parser.c"
+#line 1898 "parser.c"
     break;
 
   case 26: /* lvar_decl: TLOCAL ident TEQUAL expr  */
-#line 239 "parser.y"
+#line 244 "parser.y"
                                                     {
                                                         (yyval.stmt) = Stmt_LOCAL_VAR_DECL_new((yyvsp[-2].ident), (yyvsp[0].expr));
                                                         Stmt_set_source_info((yyval.stmt), yy_line, yy_column);
                                                         bhex_free((yyvsp[-2].ident));
                                                     }
-#line 1903 "parser.c"
+#line 1908 "parser.c"
     break;
 
   case 27: /* lvar_ass: ident TEQUAL expr  */
-#line 246 "parser.y"
+#line 251 "parser.y"
                                                     {
                                                         (yyval.stmt) = Stmt_LOCAL_VAR_ASS_new((yyvsp[-2].ident), (yyvsp[0].expr));
                                                         Stmt_set_source_info((yyval.stmt), yy_line, yy_column);
                                                         bhex_free((yyvsp[-2].ident));
                                                     }
-#line 1913 "parser.c"
+#line 1918 "parser.c"
     break;
 
   case 28: /* void_fcall: ident TCLBRACE TCRBRACE  */
-#line 253 "parser.y"
+#line 258 "parser.y"
                                                     {
                                                         (yyval.stmt) = Stmt_VOID_FUNC_CALL_new((yyvsp[-2].ident), NULL);
                                                         Stmt_set_source_info((yyval.stmt), yy_line, yy_column);
                                                         bhex_free((yyvsp[-2].ident));
                                                     }
-#line 1923 "parser.c"
+#line 1928 "parser.c"
     break;
 
   case 29: /* void_fcall: ident TCLBRACE params TCRBRACE  */
-#line 258 "parser.y"
+#line 263 "parser.y"
                                                     {
                                                         (yyval.stmt) = Stmt_VOID_FUNC_CALL_new((yyvsp[-3].ident), (yyvsp[-1].params));
                                                         Stmt_set_source_info((yyval.stmt), yy_line, yy_column);
                                                         bhex_free((yyvsp[-3].ident));
                                                     }
-#line 1933 "parser.c"
+#line 1938 "parser.c"
     break;
 
   case 30: /* if_elif: TIF TCLBRACE expr TCRBRACE TLBRACE stmts TRBRACE  */
-#line 266 "parser.y"
+#line 271 "parser.y"
                                                     {
                                                         (yyval.stmt) = Stmt_STMT_IF_new((yyvsp[-4].expr), Block_new((yyvsp[-1].stmts)));
                                                         Stmt_set_source_info((yyval.stmt), yy_line, yy_column);
                                                     }
-#line 1942 "parser.c"
+#line 1947 "parser.c"
     break;
 
   case 31: /* if_elif: TIF TCLBRACE expr TCRBRACE TLBRACE TRBRACE  */
-#line 271 "parser.y"
+#line 276 "parser.y"
                                                     {
                                                         (yyval.stmt) = Stmt_STMT_IF_new((yyvsp[-3].expr), Block_new(DList_new()));
                                                         Stmt_set_source_info((yyval.stmt), yy_line, yy_column);
                                                     }
-#line 1951 "parser.c"
+#line 1956 "parser.c"
     break;
 
   case 32: /* if_elif: if_elif TELIF TCLBRACE expr TCRBRACE TLBRACE stmts TRBRACE  */
-#line 276 "parser.y"
+#line 281 "parser.y"
                                                     {
                                                         Stmt_STMT_IF_add_cond((yyvsp[-7].stmt), (yyvsp[-4].expr), Block_new((yyvsp[-1].stmts)));
                                                         (yyval.stmt) = (yyvsp[-7].stmt);
                                                     }
-#line 1960 "parser.c"
+#line 1965 "parser.c"
     break;
 
   case 33: /* if_elif: if_elif TELIF TCLBRACE expr TCRBRACE TLBRACE TRBRACE  */
-#line 281 "parser.y"
+#line 286 "parser.y"
                                                     {
                                                         Stmt_STMT_IF_add_cond((yyvsp[-6].stmt), (yyvsp[-3].expr), Block_new(DList_new()));
                                                         (yyval.stmt) = (yyvsp[-6].stmt);
                                                     }
-#line 1969 "parser.c"
+#line 1974 "parser.c"
     break;
 
   case 34: /* else: if_elif TELSE TLBRACE stmts TRBRACE  */
-#line 288 "parser.y"
+#line 293 "parser.y"
                                                     {
                                                         Stmt_STMT_IF_add_else((yyvsp[-4].stmt), Block_new((yyvsp[-1].stmts)));
                                                         (yyval.stmt) = (yyvsp[-4].stmt);
                                                     }
-#line 1978 "parser.c"
+#line 1983 "parser.c"
     break;
 
   case 35: /* else: if_elif TELSE TLBRACE TRBRACE  */
-#line 292 "parser.y"
+#line 297 "parser.y"
                                                     {
                                                         (yyval.stmt) = (yyvsp[-3].stmt);
                                                     }
-#line 1986 "parser.c"
+#line 1991 "parser.c"
     break;
 
   case 36: /* while: TWHILE TCLBRACE expr TCRBRACE TLBRACE stmts TRBRACE  */
-#line 298 "parser.y"
+#line 303 "parser.y"
                                                     {
                                                         (yyval.stmt) = Stmt_WHILE_new((yyvsp[-4].expr), Block_new((yyvsp[-1].stmts)));
                                                         Stmt_set_source_info((yyval.stmt), yy_line, yy_column);
                                                     }
-#line 1995 "parser.c"
+#line 2000 "parser.c"
     break;
 
   case 37: /* break: TBREAK  */
-#line 304 "parser.y"
+#line 309 "parser.y"
                                                     {
                                                         (yyval.stmt) = Stmt_BREAK_new();
                                                         Stmt_set_source_info((yyval.stmt), yy_line, yy_column);
                                                     }
-#line 2004 "parser.c"
+#line 2009 "parser.c"
     break;
 
   case 39: /* expr: TSTR  */
-#line 311 "parser.y"
+#line 316 "parser.y"
                                                     {
                                                         (yyval.expr) = Expr_STRING_new(yyheapbuf, yyheapbuf_len);
                                                     }
-#line 2012 "parser.c"
+#line 2017 "parser.c"
     break;
 
   case 40: /* expr: ident  */
-#line 314 "parser.y"
+#line 319 "parser.y"
                                                     {
                                                         (yyval.expr) = Expr_VAR_new((yyvsp[0].ident));
                                                         bhex_free((yyvsp[0].ident));
                                                     }
-#line 2021 "parser.c"
+#line 2026 "parser.c"
     break;
 
   case 41: /* expr: ident TCOLCOL ident  */
-#line 318 "parser.y"
+#line 323 "parser.y"
                                                     {
                                                         (yyval.expr) = Expr_ENUM_CONST_new((yyvsp[-2].ident), (yyvsp[0].ident));
                                                         bhex_free((yyvsp[-2].ident));
                                                         bhex_free((yyvsp[0].ident));
                                                     }
-#line 2031 "parser.c"
+#line 2036 "parser.c"
     break;
 
   case 42: /* expr: expr TDOT ident  */
-#line 323 "parser.y"
+#line 328 "parser.y"
                                                     {
                                                         (yyval.expr) = Expr_SUBSCR_new((yyvsp[-2].expr), (yyvsp[0].ident));
                                                         bhex_free((yyvsp[0].ident));
                                                     }
-#line 2040 "parser.c"
+#line 2045 "parser.c"
     break;
 
   case 43: /* expr: expr SQLBRACE expr SQRBRACE  */
-#line 327 "parser.y"
+#line 332 "parser.y"
                                                     {
                                                         (yyval.expr) = Expr_ARRAY_SUB_new((yyvsp[-3].expr), (yyvsp[-1].expr));
                                                     }
-#line 2048 "parser.c"
+#line 2053 "parser.c"
     break;
 
   case 44: /* expr: ident TCLBRACE TCRBRACE  */
-#line 330 "parser.y"
+#line 335 "parser.y"
                                                     {
                                                         (yyval.expr) = Expr_FUN_CALL_new((yyvsp[-2].ident), NULL);
                                                         bhex_free((yyvsp[-2].ident));
                                                     }
-#line 2057 "parser.c"
+#line 2062 "parser.c"
     break;
 
   case 45: /* expr: ident TCLBRACE params TCRBRACE  */
-#line 334 "parser.y"
+#line 339 "parser.y"
                                                     {
                                                         (yyval.expr) = Expr_FUN_CALL_new((yyvsp[-3].ident), (yyvsp[-1].params));
                                                         bhex_free((yyvsp[-3].ident));
                                                     }
-#line 2066 "parser.c"
+#line 2071 "parser.c"
     break;
 
   case 46: /* expr: TCLBRACE expr TCRBRACE  */
-#line 338 "parser.y"
+#line 343 "parser.y"
                                                     {
                                                         (yyval.expr) = (yyvsp[-1].expr);
                                                     }
-#line 2074 "parser.c"
+#line 2079 "parser.c"
     break;
 
   case 47: /* expr: TSUB expr  */
-#line 341 "parser.y"
+#line 346 "parser.y"
                                                     {
                                                         (yyval.expr) = Expr_SUB_new(Expr_SCONST_new(0, 8), (yyvsp[0].expr));
                                                     }
-#line 2082 "parser.c"
+#line 2087 "parser.c"
     break;
 
   case 48: /* expr: expr TAND expr  */
-#line 344 "parser.y"
+#line 349 "parser.y"
                                                     {
                                                         (yyval.expr) = Expr_AND_new((yyvsp[-2].expr), (yyvsp[0].expr));
                                                     }
-#line 2090 "parser.c"
+#line 2095 "parser.c"
     break;
 
   case 49: /* expr: expr TOR expr  */
-#line 347 "parser.y"
+#line 352 "parser.y"
                                                     {
                                                         (yyval.expr) = Expr_OR_new((yyvsp[-2].expr), (yyvsp[0].expr));
                                                     }
-#line 2098 "parser.c"
+#line 2103 "parser.c"
     break;
 
   case 50: /* expr: expr TXOR expr  */
-#line 350 "parser.y"
+#line 355 "parser.y"
                                                     {
                                                         (yyval.expr) = Expr_XOR_new((yyvsp[-2].expr), (yyvsp[0].expr));
                                                     }
-#line 2106 "parser.c"
+#line 2111 "parser.c"
     break;
 
   case 51: /* expr: expr TADD expr  */
-#line 353 "parser.y"
+#line 358 "parser.y"
                                                     {
                                                         (yyval.expr) = Expr_ADD_new((yyvsp[-2].expr), (yyvsp[0].expr));
                                                     }
-#line 2114 "parser.c"
+#line 2119 "parser.c"
     break;
 
   case 52: /* expr: expr TSUB expr  */
-#line 356 "parser.y"
+#line 361 "parser.y"
                                                     {
                                                         (yyval.expr) = Expr_SUB_new((yyvsp[-2].expr), (yyvsp[0].expr));
                                                     }
-#line 2122 "parser.c"
+#line 2127 "parser.c"
     break;
 
   case 53: /* expr: expr TMUL expr  */
-#line 359 "parser.y"
+#line 364 "parser.y"
                                                     {
                                                         (yyval.expr) = Expr_MUL_new((yyvsp[-2].expr), (yyvsp[0].expr));
                                                     }
-#line 2130 "parser.c"
+#line 2135 "parser.c"
     break;
 
   case 54: /* expr: expr TDIV expr  */
-#line 362 "parser.y"
+#line 367 "parser.y"
                                                     {
                                                         (yyval.expr) = Expr_DIV_new((yyvsp[-2].expr), (yyvsp[0].expr));
                                                     }
-#line 2138 "parser.c"
+#line 2143 "parser.c"
     break;
 
   case 55: /* expr: expr TMOD expr  */
-#line 365 "parser.y"
+#line 370 "parser.y"
                                                     {
                                                         (yyval.expr) = Expr_MOD_new((yyvsp[-2].expr), (yyvsp[0].expr));
                                                     }
-#line 2146 "parser.c"
+#line 2151 "parser.c"
     break;
 
   case 56: /* expr: expr TBEQ expr  */
-#line 368 "parser.y"
+#line 373 "parser.y"
                                                     {
                                                         (yyval.expr) = Expr_BEQ_new((yyvsp[-2].expr), (yyvsp[0].expr));
                                                     }
-#line 2154 "parser.c"
+#line 2159 "parser.c"
     break;
 
   case 57: /* expr: expr TBNEQ expr  */
-#line 371 "parser.y"
+#line 376 "parser.y"
                                                     {
                                                         (yyval.expr) = Expr_BNOT_new(Expr_BEQ_new((yyvsp[-2].expr), (yyvsp[0].expr)));
                                                     }
-#line 2162 "parser.c"
+#line 2167 "parser.c"
     break;
 
   case 58: /* expr: expr TBLT expr  */
-#line 374 "parser.y"
+#line 379 "parser.y"
                                                     {
                                                         (yyval.expr) = Expr_BLT_new((yyvsp[-2].expr), (yyvsp[0].expr));
                                                     }
-#line 2170 "parser.c"
+#line 2175 "parser.c"
     break;
 
   case 59: /* expr: expr TBLE expr  */
-#line 377 "parser.y"
+#line 382 "parser.y"
                                                     {
                                                         (yyval.expr) = Expr_BLE_new((yyvsp[-2].expr), (yyvsp[0].expr));
                                                     }
-#line 2178 "parser.c"
+#line 2183 "parser.c"
     break;
 
   case 60: /* expr: expr TBGT expr  */
-#line 380 "parser.y"
+#line 385 "parser.y"
                                                     {
                                                         (yyval.expr) = Expr_BGT_new((yyvsp[-2].expr), (yyvsp[0].expr));
                                                     }
-#line 2186 "parser.c"
+#line 2191 "parser.c"
     break;
 
   case 61: /* expr: expr TBGE expr  */
-#line 383 "parser.y"
+#line 388 "parser.y"
                                                     {
                                                         (yyval.expr) = Expr_BGE_new((yyvsp[-2].expr), (yyvsp[0].expr));
                                                     }
-#line 2194 "parser.c"
+#line 2199 "parser.c"
     break;
 
   case 62: /* expr: expr TBAND expr  */
-#line 386 "parser.y"
+#line 391 "parser.y"
                                                     {
                                                         (yyval.expr) = Expr_BAND_new((yyvsp[-2].expr), (yyvsp[0].expr));
                                                     }
-#line 2202 "parser.c"
+#line 2207 "parser.c"
     break;
 
   case 63: /* expr: expr TBOR expr  */
-#line 389 "parser.y"
+#line 394 "parser.y"
                                                     {
                                                         (yyval.expr) = Expr_BOR_new((yyvsp[-2].expr), (yyvsp[0].expr));
                                                     }
-#line 2210 "parser.c"
+#line 2215 "parser.c"
     break;
 
   case 64: /* expr: expr TSHR expr  */
-#line 392 "parser.y"
+#line 397 "parser.y"
                                                     {
                                                         (yyval.expr) = Expr_SHR_new((yyvsp[-2].expr), (yyvsp[0].expr));
                                                     }
-#line 2218 "parser.c"
+#line 2223 "parser.c"
     break;
 
   case 65: /* expr: expr TSHL expr  */
-#line 395 "parser.y"
+#line 400 "parser.y"
                                                     {
                                                         (yyval.expr) = Expr_SHL_new((yyvsp[-2].expr), (yyvsp[0].expr));
                                                     }
-#line 2226 "parser.c"
+#line 2231 "parser.c"
     break;
 
   case 66: /* expr: TBNOT expr  */
-#line 398 "parser.y"
+#line 403 "parser.y"
                                                     {
                                                         (yyval.expr) = Expr_BNOT_new((yyvsp[0].expr));
                                                     }
-#line 2234 "parser.c"
+#line 2239 "parser.c"
     break;
 
   case 67: /* name_params: ident  */
-#line 403 "parser.y"
+#line 408 "parser.y"
                                                     {
                                                         (yyval.params) = DList_new();
                                                         DList_add((yyval.params), (yyvsp[0].ident));
                                                     }
-#line 2243 "parser.c"
+#line 2248 "parser.c"
     break;
 
   case 68: /* name_params: name_params TCOMMA ident  */
-#line 407 "parser.y"
+#line 412 "parser.y"
                                                     {
                                                         DList_add((yyval.params), (yyvsp[0].ident));
                                                     }
-#line 2251 "parser.c"
+#line 2256 "parser.c"
     break;
 
   case 69: /* params: expr  */
-#line 411 "parser.y"
+#line 416 "parser.y"
                                                     {
                                                         (yyval.params) = DList_new();
                                                         DList_add((yyval.params), (yyvsp[0].expr));
                                                     }
-#line 2260 "parser.c"
+#line 2265 "parser.c"
     break;
 
   case 70: /* params: params TCOMMA expr  */
-#line 415 "parser.y"
+#line 420 "parser.y"
                                                     {
                                                         DList_add((yyval.params), (yyvsp[0].expr));
                                                     }
-#line 2268 "parser.c"
+#line 2273 "parser.c"
     break;
 
   case 71: /* num: TUNUM8  */
-#line 420 "parser.y"
+#line 425 "parser.y"
                                                     {
                                                         (yyval.expr) = Expr_UCONST_new(yyunumval, 1);
                                                     }
-#line 2276 "parser.c"
+#line 2281 "parser.c"
     break;
 
   case 72: /* num: TUNUM16  */
-#line 423 "parser.y"
+#line 428 "parser.y"
                                                     {
                                                         (yyval.expr) = Expr_UCONST_new(yyunumval, 2);
                                                     }
-#line 2284 "parser.c"
+#line 2289 "parser.c"
     break;
 
   case 73: /* num: TUNUM32  */
-#line 426 "parser.y"
+#line 431 "parser.y"
                                                     {
                                                         (yyval.expr) = Expr_UCONST_new(yyunumval, 4);
                                                     }
-#line 2292 "parser.c"
+#line 2297 "parser.c"
     break;
 
   case 74: /* num: TUNUM64  */
-#line 429 "parser.y"
+#line 434 "parser.y"
                                                     {
                                                         (yyval.expr) = Expr_UCONST_new(yyunumval, 8);
                                                     }
-#line 2300 "parser.c"
+#line 2305 "parser.c"
     break;
 
   case 75: /* num: TSNUM8  */
-#line 432 "parser.y"
+#line 437 "parser.y"
                                                     {
                                                         (yyval.expr) = Expr_SCONST_new(yysnumval, 1);
                                                     }
-#line 2308 "parser.c"
+#line 2313 "parser.c"
     break;
 
   case 76: /* num: TSNUM16  */
-#line 435 "parser.y"
+#line 440 "parser.y"
                                                     {
                                                         (yyval.expr) = Expr_SCONST_new(yysnumval, 2);
                                                     }
-#line 2316 "parser.c"
+#line 2321 "parser.c"
     break;
 
   case 77: /* num: TSNUM32  */
-#line 438 "parser.y"
+#line 443 "parser.y"
                                                     {
                                                         (yyval.expr) = Expr_SCONST_new(yysnumval, 4);
                                                     }
-#line 2324 "parser.c"
+#line 2329 "parser.c"
     break;
 
   case 78: /* num: TSNUM64  */
-#line 441 "parser.y"
+#line 446 "parser.y"
                                                     {
                                                         (yyval.expr) = Expr_SCONST_new(yysnumval, 8);
                                                     }
-#line 2332 "parser.c"
+#line 2337 "parser.c"
     break;
 
   case 79: /* ident: TIDENTIFIER  */
-#line 446 "parser.y"
+#line 451 "parser.y"
                                                     {
                                                         (yyval.ident) = bhex_strdup(yystrval);
                                                     }
-#line 2340 "parser.c"
+#line 2345 "parser.c"
     break;
 
 
-#line 2344 "parser.c"
+#line 2349 "parser.c"
 
       default: break;
     }
@@ -2569,5 +2574,5 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 451 "parser.y"
+#line 456 "parser.y"
 

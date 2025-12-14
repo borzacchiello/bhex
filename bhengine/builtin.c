@@ -506,7 +506,7 @@ static BHEngineValue* builtin_print(InterpreterContext* ctx, DList* params)
         if (p->t == TENGINE_STRING) {
             strbuilder_appendf(sb, "%.*s ", p->str_size, p->str);
         } else {
-            char* p_str = BHEngineValue_tostring(p, 0);
+            char* p_str = BHEngineValue_tostring(p, 0, 0);
             strbuilder_appendf(sb, "%s ", p_str);
             bhex_free(p_str);
         }

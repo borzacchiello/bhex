@@ -46,7 +46,7 @@ static void fmt_term_start_var(FormatterTerm* this, const char* name,
             this->on_a_new_line = 0;
         display_printf("b+%08llx ", off);
         fmt_term_print_off(this);
-        display_printf(" %*s: ", this->super->max_ident_len, name);
+        display_printf(" %*s: ", (int)this->super->max_fvar_len, name);
     }
     this->print_off += PRINT_OFF_STEP;
 }
@@ -85,7 +85,8 @@ static void fmt_term_process_value(FormatterTerm* this, BHEngineValue* val)
         val->t == TENGINE_BUF)
         panic("process value called with an unexpected type");
 
-    char* value_str = BHEngineValue_tostring(val, this->super->print_in_hex);
+    char* value_str = BHEngineValue_tostring(val, this->super->print_in_hex,
+                                             (u32_t)this->super->max_fvar_len);
     display_printf("%s", value_str);
     bhex_free(value_str);
 }

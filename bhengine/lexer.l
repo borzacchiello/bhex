@@ -19,7 +19,6 @@ u8_t* yyheapbuf = NULL;
 u32_t yyheapbuf_len;
 s64_t yysnumval;
 u64_t yyunumval;
-int   yymax_ident_len;
 
 int            yy_line            = 1;
 int            yy_column          = 1;
@@ -249,9 +248,6 @@ __attribute__((destructor)) static void delete_yy_bufs(void)
 [a-zA-Z_][a-zA-Z0-9_]*  {
                             handle_token;
                             yy_size_t l = min(yyleng, sizeof(yystrval)-1);
-                            if (l > (yy_size_t)yymax_ident_len)
-                                yymax_ident_len = (int)l;
-
                             memset(yystrval, 0, sizeof(yystrval));
                             memcpy(yystrval, yytext, l);
                             return TIDENTIFIER;

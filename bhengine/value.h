@@ -153,6 +153,7 @@ int BHEngineValue_as_string(struct InterpreterContext* ctx,
                             const BHEngineValue* v, const char** o);
 
 void  BHEngineValue_pp(const BHEngineValue* v, int hex);
-char* BHEngineValue_tostring(const BHEngineValue* v, int hex);
+char* BHEngineValue_tostring(const BHEngineValue* v, int hex,
+                             u32_t right_adj_len);
 
 #endif

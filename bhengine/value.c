@@ -13,8 +13,6 @@
 
 #define max(x, y) ((x) > (y) ? (x) : (y))
 
-extern int yymax_ident_len;
-
 static const char* type_to_string(BHEngineValueType t)
 {
     switch (t) {
@@ -687,12 +685,13 @@ BHEngineValue* BHEngineValue_dup(BHEngineValue* v)
 
 void BHEngineValue_pp(const BHEngineValue* v, int hex)
 {
-    char* str = BHEngineValue_tostring(v, hex);
+    char* str = BHEngineValue_tostring(v, hex, 1);
     printf("%s\n", str);
     bhex_free(str);
 }
 
-char* BHEngineValue_tostring(const BHEngineValue* v, int hex)
+char* BHEngineValue_tostring(const BHEngineValue* v, int hex,
+                             u32_t right_adj_len)
 {
     StringBuilder* sb = strbuilder_new();
 
@@ -754,9 +753,9 @@ char* BHEngineValue_tostring(const BHEngineValue* v, int hex)
         case TENGINE_OBJ: {
             for (const char* key = map_first(v->subvals); key != NULL;
                  key             = map_next(v->subvals, key)) {
-                strbuilder_appendf(sb, ".%.*s: ", yymax_ident_len, key);
-                BHEngineValue* nv     = map_get(v->subvals, key);
-                char*          substr = BHEngineValue_tostring(nv, hex);
+                strbuilder_appendf(sb, ".%.*s: ", right_adj_len, key);
+                BHEngineValue* nv = map_get(v->subvals, key);
+                char* substr = BHEngineValue_tostring(nv, hex, right_adj_len);
                 strbuilder_append(sb, substr);
                 strbuilder_append_char(sb, '\n');
                 bhex_free(substr);
@@ -777,8 +776,8 @@ char* BHEngineValue_tostring(const BHEngineValue* v, int hex)
             strbuilder_append_char(sb, '\n');
             for (u32_t i = 0; i < v->array_data->size; ++i) {
                 strbuilder_appendf(sb, "[%u]\n", i);
-                char* subel =
-                    BHEngineValue_tostring(v->array_data->data[i], hex);
+                char* subel    = BHEngineValue_tostring(v->array_data->data[i],
+                                                        hex, right_adj_len);
                 char* indented = str_indent(subel, 4);
                 strbuilder_append(sb, indented);
                 bhex_free(indented);
