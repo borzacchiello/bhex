@@ -21,7 +21,7 @@
  *	http://www.openbsd.org/cgi-bin/cvsweb/~checkout~/src/sys/crypto/md5.c?rev=1.1
  *	with the following changes:
  *	#includes commented out.
- *	Support context->count as uint32_t[2] instead of uint64_t
+ *	Support context->count as u32_t[2] instead of u64_t
  *	u_int* to uint*
  */
 

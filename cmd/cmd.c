@@ -5,6 +5,7 @@
 #include <alloc.h>
 
 #include "cmd_crc.h"
+#include "cmd_hash.h"
 #include "cmd_info.h"
 #include "cmd_print.h"
 #include "cmd_seek.h"
@@ -75,6 +76,7 @@ CmdContext* cmdctx_init(void)
     ll_add(&cc->commands, (uptr_t)templatecmd_create());
     ll_add(&cc->commands, (uptr_t)stringscmd_create());
     ll_add(&cc->commands, (uptr_t)crccmd_create());
+    ll_add(&cc->commands, (uptr_t)hashcmd_create());
     ll_add(&cc->commands, (uptr_t)searchcmd_create());
     ll_add(&cc->commands, (uptr_t)entropycmd_create());
     ll_add(&cc->commands, (uptr_t)interactivecmd_create());

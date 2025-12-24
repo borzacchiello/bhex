@@ -71,12 +71,20 @@ set(common_src
     common/util/print.c
     common/util/str.c
     common/util/math.c
-    common/hash/md5.c)
+    common/hash/md2.c
+    common/hash/md4.c
+    common/hash/md5.c
+    common/hash/md6.c
+    common/hash/sha1.c
+    common/hash/sha224-256.c
+    common/hash/sha384-512.c
+    common/hash/sha3.c)
 
 set(command_src
     cmd/cmd_arg_handler.c
     cmd/cmd.c
     cmd/cmd_crc.c
+    cmd/cmd_hash.c
     cmd/cmd_template.c
     cmd/cmd_search.c
     cmd/cmd_strings.c

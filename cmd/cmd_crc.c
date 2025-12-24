@@ -27,7 +27,7 @@ static void crccmd_help(void* obj)
         "  crc" HINT_STR "\n"
         "     l:   list the supported crc names\n"
         "\n"
-        "  name:   name of the CRC (or a partial name)\n"
+        "  name:   name of the CRC (or a partial name, or '*')\n"
         "  size:   number of bytes to include in the crc (if omitted or zero, "
         "import the whole file starting from current offset)\n"
         "  offset: starting offset of the imported file (if "
@@ -110,7 +110,7 @@ static int crccmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 
     const char* const* crcs = get_all_crc_names();
     while (*crcs) {
-        if (strstr(*crcs, name) != NULL) {
+        if (strcmp(name, "*") == 0 || strstr(*crcs, name) != NULL) {
             const crc_params_t* params = get_crc_by_name(*crcs);
             u32_t crc = fb_calculate_crc(params, fb, offset, size);
             display_printf("  %24s : 0x%x\n", *crcs, crc);
