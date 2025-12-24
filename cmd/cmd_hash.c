@@ -1,11 +1,14 @@
-#include <util/byte_to_str.h>
-#include <util/byte_to_num.h>
 #include <hash/md2.h>
 #include <hash/md4.h>
 #include <hash/md5.h>
 #include <hash/md6.h>
 #include <hash/sha.h>
 #include <hash/sha3.h>
+#include <hash/ripemd128.h>
+#include <hash/ripemd160.h>
+
+#include <util/byte_to_str.h>
+#include <util/byte_to_num.h>
 #include <display.h>
 #include <alloc.h>
 #include <log.h>
@@ -99,17 +102,30 @@ GEN_HANDLE_FUNC(sha3_384, sha3_context, SHA3_384_Init, SHA3Update, SHA3Finalize,
                 SHA3_384_DIGEST_LENGTH)
 GEN_HANDLE_FUNC(sha3_512, sha3_context, SHA3_512_Init, SHA3Update, SHA3Finalize,
                 SHA3_512_DIGEST_LENGTH)
+GEN_HANDLE_FUNC(ripemd128, Ripemd128Context, ripemd128Init, ripemd128Update,
+                ripemd128Final, RIPEMD128_DIGEST_SIZE)
+GEN_HANDLE_FUNC(ripemd160, Ripemd160Context, ripemd160Init, ripemd160Update,
+                ripemd160Final, RIPEMD160_DIGEST_SIZE)
 
-static hash_handler_t hash_handlers[] = {
-    {"md2", handle_md2},           {"md4", handle_md4},
-    {"md5", handle_md5},           {"md6-128", handle_md6_128},
-    {"md6-256", handle_md6_256},   {"md6-384", handle_md6_384},
-    {"md6-512", handle_md6_512},   {"sha1", handle_sha1},
-    {"sha224", handle_sha224},     {"sha256", handle_sha256},
-    {"sha384", handle_sha384},     {"sha512", handle_sha512},
-    {"sha3-128", handle_sha3_128}, {"sha3-224", handle_sha3_224},
-    {"sha3-256", handle_sha3_256}, {"sha3-384", handle_sha3_384},
-    {"sha3-512", handle_sha3_512}};
+static hash_handler_t hash_handlers[] = {{"md2", handle_md2},
+                                         {"md4", handle_md4},
+                                         {"md5", handle_md5},
+                                         {"md6-128", handle_md6_128},
+                                         {"md6-256", handle_md6_256},
+                                         {"md6-384", handle_md6_384},
+                                         {"md6-512", handle_md6_512},
+                                         {"sha1", handle_sha1},
+                                         {"sha224", handle_sha224},
+                                         {"sha256", handle_sha256},
+                                         {"sha384", handle_sha384},
+                                         {"sha512", handle_sha512},
+                                         {"sha3-128", handle_sha3_128},
+                                         {"sha3-224", handle_sha3_224},
+                                         {"sha3-256", handle_sha3_256},
+                                         {"sha3-384", handle_sha3_384},
+                                         {"sha3-512", handle_sha3_512},
+                                         {"RipeMD-128", handle_ripemd128},
+                                         {"RipeMD-160", handle_ripemd160}};
 #define NUM_HASH_HANDLERS (sizeof(hash_handlers) / sizeof(hash_handlers[0]))
 
 static int hashcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
@@ -171,7 +187,7 @@ static int hashcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
             char* hash = NULL;
             hash_handlers[i].handler(fb, real_off, size, &hash);
             if (hash) {
-                display_printf("  %8s : %s\n", hash_handlers[i].name, hash);
+                display_printf("  %12s : %s\n", hash_handlers[i].name, hash);
                 bhex_free(hash);
             } else {
                 error("error calculating %s hash", hash_handlers[i].name);
