@@ -23,7 +23,7 @@
  *
  *  Portability Issues:
  *      SHA-1 is defined in terms of 32-bit "words".  This code
- *      uses <stdint.h> (included via "sha.h") to define 32- and
+ *      uses <defs.h> (included via "sha.h") to define 32- and
  *      8-bit unsigned integer types.  If your C compiler does
  *      not support 32-bit unsigned integers, this code is not
  *      appropriate.

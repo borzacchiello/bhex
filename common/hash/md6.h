@@ -35,7 +35,7 @@
 **    md6.h
 **    md6_compress.c
 **    md6_mode.
-** (Note that md6.h includes inttypes.h, which includes stdint.h;
+** (Note that md6.h includes inttypes.h, which includes defs.h;
 ** versions of these header files compatible with MS Visual Studio
 ** are available, as noted below.)
 **
@@ -64,11 +64,11 @@
 #ifndef MD6_H_INCLUDED
 #define MD6_H_INCLUDED
 
-/* inttypes.h (which includes stdint.h)
-** inttypes.h and stdint.h  are part of the normal environment
+/* inttypes.h (which includes defs.h)
+** inttypes.h and defs.h  are part of the normal environment
 ** for gcc, but not for MS Visual Studio.  Fortunately,
 ** compatible implementations are available from Google at:
-**   http://msinttypes.googlecode.com/svn/trunk/stdint.h
+**   http://msinttypes.googlecode.com/svn/trunk/defs.h
 **   http://msinttypes.googlecode.com/svn/trunk/inttypes.h
 ** If these two files are in the same directory as md6.h, then
 ** MD6 will compile OK with MS Visual Studio.
