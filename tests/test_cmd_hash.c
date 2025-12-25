@@ -28,7 +28,9 @@ int TEST(notkitty_all_hashes)(void)
     "      sha3-384 : a221c2f8bbf2bd757ef27b23e1137cf7c640dc813bc72edfc736d0a7968e945365167e7cf61afe2911ef2d40367794f4\n"
     "      sha3-512 : 5cc86b7c3bbc77c730dfe8da1e998e94b088011770105e0f5d626610bb4bb7b6920e85472ed58111f303c419b1b9492afb7ea96f8997b2a29ed4f4a99c108dc3\n"
     "    RipeMD-128 : b4563447abf7cc5d80e258002e470ec4\n"
-    "    RipeMD-160 : b657ee770eb25c720381d8b64cf487a03e37e220\n";
+    "    RipeMD-160 : b657ee770eb25c720381d8b64cf487a03e37e220\n"
+    "    RipeMD-256 : 8814cc34336ccad19000c18d17aa98abb9c999566abed2e925f0e30205a816e2\n"
+    "    RipeMD-320 : d655786d8d1ffe7fd2695a481f20b0ba8e1cfd2f256ec315aefa2c2a640502b0c70abd87100611ce\n";
     // clang-format on
 
     int r = TEST_FAILED;
@@ -65,7 +67,9 @@ int TEST(answer_to_universe_all_hashes)(void)
     "      sha3-384 : a3e1c59b4001aed941632ae35e4c5b22e2d1ef2ebeb2059d41858c1ec8af43fa2551a0b79d26519e4e8164dc0bc8416f\n"
     "      sha3-512 : ed7a2325f0e562eb9e7074d31a4dba3a98b04312573589901fa0096d36f14346134d9c9545882e43b9f95a2eed23f730510c6d09087b015ea159426f8725687e\n"
     "    RipeMD-128 : 4328ca16e9bfcb0302e30ba841524793\n"
-    "    RipeMD-160 : ff500b620c1d880928f74fd2e0bdfc1dd0aa7d7e\n";
+    "    RipeMD-160 : ff500b620c1d880928f74fd2e0bdfc1dd0aa7d7e\n"
+    "    RipeMD-256 : 10edc6a6dc7bac123572f53dfbb8f359b624d83ed00f0d7733137e913ed696ed\n"
+    "    RipeMD-320 : 5e81a7d551d8dd4365769817beea49b1a5db2a512aab654956406a7c5591cb9407d8e6170eb95ccb\n";
     // clang-format on
 
     DummyFilebuffer* tfb =
@@ -106,7 +110,9 @@ int TEST(empty)(void)
     "      sha3-384 : 0c63a75b845e4f7d01107d852e4c2485c51a50aaaa94fc61995e71bbee983a2ac3713831264adb47fb6bd1e058d5f004\n"
     "      sha3-512 : a69f73cca23a9ac5c8b567dc185a756e97c982164fe25859e0d1dcc1475c80a615b2123af1f5f94c11e3e9402c3ac558f500199d95b6d3e301758586281dcd26\n"
     "    RipeMD-128 : cdf26213a150dc3ecb610f18f6b38b46\n"
-    "    RipeMD-160 : 9c1185a5c5e9fc54612808977ee8f548b2258d31\n";
+    "    RipeMD-160 : 9c1185a5c5e9fc54612808977ee8f548b2258d31\n"
+    "    RipeMD-256 : 02ba4c4e5f8ecd1877fc52d64d30e37a2d9774fb1e5d026380ae0168e3c5522d\n"
+    "    RipeMD-320 : 22d65d5661536cdc75c1fdf5c6de7b41b9f27325ebc61e8557177d705a0ec880151c3a32a00899b8\n";
     // clang-format on
 
     int r = TEST_FAILED;
@@ -225,7 +231,9 @@ int TEST(notkitty_with_size_1)(void)
     "      sha3-384 : c6d45f444a995d9aee6f989b3cce12f3a94fa58c4a49218ad3f0405f9be1df2a848c008684b9d9e5f342d27978624846\n"
     "      sha3-512 : 5d6289e2eb89d4099552ad261115d31e1cfddf67f4997f19bd95d2436427deba817b9d4d3d107656283c602c19fa77f8c985b2a5e33d61cd0d56f3c1d61e93ea\n"
     "    RipeMD-128 : 3ef49aa6285775057773a8ae8ef478ce\n"
-    "    RipeMD-160 : c8297aad716979548921b2e8e26ca8f20061dbef\n";
+    "    RipeMD-160 : c8297aad716979548921b2e8e26ca8f20061dbef\n"
+    "    RipeMD-256 : d9143a5a5eb6508434090cff7e8037aa9a198feb5adf4854620e3d15cdd3f490\n"
+    "    RipeMD-320 : 18f1c6d1e1ff4c73efaf112dec5d798fb6c057b8c58992ceb0a7589dfe98abe86f25cac1bb514e2f\n";
     // clang-format on
 
     int r = TEST_FAILED;

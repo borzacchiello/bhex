@@ -4,8 +4,7 @@
 #include <hash/md6.h>
 #include <hash/sha.h>
 #include <hash/sha3.h>
-#include <hash/ripemd128.h>
-#include <hash/ripemd160.h>
+#include <hash/ripemd.h>
 
 #include <util/byte_to_str.h>
 #include <util/byte_to_num.h>
@@ -102,10 +101,14 @@ GEN_HANDLE_FUNC(sha3_384, sha3_context, SHA3_384_Init, SHA3Update, SHA3Finalize,
                 SHA3_384_DIGEST_LENGTH)
 GEN_HANDLE_FUNC(sha3_512, sha3_context, SHA3_512_Init, SHA3Update, SHA3Finalize,
                 SHA3_512_DIGEST_LENGTH)
-GEN_HANDLE_FUNC(ripemd128, Ripemd128Context, ripemd128Init, ripemd128Update,
-                ripemd128Final, RIPEMD128_DIGEST_SIZE)
-GEN_HANDLE_FUNC(ripemd160, Ripemd160Context, ripemd160Init, ripemd160Update,
-                ripemd160Final, RIPEMD160_DIGEST_SIZE)
+GEN_HANDLE_FUNC(ripemd128, struct ripemd_ctx, ripemd128_init, ripemd_update,
+                ripemd_final, RIPEMD128_DIGESTSIZE)
+GEN_HANDLE_FUNC(ripemd160, struct ripemd_ctx, ripemd160_init, ripemd_update,
+                ripemd_final, RIPEMD160_DIGESTSIZE)
+GEN_HANDLE_FUNC(ripemd256, struct ripemd_ctx, ripemd256_init, ripemd_update,
+                ripemd_final, RIPEMD256_DIGESTSIZE)
+GEN_HANDLE_FUNC(ripemd320, struct ripemd_ctx, ripemd320_init, ripemd_update,
+                ripemd_final, RIPEMD320_DIGESTSIZE)
 
 static hash_handler_t hash_handlers[] = {{"md2", handle_md2},
                                          {"md4", handle_md4},
@@ -125,7 +128,9 @@ static hash_handler_t hash_handlers[] = {{"md2", handle_md2},
                                          {"sha3-384", handle_sha3_384},
                                          {"sha3-512", handle_sha3_512},
                                          {"RipeMD-128", handle_ripemd128},
-                                         {"RipeMD-160", handle_ripemd160}};
+                                         {"RipeMD-160", handle_ripemd160},
+                                         {"RipeMD-256", handle_ripemd256},
+                                         {"RipeMD-320", handle_ripemd320}};
 #define NUM_HASH_HANDLERS (sizeof(hash_handlers) / sizeof(hash_handlers[0]))
 
 static int hashcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
