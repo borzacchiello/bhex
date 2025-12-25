@@ -6,7 +6,6 @@
 #include <hash/sha3.h>
 #include <hash/ripemd.h>
 #include <hash/blake2.h>
-#include <hash/whirlpool.h>
 
 #include <util/byte_to_str.h>
 #include <util/byte_to_num.h>
@@ -115,9 +114,6 @@ GEN_HANDLE_FUNC(blake2s, blake2s_state, simple_blake2s_init,
                 simple_blake2s_update, simple_blake2s_final, BLAKE2S_OUTBYTES)
 GEN_HANDLE_FUNC(blake2b, blake2b_state, simple_blake2b_init,
                 simple_blake2b_update, simple_blake2b_final, BLAKE2B_OUTBYTES)
-GEN_HANDLE_FUNC(whirlpool, whirlpool_ctx, rhash_whirlpool_init,
-                rhash_whirlpool_update, rhash_whirlpool_final,
-                whirlpool_block_size)
 
 static hash_handler_t hash_handlers[] = {{"md2", handle_md2},
                                          {"md4", handle_md4},
@@ -141,8 +137,7 @@ static hash_handler_t hash_handlers[] = {{"md2", handle_md2},
                                          {"RipeMD-256", handle_ripemd256},
                                          {"RipeMD-320", handle_ripemd320},
                                          {"blake2s", handle_blake2s},
-                                         {"blake2b", handle_blake2b},
-                                         {"whirlpool", handle_whirlpool}};
+                                         {"blake2b", handle_blake2b}};
 #define NUM_HASH_HANDLERS (sizeof(hash_handlers) / sizeof(hash_handlers[0]))
 
 static int hashcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)

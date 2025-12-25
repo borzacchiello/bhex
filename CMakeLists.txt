@@ -81,8 +81,7 @@ set(common_src
     common/hash/sha3.c
     common/hash/ripemd.c
     common/hash/blake2b-ref.c
-    common/hash/blake2s-ref.c
-    common/hash/whirlpool.c)
+    common/hash/blake2s-ref.c)
 
 set(command_src
     cmd/cmd_arg_handler.c
