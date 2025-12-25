@@ -47,6 +47,20 @@
         goto fail;                                                             \
     }
 
+#define ASSERT_TENGINE_SNUM_EQ(v, n)                                           \
+    if ((v) == NULL) {                                                         \
+        printf("[!] v is null\n");                                             \
+        goto fail;                                                             \
+    }                                                                          \
+    if ((v)->t != TENGINE_SNUM) {                                              \
+        printf("[!] v type is not TENGINE_SNUM\n");                            \
+        goto fail;                                                             \
+    }                                                                          \
+    if ((v)->snum != (n)) {                                                    \
+        printf("[!] expected %lld, got %lld\n", (v)->snum, (s64_t)(n));        \
+        goto fail;                                                             \
+    }
+
 #define IS_TENGINE_BOOL_EQ(r, v, n)                                            \
     if ((v) == NULL)                                                           \
         goto end;                                                              \
@@ -2634,6 +2648,50 @@ int TEST(syntax_error_with_newlines)(void)
 
 end:
     bhex_free(out);
+    if (scope)
+        Scope_free(scope);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(atoi)(void)
+{
+    const char* prog = "proc { "
+                       "    local a = atoi(\"1234\");"
+                       "}";
+
+    int    r     = TEST_SUCCEEDED;
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    ASSERT(scope != NULL);
+    BHEngineValue* v = Scope_get_local(scope, "a");
+    ASSERT_TENGINE_SNUM_EQ(v, 1234);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(strlen)(void)
+{
+    const char* prog = "proc { "
+                       "    local a = strlen(\"1234\");"
+                       "}";
+
+    int    r     = TEST_SUCCEEDED;
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    ASSERT(scope != NULL);
+    BHEngineValue* v = Scope_get_local(scope, "a");
+    ASSERT_TENGINE_UNUM_EQ(v, 4);
+
+end:
     if (scope)
         Scope_free(scope);
     return r;

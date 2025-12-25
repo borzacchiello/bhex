@@ -1,5 +1,6 @@
 #include "t_cmd_common.h"
 #include "t.h"
+#include "data/big_buffers.h"
 
 #ifndef TEST
 #define TEST(name) test_##name
@@ -76,5 +77,25 @@ int TEST(hex_seek)(void)
     bhex_free(out);
 
 end:
+    return r;
+}
+
+int TEST(search_in_big_buffer)(void)
+{
+    const char* expected = "";
+
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(answer_to_universe, sizeof(answer_to_universe));
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("src/x 80", tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
     return r;
 }

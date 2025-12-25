@@ -6,7 +6,7 @@ rm -rf ./build_coverage
 mkdir ./build_coverage
 
 cd ./build_coverage
-cmake -DENABLE_TESTS=on -DCMAKE_BUILD_TYPE=Debug -DASAN=on ..
+cmake -DENABLE_TESTS=on -DCMAKE_BUILD_TYPE=Debug -DENABLE_COVERAGE=on ..
 make -j
 
 # I don't know why it complains about these files...
