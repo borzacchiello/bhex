@@ -79,7 +79,8 @@ set(common_src
     common/hash/sha224-256.c
     common/hash/sha384-512.c
     common/hash/sha3.c
-    common/hash/ripemd.c)
+    common/hash/ripemd.c
+    common/hash/whirlpool.c)
 
 set(command_src
     cmd/cmd_arg_handler.c

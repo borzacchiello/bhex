@@ -5,6 +5,7 @@
 #include <hash/sha.h>
 #include <hash/sha3.h>
 #include <hash/ripemd.h>
+#include <hash/whirlpool.h>
 
 #include <util/byte_to_str.h>
 #include <util/byte_to_num.h>
@@ -109,6 +110,9 @@ GEN_HANDLE_FUNC(ripemd256, struct ripemd_ctx, ripemd256_init, ripemd_update,
                 ripemd_final, RIPEMD256_DIGESTSIZE)
 GEN_HANDLE_FUNC(ripemd320, struct ripemd_ctx, ripemd320_init, ripemd_update,
                 ripemd_final, RIPEMD320_DIGESTSIZE)
+GEN_HANDLE_FUNC(whirlpool, whirlpool_ctx, rhash_whirlpool_init,
+                rhash_whirlpool_update, rhash_whirlpool_final,
+                whirlpool_block_size)
 
 static hash_handler_t hash_handlers[] = {{"md2", handle_md2},
                                          {"md4", handle_md4},
@@ -130,7 +134,8 @@ static hash_handler_t hash_handlers[] = {{"md2", handle_md2},
                                          {"RipeMD-128", handle_ripemd128},
                                          {"RipeMD-160", handle_ripemd160},
                                          {"RipeMD-256", handle_ripemd256},
-                                         {"RipeMD-320", handle_ripemd320}};
+                                         {"RipeMD-320", handle_ripemd320},
+                                         {"whirlpool", handle_whirlpool}};
 #define NUM_HASH_HANDLERS (sizeof(hash_handlers) / sizeof(hash_handlers[0]))
 
 static int hashcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)

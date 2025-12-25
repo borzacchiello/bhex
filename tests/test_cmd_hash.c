@@ -30,7 +30,8 @@ int TEST(notkitty_all_hashes)(void)
     "    RipeMD-128 : b4563447abf7cc5d80e258002e470ec4\n"
     "    RipeMD-160 : b657ee770eb25c720381d8b64cf487a03e37e220\n"
     "    RipeMD-256 : 8814cc34336ccad19000c18d17aa98abb9c999566abed2e925f0e30205a816e2\n"
-    "    RipeMD-320 : d655786d8d1ffe7fd2695a481f20b0ba8e1cfd2f256ec315aefa2c2a640502b0c70abd87100611ce\n";
+    "    RipeMD-320 : d655786d8d1ffe7fd2695a481f20b0ba8e1cfd2f256ec315aefa2c2a640502b0c70abd87100611ce\n"
+    "     whirlpool : 8ff340018588ebb0603e53b187e42ff4d5e516bc45c0d7e12f84259fa4ce58be28119286fa189e1219d231eff0c638c0c5f3b8508a9885e92bcacb4d2cfec472\n";
     // clang-format on
 
     int r = TEST_FAILED;
@@ -69,7 +70,8 @@ int TEST(answer_to_universe_all_hashes)(void)
     "    RipeMD-128 : 4328ca16e9bfcb0302e30ba841524793\n"
     "    RipeMD-160 : ff500b620c1d880928f74fd2e0bdfc1dd0aa7d7e\n"
     "    RipeMD-256 : 10edc6a6dc7bac123572f53dfbb8f359b624d83ed00f0d7733137e913ed696ed\n"
-    "    RipeMD-320 : 5e81a7d551d8dd4365769817beea49b1a5db2a512aab654956406a7c5591cb9407d8e6170eb95ccb\n";
+    "    RipeMD-320 : 5e81a7d551d8dd4365769817beea49b1a5db2a512aab654956406a7c5591cb9407d8e6170eb95ccb\n"
+    "     whirlpool : 639273f566b49e8329bddb349a6218d9895be2b24e185b060dd0415a919c721636b86438495c72bd4c60659dbf4892b2b570c644beaee05df8764547cedca015\n";
     // clang-format on
 
     DummyFilebuffer* tfb =
@@ -112,7 +114,8 @@ int TEST(empty)(void)
     "    RipeMD-128 : cdf26213a150dc3ecb610f18f6b38b46\n"
     "    RipeMD-160 : 9c1185a5c5e9fc54612808977ee8f548b2258d31\n"
     "    RipeMD-256 : 02ba4c4e5f8ecd1877fc52d64d30e37a2d9774fb1e5d026380ae0168e3c5522d\n"
-    "    RipeMD-320 : 22d65d5661536cdc75c1fdf5c6de7b41b9f27325ebc61e8557177d705a0ec880151c3a32a00899b8\n";
+    "    RipeMD-320 : 22d65d5661536cdc75c1fdf5c6de7b41b9f27325ebc61e8557177d705a0ec880151c3a32a00899b8\n"
+    "     whirlpool : 19fa61d75522a4669b44e39c1d2e1726c530232130d407f89afee0964997f7a73e83be698b288febcf88e3e03c4f0757ea8964e59b63d93708b138cc42a66eb3\n";
     // clang-format on
 
     int r = TEST_FAILED;
@@ -233,7 +236,8 @@ int TEST(notkitty_with_size_1)(void)
     "    RipeMD-128 : 3ef49aa6285775057773a8ae8ef478ce\n"
     "    RipeMD-160 : c8297aad716979548921b2e8e26ca8f20061dbef\n"
     "    RipeMD-256 : d9143a5a5eb6508434090cff7e8037aa9a198feb5adf4854620e3d15cdd3f490\n"
-    "    RipeMD-320 : 18f1c6d1e1ff4c73efaf112dec5d798fb6c057b8c58992ceb0a7589dfe98abe86f25cac1bb514e2f\n";
+    "    RipeMD-320 : 18f1c6d1e1ff4c73efaf112dec5d798fb6c057b8c58992ceb0a7589dfe98abe86f25cac1bb514e2f\n"
+    "     whirlpool : 88bf39ce7a2c404a9e07967c238c4c1fb7aa721b60c31bc2dbd0958bb6d019cd3c5c1c7ec267e3e51792b9379cf55cc781f3b8fa0af530d07a37e291815a9923\n";
     // clang-format on
 
     int r = TEST_FAILED;
