@@ -1,5 +1,8 @@
+#include "dummy_filebuffer.h"
 #include "t_cmd_common.h"
 #include "t.h"
+
+#include "data/wide_strings.h"
 
 #ifndef TEST
 #define TEST(name) test_##name
@@ -9,11 +12,11 @@ int TEST(no_param_1)(void)
 {
     // clang-format off
     const char* expected =
-        " 0x0000001 @ ELF\n"
-        " 0x0000080 @ hello world\n"
-        " 0x000008D @ .shstrtab\n"
-        " 0x0000097 @ .text\n"
-        " 0x000009D @ .data\n";
+        " [A] 0x0000001 @ ELF\n"
+        " [A] 0x0000080 @ hello world\n"
+        " [A] 0x000008D @ .shstrtab\n"
+        " [A] 0x0000097 @ .text\n"
+        " [A] 0x000009D @ .data\n";
     // clang-format on
 
     int r = TEST_FAILED;
@@ -32,8 +35,8 @@ int TEST(min_len_1)(void)
 {
     // clang-format off
     const char* expected =
-        " 0x0000080 @ hello world\n"
-        " 0x000008D @ .shstrtab\n";
+        " [A] 0x0000080 @ hello world\n"
+        " [A] 0x000008D @ .shstrtab\n";
     // clang-format on
 
     int r = TEST_FAILED;
@@ -52,10 +55,10 @@ int TEST(null_terminated_1)(void)
 {
     // clang-format off
     const char* expected =
-        " 0x0000080 @ hello world\n"
-        " 0x000008D @ .shstrtab\n"
-        " 0x0000097 @ .text\n"
-        " 0x000009D @ .data\n";
+        " [A] 0x0000080 @ hello world\n"
+        " [A] 0x000008D @ .shstrtab\n"
+        " [A] 0x0000097 @ .text\n"
+        " [A] 0x000009D @ .data\n";
     // clang-format on
 
     int r = TEST_FAILED;
@@ -67,5 +70,53 @@ int TEST(null_terminated_1)(void)
     bhex_free(out);
 
 end:
+    return r;
+}
+
+int TEST(wide_strings)(void)
+{
+    // clang-format off
+    const char* expected =
+    " [W] 0x0000003 @ Hello, World!\n"
+    " [A] 0x0000022 @ Ciao Mondo\n"
+    " [W] 0x000002E @ Hola Mundo\n";
+    // clang-format on
+
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(wide_strings_data, sizeof(wide_strings_data));
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("strings", tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+}
+
+int TEST(wide_strings_null_terminated)(void)
+{
+    // clang-format off
+    const char* expected =
+    " [W] 0x0000003 @ Hello, World!\n";
+    // clang-format on
+
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(wide_strings_data, sizeof(wide_strings_data));
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("strings/n", tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
     return r;
 }
