@@ -148,7 +148,7 @@ search: search a string or a sequence of bytes in the file
      sk: seek to first match
      c:  print context
 
-  data: either a string or an hex string
+  what: either a string or an hex string
 ```
 
 ### Strings
@@ -174,12 +174,12 @@ enumerate the strings in the file (i.e., sequences of printable ascii characters
 
 hash: calculate the hash of <size> bytes at current offset + <off>
 
-  hash /l <algorithm> [<size> <off>]
+  hash /l <algorithm> [ <size> <off> ]
      l:  list the supported hashing algorithms
 
   algorithm: hashing algorithm (or '*' to use all supported algorithms)
-  size:      number of bytes to include in the hash (if omitted or zero, hash the whole file starting from current offset)
-  offset:    starting offset of the hashed file (if omitted, hash from current offset)
+  size: number of bytes to include in the hash (if omitted or zero, hash the whole file starting from current offset)
+  off:  starting offset wrt to current offset (default 0)
 
 [0x0000000] $ hh/l
 

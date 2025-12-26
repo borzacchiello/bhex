@@ -19,7 +19,7 @@
 
 #define LIST_SET 0
 
-#define HINT_STR "/l <algorithm> [<size> <off>]"
+#define HINT_STR "/l <algorithm> [ <size> <off> ]"
 #define HELP_STR                                                               \
     "hash: calculate the hash of <size> bytes at current offset + <off>\n"     \
     "\n"                                                                       \
@@ -28,10 +28,9 @@
     "\n"                                                                       \
     "  algorithm: hashing algorithm (or '*' to use all supported "             \
     "algorithms)\n"                                                            \
-    "  size:      number of bytes to include in the hash (if omitted or "      \
+    "  size: number of bytes to include in the hash (if omitted or "           \
     "zero, hash the whole file starting from current offset)\n"                \
-    "  offset:    starting offset of the hashed file (if omitted, hash "       \
-    "from current offset)\n"
+    "  off:  starting offset wrt to current offset (default 0)\n"
 
 typedef struct hash_handler_t {
     const char* name;

@@ -63,7 +63,7 @@ static void searchcmd_help(void* obj)
         "     sk: seek to first match\n"
         "     c:  print context\n"
         "\n"
-        "  data: either a string or an hex string\n");
+        "  what: either a string or an hex string\n");
 }
 
 static void populate_index(SearchCtx* ctx, FileBuffer* fb)
