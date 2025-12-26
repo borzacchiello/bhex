@@ -4,6 +4,7 @@
 
 #include "data/sample_squashfs.h"
 #include "data/sample_jpeg.h"
+#include "data/sample_png.h"
 #include "data/sample_zip.h"
 
 #ifndef TEST
@@ -1000,6 +1001,85 @@ int TEST(template_jpeg_1)(void)
         dummyfilebuffer_create(not_kitty_jpeg, sizeof(not_kitty_jpeg));
     ASSERT(tfb != NULL);
     ASSERT(exec_commands_on("t ./templates/jpeg.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_png_1)(void)
+{
+    // clang-format off
+    const char* expected = 
+    "b+00000000           signature: \n"
+    "b+00000000                      b0: 89\n"
+    "b+00000001                     png: 'PNG'\n"
+    "b+00000004                   other: 0d0a1a0a\n"
+    "b+00000008                ihdr: \n"
+    "b+00000008                  length: 0000000d\n"
+    "b+0000000c                    type: 'IHDR'\n"
+    "b+00000010                   width: 00000020\n"
+    "b+00000014                  height: 00000020\n"
+    "b+00000018               bit_depth: 08\n"
+    "b+00000019              color_type: 03\n"
+    "b+0000001a      compression_method: 00\n"
+    "b+0000001b           filter_method: 00\n"
+    "b+0000001c        interlace_method: 00\n"
+    "b+0000001d                     crc: 44a48ac6\n"
+    "b+00000021               chunk: \n"
+    "b+00000021                  length: 00000019\n"
+    "b+00000025                    type: 'tEXt'\n"
+    "b+00000029                    data: 536f6674776172650041646f62652049...\n"
+    "b+00000042                     crc: 71c9653c\n"
+    "b+00000046                plte: \n"
+    "b+00000046                  length: 0000000f\n"
+    "b+0000004a                    type: 'PLTE'\n"
+    "b+0000004e                 entries: [ \n"
+    "                   [0]\n"
+    "b+0000004e                           r: 66\n"
+    "b+0000004f                           g: cc\n"
+    "b+00000050                           b: cc\n"
+    "                   [1]\n"
+    "b+00000051                           r: ff\n"
+    "b+00000052                           g: ff\n"
+    "b+00000053                           b: ff\n"
+    "                   [2]\n"
+    "b+00000054                           r: 00\n"
+    "b+00000055                           g: 00\n"
+    "b+00000056                           b: 00\n"
+    "                   [3]\n"
+    "b+00000057                           r: 33\n"
+    "b+00000058                           g: 99\n"
+    "b+00000059                           b: 66\n"
+    "                   [4]\n"
+    "b+0000005a                           r: 99\n"
+    "b+0000005b                           g: ff\n"
+    "b+0000005c                           b: cc ]\n"
+    "b+0000005d                     crc: 3e4caf15\n"
+    "b+00000061                idat: \n"
+    "b+00000061                  length: 00000061\n"
+    "b+00000065                    type: 'IDAT'\n"
+    "b+00000069         compressed_data: 78dadc93310ec0200c039398ffbfb934...\n"
+    "b+000000ca                     crc: b0d7cb9a\n"
+    "b+000000ce                iend: \n"
+    "b+000000ce                  length: 00000000\n"
+    "b+000000d2                    type: 'IEND'\n"
+    "b+000000d6                     crc: ae426082\n";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(not_kitty_png, sizeof(not_kitty_png));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/png.bhe", tfb) == 0);
 
     char* out = strbuilder_reset(sb);
     r         = compare_strings_ignoring_X(expected, out);
