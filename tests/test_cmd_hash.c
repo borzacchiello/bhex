@@ -40,7 +40,6 @@ int TEST(notkitty_all_hashes)(void)
         goto end;
 
     char* out = strbuilder_reset(sb);
-    print_str(out);
     r         = compare_strings_ignoring_X(expected, out);
     bhex_free(out);
 
