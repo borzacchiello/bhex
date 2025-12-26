@@ -40,7 +40,28 @@ int TEST(min_len_1)(void)
     // clang-format on
 
     int r = TEST_FAILED;
-    if (exec_commands("strings 8") != 0)
+    if (exec_commands("strings * 8") != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    return r;
+}
+
+int TEST(pattern_1)(void)
+{
+    // clang-format off
+    const char* expected =
+    " [A] 0x000008D @ .shstrtab\n"
+    " [A] 0x0000097 @ .text\n"
+    " [A] 0x000009D @ .data\n";
+    // clang-format on
+
+    int r = TEST_FAILED;
+    if (exec_commands("strings .") != 0)
         goto end;
 
     char* out = strbuilder_reset(sb);
@@ -87,6 +108,53 @@ int TEST(wide_strings)(void)
 
     int r = TEST_FAILED;
     if (exec_commands_on("strings", tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+}
+
+int TEST(exclude_wide_strings)(void)
+{
+    // clang-format off
+    const char* expected =
+    " [A] 0x0000022 @ Ciao Mondo\n";
+    // clang-format on
+
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(wide_strings_data, sizeof(wide_strings_data));
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("strings/a", tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+}
+
+int TEST(exclude_8bit_strings)(void)
+{
+    // clang-format off
+    const char* expected =
+    " [W] 0x0000003 @ Hello, World!\n"
+    " [W] 0x000002E @ Hola Mundo\n";
+    // clang-format on
+
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(wide_strings_data, sizeof(wide_strings_data));
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("strings/w", tfb) != 0)
         goto end;
 
     char* out = strbuilder_reset(sb);

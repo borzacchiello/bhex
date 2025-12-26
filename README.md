@@ -83,6 +83,7 @@ Available commands:
     info [i]
     entropy [e]
     search [src]
+    hash [hh]
     crc [cr]
     strings [str]
     template [t]
@@ -155,12 +156,56 @@ search: search a string or a sequence of bytes in the file
 ```
 [0x0000000] $ str?
 
-enumerate the strings in the file (i.e., sequences of printable ascii characters)
+enumerate the strings in the file (i.e., sequences of printable ascii characters with 8 or 16 bits)
 
-  str[/n] [<num>]
+  str[/n/{a,w}] [ <pattern> <num> ]
      n: look for null-terminated strings
+     a: 8-bit only
+     w: 16-bit only
 
-  num: minimum length (default: 3)
+  pattern: print only strings that contains the pattern as substring (use * for any character)
+  num:     minimum length (default: 3)
+```
+
+### Hash
+
+```
+[0x0000000] $ hh?
+
+hash: calculate the hash of <size> bytes at current offset + <off>
+
+  hash /l <algorithm> [<size> <off>]
+     l:  list the supported hashing algorithms
+
+  algorithm: hashing algorithm (or '*' to use all supported algorithms)
+  size:      number of bytes to include in the hash (if omitted or zero, hash the whole file starting from current offset)
+  offset:    starting offset of the hashed file (if omitted, hash from current offset)
+
+[0x0000000] $ hh/l
+
+  md2
+  md4
+  md5
+  md6-128
+  md6-256
+  md6-384
+  md6-512
+  sha1
+  sha224
+  sha256
+  sha384
+  sha512
+  sha3-128
+  sha3-224
+  sha3-256
+  sha3-384
+  sha3-512
+  RipeMD-128
+  RipeMD-160
+  RipeMD-256
+  RipeMD-320
+  blake2s
+  blake2b
 ```
 
 ### Template
@@ -178,26 +223,16 @@ template: parse the file at current offset using a 'bhe' template file
 [0x0000000] $ t/l
 
 Available templates:
+  squashfs
   tar
-  pe
+  zip
+  jpeg
   elf
+  png
+  pe
+  rpm
 
-Available template structs:
-  tar.TarHeader
-  pe.IMAGE_NT_HEADERS
-  pe.IMAGE_OPTIONAL_HEADER32
-  pe.DATA_DIRECTORY_ARRAY
-  pe.IMAGE_DATA_DIRECTORY
-  pe.IMAGE_FILE_HEADER
-  pe.IMAGE_OPTIONAL_HEADER64
-  pe.IMAGE_SECTION_HEADER
-  pe.IMAGE_DOS_HEADER
-  elf.Elf64_Shdr
-  elf.Elf64_Phdr
-  elf.Elf32_Phdr
-  elf.Elf_Ehdr
-  elf.ElfIdent
-  elf.Elf32_Shdr
+...
 ```
 
 ### Seek
