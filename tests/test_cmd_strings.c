@@ -3,6 +3,7 @@
 #include "t.h"
 
 #include "data/wide_strings.h"
+#include "data/big_buffers.h"
 
 #ifndef TEST
 #define TEST(name) test_##name
@@ -178,6 +179,31 @@ int TEST(wide_strings_null_terminated)(void)
 
     int r = TEST_FAILED;
     if (exec_commands_on("strings/n", tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+}
+
+int TEST(sparse_strings)(void)
+{
+    // clang-format off
+    const char* expected =
+    " [A] 0x00003E8 @ Hello, World!\n"
+    " [A] 0x0001388 @ The answer is 42.\n"
+    " [W] 0x0002EE0 @ ciao\n";
+    // clang-format on
+
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sparse_strings, sizeof(sparse_strings));
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("strings", tfb) != 0)
         goto end;
 
     char* out = strbuilder_reset(sb);

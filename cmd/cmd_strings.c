@@ -13,8 +13,6 @@
 #define HINT_STR "[/n/{a,w}] [ <pattern> <num> ]"
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
-#define le16(p, off)                                                           \
-    (((u16_t)((u8_t*)(p))[off]) | ((u16_t)((u8_t*)(p))[off + 1] << 8))
 
 #define MODE_SELECTOR_ALL   3
 #define MODE_SELECTOR_ASCII 1
@@ -54,15 +52,16 @@ static int is_printable_ascii(u16_t v) { return v >= 0x20 && v <= 0x7e; }
 
 #define enlarge_app_if_needed(ctx, needed)                                     \
     do {                                                                       \
-        if ((ctx)->app_capacity - (needed) < 1) {                              \
-            while ((ctx)->app_capacity - (needed) < 1)                         \
+        if ((ctx)->app_capacity < (needed) + 1) {                              \
+            while ((ctx)->app_capacity < (needed) + 1)                         \
                 (ctx)->app_capacity *= 2;                                      \
             (ctx)->app = bhex_realloc((ctx)->app, (ctx)->app_capacity);        \
         }                                                                      \
     } while (0)
 
-#define seek_to_next_block_if_needed(ctx)                                      \
+#define advance_by_one(ctx)                                                    \
     do {                                                                       \
+        (ctx)->addr += 1;                                                      \
         if ((ctx)->addr % (ctx)->buf_size == 0) {                              \
             fb_seek((ctx)->fb, (ctx)->addr);                                   \
             (ctx)->buf_size =                                                  \
@@ -71,7 +70,18 @@ static int is_printable_ascii(u16_t v) { return v >= 0x20 && v <= 0x7e; }
         }                                                                      \
     } while (0)
 
-static void print_ascii_string(ProcessingCtx* ctx)
+#define retreat_by_one(ctx)                                                    \
+    do {                                                                       \
+        (ctx)->addr -= 1;                                                      \
+        if (((ctx)->addr + 1) % (ctx)->buf_size == 0) {                        \
+            fb_seek((ctx)->fb, (ctx)->addr);                                   \
+            (ctx)->buf_size =                                                  \
+                min(fb_block_size, (ctx)->fb->size - (ctx)->fb->off);          \
+            (ctx)->buf = fb_read((ctx)->fb, (ctx)->buf_size);                  \
+        }                                                                      \
+    } while (0)
+
+static int print_ascii_string(ProcessingCtx* ctx)
 {
     u64_t begin_addr = ctx->addr;
     u32_t app_off    = 0;
@@ -80,8 +90,8 @@ static void print_ascii_string(ProcessingCtx* ctx)
 
         enlarge_app_if_needed(ctx, app_off + 1);
         ctx->app[app_off++] = ctx->buf[ctx->addr % ctx->buf_size];
-        ctx->addr += 1;
-        seek_to_next_block_if_needed(ctx);
+
+        advance_by_one(ctx);
     }
     if (app_off >= ctx->min_length) {
         ctx->app[app_off] = 0;
@@ -90,36 +100,60 @@ static void print_ascii_string(ProcessingCtx* ctx)
              ctx->buf[ctx->addr % ctx->buf_size] == 0)) {
             if (ctx->pattern != NULL &&
                 strstr((char*)ctx->app, ctx->pattern) == NULL) {
-                return;
+                return 0;
             }
             display_printf(" [A] 0x%07llX @ %s\n", begin_addr, (char*)ctx->app);
+            return 1;
         }
     }
+    return 0;
 }
 
-static void print_wide_ascii_string(ProcessingCtx* ctx)
+static int print_wide_ascii_string(ProcessingCtx* ctx)
 {
     u64_t begin_addr = ctx->addr;
     u32_t app_off    = 0;
-    while (ctx->addr + 1 < ctx->fb->size &&
-           is_printable_ascii(le16(ctx->buf, ctx->addr % ctx->buf_size))) {
+    while (ctx->addr + 1 < ctx->fb->size) {
+        u16_t v = ctx->buf[ctx->addr % ctx->buf_size];
+        if (!is_printable_ascii(v)) {
+            break;
+        }
+
+        advance_by_one(ctx);
+        v |= ctx->buf[ctx->addr % ctx->buf_size] << 8;
+        if (!is_printable_ascii(v)) {
+            retreat_by_one(ctx);
+            break;
+        }
+
         enlarge_app_if_needed(ctx, app_off + 1);
-        ctx->app[app_off++] = le16(ctx->buf, ctx->addr % ctx->buf_size) & 0xFF;
-        ctx->addr += 2;
-        seek_to_next_block_if_needed(ctx);
+        ctx->app[app_off++] = v & 0xFF;
+
+        advance_by_one(ctx);
     }
     if (app_off >= ctx->min_length) {
         ctx->app[app_off] = 0;
-        if (!ctx->null_terminated ||
-            (ctx->null_terminated && ctx->addr + 1 < ctx->fb->size &&
-             le16(ctx->buf, ctx->addr % ctx->buf_size) == 0)) {
-            if (ctx->pattern != NULL &&
-                strstr((char*)ctx->app, ctx->pattern) == NULL) {
-                return;
+        if (ctx->null_terminated) {
+            u16_t v = 0;
+            if (ctx->addr + 1 >= ctx->fb->size) {
+                return 0;
             }
-            display_printf(" [W] 0x%07llX @ %s\n", begin_addr, (char*)ctx->app);
+            v = ctx->buf[ctx->addr % ctx->buf_size];
+            advance_by_one(ctx);
+            v |= ctx->buf[ctx->addr % ctx->buf_size] << 8;
+            retreat_by_one(ctx);
+            if (v != 0) {
+                return 0;
+            }
         }
+        if (ctx->pattern != NULL &&
+            strstr((char*)ctx->app, ctx->pattern) == NULL) {
+            return 0;
+        }
+        display_printf(" [W] 0x%07llX @ %s\n", begin_addr, (char*)ctx->app);
+        return 1;
     }
+    return 0;
 }
 
 static void print_strings(FileBuffer* fb, size_t min_length,
@@ -134,29 +168,28 @@ static void print_strings(FileBuffer* fb, size_t min_length,
                               .app             = bhex_malloc(min_length),
                               .app_capacity    = min_length,
                               .fb              = fb,
-                              .buf             = fb_read(fb, buf_size),
+                              .buf             = NULL,
                               .buf_size        = buf_size,
                               .addr            = 0,
                               .pattern         = pattern};
 
+    ctx.buf = fb_read(fb, buf_size);
+    if (ctx.buf == NULL) {
+        bhex_free(ctx.app);
+        fb_seek(fb, orig_off);
+        return;
+    }
+
     while (ctx.addr < fb->size) {
         if (mode_selector & MODE_SELECTOR_WIDE &&
-            is_printable_ascii(le16(ctx.buf, ctx.addr % ctx.buf_size))) {
-            print_wide_ascii_string(&ctx);
+            print_wide_ascii_string(&ctx)) {
             continue;
         }
-        if (mode_selector & MODE_SELECTOR_ASCII &&
-            is_printable_ascii(ctx.buf[ctx.addr % ctx.buf_size])) {
-            print_ascii_string(&ctx);
+        if (mode_selector & MODE_SELECTOR_ASCII && print_ascii_string(&ctx)) {
             continue;
         }
 
-        ctx.addr += 1;
-        if (ctx.addr % ctx.buf_size == 0) {
-            fb_seek(fb, ctx.addr);
-            ctx.buf_size = min(fb_block_size, fb->size - fb->off);
-            ctx.buf      = fb_read(fb, ctx.buf_size);
-        }
+        advance_by_one(&ctx);
     }
 
     bhex_free(ctx.app);

@@ -7,6 +7,7 @@
 
 static u8_t answer_to_universe[8000];
 static u8_t pseudo_random[8000];
+static u8_t sparse_strings[16000];
 
 static unsigned long int __rng_next = 1;
 
@@ -26,6 +27,20 @@ __attribute__((constructor)) static void __init_big_buffers(void)
     for (size_t i = 0; i < sizeof(pseudo_random); i++) {
         pseudo_random[i] = __rng_rand() % ('Z' - 'A' + 1) + 'A';
     }
+
+    memset(sparse_strings, 0, sizeof(sparse_strings));
+    memcpy(sparse_strings + 1000, "Hello, World!", 14);
+    memcpy(sparse_strings + 5000, "The answer is 42.", 17);
+    memcpy(sparse_strings + 12000,
+           "c"
+           "\x00"
+           "i"
+           "\x00"
+           "a"
+           "\x00"
+           "o"
+           "\x00",
+           8);
 }
 
 __attribute__((destructor)) static void __deinit_big_buffers(void) {}
