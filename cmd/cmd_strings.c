@@ -62,7 +62,7 @@ static int is_printable_ascii(u16_t v) { return v >= 0x20 && v <= 0x7e; }
 #define advance_by_one(ctx)                                                    \
     do {                                                                       \
         (ctx)->addr += 1;                                                      \
-        if ((ctx)->addr % (ctx)->buf_size == 0) {                              \
+        if ((ctx)->buf_size != 0 && (ctx)->addr % (ctx)->buf_size == 0) {      \
             fb_seek((ctx)->fb, (ctx)->addr);                                   \
             (ctx)->buf_size =                                                  \
                 min(fb_block_size, (ctx)->fb->size - (ctx)->fb->off);          \
@@ -73,7 +73,8 @@ static int is_printable_ascii(u16_t v) { return v >= 0x20 && v <= 0x7e; }
 #define retreat_by_one(ctx)                                                    \
     do {                                                                       \
         (ctx)->addr -= 1;                                                      \
-        if (((ctx)->addr + 1) % (ctx)->buf_size == 0) {                        \
+        if ((ctx)->buf_size != 0 &&                                            \
+            ((ctx)->addr + 1) % (ctx)->buf_size == 0) {                        \
             fb_seek((ctx)->fb, (ctx)->addr);                                   \
             (ctx)->buf_size =                                                  \
                 min(fb_block_size, (ctx)->fb->size - (ctx)->fb->off);          \
