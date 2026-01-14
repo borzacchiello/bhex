@@ -1,9 +1,20 @@
+#include "defs.h"
 #include "print.h"
 #include "endian.h"
 #include "byte_to_str.h"
 
 #include <display.h>
 #include <log.h>
+
+static u32_t get_addr_string_size(u64_t addr)
+{
+    u32_t size = 0;
+    do {
+        size += 1;
+        addr /= 16;
+    } while (addr != 0);
+    return size;
+}
 
 void print_ascii(const u8_t* bytes, size_t size, int print_footer)
 {
@@ -47,12 +58,16 @@ void print_hex(const u8_t* bytes, size_t size, int raw_mode, int print_header,
     if (row_width > 256 || row_width < 16)
         panic("print_hex(): row_width must be in [16,256]");
 
+    u32_t addr_off = get_addr_string_size(addr + size);
+    if (addr_off < 4)
+        addr_off = 4;
+
     if (!raw_mode && print_header) {
-        display_printf("       ");
+        display_printf(" %*s ", addr_off + 1, " ");
         for (int i = 0; i < block_size; i += 1) {
             display_printf("%02X ", i);
         }
-        display_printf("\n       ");
+        display_printf("\n %*s ", addr_off + 1, " ");
         for (int i = 0; i < block_size - 1; i += 1) {
             display_printf("---");
         }
@@ -62,7 +77,7 @@ void print_hex(const u8_t* bytes, size_t size, int raw_mode, int print_header,
     size_t off = 0;
     while (off < size) {
         if (!raw_mode)
-            display_printf(" %04llx: ", (u64_t)off + addr);
+            display_printf(" %.*llx: ", addr_off, (u64_t)off + addr);
         int i;
         for (i = 0; i < block_size; ++i) {
             if (!raw_mode) {
@@ -101,14 +116,19 @@ void print_words(const u8_t* bytes, size_t size, int little_endian,
     int block_size = row_width;
     if (row_width > 256 || row_width < 16 || row_width % 2 != 0)
         panic("print_words(): row_width must be in [16,256] and must be a "
-              "multiple of 2 [%d]", row_width);
+              "multiple of 2 [%d]",
+              row_width);
+
+    u32_t addr_off = get_addr_string_size(addr + size);
+    if (addr_off < 4)
+        addr_off = 4;
 
     if (!raw_mode && print_header) {
-        display_printf("       ");
+        display_printf(" %*s ", addr_off + 1, " ");
         for (int i = 0; i < block_size; i += 2) {
             display_printf("%02X    ", i);
         }
-        display_printf("\n       ");
+        display_printf("\n %*s ", addr_off + 1, " ");
         for (int i = 0; i < block_size - 2; i += 2) {
             display_printf("------");
         }
@@ -118,7 +138,7 @@ void print_words(const u8_t* bytes, size_t size, int little_endian,
     size_t off = 0;
     while (off < size) {
         if (!raw_mode)
-            display_printf(" %04llx: ", (u64_t)off + addr);
+            display_printf(" %.*llx: ", addr_off, (u64_t)off + addr);
         int i;
         for (i = 0; i < block_size; i += 2) {
             if (off + i + 1 >= size)
@@ -147,12 +167,16 @@ void print_dwords(const u8_t* bytes, size_t size, int little_endian,
         panic("print_dwords(): width must be in [16,256] and must be a "
               "multiple of 4");
 
+    u32_t addr_off = get_addr_string_size(addr + size);
+    if (addr_off < 4)
+        addr_off = 4;
+
     if (!raw_mode && print_header) {
-        display_printf("       ");
+        display_printf(" %*s ", addr_off + 1, " ");
         for (int i = 0; i < block_size; i += 4) {
             display_printf("%02X        ", i);
         }
-        display_printf("\n       ");
+        display_printf("\n %*s ", addr_off + 1, " ");
         for (int i = 0; i < block_size - 4; i += 4) {
             display_printf("----------");
         }
@@ -162,7 +186,7 @@ void print_dwords(const u8_t* bytes, size_t size, int little_endian,
     size_t off = 0;
     while (off < size) {
         if (!raw_mode)
-            display_printf(" %04llx: ", (u64_t)off + addr);
+            display_printf(" %.*llx: ", addr_off, (u64_t)off + addr);
         int i;
         for (i = 0; i < block_size; i += 4) {
             if (off + i + 3 >= size)
@@ -191,12 +215,16 @@ void print_qwords(const u8_t* bytes, size_t size, int little_endian,
         panic("print_qwords(): row_width must be in [16,256] and must be a "
               "multiple of 8");
 
+    u32_t addr_off = get_addr_string_size(addr + size);
+    if (addr_off < 4)
+        addr_off = 4;
+
     if (!raw_mode && print_header) {
-        display_printf("       ");
+        display_printf(" %*s ", addr_off + 1, " ");
         for (int i = 0; i < block_size; i += 8) {
             display_printf("%02X                ", i);
         }
-        display_printf("\n       ");
+        display_printf("\n %*s ", addr_off + 1, " ");
         for (int i = 0; i < block_size - 8; i += 8) {
             display_printf("------------------");
         }
@@ -206,7 +234,7 @@ void print_qwords(const u8_t* bytes, size_t size, int little_endian,
     size_t off = 0;
     while (off < size) {
         if (!raw_mode)
-            display_printf(" %04llx: ", (u64_t)off + addr);
+            display_printf(" %.*llx: ", addr_off, (u64_t)off + addr);
         int i;
         for (i = 0; i < block_size; i += 8) {
             if (off + i + 7 >= size)

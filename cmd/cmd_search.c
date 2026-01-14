@@ -70,6 +70,16 @@ static int search_cb(FileBuffer* fb, u64_t match_addr, const u8_t* match,
         print_addr_end   = print_addr_end + CONTEXT_PRINT_RANGE >= fb->size
                                ? fb->size
                                : print_addr_end + CONTEXT_PRINT_RANGE;
+        if ((print_addr_end - print_addr_begin + 1) % CONTEXT_PRINT_RANGE !=
+            0) {
+            u64_t rem = CONTEXT_PRINT_RANGE -
+                        ((print_addr_end - print_addr_begin + 1) %
+                         CONTEXT_PRINT_RANGE) +
+                        1;
+            print_addr_end = print_addr_end + rem >= fb->size
+                                 ? fb->size
+                                 : print_addr_end + rem;
+        }
 
         fb_seek(fb, print_addr_begin);
         const u8_t* data_to_print =
@@ -107,9 +117,8 @@ static int searchcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     }
 
     SearchContext ctx = {
-        .first_match = 1,
-        .seek_to_match =
-            seek_to_match == SEEK_TO_MATCH_UNSET ? 0 : 1,
+        .first_match   = 1,
+        .seek_to_match = seek_to_match == SEEK_TO_MATCH_UNSET ? 0 : 1,
         .print_context = print_context == PRINT_CTX_UNSET ? 0 : 1,
         .seek_addr     = 0,
     };
