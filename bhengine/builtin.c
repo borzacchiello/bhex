@@ -485,8 +485,36 @@ static BHEngineValue* builtin_fwd(InterpreterContext* ctx, DList* params)
     }
 
     if (fb_seek(ctx->fb, param_u64 + ctx->fb->off) != 0) {
-        bhengine_raise_exception(ctx, "unable to fwd to offset '%lld'",
-                                 param_u64);
+        bhengine_raise_exception(
+            ctx, "fwd: unable to go forward by '%llu' bytes", param_u64);
+        return NULL;
+    }
+    return NULL;
+}
+
+static BHEngineValue* builtin_bwd(InterpreterContext* ctx, DList* params)
+{
+    if (!params || params->size != 1) {
+        bhengine_raise_exception(ctx, "bwd: expected a parameter");
+        return NULL;
+    }
+
+    BHEngineValue* param = params->data[0];
+    u64_t          param_u64;
+    if (BHEngineValue_as_u64(ctx, param, &param_u64) != 0) {
+        bhengine_raise_exception(ctx, "bwd: expected an uint parameter");
+        return NULL;
+    }
+
+    if (param_u64 > ctx->fb->off) {
+        bhengine_raise_exception(
+            ctx, "bwd: '%lld' is greater that current offset", param_u64);
+        return NULL;
+    }
+
+    if (fb_seek(ctx->fb, ctx->fb->off - param_u64) != 0) {
+        bhengine_raise_exception(
+            ctx, "bwd: unable to go backwards by '%llu' bytes", param_u64);
         return NULL;
     }
     return NULL;
@@ -698,6 +726,7 @@ static BHEngineBuiltinFunc builtin_funcs[] = {
     {"enable_print", builtin_enable_print},
     {"seek", builtin_seek},
     {"fwd", builtin_fwd},
+    {"bwd", builtin_bwd},
     {"off", builtin_off},
     {"size", builtin_size},
     {"remaining_size", builtin_remaining_size},

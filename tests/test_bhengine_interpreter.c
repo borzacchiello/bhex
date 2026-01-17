@@ -2943,3 +2943,276 @@ fail:
     r = TEST_FAILED;
     goto end;
 }
+
+int TEST(fwd_1)(void)
+{
+    const char* prog = "proc { "
+                       "    local a = off();"
+                       "    fwd(10);"
+                       "    a = off() - a;"
+                       "}";
+
+    int    r     = TEST_SUCCEEDED;
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    ASSERT(scope != NULL);
+    BHEngineValue* v = Scope_get_local(scope, "a");
+    ASSERT_TENGINE_UNUM_EQ(v, 10);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(fwd_2)(void)
+{
+    // clang-format off
+    const char* expected =
+    "[  ERROR  ] 001: proc {     fwd(99999999);}\n"
+    "[  ERROR  ]      _______________________^\n"
+    "[  ERROR  ] Exception @ line 1, col 24 > fwd: unable to go forward by '99999999' bytes\n";
+    // clang-format on
+
+    const char* prog = "proc { "
+                       "    fwd(99999999);"
+                       "}";
+    char*       out  = NULL;
+
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    ASSERT(scope == NULL);
+
+    int r = TEST_SUCCEEDED;
+    out   = strbuilder_reset(err_sb);
+    ASSERT(compare_strings_ignoring_X(expected, out));
+
+end:
+    bhex_free(out);
+    if (scope)
+        Scope_free(scope);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(fwd_3)(void)
+{
+    // clang-format off
+    const char* expected =
+    "[  ERROR  ] 001: proc {     fwd(\"abc\");}\n"
+    "[  ERROR  ]      ____________________^\n"
+    "[  ERROR  ] Exception @ line 1, col 21 > string is not a numeric type, fwd: expected an uint parameter\n";
+    // clang-format on
+
+    const char* prog = "proc { "
+                       "    fwd(\"abc\");"
+                       "}";
+    char*       out  = NULL;
+
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    ASSERT(scope == NULL);
+
+    int r = TEST_SUCCEEDED;
+    out   = strbuilder_reset(err_sb);
+    ASSERT(compare_strings_ignoring_X(expected, out));
+
+end:
+    bhex_free(out);
+    if (scope)
+        Scope_free(scope);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(fwd_4)(void)
+{
+    // clang-format off
+    const char* expected =
+    "[  ERROR  ] 001: proc {     fwd();}\n"
+    "[  ERROR  ]      _______________^\n"
+    "[  ERROR  ] Exception @ line 1, col 16 > fwd: expected a parameter\n";
+    // clang-format on
+
+    const char* prog = "proc { "
+                       "    fwd();"
+                       "}";
+    char*       out  = NULL;
+
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    ASSERT(scope == NULL);
+
+    int r = TEST_SUCCEEDED;
+    out   = strbuilder_reset(err_sb);
+    ASSERT(compare_strings_ignoring_X(expected, out));
+
+end:
+    bhex_free(out);
+    if (scope)
+        Scope_free(scope);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(fwd_5)(void)
+{
+    // clang-format off
+    const char* expected =
+    "[  ERROR  ] 001: proc {     fwd(-10);}\n"
+    "[  ERROR  ]      __________________^\n"
+    "[  ERROR  ] Exception @ line 1, col 19 > fwd: unable to go forward by '18446744073709551606' bytes\n";
+    // clang-format on
+
+    const char* prog = "proc { "
+                       "    fwd(-10);"
+                       "}";
+    char*       out  = NULL;
+
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    ASSERT(scope == NULL);
+
+    int r = TEST_SUCCEEDED;
+    out   = strbuilder_reset(err_sb);
+    ASSERT(compare_strings_ignoring_X(expected, out));
+
+end:
+    bhex_free(out);
+    if (scope)
+        Scope_free(scope);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(bwd_1)(void)
+{
+    const char* prog = "proc { "
+                       "    seek(10);"
+                       "    local a = off();"
+                       "    bwd(10);"
+                       "    a = a - off();"
+                       "}";
+
+    int    r     = TEST_SUCCEEDED;
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    ASSERT(scope != NULL);
+    BHEngineValue* v = Scope_get_local(scope, "a");
+    ASSERT_TENGINE_UNUM_EQ(v, 10);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(bwd_2)(void)
+{
+    // clang-format off
+    const char* expected =
+    "[  ERROR  ] 001: proc {     bwd();}\n"
+    "[  ERROR  ]      _______________^\n"
+    "[  ERROR  ] Exception @ line 1, col 16 > bwd: expected a parameter\n";
+    // clang-format on
+
+    const char* prog = "proc { "
+                       "    bwd();"
+                       "}";
+    char*       out  = NULL;
+
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    ASSERT(scope == NULL);
+
+    int r = TEST_SUCCEEDED;
+    out   = strbuilder_reset(err_sb);
+    ASSERT(compare_strings_ignoring_X(expected, out));
+
+end:
+    bhex_free(out);
+    if (scope)
+        Scope_free(scope);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(bwd_3)(void)
+{
+    // clang-format off
+    const char* expected =
+    "[  ERROR  ] 001: proc {     bwd(\"\");}\n"
+    "[  ERROR  ]      _________________^\n"
+    "[  ERROR  ] Exception @ line 1, col 18 > string is not a numeric type, bwd: expected an uint parameter\n";
+    // clang-format on
+
+    const char* prog = "proc { "
+                       "    bwd(\"\");"
+                       "}";
+    char*       out  = NULL;
+
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    ASSERT(scope == NULL);
+
+    int r = TEST_SUCCEEDED;
+    out   = strbuilder_reset(err_sb);
+    ASSERT(compare_strings_ignoring_X(expected, out));
+
+end:
+    bhex_free(out);
+    if (scope)
+        Scope_free(scope);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(bwd_4)(void)
+{
+    // clang-format off
+    const char* expected =
+    "[  ERROR  ] 001: proc {     bwd(10);}\n"
+    "[  ERROR  ]      _________________^\n"
+    "[  ERROR  ] Exception @ line 1, col 18 > bwd: '10' is greater that current offset\n";
+    // clang-format on
+
+    const char* prog = "proc { "
+                       "    bwd(10);"
+                       "}";
+    char*       out  = NULL;
+
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    ASSERT(scope == NULL);
+
+    int r = TEST_SUCCEEDED;
+    out   = strbuilder_reset(err_sb);
+    ASSERT(compare_strings_ignoring_X(expected, out));
+
+end:
+    bhex_free(out);
+    if (scope)
+        Scope_free(scope);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}

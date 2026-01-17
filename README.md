@@ -19,7 +19,7 @@ Minimalistic and lightweight shell-based hex editor. It’s designed to have a l
 - Undo writes until committed.
 - Enumerate (ASCII) strings.
 - Search strings or binary data.
-- Execute template files using a custom language (bhe), located in the `templates/` subdirectory.
+- Execute template files using a custom language (bhe), see examples in the `templates/` subdirectory.
 - Disassemble opcodes (using Capstone).
 - Assemble opcodes (using Keystone).
 

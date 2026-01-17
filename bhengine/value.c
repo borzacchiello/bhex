@@ -538,7 +538,7 @@ int BHEngineValue_as_u64(InterpreterContext* ctx, const BHEngineValue* v,
         case TENGINE_WSTRING:
         case TENGINE_STRING:
         case TENGINE_OBJ:
-            bhengine_raise_exception(ctx, "%s not a numeric type",
+            bhengine_raise_exception(ctx, "%s is not a numeric type",
                                      type_to_string(v->t));
             return 1;
         default:
@@ -590,7 +590,7 @@ int BHEngineValue_as_s64(InterpreterContext* ctx, const BHEngineValue* v,
         case TENGINE_STRING:
         case TENGINE_WSTRING:
         case TENGINE_OBJ:
-            bhengine_raise_exception(ctx, "%s not a numeric type",
+            bhengine_raise_exception(ctx, "%s is not a numeric type",
                                      type_to_string(v->t));
             return 1;
         default:
