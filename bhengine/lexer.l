@@ -67,6 +67,7 @@ __attribute__((destructor)) static void delete_yy_bufs(void)
 "proc"                  { handle_token; return TPROC; }
 "local"                 { handle_token; return TLOCAL; }
 "break"                 { handle_token; return TBREAK; }
+"return"                { handle_token; return TRETURN; }
 "struct"                { handle_token; return TSTRUCT; }
 "enum"                  { handle_token; return TENUM; }
 "orenum"                { handle_token; return TORENUM; }

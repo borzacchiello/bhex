@@ -680,6 +680,13 @@ Stmt* Stmt_BREAK_new(void)
     return stmt;
 }
 
+Stmt* Stmt_RETURN_new(void)
+{
+    Stmt* stmt = bhex_calloc(sizeof(Stmt));
+    stmt->t    = STMT_RETURN;
+    return stmt;
+}
+
 static void FILE_VAR_DECL_free(Stmt* stmt)
 {
     Type_free(stmt->type);
@@ -737,6 +744,7 @@ void Stmt_free(Stmt* stmt)
             STMT_IF_ELIF_ELSE_free(stmt);
             break;
         case STMT_BREAK:
+        case STMT_RETURN:
             break;
         default:
             panic("unknown stmt type %d", stmt->t);
@@ -814,6 +822,9 @@ void Stmt_pp(Stmt* stmt)
             break;
         case STMT_BREAK:
             printf("break;");
+            break;
+        case STMT_RETURN:
+            printf("return;");
             break;
         default:
             panic("unknown stmt type %d", stmt->t);

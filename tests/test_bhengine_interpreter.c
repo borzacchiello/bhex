@@ -1527,9 +1527,11 @@ int TEST(while_3)(void)
     if (scope == NULL)
         return 0;
 
-    int            r = 0;
-    BHEngineValue* v = Scope_get_local(scope, "b");
-    IS_TENGINE_SNUM_EQ(r, v, 6);
+    int            r  = 0;
+    BHEngineValue* vb = Scope_get_local(scope, "b");
+    IS_TENGINE_SNUM_EQ(r, vb, 6);
+    BHEngineValue* va = Scope_get_local(scope, "a");
+    IS_TENGINE_SNUM_EQ(r, va, 3);
 
 end:
     Scope_free(scope);
@@ -1565,13 +1567,13 @@ end:
     return r;
 }
 
-int TEST(invalid_break)(void)
+int TEST(invalid_break_1)(void)
 {
     // clang-format off
     const char* expected =
-        "[  ERROR  ] 001: proc {   break;}\n"
-        "[  ERROR  ]      _________^\n"
-        "[  ERROR  ] Exception @ line 1, col 10 > unexpected break\n";
+    "[  ERROR  ] 001: proc {   break;}\n"
+    "[  ERROR  ]      _________^\n"
+    "[  ERROR  ] Exception @ line 1, col 10 > unexpected break\n";
     // clang-format on
 
     const char* prog = "proc { "
@@ -1587,6 +1589,247 @@ int TEST(invalid_break)(void)
     ASSERT(compare_strings_ignoring_X(expected, out));
 
 end:
+    if (scope != NULL)
+        Scope_free(scope);
+    if (out)
+        bhex_free(out);
+    return r;
+
+fail:
+    r = 0;
+    goto end;
+}
+
+int TEST(invalid_break_2)(void)
+{
+    // clang-format off
+    const char* expected =
+    "[  ERROR  ] 001: fn func() { break; }proc {   local i = 0;  while (i < 10) {    func();    i = i + 1;  }}\n"
+    "[  ERROR  ]      ____________^\n"
+    "[  ERROR  ] Exception @ line 1, col 13 > unexpected break\n";
+    // clang-format on
+
+    const char* prog = "fn func() { break; }"
+                       "proc { "
+                       "  local i = 0;"
+                       "  while (i < 10) {"
+                       "    func();"
+                       "    i = i + 1;"
+                       "  }"
+                       "}";
+
+    int    r     = 1;
+    char*  out   = NULL;
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    ASSERT(scope == NULL);
+
+    out = strbuilder_reset(err_sb);
+    ASSERT(compare_strings_ignoring_X(expected, out));
+
+end:
+    if (scope != NULL)
+        Scope_free(scope);
+    if (out)
+        bhex_free(out);
+    return r;
+
+fail:
+    r = 0;
+    goto end;
+}
+
+int TEST(invalid_break_3)(void)
+{
+    // clang-format off
+    const char* expected =
+    "[  ERROR  ] 001: struct A { u8 v; break; }proc {   local i = 0;  while (i < 10) {    A a;    i = i + 1;  }}\n"
+    "[  ERROR  ]      _________________^\n"
+    "[  ERROR  ] Exception @ line 1, col 18 > unexpected break, error while processing A\n";
+    // clang-format on
+
+    const char* prog = "struct A { u8 v; break; }"
+                       "proc { "
+                       "  local i = 0;"
+                       "  while (i < 10) {"
+                       "    A a;"
+                       "    i = i + 1;"
+                       "  }"
+                       "}";
+
+    int    r     = 1;
+    char*  out   = NULL;
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    ASSERT(scope == NULL);
+
+    out = strbuilder_reset(err_sb);
+    ASSERT(compare_strings_ignoring_X(expected, out));
+
+end:
+    if (scope != NULL)
+        Scope_free(scope);
+    if (out)
+        bhex_free(out);
+    return r;
+
+fail:
+    r = 0;
+    goto end;
+}
+
+int TEST(invalid_break_4)(void)
+{
+    // clang-format off
+    const char* expected =
+    "[  ERROR  ] 001: fn func() { break; }proc {   local i = 0;  local a = 0;  while (i < 10) {    a = a + func();    i = i + 1;  }}\n"
+    "[  ERROR  ]      ____________^\n"
+    "[  ERROR  ] Exception @ line 1, col 13 > unexpected break\n";
+    // clang-format on
+
+    const char* prog = "fn func() { break; }"
+                       "proc { "
+                       "  local i = 0;"
+                       "  local a = 0;"
+                       "  while (i < 10) {"
+                       "    a = a + func();"
+                       "    i = i + 1;"
+                       "  }"
+                       "}";
+
+    int    r     = 1;
+    char*  out   = NULL;
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    ASSERT(scope == NULL);
+
+    out = strbuilder_reset(err_sb);
+    ASSERT(compare_strings_ignoring_X(expected, out));
+
+end:
+    if (scope != NULL)
+        Scope_free(scope);
+    if (out)
+        bhex_free(out);
+    return r;
+
+fail:
+    r = 0;
+    goto end;
+}
+
+int TEST(return_1)(void)
+{
+    const char* prog = "fn f(a) {"
+                       "   result = 0;"
+                       "   if (a == 0) { return; }"
+                       "   result = a + 10;"
+                       "}"
+                       "proc { "
+                       "  local a = 0;"
+                       "  a = a + f(0);"
+                       "  a = a + f(1);"
+                       "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    if (scope == NULL)
+        return 0;
+
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "a");
+    IS_TENGINE_SNUM_EQ(r, v, 11);
+
+end:
+    Scope_free(scope);
+    return r;
+}
+
+int TEST(return_2)(void)
+{
+    const char* prog = "fn bar(a) {"
+                       "   result = 0;"
+                       "   if (a == 0) { return; }"
+                       "   result = a + 10;"
+                       "}"
+                       "fn foo(a) {"
+                       "   result = a + bar(a);"
+                       "   result = result + 8;"
+                       "}"
+                       "proc { "
+                       "  local a = 0;"
+                       "  a = a + foo(0);"
+                       "  a = a + foo(1);"
+                       "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    if (scope == NULL)
+        return 0;
+
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "a");
+    IS_TENGINE_SNUM_EQ(r, v, 28);
+
+end:
+    Scope_free(scope);
+    return r;
+}
+
+int TEST(invalid_return_1)(void)
+{
+    // clang-format off
+    const char* expected =
+    "[  ERROR  ] 001: proc {   return;}\n"
+    "[  ERROR  ]      _________^\n"
+    "[  ERROR  ] Exception @ line 1, col 10 > unexpected return\n";
+    // clang-format on
+
+    const char* prog = "proc { "
+                       "  return;"
+                       "}";
+
+    int    r     = 1;
+    char*  out   = NULL;
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    ASSERT(scope == NULL);
+
+    out = strbuilder_reset(err_sb);
+    ASSERT(compare_strings_ignoring_X(expected, out));
+
+end:
+    if (scope != NULL)
+        Scope_free(scope);
+    if (out)
+        bhex_free(out);
+    return r;
+
+fail:
+    r = 0;
+    goto end;
+}
+
+int TEST(invalid_return_2)(void)
+{
+    // clang-format off
+    const char* expected =
+    "[  ERROR  ] 001: struct A { return; }fn foo() { A a; }proc {   foo();}\n"
+    "[  ERROR  ]      ___________^\n"
+    "[  ERROR  ] Exception @ line 1, col 12 > unexpected return, error while processing A\n";
+    // clang-format on
+
+    const char* prog = "struct A { return; }"
+                       "fn foo() { A a; }"
+                       "proc { "
+                       "  foo();"
+                       "}";
+
+    int    r     = 1;
+    char*  out   = NULL;
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    ASSERT(scope == NULL);
+
+    out = strbuilder_reset(err_sb);
+    ASSERT(compare_strings_ignoring_X(expected, out));
+
+end:
+    if (scope != NULL)
+        Scope_free(scope);
     if (out)
         bhex_free(out);
     return r;

@@ -59,7 +59,7 @@ int TEST(use_non_existent_struct_of_another_file)(void)
         "[  ERROR  ] no such template file 'abcdefg'\n"
         "[  ERROR  ] 001: proc { abcdefg#abc a; }\n"
         "[  ERROR  ]      ____________________^\n"
-        "[  ERROR  ] Exception @ line 1, col 21 > error while parsing abc\n";
+        "[  ERROR  ] Exception @ line 1, col 21 > error while processing abc\n";
     // clang-format on
 
     int         r  = TEST_FAILED;

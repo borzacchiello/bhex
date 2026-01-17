@@ -25,9 +25,10 @@ typedef struct InterpreterContext {
     Endianess             endianess;
     Stmt*                 curr_stmt;
     InterpreterException* exc;
-    int                   break_allowed;
-    int                   halt;    // halt the execution (exception or exit)
-    int                   breaked; // break in a loop
+
+    int break_allowed, return_allowed;
+    int breaked, returned;
+    int halt; // halt the execution (exception or exit)
 } InterpreterContext;
 
 void bhengine_interpreter_set_fmt_type(fmt_t t);

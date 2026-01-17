@@ -191,7 +191,7 @@ static BHEngineValue* process_type(InterpreterContext* ctx, const char* varname,
         return v;
     }
 
-    bhengine_raise_exception(ctx, "error while parsing %s", type->name);
+    bhengine_raise_exception(ctx, "error while processing %s", type->name);
     return NULL;
 }
 
@@ -199,10 +199,14 @@ static BHEngineValue* handle_function_call(InterpreterContext* ctx,
                                            Function* fn, DList* params_exprs,
                                            Scope* caller_scope)
 {
-    BHEngineValue* result           = NULL;
-    Scope*         fn_scope         = NULL;
-    int            saved_quiet_mode = ctx->fmt->quiet_mode;
-    int            saved_endianess  = ctx->endianess;
+    BHEngineValue* result               = NULL;
+    Scope*         fn_scope             = NULL;
+    int            saved_quiet_mode     = ctx->fmt->quiet_mode;
+    int            saved_endianess      = ctx->endianess;
+    int            saved_break_allowed  = ctx->break_allowed;
+    int            saved_return_allowed = ctx->return_allowed;
+    ctx->break_allowed                  = 0;
+    ctx->return_allowed                 = 1;
 
     u64_t nparams         = params_exprs ? params_exprs->size : 0;
     u64_t expected_params = fn->params ? fn->params->size : 0;
@@ -223,10 +227,14 @@ static BHEngineValue* handle_function_call(InterpreterContext* ctx,
 
     if (process_stmts_no_exc(ctx, fn->block->stmts, fn_scope) != 0)
         goto end;
+    if (ctx->returned)
+        ctx->returned = 0;
     result   = Scope_free_and_get_result(fn_scope);
     fn_scope = NULL;
 
 end:
+    ctx->break_allowed  = saved_break_allowed;
+    ctx->return_allowed = saved_return_allowed;
     if (fn_scope)
         Scope_free(fn_scope);
     ctx->fmt->quiet_mode = saved_quiet_mode;
@@ -676,7 +684,8 @@ static int process_array_type(InterpreterContext* ctx, const char* varname,
         fmt_notify_array_el(ctx->fmt, i);
         map* custom_type_vars = process_struct_type(ctx, type);
         if (custom_type_vars == NULL) {
-            bhengine_raise_exception(ctx, "error while parsing %s", type->name);
+            bhengine_raise_exception(ctx, "error while processing %s",
+                                     type->name);
             BHEngineValue_free(*oval);
             *oval = NULL;
             return 1;
@@ -705,6 +714,11 @@ char* get_type_name(Stmt* v)
 static int process_FILE_VAR_DECL(InterpreterContext* ctx, Stmt* stmt,
                                  Scope* scope)
 {
+    int ret                  = 0;
+    int saved_break_allowed  = ctx->break_allowed;
+    int saved_return_allowed = ctx->return_allowed;
+    ctx->break_allowed = ctx->return_allowed = 0;
+
     char* ty_name = get_type_name(stmt);
     fmt_start_var(ctx->fmt, stmt->name, ty_name,
                   ctx->fb->off - ctx->initial_off);
@@ -713,20 +727,28 @@ static int process_FILE_VAR_DECL(InterpreterContext* ctx, Stmt* stmt,
         // Not an array
         BHEngineValue* val = process_type(ctx, stmt->name, stmt->type, scope);
         if (val == NULL)
-            return 1;
+            goto fail;
         Scope_add_filevar(scope, stmt->name, val);
     } else {
         // Array type
         BHEngineValue* val = NULL;
         if (process_array_type(ctx, stmt->name, stmt->type, stmt->arr_size,
                                scope, &val) != 0)
-            return 1;
+            goto fail;
         if (!val)
             panic("[tengine] process_array_type did not valorize an array");
         Scope_add_filevar(scope, stmt->name, val);
     }
     fmt_end_var(ctx->fmt, stmt->name);
-    return 0;
+
+end:
+    ctx->break_allowed  = saved_break_allowed;
+    ctx->return_allowed = saved_return_allowed;
+    return ret;
+
+fail:
+    ret = 1;
+    goto end;
 }
 
 static int process_LOCAL_VAR_DECL(InterpreterContext* ctx, Stmt* stmt,
@@ -886,6 +908,14 @@ static int process_stmt(InterpreterContext* ctx, Stmt* stmt, Scope* scope)
             ctx->breaked = 1;
             ret          = 0;
             break;
+        case STMT_RETURN:
+            if (!ctx->return_allowed) {
+                bhengine_raise_exception(ctx, "unexpected return");
+                break;
+            }
+            ctx->returned = 1;
+            ret           = 0;
+            break;
         default: {
             bhengine_raise_exception(ctx, "invalid stmt type %d", stmt->t);
             break;
@@ -903,7 +933,7 @@ static int process_stmts_no_exc(InterpreterContext* ctx, DList* stmts,
         Stmt* stmt = (Stmt*)stmts->data[i];
         if (process_stmt(ctx, stmt, scope) != 0)
             return 1;
-        if (ctx->halt || ctx->breaked)
+        if (ctx->halt || ctx->breaked || ctx->returned)
             return 0;
     }
     return 0;
