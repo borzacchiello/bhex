@@ -846,31 +846,33 @@ static int process_STMT_IF_ELIF_ELSE(InterpreterContext* ctx, Stmt* stmt,
 static int process_STMT_WHILE(InterpreterContext* ctx, Stmt* stmt, Scope* scope)
 {
     // TODO: same problem WRT STMT_IF
+    int ret                 = 0;
+    int saved_break_allowed = ctx->break_allowed;
+    ctx->break_allowed      = 1;
 
     u64_t cond;
     if (eval_to_u64(ctx, scope, stmt->cond, &cond) != 0)
-        return 1;
+        goto fail;
 
-    int ret            = 1;
     ctx->break_allowed = 1;
     while (cond != 0) {
         DList* stmts = stmt->body->stmts;
-        if (process_stmts_no_exc(ctx, stmts, scope) != 0) {
-            ctx->break_allowed = 0;
+        if (process_stmts_no_exc(ctx, stmts, scope) != 0)
+            goto fail;
+        if (ctx->breaked || ctx->halt)
             goto end;
-        }
-        if (ctx->breaked) {
-            ctx->breaked = 0;
-            break;
-        }
         if (eval_to_u64(ctx, scope, stmt->cond, &cond) != 0)
-            goto end;
+            goto fail;
     }
-    ret = 0;
 
 end:
-    ctx->break_allowed = 0;
+    ctx->breaked       = 0;
+    ctx->break_allowed = saved_break_allowed;
     return ret;
+
+fail:
+    ret = 1;
+    goto end;
 }
 
 static int process_stmt(InterpreterContext* ctx, Stmt* stmt, Scope* scope)

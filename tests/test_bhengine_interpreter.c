@@ -1567,6 +1567,43 @@ end:
     return r;
 }
 
+int TEST(while_with_error_1)(void)
+{
+    // clang-format off
+    const char* expected =
+    "[  ERROR  ] 001: struct A { u8 v; break; }proc {   local i = 0;  while (i < 10) {    error(\"an error\");  }}\n"
+    "[  ERROR  ]      ____________________________________________________________________________________^\n"
+    "[  ERROR  ] Exception @ line 1, col 85 > RUNTIME ERROR: an error\n";
+    // clang-format on
+
+    const char* prog = "struct A { u8 v; break; }"
+                       "proc { "
+                       "  local i = 0;"
+                       "  while (i < 10) {"
+                       "    error(\"an error\");"
+                       "  }"
+                       "}";
+
+    int    r     = 1;
+    char*  out   = NULL;
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    ASSERT(scope == NULL);
+
+    out = strbuilder_reset(err_sb);
+    ASSERT(compare_strings_ignoring_X(expected, out));
+
+end:
+    if (scope != NULL)
+        Scope_free(scope);
+    if (out)
+        bhex_free(out);
+    return r;
+
+fail:
+    r = 0;
+    goto end;
+}
+
 int TEST(invalid_break_1)(void)
 {
     // clang-format off
