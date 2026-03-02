@@ -1,5 +1,7 @@
 #include "cmd_export.h"
 #include "cmd.h"
+#include "defs.h"
+#include "filebuffer.h"
 
 #include <util/byte_to_num.h>
 #include <display.h>
@@ -21,7 +23,8 @@ static void exportcmd_help(void* obj)
         "  ex" HINT_STR "\n"
         "\n"
         "  ofile: output file\n"
-        "  size:  number of bytes to export (if omitted, all the remaining bytes)\n");
+        "  size:  number of bytes to export (if omitted, all the remaining "
+        "bytes)\n");
 }
 
 static int exportcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
@@ -31,8 +34,8 @@ static int exportcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     if (pc->cmd_modifiers.size != 0)
         return COMMAND_UNSUPPORTED_MOD;
 
-    u64_t       size     = fb->size - fb->off;
-    const char* ofile    = (const char*)pc->args.head->data;
+    u64_t       size  = fb->size - fb->off;
+    const char* ofile = (const char*)pc->args.head->data;
     if (pc->args.size == 2) {
         const char* size_str = (const char*)pc->args.head->next->data;
         if (!str_to_uint64(size_str, &size))
@@ -46,9 +49,15 @@ static int exportcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     if (f == NULL)
         return COMMAND_INVALID_ARG;
 
+    u64_t off          = fb->off;
+    u64_t original_off = off;
     while (size != 0) {
-        u64_t       chunk_size = min(size, fb_block_size);
-        const u8_t* data       = fb_read(fb, chunk_size);
+        u64_t chunk_size = min(size, fb_block_size);
+        if (fb_seek(fb, off) != 0) {
+            fclose(f);
+            return COMMAND_INTERNAL_ERROR;
+        }
+        const u8_t* data = fb_read(fb, chunk_size);
         if (data == NULL) {
             fclose(f);
             return COMMAND_INTERNAL_ERROR;
@@ -60,7 +69,9 @@ static int exportcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
         }
 
         size -= chunk_size;
+        off += chunk_size;
     }
+    fb_seek(fb, original_off);
 
     fclose(f);
     return COMMAND_OK;

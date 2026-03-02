@@ -1,3 +1,4 @@
+#include "data/big_buffers.h"
 #include "t_cmd_common.h"
 #include "t.h"
 
@@ -85,6 +86,34 @@ int TEST(big_chunk)(void)
 end:
     if (out_content)
         bhex_free(out_content);
+    return r;
+}
+
+int TEST(big_export)(void)
+{
+    int   r           = TEST_FAILED;
+    u8_t* out_content = NULL;
+    u64_t out_size    = 0;
+
+    DummyFilebuffer* tfb = dummyfilebuffer_create((const u8_t*)pseudo_random,
+                                                  sizeof(pseudo_random));
+
+    if (exec_commands_on("s 0; ex /tmp/out.bin", tfb) != 0)
+        goto end;
+
+    if (read_and_unlink_file("/tmp/out.bin", &out_content, &out_size) != 0)
+        goto end;
+
+    if (out_size != sizeof(pseudo_random))
+        goto end;
+
+    if (memcmp(out_content, pseudo_random, sizeof(pseudo_random)) == 0)
+        r = TEST_SUCCEEDED;
+
+end:
+    if (out_content)
+        bhex_free(out_content);
+    dummyfilebuffer_destroy(tfb);
     return r;
 }
 
