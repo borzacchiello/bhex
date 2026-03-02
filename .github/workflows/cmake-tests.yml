@@ -23,7 +23,7 @@ jobs:
             arch: x64
             os: ubuntu-24.04
             c_compiler: gcc
-            cmake_flags: -DASAN=on -DENABLE_COVERAGE=on
+            cmake_flags: -DASAN=on -DENABLE_COVERAGE=on -DENABLE_KEYSTONE=on -DENABLE_CAPSTONE=on
             test_cmdline: ./bhex_tests
             dependencies:
           - name: linux-i386

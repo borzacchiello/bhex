@@ -24,7 +24,7 @@ if (ENABLE_CAPSTONE)
     set(BUILD_LIBS_ONLY ON)
 
     set(CAPSTONE_X86_ATT_DISABLE ON)
-    set(CAPSTONE_PPC_SUPPORT OFF)
+    set(CAPSTONE_PPC_SUPPORT ON)
     set(CAPSTONE_SPARC_SUPPORT OFF)
     set(CAPSTONE_SYSZ_SUPPORT OFF)
     set(CAPSTONE_XCORE_SUPPORT OFF)
@@ -167,6 +167,13 @@ if (ENABLE_TESTS)
     add_dependencies(bhex_tests copy_templates_to_build)
 
     add_test(NAME bhex_tests COMMAND bhex_tests)
+
+    if (ENABLE_CAPSTONE)
+        target_link_libraries(bhex_tests LINK_PUBLIC capstone)
+    endif()
+    if (ENABLE_KEYSTONE)
+        target_link_libraries(bhex_tests LINK_PUBLIC keystone)
+    endif()
 endif()
 
 if (ENABLE_FUZZ_TESTS)
