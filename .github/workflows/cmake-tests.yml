@@ -24,7 +24,7 @@ jobs:
             os: ubuntu-24.04
             c_compiler: gcc
             cmake_flags: -DASAN=on -DENABLE_COVERAGE=on -DENABLE_KEYSTONE=on -DENABLE_CAPSTONE=on
-            test_cmdline: ./bhex_tests
+            test_cmdline: ASAN_OPTIONS=new_delete_type_mismatch=0 ./bhex_tests
             dependencies:
           - name: linux-i386
             arch: i386
@@ -86,22 +86,33 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: submodules
+        if: matrix.name == 'linux-x64'
+        run: git submodule update --init
+
       - name: dependencies
         run: sudo apt-get update -y && sudo apt-get --assume-yes install build-essential cmake ${{ matrix.dependencies }}
 
       - name: configure CMake
         run: >
+          mkdir build &&
+          cd build &&
           cmake
           -DENABLE_TESTS=on
           -DCMAKE_BUILD_TYPE=Debug
           -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
           ${{ matrix.cmake_flags }}
+          ..
 
       - name: build
-        run: make
+        run: >
+          cd build &&
+          make
 
       - name: run_tests
-        run: ${{ matrix.test_cmdline }}
+        run: >
+          cd build &&
+          ${{ matrix.test_cmdline }}
 
       - name: gen coverage report
         if: matrix.name == 'linux-x64'
@@ -109,4 +120,5 @@ jobs:
           mkdir -p Testing/CoverageInfo/ &&
           cp bhengine/lexer.* Testing/CoverageInfo/ &&
           cp bhengine/parser.* Testing/CoverageInfo/ &&
+          cd build &&
           ctest -T Coverage

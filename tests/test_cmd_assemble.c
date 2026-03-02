@@ -34,11 +34,14 @@ int TEST(list_archs)(void)
                            "    arm32\n"
                            "    arm64\n"
                            "    arm32-thumb\n"
-                           "    arm64-thumb\n"
                            "    mips32\n"
                            "    mips64\n"
                            "    mipsel32\n"
-                           "    mipsel64\n";
+                           "    mipsel64\n"
+                           "    ppc32\n"
+                           "    ppc64\n"
+                           "    ppcle32\n"
+                           "    ppcle64\n";
 
     int r = TEST_FAILED;
     if (exec_commands("as/l") != 0)
