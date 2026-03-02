@@ -15,5 +15,5 @@ cp ../bhengine/parser.* .
 
 ctest -T Coverage -T Test
 lcov --directory . --capture --output-file coverage.info
-genhtml --demangle-cpp -o coverage coverage.info
+genhtml --ignore-errors missing,empty,range --demangle-cpp -o coverage coverage.info
 open coverage/index.html
