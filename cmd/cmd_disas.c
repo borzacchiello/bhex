@@ -375,7 +375,7 @@ typedef struct {
     size_t insn_count;
     int    nunique;
     int    char_found[2];
-    char   seen[MAX_UNIQUE_MNEMONICS][CS_MNEMONIC_SIZE];
+    char   seen[MAX_UNIQUE_MNEMONICS][CS_MNEMONIC_SIZE + 1];
     int    prologue_hits;
 } ArchAccum;
 
@@ -422,8 +422,8 @@ static void arch_accum_chunk(ArchAccum* a, int arch_idx, const u8_t* chunk,
                 }
                 if (!found) {
                     strncpy(a->seen[a->nunique], insn[j].mnemonic,
-                            CS_MNEMONIC_SIZE - 1);
-                    a->seen[a->nunique][CS_MNEMONIC_SIZE - 1] = '\0';
+                            CS_MNEMONIC_SIZE);
+                    a->seen[a->nunique][CS_MNEMONIC_SIZE] = '\0';
                     a->nunique++;
                 }
             }
