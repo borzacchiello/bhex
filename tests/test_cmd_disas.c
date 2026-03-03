@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #include "dummy_filebuffer.h"
 #include "t_cmd_common.h"
 #include "t.h"

@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #include "scope.h"
 #include "value.h"
 #include <alloc.h>

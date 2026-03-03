@@ -1,3 +1,5 @@
+# Copyright (c) 2022-2026, bageyelet
+
 import xml.etree.ElementTree as ET
 import subprocess
 import os

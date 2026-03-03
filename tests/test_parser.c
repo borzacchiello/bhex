@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #include <string.h>
 
 #include <cmdline_parser.h>

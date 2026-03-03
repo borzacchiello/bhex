@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 struct eth_header
 {
     big_endian();

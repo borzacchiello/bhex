@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 enum ExtraFieldType : u16
 {
     EXTRA_FIELD_ZIP64                   = 0x0001, // ZIP64 extended information

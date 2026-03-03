@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #ifndef SAMPLE_PNG_H
 #define SAMPLE_PNG_H
 

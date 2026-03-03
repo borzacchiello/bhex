@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #include "cmd_arg_handler.h"
 #include "cmd_search.h"
 #include "cmd.h"

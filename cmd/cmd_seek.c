@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #include "cmd_seek.h"
 
 #include <util/byte_to_num.h>

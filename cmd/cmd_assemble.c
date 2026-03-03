@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #ifndef DISABLE_KEYSTONE
 
 #include "cmd_arg_handler.h"

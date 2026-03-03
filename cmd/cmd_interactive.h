@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #ifndef CMD_INTERACTIVE_H
 #define CMD_INTERACTIVE_H
 

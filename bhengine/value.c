@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #include "value.h"
 #include "defs.h"
 #include "dlist.h"

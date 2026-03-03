@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>

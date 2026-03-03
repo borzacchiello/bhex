@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #include <hash/md2.h>
 #include <hash/md4.h>
 #include <hash/md5.h>

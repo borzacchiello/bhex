@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 /*  extension.js
  *  Formatter for the “bhe” language ─ VS Code DocumentFormattingEditProvider
  */

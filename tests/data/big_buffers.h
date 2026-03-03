@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #ifndef BIG_BUFFERS_H
 #define BIG_BUFFERS_H
 

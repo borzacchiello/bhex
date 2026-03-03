@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #ifndef SEEKCMD_H
 #define SEEKCMD_H
 

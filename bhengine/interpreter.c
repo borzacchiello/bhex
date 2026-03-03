@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #include "interpreter.h"
 #include "builtin.h"
 #include "dlist.h"

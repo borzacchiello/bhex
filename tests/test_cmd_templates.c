@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #include "data/big_buffers.h"
 #include "t_cmd_common.h"
 #include "t.h"

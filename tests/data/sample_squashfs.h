@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #ifndef SAMPLE_SQUASHFS_H
 #define SAMPLE_SQUASHFS_H
 

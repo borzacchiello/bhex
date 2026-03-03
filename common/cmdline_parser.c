@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #include "cmdline_parser.h"
 #include "defs.h"
 #include "strbuilder.h"

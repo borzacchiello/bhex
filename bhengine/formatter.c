@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #include "formatter.h"
 #include "formatter_term.h"
 #include "formatter_xml.h"

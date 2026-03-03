@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 enum JPEG_Marker : u16
 {
     TEM          = 0xff01,

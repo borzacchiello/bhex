@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #include <defs.h>
 #include <alloc.h>
 #include <log.h>

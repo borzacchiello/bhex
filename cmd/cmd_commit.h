@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #ifndef COMMMITCMD_H
 #define COMMMITCMD_H
 

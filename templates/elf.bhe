@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 enum ElfType : u16
 {
     ET_NONE   = 0,

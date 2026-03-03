@@ -1,4 +1,5 @@
 %{
+// Copyright (c) 2022-2026, bageyelet
 
 #include "ast.h"
 #include "parser.h"

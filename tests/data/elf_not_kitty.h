@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #ifndef NOT_KITTY_ELF_H
 #define NOT_KITTY_ELF_H
 

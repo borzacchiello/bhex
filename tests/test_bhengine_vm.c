@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #include "t_cmd_common.h"
 #include "filebuffer.h"
 #include "strbuilder.h"

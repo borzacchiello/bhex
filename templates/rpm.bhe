@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 struct rpmlead
 {
     u8   magic[4];        // 0xed, 0xab, 0xee, 0xdb

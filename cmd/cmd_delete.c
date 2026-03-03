@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #include "cmd_delete.h"
 
 #include <util/byte_to_num.h>

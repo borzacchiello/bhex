@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #ifndef ALLOC_H
 #define ALLOC_H
 

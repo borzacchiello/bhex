@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #ifndef TEST_CMD_COMMON_H
 #define TEST_CMD_COMMON_H
 

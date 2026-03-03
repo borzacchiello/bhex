@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #ifndef STRINGSCMD_H
 #define STRINGSCMD_H
 

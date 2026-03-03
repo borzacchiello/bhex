@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #ifndef DELETECMD_H
 #define DELETECMD_H
 

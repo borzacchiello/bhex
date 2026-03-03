@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #include "byte_to_str.h"
 #include <alloc.h>
 

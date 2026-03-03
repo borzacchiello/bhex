@@ -1,4 +1,4 @@
-// ---------- SUPERBLOCK ----------
+// Copyright (c) 2022-2026, bageyelet
 
 enum compr_t : u16
 {
@@ -109,8 +109,6 @@ struct lzo_option_t
     lzo_algo_t algorithm;
     u32        compression_level;
 }
-
-// ---------- DIR TAB ----------
 
 struct dir_tab_t
 {
@@ -296,8 +294,6 @@ fn parse_inode_entries(superblock)
         i = i + 1;
     }
 }
-
-// ---------- MAIN ----------
 
 proc
 {

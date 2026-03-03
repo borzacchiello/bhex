@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #ifndef SAMPLE_ZIP_H
 #define SAMPLE_ZIP_H
 

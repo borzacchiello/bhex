@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #ifndef FORMATTER_XML_H
 #define FORMATTER_XML_H
 

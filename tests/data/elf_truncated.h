@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #ifndef ELF_TRUNCATED_H
 #define ELF_TRUNCATED_H
 

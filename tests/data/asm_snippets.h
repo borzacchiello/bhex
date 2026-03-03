@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 /*
  * Machine-code snippets for architecture identification tests.
  *

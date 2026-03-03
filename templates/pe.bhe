@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 struct IMAGE_DOS_HEADER
 {
     u16 e_magic;     // Magic number

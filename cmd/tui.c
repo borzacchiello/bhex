@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #ifdef __linux__
 #define _POSIX_C_SOURCE 200809L
 #endif

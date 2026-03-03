@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #ifndef COMPLETION_H
 #define COMPLETION_H
 

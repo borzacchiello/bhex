@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #include "cmd_interactive.h"
 #include "cmd.h"
 #include "tui.h"

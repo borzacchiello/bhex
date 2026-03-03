@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #ifndef BYTE_TO_STR_H
 #define BYTE_TO_STR_H
 

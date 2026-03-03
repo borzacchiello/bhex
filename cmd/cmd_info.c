@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #include "cmd_info.h"
 
 #include <util/byte_to_str.h>

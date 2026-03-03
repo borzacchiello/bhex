@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #ifndef DISABLE_CAPSTONE
 
 #include "cmd_disas.h"

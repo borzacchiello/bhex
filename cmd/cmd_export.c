@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #include "cmd_export.h"
 #include "cmd.h"
 #include "defs.h"

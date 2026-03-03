@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #ifndef NET_DATA_H
 #define NET_DATA_H
 

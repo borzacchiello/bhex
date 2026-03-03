@@ -1,3 +1,4 @@
+// Copyright (c) 2022-2026, bageyelet
 // Based on Rizin https://github.com/rizinorg/rizin
 
 #ifndef ENDIAN_H

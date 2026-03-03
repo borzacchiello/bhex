@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #ifndef STRBUILDER_H
 #define STRBUILDER_H
 

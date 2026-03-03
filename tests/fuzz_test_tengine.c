@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #include "../bhengine/interpreter.h"
 #include "../bhengine/scope.h"
 #include "filebuffer.h"

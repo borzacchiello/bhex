@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #include "display.h"
 
 display_callback_t g_print_callback;

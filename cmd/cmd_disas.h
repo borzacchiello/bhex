@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #ifndef DISASCMD_H
 #define DISASCMD_H
 

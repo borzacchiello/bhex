@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #ifndef TENGINE_SCOPE_H
 #define TENGINE_SCOPE_H
 

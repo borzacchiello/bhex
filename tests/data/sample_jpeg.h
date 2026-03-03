@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #ifndef SAMPLE_JPEG_H
 #define SAMPLE_JPEG_H
 

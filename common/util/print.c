@@ -1,3 +1,5 @@
+// Copyright (c) 2022-2026, bageyelet
+
 #include "defs.h"
 #include "print.h"
 #include "endian.h"
