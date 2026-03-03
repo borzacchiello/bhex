@@ -34,6 +34,8 @@
 #define BPF_ARCH         14
 #define eBPF_ARCH        15
 
+#define MAX_DEFAULT_SIZE 1024 * 1024 * 2
+
 #define HINT_STR "[/l/i] [<arch>] [<nbytes>]"
 
 typedef struct {
@@ -532,7 +534,6 @@ static int cmp_arch_score(const void* a, const void* b)
     return sb->unique_mnemonics - sa->unique_mnemonics;
 }
 
-/* limit == 0 means "scan to end of file". */
 static void do_identify(FileBuffer* fb, u64_t limit)
 {
     u64_t      orig_off    = fb->off;
@@ -545,6 +546,12 @@ static void do_identify(FileBuffer* fb, u64_t limit)
 
     if (limit > 0 && start + limit < end)
         end = start + limit;
+    if (limit == 0 && end - start > MAX_DEFAULT_SIZE) {
+        warning("limiting the scan size to %d bytes for performance; use "
+                "`ds/i %llu` to scan the whole file",
+                MAX_DEFAULT_SIZE, (unsigned long long)(end - start));
+        end = start + MAX_DEFAULT_SIZE;
+    }
 
     acc = bhex_malloc(N_IDENTIFY_ARCHS * sizeof(ArchAccum));
     off = start;
