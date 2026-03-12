@@ -28,8 +28,8 @@ typedef struct InterpreterContext {
     Stmt*                 curr_stmt;
     InterpreterException* exc;
 
-    int break_allowed, return_allowed;
-    int breaked, returned;
+    int break_or_continue_allowed, return_allowed;
+    int breaked, continued, returned;
     int halt; // halt the execution (exception or exit)
 } InterpreterContext;
 

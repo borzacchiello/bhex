@@ -682,6 +682,13 @@ Stmt* Stmt_BREAK_new(void)
     return stmt;
 }
 
+Stmt* Stmt_CONTINUE_new(void)
+{
+    Stmt* stmt = bhex_calloc(sizeof(Stmt));
+    stmt->t    = STMT_CONTINUE;
+    return stmt;
+}
+
 Stmt* Stmt_RETURN_new(void)
 {
     Stmt* stmt = bhex_calloc(sizeof(Stmt));
@@ -746,6 +753,7 @@ void Stmt_free(Stmt* stmt)
             STMT_IF_ELIF_ELSE_free(stmt);
             break;
         case STMT_BREAK:
+        case STMT_CONTINUE:
         case STMT_RETURN:
             break;
         default:
@@ -824,6 +832,9 @@ void Stmt_pp(Stmt* stmt)
             break;
         case STMT_BREAK:
             printf("break;");
+            break;
+        case STMT_CONTINUE:
+            printf("continue;");
             break;
         case STMT_RETURN:
             printf("return;");

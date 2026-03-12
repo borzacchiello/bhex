@@ -110,7 +110,7 @@ void yyerror(const char *s)
 }
 
 // Terminal tokens
-%token TPROC TFN TLOCAL TSTRUCT TENUM TORENUM TIF TELIF TELSE TWHILE TBREAK TRETURN
+%token TPROC TFN TLOCAL TSTRUCT TENUM TORENUM TIF TELIF TELSE TWHILE TBREAK TCONTINUE TRETURN
 %token TIDENTIFIER TUNUM8 TUNUM16 TUNUM32 TUNUM64 TSNUM8 TSNUM16 TSNUM32 TSNUM64 TSTR
 %token TCLBRACE TCRBRACE TLBRACE TRBRACE SQLBRACE SQRBRACE 
 %token TSEMICOLON TCOLON TCOMMA TDOT TCOLCOL THASHTAG
@@ -118,7 +118,7 @@ void yyerror(const char *s)
 
 // Non terminal tokens types
 %type <fvar_type> fvar_type
-%type <stmt>      stmt fvar_decl lvar_decl lvar_ass void_fcall if_elif else while break return
+%type <stmt>      stmt fvar_decl lvar_decl lvar_ass void_fcall if_elif else while break continue return
 %type <stmts>     stmts
 %type <enum_list> enum_list
 %type <ident>     ident
@@ -208,6 +208,7 @@ stmt        : fvar_decl TSEMICOLON
             | lvar_ass TSEMICOLON
             | void_fcall TSEMICOLON
             | break TSEMICOLON
+            | continue TSEMICOLON
             | return TSEMICOLON
             | if_elif
             | else
@@ -310,6 +311,12 @@ while       : TWHILE TCLBRACE expr TCRBRACE TLBRACE stmts TRBRACE
 
 break       : TBREAK                                {
                                                         $$ = Stmt_BREAK_new();
+                                                        Stmt_set_source_info($$, yy_line, yy_column);
+                                                    }
+    ;
+
+continue    : TCONTINUE                             {
+                                                        $$ = Stmt_CONTINUE_new();
                                                         Stmt_set_source_info($$, yy_line, yy_column);
                                                     }
     ;

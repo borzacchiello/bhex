@@ -1569,6 +1569,208 @@ end:
     return r;
 }
 
+int TEST(continue_1)(void)
+{
+    // basic continue: skip the rest of loop body
+    const char* prog = "proc { "
+                       "  local a = 0;"
+                       "  local b = 0;"
+                       "  while (a < 5) {"
+                       "    a = a + 1;"
+                       "    continue;"
+                       "    b = b + 1;"
+                       "  }"
+                       "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    if (scope == NULL)
+        return 0;
+
+    int            r  = 0;
+    BHEngineValue* va = Scope_get_local(scope, "a");
+    IS_TENGINE_SNUM_EQ(r, va, 5);
+    r                 = 0;
+    BHEngineValue* vb = Scope_get_local(scope, "b");
+    IS_TENGINE_SNUM_EQ(r, vb, 0);
+
+end:
+    Scope_free(scope);
+    return r;
+}
+
+int TEST(continue_2)(void)
+{
+    // continue skips even iterations, only odd values of a contribute to b
+    const char* prog = "proc { "
+                       "  local a = 0;"
+                       "  local b = 0;"
+                       "  while (a < 6) {"
+                       "    a = a + 1;"
+                       "    if (a % 2 == 0) {"
+                       "      continue;"
+                       "    }"
+                       "    b = b + a;"
+                       "  }"
+                       "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    if (scope == NULL)
+        return 0;
+
+    int            r  = 0;
+    BHEngineValue* va = Scope_get_local(scope, "a");
+    IS_TENGINE_SNUM_EQ(r, va, 6);
+    r                 = 0;
+    BHEngineValue* vb = Scope_get_local(scope, "b");
+    // odd values: 1 + 3 + 5 = 9
+    IS_TENGINE_SNUM_EQ(r, vb, 9);
+
+end:
+    Scope_free(scope);
+    return r;
+}
+
+int TEST(continue_3)(void)
+{
+    // continue in nested while: only affects inner loop
+    const char* prog = "proc { "
+                       "  local a = 0;"
+                       "  local b = 0;"
+                       "  while (a < 3) {"
+                       "    local c = 0;"
+                       "    while (c < 3) {"
+                       "      c = c + 1;"
+                       "      continue;"
+                       "      b = b + 100;"
+                       "    }"
+                       "    b = b + 1;"
+                       "    a = a + 1;"
+                       "  }"
+                       "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    if (scope == NULL)
+        return 0;
+
+    int            r  = 0;
+    BHEngineValue* va = Scope_get_local(scope, "a");
+    IS_TENGINE_SNUM_EQ(r, va, 3);
+    r                 = 0;
+    BHEngineValue* vb = Scope_get_local(scope, "b");
+    // b incremented 3 times (once per outer iteration), inner b+100 skipped
+    IS_TENGINE_SNUM_EQ(r, vb, 3);
+
+end:
+    Scope_free(scope);
+    return r;
+}
+
+int TEST(continue_4)(void)
+{
+    // continue and break together
+    const char* prog = "proc { "
+                       "  local a = 0;"
+                       "  local b = 0;"
+                       "  while (a < 10) {"
+                       "    a = a + 1;"
+                       "    if (a == 5) {"
+                       "      break;"
+                       "    }"
+                       "    if (a % 2 == 0) {"
+                       "      continue;"
+                       "    }"
+                       "    b = b + a;"
+                       "  }"
+                       "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    if (scope == NULL)
+        return 0;
+
+    int            r  = 0;
+    BHEngineValue* va = Scope_get_local(scope, "a");
+    IS_TENGINE_SNUM_EQ(r, va, 5);
+    r                 = 0;
+    BHEngineValue* vb = Scope_get_local(scope, "b");
+    // odd values before break: 1 + 3 = 4
+    IS_TENGINE_SNUM_EQ(r, vb, 4);
+
+end:
+    Scope_free(scope);
+    return r;
+}
+
+int TEST(invalid_continue_1)(void)
+{
+    // clang-format off
+    const char* expected =
+    "[  ERROR  ] 001: proc {   continue;}\n"
+    "[  ERROR  ]      _________^\n"
+    "[  ERROR  ] Exception @ line 1, col 10 > unexpected continue\n";
+    // clang-format on
+
+    const char* prog = "proc { "
+                       "  continue;"
+                       "}";
+
+    int    r     = 1;
+    char*  out   = NULL;
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    ASSERT(scope == NULL);
+
+    out = strbuilder_reset(err_sb);
+    ASSERT(compare_strings_ignoring_X(expected, out));
+
+end:
+    if (scope != NULL)
+        Scope_free(scope);
+    if (out)
+        bhex_free(out);
+    return r;
+
+fail:
+    r = 0;
+    goto end;
+}
+
+int TEST(invalid_continue_2)(void)
+{
+    // clang-format off
+    const char* expected =
+    "[  ERROR  ] 001: fn func() { continue; }proc {   local i = 0;  while (i < 10) {    func();    i = i + 1;  }}\n"
+    "[  ERROR  ]      ____________^\n"
+    "[  ERROR  ] Exception @ line 1, col 13 > unexpected continue\n";
+    // clang-format on
+
+    const char* prog = "fn func() { continue; }"
+                       "proc { "
+                       "  local i = 0;"
+                       "  while (i < 10) {"
+                       "    func();"
+                       "    i = i + 1;"
+                       "  }"
+                       "}";
+
+    int    r     = 1;
+    char*  out   = NULL;
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    ASSERT(scope == NULL);
+
+    out = strbuilder_reset(err_sb);
+    ASSERT(compare_strings_ignoring_X(expected, out));
+
+end:
+    if (scope != NULL)
+        Scope_free(scope);
+    if (out)
+        bhex_free(out);
+    return r;
+
+fail:
+    r = 0;
+    goto end;
+}
+
 int TEST(while_with_error_1)(void)
 {
     // clang-format off

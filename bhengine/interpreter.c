@@ -205,9 +205,9 @@ static BHEngineValue* handle_function_call(InterpreterContext* ctx,
     Scope*         fn_scope             = NULL;
     int            saved_quiet_mode     = ctx->fmt->quiet_mode;
     int            saved_endianess      = ctx->endianess;
-    int            saved_break_allowed  = ctx->break_allowed;
-    int            saved_return_allowed = ctx->return_allowed;
-    ctx->break_allowed                  = 0;
+    int saved_break_or_continue_allowed = ctx->break_or_continue_allowed;
+    int saved_return_allowed            = ctx->return_allowed;
+    ctx->break_or_continue_allowed      = 0;
     ctx->return_allowed                 = 1;
 
     u64_t nparams         = params_exprs ? params_exprs->size : 0;
@@ -235,8 +235,8 @@ static BHEngineValue* handle_function_call(InterpreterContext* ctx,
     fn_scope = NULL;
 
 end:
-    ctx->break_allowed  = saved_break_allowed;
-    ctx->return_allowed = saved_return_allowed;
+    ctx->break_or_continue_allowed = saved_break_or_continue_allowed;
+    ctx->return_allowed            = saved_return_allowed;
     if (fn_scope)
         Scope_free(fn_scope);
     ctx->fmt->quiet_mode = saved_quiet_mode;
@@ -716,10 +716,10 @@ char* get_type_name(Stmt* v)
 static int process_FILE_VAR_DECL(InterpreterContext* ctx, Stmt* stmt,
                                  Scope* scope)
 {
-    int ret                  = 0;
-    int saved_break_allowed  = ctx->break_allowed;
-    int saved_return_allowed = ctx->return_allowed;
-    ctx->break_allowed = ctx->return_allowed = 0;
+    int ret                             = 0;
+    int saved_break_or_continue_allowed = ctx->break_or_continue_allowed;
+    int saved_return_allowed            = ctx->return_allowed;
+    ctx->break_or_continue_allowed = ctx->return_allowed = 0;
 
     char* ty_name = get_type_name(stmt);
     fmt_start_var(ctx->fmt, stmt->name, ty_name,
@@ -744,8 +744,8 @@ static int process_FILE_VAR_DECL(InterpreterContext* ctx, Stmt* stmt,
     fmt_end_var(ctx->fmt, stmt->name);
 
 end:
-    ctx->break_allowed  = saved_break_allowed;
-    ctx->return_allowed = saved_return_allowed;
+    ctx->break_or_continue_allowed = saved_break_or_continue_allowed;
+    ctx->return_allowed            = saved_return_allowed;
     return ret;
 
 fail:
@@ -848,28 +848,31 @@ static int process_STMT_IF_ELIF_ELSE(InterpreterContext* ctx, Stmt* stmt,
 static int process_STMT_WHILE(InterpreterContext* ctx, Stmt* stmt, Scope* scope)
 {
     // TODO: same problem WRT STMT_IF
-    int ret                 = 0;
-    int saved_break_allowed = ctx->break_allowed;
-    ctx->break_allowed      = 1;
+    int ret                             = 0;
+    int saved_break_or_continue_allowed = ctx->break_or_continue_allowed;
+    ctx->break_or_continue_allowed      = 1;
 
     u64_t cond;
     if (eval_to_u64(ctx, scope, stmt->cond, &cond) != 0)
         goto fail;
 
-    ctx->break_allowed = 1;
+    ctx->break_or_continue_allowed = 1;
     while (cond != 0) {
         DList* stmts = stmt->body->stmts;
         if (process_stmts_no_exc(ctx, stmts, scope) != 0)
             goto fail;
         if (ctx->breaked || ctx->halt)
             goto end;
+        if (ctx->continued)
+            ctx->continued = 0;
         if (eval_to_u64(ctx, scope, stmt->cond, &cond) != 0)
             goto fail;
     }
 
 end:
-    ctx->breaked       = 0;
-    ctx->break_allowed = saved_break_allowed;
+    ctx->breaked                   = 0;
+    ctx->continued                 = 0;
+    ctx->break_or_continue_allowed = saved_break_or_continue_allowed;
     return ret;
 
 fail:
@@ -905,12 +908,20 @@ static int process_stmt(InterpreterContext* ctx, Stmt* stmt, Scope* scope)
             ret = process_STMT_WHILE(ctx, stmt, scope);
             break;
         case STMT_BREAK:
-            if (!ctx->break_allowed) {
+            if (!ctx->break_or_continue_allowed) {
                 bhengine_raise_exception(ctx, "unexpected break");
                 break;
             }
             ctx->breaked = 1;
             ret          = 0;
+            break;
+        case STMT_CONTINUE:
+            if (!ctx->break_or_continue_allowed) {
+                bhengine_raise_exception(ctx, "unexpected continue");
+                break;
+            }
+            ctx->continued = 1;
+            ret            = 0;
             break;
         case STMT_RETURN:
             if (!ctx->return_allowed) {
@@ -937,7 +948,7 @@ static int process_stmts_no_exc(InterpreterContext* ctx, DList* stmts,
         Stmt* stmt = (Stmt*)stmts->data[i];
         if (process_stmt(ctx, stmt, scope) != 0)
             return 1;
-        if (ctx->halt || ctx->breaked || ctx->returned)
+        if (ctx->halt || ctx->breaked || ctx->continued || ctx->returned)
             return 0;
     }
     return 0;

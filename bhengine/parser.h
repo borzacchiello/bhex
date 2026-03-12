@@ -65,49 +65,50 @@ extern int yydebug;
     TELSE = 266,                   /* TELSE  */
     TWHILE = 267,                  /* TWHILE  */
     TBREAK = 268,                  /* TBREAK  */
-    TRETURN = 269,                 /* TRETURN  */
-    TIDENTIFIER = 270,             /* TIDENTIFIER  */
-    TUNUM8 = 271,                  /* TUNUM8  */
-    TUNUM16 = 272,                 /* TUNUM16  */
-    TUNUM32 = 273,                 /* TUNUM32  */
-    TUNUM64 = 274,                 /* TUNUM64  */
-    TSNUM8 = 275,                  /* TSNUM8  */
-    TSNUM16 = 276,                 /* TSNUM16  */
-    TSNUM32 = 277,                 /* TSNUM32  */
-    TSNUM64 = 278,                 /* TSNUM64  */
-    TSTR = 279,                    /* TSTR  */
-    TCLBRACE = 280,                /* TCLBRACE  */
-    TCRBRACE = 281,                /* TCRBRACE  */
-    TLBRACE = 282,                 /* TLBRACE  */
-    TRBRACE = 283,                 /* TRBRACE  */
-    SQLBRACE = 284,                /* SQLBRACE  */
-    SQRBRACE = 285,                /* SQRBRACE  */
-    TSEMICOLON = 286,              /* TSEMICOLON  */
-    TCOLON = 287,                  /* TCOLON  */
-    TCOMMA = 288,                  /* TCOMMA  */
-    TDOT = 289,                    /* TDOT  */
-    TCOLCOL = 290,                 /* TCOLCOL  */
-    THASHTAG = 291,                /* THASHTAG  */
-    TADD = 292,                    /* TADD  */
-    TSUB = 293,                    /* TSUB  */
-    TMUL = 294,                    /* TMUL  */
-    TDIV = 295,                    /* TDIV  */
-    TMOD = 296,                    /* TMOD  */
-    TAND = 297,                    /* TAND  */
-    TOR = 298,                     /* TOR  */
-    TXOR = 299,                    /* TXOR  */
-    TBAND = 300,                   /* TBAND  */
-    TBOR = 301,                    /* TBOR  */
-    TBEQ = 302,                    /* TBEQ  */
-    TBNEQ = 303,                   /* TBNEQ  */
-    TBGT = 304,                    /* TBGT  */
-    TBGE = 305,                    /* TBGE  */
-    TBLT = 306,                    /* TBLT  */
-    TBLE = 307,                    /* TBLE  */
-    TEQUAL = 308,                  /* TEQUAL  */
-    TBNOT = 309,                   /* TBNOT  */
-    TSHL = 310,                    /* TSHL  */
-    TSHR = 311                     /* TSHR  */
+    TCONTINUE = 269,               /* TCONTINUE  */
+    TRETURN = 270,                 /* TRETURN  */
+    TIDENTIFIER = 271,             /* TIDENTIFIER  */
+    TUNUM8 = 272,                  /* TUNUM8  */
+    TUNUM16 = 273,                 /* TUNUM16  */
+    TUNUM32 = 274,                 /* TUNUM32  */
+    TUNUM64 = 275,                 /* TUNUM64  */
+    TSNUM8 = 276,                  /* TSNUM8  */
+    TSNUM16 = 277,                 /* TSNUM16  */
+    TSNUM32 = 278,                 /* TSNUM32  */
+    TSNUM64 = 279,                 /* TSNUM64  */
+    TSTR = 280,                    /* TSTR  */
+    TCLBRACE = 281,                /* TCLBRACE  */
+    TCRBRACE = 282,                /* TCRBRACE  */
+    TLBRACE = 283,                 /* TLBRACE  */
+    TRBRACE = 284,                 /* TRBRACE  */
+    SQLBRACE = 285,                /* SQLBRACE  */
+    SQRBRACE = 286,                /* SQRBRACE  */
+    TSEMICOLON = 287,              /* TSEMICOLON  */
+    TCOLON = 288,                  /* TCOLON  */
+    TCOMMA = 289,                  /* TCOMMA  */
+    TDOT = 290,                    /* TDOT  */
+    TCOLCOL = 291,                 /* TCOLCOL  */
+    THASHTAG = 292,                /* THASHTAG  */
+    TADD = 293,                    /* TADD  */
+    TSUB = 294,                    /* TSUB  */
+    TMUL = 295,                    /* TMUL  */
+    TDIV = 296,                    /* TDIV  */
+    TMOD = 297,                    /* TMOD  */
+    TAND = 298,                    /* TAND  */
+    TOR = 299,                     /* TOR  */
+    TXOR = 300,                    /* TXOR  */
+    TBAND = 301,                   /* TBAND  */
+    TBOR = 302,                    /* TBOR  */
+    TBEQ = 303,                    /* TBEQ  */
+    TBNEQ = 304,                   /* TBNEQ  */
+    TBGT = 305,                    /* TBGT  */
+    TBGE = 306,                    /* TBGE  */
+    TBLT = 307,                    /* TBLT  */
+    TBLE = 308,                    /* TBLE  */
+    TEQUAL = 309,                  /* TEQUAL  */
+    TBNOT = 310,                   /* TBNOT  */
+    TSHL = 311,                    /* TSHL  */
+    TSHR = 312                     /* TSHR  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -126,7 +127,7 @@ union YYSTYPE
     Type*    fvar_type;
     char*    ident;
 
-#line 130 "parser.h"
+#line 131 "parser.h"
 
 };
 typedef union YYSTYPE YYSTYPE;
