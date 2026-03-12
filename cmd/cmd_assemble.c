@@ -38,32 +38,32 @@ typedef struct {
 } KeystoneArchInfo;
 
 static KeystoneArchInfo map_arch[] = {
-    {KS_ARCH_X86, KS_MODE_64},                                // X86_64_ARCH
-    {KS_ARCH_X86, KS_MODE_32},                                // X86_ARCH
-    {KS_ARCH_X86, KS_MODE_16},                                // X86_16_ARCH
-    {KS_ARCH_ARM, KS_MODE_ARM},                               // ARM32_ARCH
-    {KS_ARCH_ARM64, KS_MODE_ARM},                             // ARM64_ARCH
-    {KS_ARCH_ARM, KS_MODE_THUMB},                             // ARM32_THUMB_ARCH
-    {KS_ARCH_MIPS, KS_MODE_MIPS32 + KS_MODE_BIG_ENDIAN},      // MIPS32_ARCH
-    {KS_ARCH_MIPS, KS_MODE_MIPS64 + KS_MODE_BIG_ENDIAN},      // MIPS64_ARCH
-    {KS_ARCH_MIPS, KS_MODE_MIPS32 + KS_MODE_LITTLE_ENDIAN},   // MIPSEL32_ARCH
-    {KS_ARCH_MIPS, KS_MODE_MIPS64 + KS_MODE_LITTLE_ENDIAN},  // MIPSEL64_ARCH
-    {KS_ARCH_PPC, KS_MODE_PPC32 + KS_MODE_BIG_ENDIAN},       // PPC32_ARCH
-    {KS_ARCH_PPC, KS_MODE_PPC64 + KS_MODE_BIG_ENDIAN},       // PPC64_ARCH
-    {KS_ARCH_PPC, KS_MODE_PPC32 + KS_MODE_LITTLE_ENDIAN},    // PPCLE32_ARCH
-    {KS_ARCH_PPC, KS_MODE_PPC64 + KS_MODE_LITTLE_ENDIAN},    // PPCLE64_ARCH
+    {KS_ARCH_X86, KS_MODE_64},                              // X86_64_ARCH
+    {KS_ARCH_X86, KS_MODE_32},                              // X86_ARCH
+    {KS_ARCH_X86, KS_MODE_16},                              // X86_16_ARCH
+    {KS_ARCH_ARM, KS_MODE_ARM},                             // ARM32_ARCH
+    {KS_ARCH_ARM64, KS_MODE_ARM},                           // ARM64_ARCH
+    {KS_ARCH_ARM, KS_MODE_THUMB},                           // ARM32_THUMB_ARCH
+    {KS_ARCH_MIPS, KS_MODE_MIPS32 + KS_MODE_BIG_ENDIAN},    // MIPS32_ARCH
+    {KS_ARCH_MIPS, KS_MODE_MIPS64 + KS_MODE_BIG_ENDIAN},    // MIPS64_ARCH
+    {KS_ARCH_MIPS, KS_MODE_MIPS32 + KS_MODE_LITTLE_ENDIAN}, // MIPSEL32_ARCH
+    {KS_ARCH_MIPS, KS_MODE_MIPS64 + KS_MODE_LITTLE_ENDIAN}, // MIPSEL64_ARCH
+    {KS_ARCH_PPC, KS_MODE_PPC32 + KS_MODE_BIG_ENDIAN},      // PPC32_ARCH
+    {KS_ARCH_PPC, KS_MODE_PPC64 + KS_MODE_BIG_ENDIAN},      // PPC64_ARCH
+    {KS_ARCH_PPC, KS_MODE_PPC32 + KS_MODE_LITTLE_ENDIAN},   // PPCLE32_ARCH
+    {KS_ARCH_PPC, KS_MODE_PPC64 + KS_MODE_LITTLE_ENDIAN},   // PPCLE64_ARCH
 };
 
 static const char* map_arch_names[] = {
-    "x64",          // X86_64_ARCH
-    "x86",          // X86_ARCH
-    "i8086",        // X86_16_ARCH
-    "arm32",        // ARM32_ARCH
-    "arm64",        // ARM64_ARCH
-    "arm32-thumb",  // ARM32_THUMB_ARCH
-    "mips32",       // MIPS32_ARCH
-    "mips64",       // MIPS64_ARCH
-    "mipsel32",     // MIPSEL32_ARCH
+    "x64",         // X86_64_ARCH
+    "x86",         // X86_ARCH
+    "i8086",       // X86_16_ARCH
+    "arm32",       // ARM32_ARCH
+    "aarch64",     // ARM64_ARCH
+    "arm32-thumb", // ARM32_THUMB_ARCH
+    "mips32",      // MIPS32_ARCH
+    "mips64",      // MIPS64_ARCH
+    "mipsel32",    // MIPSEL32_ARCH
     "mipsel64",    // MIPSEL64_ARCH
     "ppc32",       // PPC32_ARCH
     "ppc64",       // PPC64_ARCH

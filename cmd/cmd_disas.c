@@ -23,7 +23,7 @@
 #define X86_ARCH         1
 #define X86_16_ARCH      2
 #define ARM32_ARCH       3
-#define AARCH64_ARCH       4
+#define AARCH64_ARCH     4
 #define ARM32_THUMB_ARCH 5
 #define MIPS32_ARCH      6
 #define MIPS64_ARCH      7

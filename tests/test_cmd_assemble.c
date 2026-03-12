@@ -34,7 +34,7 @@ int TEST(list_archs)(void)
                            "    x86\n"
                            "    i8086\n"
                            "    arm32\n"
-                           "    arm64\n"
+                           "    aarch64\n"
                            "    arm32-thumb\n"
                            "    mips32\n"
                            "    mips64\n"
