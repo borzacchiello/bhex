@@ -234,6 +234,11 @@ end:
     return r;
 }
 
+int TEST(hex_invalid_string)(void)
+{
+    return exec_commands("w/x 000") == 0 ? TEST_FAILED : TEST_SUCCEEDED;
+}
+
 int TEST(string_1)(void)
 {
     const char* expected = "hello world\n";
