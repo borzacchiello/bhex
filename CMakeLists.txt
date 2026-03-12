@@ -36,7 +36,12 @@ if (ENABLE_CAPSTONE)
     set(CAPSTONE_MOS65XX_SUPPORT OFF)
     set(CAPSTONE_RISCV_SUPPORT OFF)
     set(CAPSTONE_OSXKERNEL_SUPPORT OFF)
+    # Disable coverage for capstone to avoid gcov link errors
+    # and to collect coverage only for bhex code
+    set(BHEX_SAVED_ENABLE_COVERAGE ${ENABLE_COVERAGE})
+    set(ENABLE_COVERAGE OFF)
     add_subdirectory(capstone)
+    set(ENABLE_COVERAGE ${BHEX_SAVED_ENABLE_COVERAGE})
 
     include_directories("${CMAKE_SOURCE_DIR}/capstone/include")
 else()

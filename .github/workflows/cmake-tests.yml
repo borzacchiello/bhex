@@ -117,8 +117,8 @@ jobs:
       - name: gen coverage report
         if: matrix.name == 'linux-x64'
         run: >
-          mkdir -p Testing/CoverageInfo/ &&
-          cp bhengine/lexer.* Testing/CoverageInfo/ &&
-          cp bhengine/parser.* Testing/CoverageInfo/ &&
           cd build &&
+          mkdir -p Testing/CoverageInfo/ &&
+          cp ../bhengine/lexer.* Testing/CoverageInfo/ &&
+          cp ../bhengine/parser.* Testing/CoverageInfo/ &&
           ctest -T Coverage
