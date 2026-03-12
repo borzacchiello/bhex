@@ -23,7 +23,7 @@
 #define X86_ARCH         1
 #define X86_16_ARCH      2
 #define ARM32_ARCH       3
-#define ARM64_ARCH       4
+#define AARCH64_ARCH       4
 #define ARM32_THUMB_ARCH 5
 #define MIPS32_ARCH      6
 #define MIPS64_ARCH      7
@@ -50,7 +50,7 @@ static CapstoneArchInfo map_arch[] = {
     {CS_ARCH_X86, CS_MODE_32},                              // X86_ARCH
     {CS_ARCH_X86, CS_MODE_16},                              // X86_16_ARCH
     {CS_ARCH_ARM, CS_MODE_ARM},                             // ARM32_ARCH
-    {CS_ARCH_ARM64, CS_MODE_ARM},                           // ARM64_ARCH
+    {CS_ARCH_AARCH64, CS_MODE_ARM},                         // AARCH64_ARCH
     {CS_ARCH_ARM, CS_MODE_THUMB},                           // ARM32_THUMB_ARCH
     {CS_ARCH_MIPS, CS_MODE_MIPS32 + CS_MODE_BIG_ENDIAN},    // MIPS32_ARCH
     {CS_ARCH_MIPS, CS_MODE_MIPS64 + CS_MODE_BIG_ENDIAN},    // MIPS64_ARCH
@@ -69,7 +69,7 @@ static const char* map_arch_names[] = {
     "x86",         // X86_ARCH
     "i8086",       // X86_16_ARCH
     "arm32",       // ARM32_ARCH
-    "arm64",       // ARM64_ARCH
+    "aarch64",     // AARCH64_ARCH
     "arm32-thumb", // ARM32_THUMB_ARCH
     "mips32",      // MIPS32_ARCH
     "mips64",      // MIPS64_ARCH
@@ -102,7 +102,7 @@ static const double min_avg_insn_size[] = {
     3.0, /* X86_ARCH         real x86: 3-6 bytes avg   */
     2.5, /* X86_16_ARCH      real 8086: 2-5 bytes avg  */
     0.0, /* ARM32_ARCH       fixed 4 bytes             */
-    0.0, /* ARM64_ARCH       fixed 4 bytes             */
+    0.0, /* AARCH64_ARCH     fixed 4 bytes             */
     2.5, /* ARM32_THUMB_ARCH mix 2/4 bytes             */
     0.0, /* MIPS32_ARCH      fixed 4 bytes             */
     0.0, /* MIPS64_ARCH      fixed 4 bytes             */
@@ -132,7 +132,7 @@ static const char* arch_char[N_IDENTIFY_ARCHS][2] = {
     {"call", "push"}, /* X86         */
     {"call", "push"}, /* X86_16      */
     {"bx", "push"},   /* ARM32       bx lr = return; push = prologue */
-    {"ret", "cbz"},   /* ARM64       ret/cbz exclusive to AArch64    */
+    {"ret", "cbz"},   /* AARCH64       ret/cbz exclusive to AArch64    */
     {"bx", "push"},   /* ARM32_THUMB */
     {"jal", "jr"},    /* MIPS32      */
     {"jal", "jr"},    /* MIPS64      */
@@ -162,9 +162,9 @@ static const char* arch_char[N_IDENTIFY_ARCHS][2] = {
  *             pop {regs,pc}  = [XX][0x80|XX] 0xBD 0xE8
  *             (LR=r14→bit14 of reg-list→bit6 of byte[1];
  *              PC=r15→bit15→bit7 of byte[1])
- *   ARM64 LE: stp x29,x30,[sp,#-N]! = FD 7B [BC-BF] A9
- *             ldp x29,x30,[sp],#N   = FD 7B [C0-FF] A8
- *             ret                   = C0 03 5F D6
+ *   AARCH64 LE: stp x29,x30,[sp,#-N]! = FD 7B [BC-BF] A9
+ *               ldp x29,x30,[sp],#N   = FD 7B [C0-FF] A8
+ *               ret                   = C0 03 5F D6
  *   Thumb-2 : push.w {regs,lr} = 2D E9 XX [0x40|XX]
  *             pop.w  {regs,pc} = BD E8 XX [0x80|XX]
  *   MIPS BE : addiu sp,sp,-N = 27 BD FF XX; sw ra,N(sp) = AF BF XX XX
@@ -218,8 +218,8 @@ static const ProPattern pro_patterns[N_IDENTIFY_ARCHS][MAX_PRO_PATTERNS] = {
              {0x00, 0x80, 0xBD, 0xE8},
              1}, /* pop  {regs,pc} */
         },
-    /* ARM64 LE */
-    [ARM64_ARCH] =
+    /* AARCH64 LE */
+    [AARCH64_ARCH] =
         {
             {{0xFF, 0xFF, 0xFC, 0xFF},
              {0xFD, 0x7B, 0xBC, 0xA9},
@@ -326,7 +326,7 @@ static const int pro_npatterns[N_IDENTIFY_ARCHS] = {
     2, /* X86         */
     2, /* X86_16      */
     2, /* ARM32       */
-    3, /* ARM64       */
+    3, /* AARCH64       */
     2, /* ARM32_THUMB */
     2, /* MIPS32      */
     2, /* MIPS64      */
@@ -460,7 +460,7 @@ static void arch_accum_close(ArchAccum* a)
  *
  *   30% — prologue/epilogue bonus
  *     Counts ISA-specific byte patterns (frame setup/teardown, ret).
- *     These patterns are virtually impossible to fake: an ARM64 binary
+ *     These patterns are virtually impossible to fake: an AARCH64 binary
  *     contains many `stp x29,x30,[sp,#-N]!` sequences (FD 7B [BC-BF] A9)
  *     that will never appear at 4-byte-aligned positions in x86 code.
  *     Normalised against expected prologues (~1 per 600 bytes of binary).

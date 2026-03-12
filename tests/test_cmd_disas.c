@@ -35,7 +35,7 @@ int TEST(list_archs)(void)
                            "    x86\n"
                            "    i8086\n"
                            "    arm32\n"
-                           "    arm64\n"
+                           "    aarch64\n"
                            "    arm32-thumb\n"
                            "    mips32\n"
                            "    mips64\n"
@@ -281,8 +281,7 @@ int TEST(ppc32_add)(void)
 #ifndef DISABLE_CAPSTONE
     /* PPC add 1,2,3 = 7C 22 1A 14 (big-endian) */
     const u8_t       add_bytes[] = {0x7C, 0x22, 0x1A, 0x14, 0x00};
-    DummyFilebuffer* tfb =
-        dummyfilebuffer_create(add_bytes, sizeof(add_bytes));
+    DummyFilebuffer* tfb = dummyfilebuffer_create(add_bytes, sizeof(add_bytes));
 
     int r = TEST_FAILED;
     if (exec_commands_on("ds ppc32 1", tfb) != 0)
@@ -329,7 +328,7 @@ end:
  * TEST_SKIPPED.
  */
 static int check_identify(const u8_t* data, size_t size,
-                           const char* expected_substr)
+                          const char* expected_substr)
 {
 #ifndef DISABLE_CAPSTONE
     DummyFilebuffer* tfb = dummyfilebuffer_create(data, size);
@@ -384,7 +383,7 @@ int TEST(identify_snippet_x64)(void)
     if (exec_commands_on("ds/i", tfb) != 0)
         goto end;
 
-    char* out = strbuilder_reset(sb);
+    char*       out = strbuilder_reset(sb);
     const char* hdr = strstr(out, "Architecture identification");
     if (!hdr)
         goto free_out;
@@ -415,9 +414,9 @@ end:
 #endif
 }
 
-int TEST(identify_snippet_arm64)(void)
+int TEST(identify_snippet_aarch64)(void)
 {
-    return check_identify(snippet_arm64, sizeof(snippet_arm64), "arm64");
+    return check_identify(snippet_aarch64, sizeof(snippet_aarch64), "aarch64");
 }
 
 int TEST(identify_snippet_arm32)(void)
