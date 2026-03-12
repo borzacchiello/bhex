@@ -37,9 +37,9 @@
 
 typedef struct {
     u32_t         digest[8];
-    int           nblocks;
+    u32_t         nblocks;
     unsigned char block[64];
-    int           num;
+    u32_t         num;
 } sm3_ctx_t;
 
 void SM3Init(sm3_ctx_t* ctx);

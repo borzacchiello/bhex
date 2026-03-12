@@ -31,7 +31,8 @@
 #include <util/byteorder.h>
 #include <string.h>
 
-#define ROTATELEFT(X, n) (((X) << (n)) | ((X) >> (32 - (n))))
+#define ROTATELEFT(X, n)                                                       \
+    (((X) << ((n) & 31)) | ((X) >> ((32 - ((n) & 31)) & 31)))
 
 #define P0(x) ((x) ^ ROTATELEFT((x), 9) ^ ROTATELEFT((x), 17))
 #define P1(x) ((x) ^ ROTATELEFT((x), 15) ^ ROTATELEFT((x), 23))
