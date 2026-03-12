@@ -178,21 +178,15 @@ static int writecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 {
     WriteArg arg;
     int      r = parse_write_arg(pc, &arg);
-    if (r != COMMAND_OK) {
-        bhex_free(arg.data);
+    if (r != COMMAND_OK)
         return r;
-    }
 
     if (arg.insert) {
-        if (!fb_insert(fb, arg.data, arg.size)) {
-            bhex_free(arg.data);
+        if (!fb_insert(fb, arg.data, arg.size))
             return COMMAND_INVALID_ARG;
-        }
     } else {
-        if (!fb_write(fb, arg.data, arg.size)) {
-            bhex_free(arg.data);
+        if (!fb_write(fb, arg.data, arg.size))
             return COMMAND_INVALID_ARG;
-        }
     }
     return COMMAND_OK;
 }
