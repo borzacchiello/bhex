@@ -23,8 +23,10 @@
 enum KEY_ACTION {
     KEY_NULL  = 0,   /* NULL */
     CTRL_A    = 1,   /* Ctrl-a */
+    CTRL_B    = 2,   /* Ctrl-b */
     CTRL_C    = 3,   /* Ctrl-c */
     CTRL_D    = 4,   /* Ctrl-d */
+    CTRL_E    = 5,   /* Ctrl-e */
     CTRL_F    = 6,   /* Ctrl-f */
     CTRL_H    = 8,   /* Ctrl-h */
     TAB       = 9,   /* Tab */
@@ -440,14 +442,16 @@ static int refresh_screen(void)
 
     sw_start_highlight(&sw, 0);
     sw_append(
-        &sw, " CTRL-X [Exit] CTRL-U [Undo] CTRL-A [Insert] TAB [Toggle ASCII]");
-    if (g_insert_mode)
-        sw_append(&sw, " *INSERT*");
-    if (g_fb->modifications.size > 0)
-        sw_append(&sw, " *UNSAVED*");
+        &sw, " CTRL-X [Exit] CTRL-U [Undo] CTRL-L [Insert] TAB [Toggle ASCII]");
+    sw_end_line(&sw);
+    sw_append(&sw, " CTRL-F/B [Page Up/Down] CTRL-A/E [Go to Beginning/End] ");
     sw_end_line(&sw);
     sw_append(&sw, " ");
     sw_append(&sw, g_msg);
+    if (g_insert_mode)
+        sw_append(&sw, " *INSERT* ");
+    if (g_fb->modifications.size > 0)
+        sw_append(&sw, " *UNSAVED* ");
     sw_end_line(&sw);
     sw_end_highlight(&sw);
     sw_end_line(&sw);
@@ -633,6 +637,7 @@ int tui_enter_loop(FileBuffer* fb)
                 else
                     g_selected = 0;
                 break;
+            case CTRL_B:
             case PAGE_UP:
                 g_second_nibble = 0;
                 u64_t tosub     = (rows - 5) * g_chunk_size;
@@ -644,6 +649,7 @@ int tui_enter_loop(FileBuffer* fb)
                     fb_seek(fb, 0);
                 }
                 break;
+            case CTRL_F:
             case PAGE_DOWN:
                 g_second_nibble = 0;
                 u64_t toadd     = (rows - 5) * g_chunk_size;
@@ -660,11 +666,23 @@ int tui_enter_loop(FileBuffer* fb)
                     }
                 }
                 break;
+            case HOME_KEY:
+            case CTRL_A:
+                g_second_nibble = 0;
+                g_selected      = 0;
+                fb_seek(fb, 0);
+                break;
+            case END_KEY:
+            case CTRL_E:
+                g_second_nibble = 0;
+                g_selected      = g_fb->size;
+                fb_seek(fb, g_selected & ~(g_chunk_size - 1));
+                break;
             case TAB:
                 g_second_nibble  = 0;
                 g_in_ascii_panel = !g_in_ascii_panel;
                 break;
-            case CTRL_A:
+            case CTRL_L:
                 g_insert_mode = !g_insert_mode;
                 break;
             case CTRL_U:
@@ -685,7 +703,8 @@ int tui_enter_loop(FileBuffer* fb)
                 break;
         }
 
-        if (k != PAGE_UP && k != PAGE_DOWN) {
+        if (k != PAGE_UP && k != PAGE_DOWN && k != CTRL_B && k != CTRL_F &&
+            k != CTRL_A && k != CTRL_E) {
             if (g_selected > g_max_visible_addr &&
                 g_max_visible_addr < fb->size)
                 fb_seek(fb, fb->off + g_chunk_size);
