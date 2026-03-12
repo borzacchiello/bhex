@@ -36,6 +36,15 @@ if (ENABLE_CAPSTONE)
     set(CAPSTONE_MOS65XX_SUPPORT OFF)
     set(CAPSTONE_RISCV_SUPPORT OFF)
     set(CAPSTONE_OSXKERNEL_SUPPORT OFF)
+    set(CAPSTONE_SYSTEMZ_SUPPORT OFF)
+    set(CAPSTONE_SH_SUPPORT OFF)
+    set(CAPSTONE_TRICORE_SUPPORT OFF)
+    set(CAPSTONE_ALPHA_SUPPORT OFF)
+    set(CAPSTONE_HPPA_SUPPORT OFF)
+    set(CAPSTONE_LOONGARCH_SUPPORT OFF)
+    set(CAPSTONE_XTENSA_SUPPORT OFF)
+    set(CAPSTONE_ARC_SUPPORT OFF)
+
     # Disable coverage for capstone to avoid gcov link errors
     # and to collect coverage only for bhex code
     set(BHEX_SAVED_ENABLE_COVERAGE ${ENABLE_COVERAGE})
@@ -80,13 +89,15 @@ set(common_src
     common/hash/md4.c
     common/hash/md5.c
     common/hash/md6.c
+    common/hash/sm3.c
     common/hash/sha1.c
     common/hash/sha224-256.c
     common/hash/sha384-512.c
     common/hash/sha3.c
     common/hash/ripemd.c
     common/hash/blake2b-ref.c
-    common/hash/blake2s-ref.c)
+    common/hash/blake2s-ref.c
+    common/hash/ghost.c)
 
 set(command_src
     cmd/cmd_arg_handler.c

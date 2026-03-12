@@ -4,10 +4,12 @@
 #include <hash/md4.h>
 #include <hash/md5.h>
 #include <hash/md6.h>
+#include <hash/sm3.h>
 #include <hash/sha.h>
 #include <hash/sha3.h>
 #include <hash/ripemd.h>
 #include <hash/blake2.h>
+#include <hash/ghost.h>
 
 #include <util/byte_to_str.h>
 #include <util/byte_to_num.h>
@@ -83,6 +85,8 @@ GEN_HANDLE_FUNC(md6_384, md6_state, MD6_384_Init, MD6Update, MD6Final,
                 MD6_384_DIGEST_LENGTH)
 GEN_HANDLE_FUNC(md6_512, md6_state, MD6_512_Init, MD6Update, MD6Final,
                 MD6_512_DIGEST_LENGTH)
+GEN_HANDLE_FUNC(sm3, sm3_ctx_t, SM3Init, SM3Update, SM3Finalize,
+                SM3_DIGEST_LENGTH)
 GEN_HANDLE_FUNC(sha1, SHA1Context, SHA1Reset, SHA1Input, SHA1Result,
                 SHA1HashSize)
 GEN_HANDLE_FUNC(sha256, SHA256Context, SHA256Reset, SHA256Input, SHA256Result,
@@ -115,6 +119,8 @@ GEN_HANDLE_FUNC(blake2s, blake2s_state, simple_blake2s_init,
                 simple_blake2s_update, simple_blake2s_final, BLAKE2S_OUTBYTES)
 GEN_HANDLE_FUNC(blake2b, blake2b_state, simple_blake2b_init,
                 simple_blake2b_update, simple_blake2b_final, BLAKE2B_OUTBYTES)
+GEN_HANDLE_FUNC(ghost, GostHashCtx, GHOSTInit, GHOSTUpdate, GHOSTFinal,
+                GHOST_DIGEST_LENGTH)
 
 static hash_handler_t hash_handlers[] = {{"md2", handle_md2},
                                          {"md4", handle_md4},
@@ -123,6 +129,7 @@ static hash_handler_t hash_handlers[] = {{"md2", handle_md2},
                                          {"md6-256", handle_md6_256},
                                          {"md6-384", handle_md6_384},
                                          {"md6-512", handle_md6_512},
+                                         {"sm3", handle_sm3},
                                          {"sha1", handle_sha1},
                                          {"sha224", handle_sha224},
                                          {"sha256", handle_sha256},
@@ -138,7 +145,8 @@ static hash_handler_t hash_handlers[] = {{"md2", handle_md2},
                                          {"RipeMD-256", handle_ripemd256},
                                          {"RipeMD-320", handle_ripemd320},
                                          {"blake2s", handle_blake2s},
-                                         {"blake2b", handle_blake2b}};
+                                         {"blake2b", handle_blake2b},
+                                         {"ghost", handle_ghost}};
 #define NUM_HASH_HANDLERS (sizeof(hash_handlers) / sizeof(hash_handlers[0]))
 
 static int hashcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
