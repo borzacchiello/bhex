@@ -1,0 +1,92 @@
+// Copyright (c) 2022-2026, bageyelet
+
+orenum gzip_flags_t : u8
+{
+    FTEXT    = 0x01,
+    FHCRC    = 0x02,
+    FEXTRA   = 0x04,
+    FNAME    = 0x08,
+    FCOMMENT = 0x10
+}
+
+enum gzip_compression_method_t : u8
+{
+    DEFLATE = 8
+}
+
+enum gzip_xfl_t : u8
+{
+    DEFAULT_COMPRESSION = 0x00,
+    MAX_COMPRESSION     = 0x02,
+    FASTEST_COMPRESSION = 0x04
+}
+
+enum gzip_os_t : u8
+{
+    FAT_FILESYSTEM  = 0,
+    AMIGA           = 1,
+    VMS             = 2,
+    UNIX            = 3,
+    VM_CMS          = 4,
+    ATARI_TOS       = 5,
+    HPFS_FILESYSTEM = 6,
+    MACINTOSH       = 7,
+    Z_SYSTEM        = 8,
+    CPM             = 9,
+    TOPS_20         = 10,
+    NTFS_FILESYSTEM = 11,
+    QDOS            = 12,
+    ACORN_RISCOS    = 13,
+    UNKNOWN         = 255
+}
+
+struct gzip_header_t
+{
+    u8                        id1;
+    u8                        id2;
+    gzip_compression_method_t compression_method;
+    gzip_flags_t              flags;
+    u32                       mtime;
+    gzip_xfl_t                extra_flags;
+    gzip_os_t                 os;
+
+    if (flags & gzip_flags_t::FEXTRA) {
+        u16 xlen;
+        u8  extra[xlen];
+    }
+
+    if (flags & gzip_flags_t::FNAME) {
+        while (1) {
+            u8 filename_char;
+            if (filename_char == 0) {
+                break;
+            }
+        }
+    }
+
+    if (flags & gzip_flags_t::FCOMMENT) {
+        while (1) {
+            u8 comment_char;
+            if (comment_char == 0) {
+                break;
+            }
+        }
+    }
+
+    if (flags & gzip_flags_t::FHCRC) {
+        u16 header_crc16;
+    }
+}
+
+struct gzip_member_t
+{
+    gzip_header_t header;
+    u8            compressed_data[size() - off() - 8];
+    u32           crc32;
+    u32           input_size;
+}
+
+proc
+{
+    gzip_member_t member;
+}

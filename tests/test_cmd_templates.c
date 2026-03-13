@@ -5,7 +5,9 @@
 #include "t.h"
 
 #include "data/sample_squashfs.h"
+#include "data/sample_gzip.h"
 #include "data/sample_jpeg.h"
+#include "data/sample_lzo.h"
 #include "data/sample_png.h"
 #include "data/sample_zip.h"
 
@@ -1082,6 +1084,89 @@ int TEST(template_png_1)(void)
         dummyfilebuffer_create(not_kitty_png, sizeof(not_kitty_png));
     ASSERT(tfb != NULL);
     ASSERT(exec_commands_on("t ./templates/png.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_lzo_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000                      block: \n"
+        "b+00000000                         header: \n"
+        "b+00000000                              magic: 894c5a4f000d0a1a0a\n"
+        "b+00000009                            version: 1040\n"
+        "b+0000000b                        lib_version: 20a0\n"
+        "b+0000000d          version_needed_to_extract: 0940\n"
+        "b+0000000f                             method: 03\n"
+        "b+00000010                              level: 09\n"
+        "b+00000011                           flags_hi: F_OS_UNIX\n"
+        "b+00000013                           flags_lo: F_ADLER32_D\n"
+        "b+00000015                               mode: 000081a4\n"
+        "b+00000019                          mtime_low: 659200bc\n"
+        "b+0000001d                         mtime_high: 00000000\n"
+        "b+00000021                       filename_len: 14\n"
+        "b+00000022                           filename: 'sample_lzo_input.txt'\n"
+        "b+00000036                    header_checksum: e5e60ca9\n"
+        "b+0000003a                        dst_len: 0000000a\n"
+        "b+0000003e                        src_len: 0000000a\n"
+        "b+00000042                      d_adler32: 153b0394\n"
+        "b+00000046                           data: 68656c6c6f206c7a6f0a\n"
+        "b+00000050                        dst_len: 00000000\n";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_lzo, sizeof(sample_lzo));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/lzo.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_gzip_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000              member: \n"
+        "b+00000000                  header: \n"
+        "b+00000000                         id1: 1f\n"
+        "b+00000001                         id2: 8b\n"
+        "b+00000002          compression_method: DEFLATE\n"
+        "b+00000003                       flags: NONE\n"
+        "b+00000004                       mtime: 00000000\n"
+        "b+00000008                 extra_flags: DEFAULT_COMPRESSION\n"
+        "b+00000009                          os: UNIX\n"
+        "b+0000000a         compressed_data: cb48cdc9c95748afca2ce00200\n"
+        "b+00000017                   crc32: 56637c39\n"
+        "b+0000001b              input_size: 0000000b\n";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_gzip, sizeof(sample_gzip));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/gzip.bhe", tfb) == 0);
 
     char* out = strbuilder_reset(sb);
     r         = compare_strings_ignoring_X(expected, out);

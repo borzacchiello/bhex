@@ -1,0 +1,125 @@
+// Copyright (c) 2022-2026, bageyelet
+
+orenum lzop_flags_lo_t : u16
+{
+    F_ADLER32_D     = 0x0001,
+    F_ADLER32_C     = 0x0002,
+    F_STDIN         = 0x0004,
+    F_STDOUT        = 0x0008,
+    F_NAME_DEFAULT  = 0x0010,
+    F_DOSISH        = 0x0020,
+    F_H_EXTRA_FIELD = 0x0040,
+    F_H_GMTDIFF     = 0x0080,
+    F_CRC32_D       = 0x0100,
+    F_CRC32_C       = 0x0200,
+    F_MULTIPART     = 0x0400,
+    F_H_FILTER      = 0x0800,
+    F_H_CRC32       = 0x1000,
+    F_H_PATH        = 0x2000
+}
+
+enum lzop_flags_hi_t : u16
+{
+    F_OS_MSDOS  = 0x0000,
+    F_OS_AMIGA  = 0x0100,
+    F_OS_VMS    = 0x0200,
+    F_OS_UNIX   = 0x0300,
+    F_OS_VM_CMS = 0x0400,
+    F_OS_ATARI  = 0x0500,
+    F_OS_OS2    = 0x0600,
+    F_OS_MAC9   = 0x0700,
+    F_OS_ZSYS   = 0x0800,
+    F_OS_CPM    = 0x0900,
+    F_OS_TOPS20 = 0x0a00,
+    F_OS_NTFS   = 0x0b00,
+    F_OS_QDOS   = 0x0c00,
+    F_OS_ACORN  = 0x0d00,
+    F_OS_VFAT   = 0x0e00,
+    F_OS_MFS    = 0x0f00,
+    F_OS_BEOS   = 0x1000,
+    F_OS_TANDEM = 0x1100
+}
+
+struct extra_fields_t
+{
+    big_endian();
+
+    u32 extra_field_len;
+    u8  extra_field[extra_field_len];
+    u32 extra_field_checksum;
+    u32 has_extra_field;
+}
+
+struct lzop_header_t
+{
+    big_endian();
+
+    u8  magic[9];
+    u16 version;
+    u16 lib_version;
+    u16 version_needed_to_extract;
+    u8  method;
+    u8  level;
+
+    lzop_flags_hi_t flags_hi;
+    lzop_flags_lo_t flags_lo;
+    if (flags_lo & lzop_flags_lo_t::F_H_FILTER) {
+        u32 filter;
+    }
+    u32 mode;
+    u32 mtime_low;
+    if (version >= 0x0940) {
+        u32 mtime_high;
+    }
+    u8 filename_len;
+    if (filename_len > 0) {
+        char filename[filename_len];
+    }
+    u32 header_checksum;
+    if (flags_lo & lzop_flags_lo_t::F_H_EXTRA_FIELD) {
+        extra_fields_t extra;
+    }
+}
+
+struct lzop_block_t
+{
+    big_endian();
+    lzop_header_t header;
+
+    while (1) {
+        u32 dst_len;
+        if (dst_len == 0) {
+            break; // end of this lzop member
+        } elif (dst_len == 0xffffffff) {
+            error("split  -  file marker   /   unsupported special case");
+        } else {
+            u32 src_len;
+            if (header.flags_lo & lzop_flags_lo_t::F_ADLER32_D) {
+                u32 d_adler32;
+            }
+            if (header.flags_lo & lzop_flags_lo_t::F_CRC32_D) {
+                u32 d_crc32;
+            }
+            if (src_len < dst_len) {
+                if (header.flags_lo & lzop_flags_lo_t::F_ADLER32_C) {
+                    u32 c_adler32;
+                }
+                if (header.flags_lo & lzop_flags_lo_t::F_CRC32_C) {
+                    u32 c_crc32;
+                }
+            }
+            u8 data[src_len];
+        }
+    }
+}
+
+proc
+{
+    while (off() < size()) {
+        lzop_block_t block;
+        local        rem = off() % 4;
+        if (rem != 0) {
+            u8 padding[4 - rem];
+        }
+    }
+}
