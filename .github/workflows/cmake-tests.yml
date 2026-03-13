@@ -84,7 +84,7 @@ jobs:
             dependencies: qemu-user gcc-powerpc-linux-gnu
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: submodules
         if: matrix.name == 'linux-x64'

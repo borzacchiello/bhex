@@ -92,7 +92,7 @@ jobs:
             strip: powerpc-linux-gnu-strip
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: submodules
         run: git submodule update --init
