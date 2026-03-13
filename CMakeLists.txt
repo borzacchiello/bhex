@@ -71,6 +71,7 @@ endif()
 set(common_src
     common/alloc.c
     common/crc.c
+    common/checksums.c
     common/dlist.c
     common/ll.c
     common/log.c
@@ -103,6 +104,7 @@ set(command_src
     cmd/cmd_arg_handler.c
     cmd/cmd.c
     cmd/cmd_crc.c
+    cmd/cmd_checksum.c
     cmd/cmd_hash.c
     cmd/cmd_template.c
     cmd/cmd_search.c

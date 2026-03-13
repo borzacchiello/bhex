@@ -15,11 +15,13 @@
 #include <util/byte_to_num.h>
 #include <display.h>
 #include <alloc.h>
+#include <defs.h>
 #include <log.h>
 
 #include "cmd_arg_handler.h"
-#include "defs.h"
 #include "cmd_hash.h"
+
+#include <util/str.h>
 
 #define LIST_SET 0
 
@@ -204,7 +206,7 @@ static int hashcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 
     for (size_t i = 0; i < NUM_HASH_HANDLERS; ++i) {
         if (strcmp(algorithm, "*") == 0 ||
-            strstr(hash_handlers[i].name, algorithm) != NULL) {
+            stristr(hash_handlers[i].name, algorithm) != NULL) {
             char* hash = NULL;
             hash_handlers[i].handler(fb, real_off, size, &hash);
             if (hash) {

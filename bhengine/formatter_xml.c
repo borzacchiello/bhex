@@ -1,17 +1,18 @@
 // Copyright (c) 2022-2026, bageyelet
 
 #include "formatter_xml.h"
-#include "filebuffer.h"
 #include "formatter.h"
 #include "util/str.h"
 #include "value.h"
-#include "defs.h"
 
 #include <util/byte_to_str.h>
 #include <util/str.h>
+
+#include <filebuffer.h>
 #include <strbuilder.h>
 #include <display.h>
 #include <alloc.h>
+#include <defs.h>
 #include <log.h>
 #include <ll.h>
 

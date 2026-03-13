@@ -1,20 +1,20 @@
 // Copyright (c) 2022-2026, bageyelet
 
 #include "interpreter.h"
-#include "builtin.h"
-#include "dlist.h"
-#include "filebuffer.h"
 #include "formatter.h"
-#include "strbuilder.h"
+#include "builtin.h"
 #include "value.h"
 #include "scope.h"
-#include "defs.h"
 #include "ast.h"
 
+#include <filebuffer.h>
+#include <strbuilder.h>
 #include <util/str.h>
 #include <display.h>
 #include <string.h>
 #include <alloc.h>
+#include <dlist.h>
+#include <defs.h>
 #include <log.h>
 #include <map.h>
 

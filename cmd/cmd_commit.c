@@ -2,13 +2,13 @@
 
 #include "cmd_arg_handler.h"
 #include "cmd_commit.h"
-#include "filebuffer.h"
-#include "defs.h"
-#include "ll.h"
 
+#include <filebuffer.h>
 #include <display.h>
 #include <alloc.h>
+#include <defs.h>
 #include <log.h>
+#include <ll.h>
 
 #define min(x, y)          ((x) < (y) ? (x) : (y))
 #define HINT_STR           "[/l]"

@@ -1,11 +1,11 @@
 // Copyright (c) 2022-2026, bageyelet
 
 #include "strbuilder.h"
-#include "defs.h"
 
 #include <string.h>
 #include <stdio.h>
 #include <alloc.h>
+#include <defs.h>
 #include <log.h>
 
 #define INITIAL_CAP 16

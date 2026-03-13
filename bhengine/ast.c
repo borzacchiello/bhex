@@ -4,14 +4,14 @@
 #include <string.h>
 
 #include "ast.h"
-#include "defs.h"
 #include "util/byte_to_str.h"
 
-#include <alloc.h>
-#include <log.h>
-#include <dlist.h>
-#include <map.h>
 #include <strbuilder.h>
+#include <dlist.h>
+#include <alloc.h>
+#include <defs.h>
+#include <log.h>
+#include <map.h>
 
 typedef struct yy_buffer_state* YY_BUFFER_STATE;
 extern YY_BUFFER_STATE          yy_scan_string(const char* str);

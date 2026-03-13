@@ -1,13 +1,13 @@
 // Copyright (c) 2022-2026, bageyelet
 
-#include "defs.h"
-#include <filebuffer.h>
+#include "filebuffer.h"
 
 #include <sys/stat.h>
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <defs.h>
 
 #include <alloc.h>
 #include <log.h>

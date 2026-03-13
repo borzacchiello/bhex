@@ -1,11 +1,11 @@
 // Copyright (c) 2022-2026, bageyelet
 
 #include "cmdline_parser.h"
-#include "defs.h"
-#include "strbuilder.h"
 
+#include <strbuilder.h>
 #include <string.h>
 #include <alloc.h>
+#include <defs.h>
 #include <ll.h>
 
 static const char* space_tokens   = " \t\n";

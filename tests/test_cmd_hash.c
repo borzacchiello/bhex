@@ -151,7 +151,11 @@ int TEST(notkitty_only_md_family)(void)
     "       md6-128 : 715057975c14fdaa5b33df5a44716e14\n"
     "       md6-256 : 6735fc6b1103c7b372b79c581fb6b850b35eb57a122ba00e6c4bb2e42bc460a6\n"
     "       md6-384 : 2cd82629bdd6c6bf25870b9ecdb618aae0ed632ef812b4438b4f1781d3bed526233e1cc22b265b6e521522353fe328ae\n"
-    "       md6-512 : a1a37d450f1502966bd921b407a074edebfc5f878f27b343d89ef4a328db6da1a6f126ccce0165e9b01309efa91a23e05b0881954db0da3f848326811b6cd042\n";
+    "       md6-512 : a1a37d450f1502966bd921b407a074edebfc5f878f27b343d89ef4a328db6da1a6f126ccce0165e9b01309efa91a23e05b0881954db0da3f848326811b6cd042\n"
+    "    RipeMD-128 : b4563447abf7cc5d80e258002e470ec4\n"
+    "    RipeMD-160 : b657ee770eb25c720381d8b64cf487a03e37e220\n"
+    "    RipeMD-256 : 8814cc34336ccad19000c18d17aa98abb9c999566abed2e925f0e30205a816e2\n"
+    "    RipeMD-320 : d655786d8d1ffe7fd2695a481f20b0ba8e1cfd2f256ec315aefa2c2a640502b0c70abd87100611ce\n";
     // clang-format on
 
     int r = TEST_FAILED;

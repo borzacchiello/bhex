@@ -1,6 +1,6 @@
 // Copyright (c) 2022-2026, bageyelet
 
-#include "defs.h"
+#include <defs.h>
 
 typedef struct crc_params_t {
     u32_t    poly;    // Generator polynomial

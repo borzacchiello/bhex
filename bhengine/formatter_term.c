@@ -1,14 +1,14 @@
 // Copyright (c) 2022-2026, bageyelet
 
 #include "formatter_term.h"
-#include "filebuffer.h"
 #include "formatter.h"
 #include "builtin.h"
 #include "value.h"
-#include "defs.h"
 
+#include <filebuffer.h>
 #include <display.h>
 #include <alloc.h>
+#include <defs.h>
 #include <log.h>
 #include <ll.h>
 

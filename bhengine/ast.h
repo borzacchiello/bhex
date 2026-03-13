@@ -3,9 +3,9 @@
 #ifndef AST_H
 #define AST_H
 
-#include "defs.h"
 #include <dlist.h>
 #include <stdio.h>
+#include <defs.h>
 #include <map.h>
 
 #define MAX_IDENT_SIZE 32

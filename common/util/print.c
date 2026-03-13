@@ -1,6 +1,6 @@
 // Copyright (c) 2022-2026, bageyelet
 
-#include "defs.h"
+#include <defs.h>
 #include "print.h"
 #include "endian.h"
 #include "byte_to_str.h"

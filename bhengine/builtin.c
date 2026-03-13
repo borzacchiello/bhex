@@ -1,7 +1,7 @@
 // Copyright (c) 2022-2026, bageyelet
 
 #include "builtin.h"
-#include "defs.h"
+#include <defs.h>
 #include "filebuffer.h"
 #include "formatter.h"
 #include "strbuilder.h"

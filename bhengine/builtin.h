@@ -21,7 +21,7 @@ const BHEngineBuiltinType* get_builtin_type(const char* type);
 typedef struct BHEngineBuiltinFunc {
     char name[MAX_IDENT_SIZE];
     struct BHEngineValue* (*process)(struct InterpreterContext* ctx,
-                                    struct DList*              params);
+                                     struct DList*              params);
 } BHEngineBuiltinFunc;
 
 const BHEngineBuiltinFunc* get_builtin_func(const char* name);

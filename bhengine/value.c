@@ -1,16 +1,17 @@
 // Copyright (c) 2022-2026, bageyelet
 
 #include "value.h"
-#include "defs.h"
-#include "dlist.h"
 #include "interpreter.h"
-#include "util/byte_to_str.h"
+
+#include <util/byte_to_str.h>
+#include <util/str.h>
 
 #include <filebuffer.h>
 #include <strbuilder.h>
-#include <util/str.h>
 #include <string.h>
 #include <alloc.h>
+#include <dlist.h>
+#include <defs.h>
 #include <log.h>
 
 #define max(x, y) ((x) > (y) ? (x) : (y))

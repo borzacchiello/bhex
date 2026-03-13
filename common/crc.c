@@ -1,9 +1,7 @@
 // Copyright (c) 2022-2026, bageyelet
 
 #include "crc.h"
-#include "defs.h"
 
-#include <stdlib.h>
 #include <string.h>
 
 typedef struct {

@@ -1,16 +1,15 @@
 // Copyright (c) 2022-2026, bageyelet
 
-#include "defs.h"
 #include "linenoise/linenoise.h"
 #include "completion.h"
 #include "cmd/cmd.h"
-#include "cmd/cmd.h"
 
-#include <dirent.h>
-#include <libgen.h>
-#include <alloc.h>
 #include <strbuilder.h>
+#include <libgen.h>
 #include <string.h>
+#include <dirent.h>
+#include <alloc.h>
+#include <defs.h>
 #include <ll.h>
 
 CmdContext* g_cc = NULL;

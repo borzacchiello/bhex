@@ -1,9 +1,10 @@
 // Copyright (c) 2022-2026, bageyelet
 
 #include "str.h"
-#include "defs.h"
+#include <defs.h>
 
 #include <string.h>
+#include <ctype.h>
 #include <alloc.h>
 #include <log.h>
 
@@ -166,6 +167,24 @@ void strip_chars(char* s, const char* chars)
         }
         i += 1;
     }
+}
+
+const char* stristr(const char* haystack, const char* needle)
+{
+    if (!needle[0])
+        return haystack;
+
+    for (; *haystack; haystack++) {
+        const char* h = haystack;
+        const char* n = needle;
+        while (*h && *n && tolower((unsigned char)*h) == tolower((unsigned char)*n)) {
+            h++;
+            n++;
+        }
+        if (!*n)
+            return haystack;
+    }
+    return NULL;
 }
 
 char* str_indent(char* s, u32_t spaces)

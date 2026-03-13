@@ -12,6 +12,7 @@ int    unescape_ascii_string(char* string, u8_t** o_buf, size_t* o_size);
 int    hex_to_bytes(char* hex_string, u8_t** o_buf, size_t* o_size);
 size_t count_chars_in_str(char* s, char c);
 char*  str_indent(char* s, u32_t spaces);
-void   strip_chars(char* s, const char* chars);
+void        strip_chars(char* s, const char* chars);
+const char* stristr(const char* haystack, const char* needle);
 
 #endif

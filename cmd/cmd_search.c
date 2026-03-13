@@ -3,14 +3,15 @@
 #include "cmd_arg_handler.h"
 #include "cmd_search.h"
 #include "cmd.h"
-#include "defs.h"
-#include "filebuffer.h"
 
 #include <util/print.h>
 #include <util/str.h>
+
+#include <filebuffer.h>
 #include <display.h>
 #include <string.h>
 #include <alloc.h>
+#include <defs.h>
 #include <log.h>
 
 #define HINT_STR "[/{x, s}/sk/p] <what>"
