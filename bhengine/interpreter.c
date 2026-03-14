@@ -966,7 +966,7 @@ static void print_exception_context(InterpreterContext* ctx, int lineno,
     int curr_lineno      = 1;
     int min_print_lineno = max(lineno - 2, 0);
     int max_print_lineno = lineno + 2;
-    while ((line = strsep(&curr, "\n")) != NULL) {
+    while ((line = _strsep(&curr, "\n")) != NULL) {
         if (curr_lineno >= min_print_lineno && curr_lineno <= max_print_lineno)
             error("%03d: %s", curr_lineno, line);
         if (curr_lineno == lineno) {

@@ -4,6 +4,7 @@
 #include <stdio.h>
 
 #include <strbuilder.h>
+#include <util/str.h>
 #include <string.h>
 #include <alloc.h>
 #include <log.h>
@@ -68,7 +69,7 @@ static void print_error_from_string(int yylineno, int yy_column)
     int linenum          = 1;
     int min_print_lineno = max(yylineno-2, 0);
     int max_print_lineno = yylineno+2;
-    while ((line = strsep(&curr, "\n")) != NULL) {
+    while ((line = _strsep(&curr, "\n")) != NULL) {
         if (linenum >= min_print_lineno && linenum <= max_print_lineno)
             error("%03d: %s", linenum, line);
         if (linenum == yylineno) {

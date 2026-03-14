@@ -60,7 +60,7 @@ int unescape_ascii_string(char* str, u8_t** o_buf, size_t* o_size)
     size_t str_len = strlen(str);
 
     // Result is AT LEAST long as much as the stirng, but can be less
-    u8_t* res = bhex_malloc(str_len+1);
+    u8_t* res = bhex_malloc(str_len + 1);
 
     size_t i, j = 0;
     for (i = 0; i < str_len; ++i) {
@@ -93,7 +93,7 @@ int unescape_ascii_string(char* str, u8_t** o_buf, size_t* o_size)
         }
     }
 
-    res[j] = 0;
+    res[j]  = 0;
     *o_size = j;
     *o_buf  = res;
     return 1;
@@ -177,7 +177,8 @@ const char* stristr(const char* haystack, const char* needle)
     for (; *haystack; haystack++) {
         const char* h = haystack;
         const char* n = needle;
-        while (*h && *n && tolower((unsigned char)*h) == tolower((unsigned char)*n)) {
+        while (*h && *n &&
+               tolower((unsigned char)*h) == tolower((unsigned char)*n)) {
             h++;
             n++;
         }
@@ -185,6 +186,22 @@ const char* stristr(const char* haystack, const char* needle)
             return haystack;
     }
     return NULL;
+}
+
+char* _strsep(char** stringp, const char* delim)
+{
+    char* s = *stringp;
+    char* end;
+
+    if (s == NULL)
+        return NULL;
+
+    end = strpbrk(s, delim);
+    if (end)
+        *end++ = '\0';
+
+    *stringp = end;
+    return s;
 }
 
 char* str_indent(char* s, u32_t spaces)
