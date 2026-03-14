@@ -13,13 +13,37 @@
 #include "ast.h"
 #include "vm.h"
 
+typedef struct TemplateEntry {
+    char*   path;
+    ASTCtx* ast;
+} TemplateEntry;
+
+static void TemplateEntry_delete(TemplateEntry* te)
+{
+    if (te->ast)
+        ASTCtx_delete(te->ast);
+    bhex_free(te->path);
+    bhex_free(te);
+}
+
+static ASTCtx* vm_ensure_parsed(const char* name, TemplateEntry* te)
+{
+    if (te->ast == NULL) {
+        te->ast = bhengine_parse_filename(te->path);
+        if (te->ast == NULL)
+            warning("template '%s' failed to parse (%s)", name, te->path);
+    }
+    return te->ast;
+}
+
 static ASTCtx* bhengine_vm_process_imported(BHEngineVM* vm, const char* bhe)
 {
     if (!map_contains(vm->templates, bhe)) {
         error("no such template file '%s'", bhe);
         return NULL;
     }
-    return map_get(vm->templates, bhe);
+    TemplateEntry* te = map_get(vm->templates, bhe);
+    return vm_ensure_parsed(bhe, te);
 }
 
 BHEngineVM* bhengine_vm_create(const char** dirs)
@@ -28,7 +52,7 @@ BHEngineVM* bhengine_vm_create(const char** dirs)
 
     BHEngineVM* ctx = bhex_calloc(sizeof(BHEngineVM));
     ctx->templates  = map_create();
-    map_set_dispose(ctx->templates, (void (*)(void*))ASTCtx_delete);
+    map_set_dispose(ctx->templates, (void (*)(void*))TemplateEntry_delete);
 
     char tmp[1024];
 
@@ -63,18 +87,10 @@ BHEngineVM* bhengine_vm_create(const char** dirs)
                 continue;
             }
 
-            ASTCtx* ast = bhengine_parse_filename(tmp);
-            if (ast == NULL) {
-                // Invalid bhe file
-                warning("template '%s' invalid, skipping file '%s'",
-                        entry->d_name, tmp);
-                continue;
-            }
-
-            // Remove extension
-            entry->d_name[d_namelen - 4] = '\0';
-            map_set(ctx->templates, entry->d_name, ast);
-            // info("loaded template '%s' from '%s'", entry->d_name, tmp);
+            TemplateEntry* te = bhex_calloc(sizeof(TemplateEntry));
+            te->path          = strdup(tmp);
+            te->ast           = NULL;
+            map_set(ctx->templates, entry->d_name, te);
         }
 
         closedir(dir);
@@ -102,7 +118,10 @@ int bhengine_vm_add_template(BHEngineVM* ctx, const char* name,
         return 1;
     }
 
-    map_set(ctx->templates, name, ast);
+    TemplateEntry* te = bhex_calloc(sizeof(TemplateEntry));
+    te->path          = strdup(path);
+    te->ast           = ast;
+    map_set(ctx->templates, name, te);
     return 0;
 }
 
@@ -118,8 +137,10 @@ void bhengine_vm_iter_templates(BHEngineVM* ctx,
 {
     for (const char* key = map_first(ctx->templates); key != NULL;
          key             = map_next(ctx->templates, key)) {
-        ASTCtx* ast = map_get(ctx->templates, key);
-        cb(key, ast);
+        TemplateEntry* te  = map_get(ctx->templates, key);
+        ASTCtx*        ast = vm_ensure_parsed(key, te);
+        if (ast)
+            cb(key, ast);
     }
 }
 
@@ -129,7 +150,10 @@ void bhengine_vm_iter_structs(BHEngineVM* ctx,
 {
     for (const char* key = map_first(ctx->templates); key != NULL;
          key             = map_next(ctx->templates, key)) {
-        ASTCtx* ast = map_get(ctx->templates, key);
+        TemplateEntry* te  = map_get(ctx->templates, key);
+        ASTCtx*        ast = vm_ensure_parsed(key, te);
+        if (!ast)
+            continue;
         for (const char* str = map_first(ast->structs); str != NULL;
              str             = map_next(ast->structs, str)) {
             cb(key, str, ast);
@@ -143,7 +167,10 @@ void bhengine_vm_iter_named_procs(BHEngineVM* ctx,
 {
     for (const char* key = map_first(ctx->templates); key != NULL;
          key             = map_next(ctx->templates, key)) {
-        ASTCtx* ast = map_get(ctx->templates, key);
+        TemplateEntry* te  = map_get(ctx->templates, key);
+        ASTCtx*        ast = vm_ensure_parsed(key, te);
+        if (!ast)
+            continue;
         for (const char* str = map_first(ast->named_procs); str != NULL;
              str             = map_next(ast->named_procs, str)) {
             cb(key, str, ast);
@@ -162,8 +189,9 @@ int bhengine_vm_has_bhe_struct(BHEngineVM* ctx, const char* bhe,
     if (!map_contains(ctx->templates, bhe))
         return 0;
 
-    ASTCtx* ast = map_get(ctx->templates, bhe);
-    if (!map_contains(ast->structs, struct_name))
+    TemplateEntry* te  = map_get(ctx->templates, bhe);
+    ASTCtx*        ast = vm_ensure_parsed(bhe, te);
+    if (!ast || !map_contains(ast->structs, struct_name))
         return 0;
     return 1;
 }
@@ -174,8 +202,9 @@ int bhengine_vm_has_bhe_proc(BHEngineVM* ctx, const char* bhe,
     if (!map_contains(ctx->templates, bhe))
         return 0;
 
-    ASTCtx* ast = map_get(ctx->templates, bhe);
-    if (!map_contains(ast->named_procs, proc_name))
+    TemplateEntry* te  = map_get(ctx->templates, bhe);
+    ASTCtx*        ast = vm_ensure_parsed(bhe, te);
+    if (!ast || !map_contains(ast->named_procs, proc_name))
         return 0;
     return 1;
 }
@@ -185,7 +214,10 @@ int bhengine_vm_process_bhe(BHEngineVM* ctx, FileBuffer* fb, const char* bhe)
     if (!map_contains(ctx->templates, bhe))
         return 1;
 
-    ASTCtx* ast = map_get(ctx->templates, bhe);
+    TemplateEntry* te  = map_get(ctx->templates, bhe);
+    ASTCtx*        ast = vm_ensure_parsed(bhe, te);
+    if (!ast)
+        return 1;
     if (!ast->proc) {
         error("'%s' has not proc", bhe);
         return 1;
@@ -199,8 +231,9 @@ int bhengine_vm_process_bhe_struct(BHEngineVM* ctx, FileBuffer* fb,
     if (!map_contains(ctx->templates, bhe))
         return 1;
 
-    ASTCtx* ast = map_get(ctx->templates, bhe);
-    if (!map_contains(ast->structs, struct_name))
+    TemplateEntry* te  = map_get(ctx->templates, bhe);
+    ASTCtx*        ast = vm_ensure_parsed(bhe, te);
+    if (!ast || !map_contains(ast->structs, struct_name))
         return 1;
     return bhengine_interpreter_process_ast_struct(fb, ast, struct_name);
 }
@@ -211,8 +244,9 @@ int bhengine_vm_process_bhe_proc(BHEngineVM* ctx, FileBuffer* fb,
     if (!map_contains(ctx->templates, bhe))
         return 1;
 
-    ASTCtx* ast = map_get(ctx->templates, bhe);
-    if (!map_contains(ast->named_procs, proc_name))
+    TemplateEntry* te  = map_get(ctx->templates, bhe);
+    ASTCtx*        ast = vm_ensure_parsed(bhe, te);
+    if (!ast || !map_contains(ast->named_procs, proc_name))
         return 1;
     return bhengine_interpreter_process_ast_named_proc(fb, ast, proc_name);
 }

@@ -21,17 +21,14 @@ typedef struct test_t {
         if (argc > 1 && strstr(tests[i].name, argv[1]) == NULL)                \
             continue;                                                          \
         reset_global_state();                                                  \
-        printf("[+] %s... ", tests[i].name);                                   \
         ntests += 1;                                                           \
         int r = tests[i].fptr();                                               \
-        if (r == TEST_FAILED)                                                  \
-            printf("\033[91mFAIL\033[0m\n");                                   \
-        else if (r == TEST_SKIPPED) {                                          \
+        if (r == TEST_FAILED) {                                                \
+            printf("[+] %s... \033[91mFAIL\033[0m\n", tests[i].name);          \
+        } else if (r == TEST_SKIPPED) {                                        \
             nskipped += 1;                                                     \
-            printf("\033[93mSKIPPED\033[0m\n");                                \
         } else {                                                               \
             nsucc += 1;                                                        \
-            printf("\033[92mOK\033[0m\n");                                     \
         }                                                                      \
     }                                                                          \
     printf("\n[+] %u/%u tests succeeded", nsucc, ntests);                      \
