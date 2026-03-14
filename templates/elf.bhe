@@ -236,8 +236,7 @@ struct ElfIdent
     u8            ei_version;
     ElfIdentOsABI ei_osabi;
     u8            ei_abiversion;
-    u8            ei_pad[6];
-    u8            ei_nident;
+    u8            ei_pad[7];
 }
 
 struct Elf_Ehdr
@@ -335,7 +334,7 @@ enum ShdrType : u32
     SHT_GROUP          = 17,
     SHT_SYMTAB_SHNDX   = 18,
     SHT_LOOS           = 0x60000000,
-    SHT_LOSUNW         = 0x6ffffef,
+    SHT_LOSUNW         = 0x6ffffffa,
     SHT_SUNW_capchain  = 0x6fffffef,
     SHT_SUNW_capinfo   = 0x6ffffff0,
     SHT_SUNW_symsort   = 0x6ffffff1,

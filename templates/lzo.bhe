@@ -47,7 +47,6 @@ struct extra_fields_t
     u32 extra_field_len;
     u8  extra_field[extra_field_len];
     u32 extra_field_checksum;
-    u32 has_extra_field;
 }
 
 struct lzop_header_t
@@ -91,7 +90,7 @@ struct lzop_block_t
         if (dst_len == 0) {
             break; // end of this lzop member
         } elif (dst_len == 0xffffffff) {
-            error("split  -  file marker   /   unsupported special case");
+            error("split - file marker / unsupported special case");
         } else {
             u32 src_len;
             if (header.flags_lo & lzop_flags_lo_t::F_ADLER32_D) {

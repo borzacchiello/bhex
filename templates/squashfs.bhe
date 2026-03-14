@@ -174,10 +174,9 @@ struct inode_dir_t
 
 struct inode_dir_ext_t
 {
-    u32 block_index;
     u32 link_count;
-    u16 file_size;
-    u16 block_offset;
+    u32 file_size;
+    u32 block_index;
     u32 parent_inode;
     u16 index_count;
     u16 block_offset;
@@ -307,7 +306,7 @@ proc
             xz_option_t opt;
         } elif (superblock.compressor == compr_t::LZ4) {
             lz4_option_t opt;
-        } elif (superblock.compressor == compr_t::LZ4) {
+        } elif (superblock.compressor == compr_t::ZSTD) {
             zstd_option_t opt;
         } else {
             error("invalid compressor type");

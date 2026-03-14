@@ -103,14 +103,21 @@ struct APP0
     }
 }
 
+struct sos_component_t
+{
+    u8 selector;
+    u8 huffman;
+}
+
 struct SOS
 {
-    JPEG_Marker id;
-    u16         size;
-    uint8_t     ns;
-    uint8_t     ss;
-    uint8_t     se;
-    uint8_t     ah_al;
+    JPEG_Marker     id;
+    u16             size;
+    u8              ns;
+    sos_component_t components[ns];
+    u8              ss;
+    u8              se;
+    u8              ah_al;
 }
 
 fn is_zero_len_marker(id)

@@ -40,7 +40,6 @@ enum eth_type_t : u16
     ETH_TYPE_VLAN_9100        = 0x9100, // Legacy QinQ
     ETH_TYPE_VLAN_9200        = 0x9200, // Legacy QinQ
     ETH_TYPE_IPV6             = 0x86DD, // Internet Protocol Version 6 (IPv6)
-    ETH_TYPE_IPV6_ICMP        = 0x003A, // ICMPv6 (though typically inside IPv6)
     ETH_TYPE_PPP              = 0x880B, // Point-to-Point Protocol (PPP)
     ETH_TYPE_PPPOE_DISCOVERY  = 0x8863, // PPP over Ethernet Discovery Stage
     ETH_TYPE_PPPOE_SESSION    = 0x8864, // PPP over Ethernet Session Stage
