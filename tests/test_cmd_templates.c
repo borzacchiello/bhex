@@ -1251,6 +1251,71 @@ fail:
     goto end;
 }
 
+int TEST(template_list_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "Available templates:\n"
+        "\nAvailable template structs:\n"
+        "\nAvailable template named procs:\n";
+    // clang-format on
+
+    int r = TEST_SUCCEEDED;
+    ASSERT(exec_commands("t/l") == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_invalid_name)(void)
+{
+    int r = TEST_SUCCEEDED;
+    // A non-existent template name should fail
+    ASSERT(exec_commands("t nonexistent_template_xyz") != 0);
+
+end:
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_rpm_xml)(void)
+{
+    int              r   = TEST_SUCCEEDED;
+    char*            out = NULL;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_rpm, sizeof(sample_rpm));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t/x ./templates/rpm.bhe", tfb) == 0);
+
+    // Just verify that we got XML-like output
+    out = strbuilder_reset(sb);
+    ASSERT(out != NULL);
+    ASSERT(strstr(out, "<root>") != NULL);
+    ASSERT(strstr(out, "name=\"lead\"") != NULL);
+    ASSERT(strstr(out, "edabeedb") != NULL);
+    ASSERT(strstr(out, "</root>") != NULL);
+
+end:
+    bhex_free(out);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
 int TEST(template_interactive_1)(void)
 {
     // clang-format off

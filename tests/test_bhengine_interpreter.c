@@ -783,7 +783,7 @@ fail:
     goto end;
 }
 
-int TEST(and)(void)
+int TEST (and)(void)
 {
     const char* prog = "proc { local a = 0xffff; local b = a & 0xf0f0; }";
 
@@ -817,7 +817,7 @@ end:
     return r;
 }
 
-int TEST(xor)(void)
+int TEST (xor)(void)
 {
     const char* prog = "proc { local a = 0xff; local b = a ^ 0xf0; }";
 
@@ -3419,6 +3419,156 @@ end:
     bhex_free(out);
     if (scope)
         Scope_free(scope);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(char_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000  a: 'Hello'";
+    // clang-format on
+
+    int              r      = TEST_SUCCEEDED;
+    char*            out    = NULL;
+    u8_t             data[] = {'H', 'e', 'l', 'l', 'o'};
+    DummyFilebuffer* tfb    = dummyfilebuffer_create(data, sizeof(data));
+    fb_seek(tfb->fb, 0);
+
+    const char* prog = "proc {"
+                       "    char a[5];"
+                       "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope != NULL);
+
+    out = strbuilder_reset(sb);
+    ASSERT(compare_strings_ignoring_X(expected, out));
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    bhex_free(out);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(big_endian_wchar)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000  a: A\n"
+        "b+00000002  b: B";
+    // clang-format on
+
+    int              r      = TEST_SUCCEEDED;
+    char*            out    = NULL;
+    u8_t             data[] = {0, 'A', 0, 'B'};
+    DummyFilebuffer* tfb    = dummyfilebuffer_create(data, sizeof(data));
+    fb_seek(tfb->fb, 0);
+
+    const char* prog = "proc {"
+                       "    big_endian();"
+                       "    wchar a;"
+                       "    wchar b;"
+                       "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope != NULL);
+
+    out = strbuilder_reset(sb);
+    ASSERT(compare_strings_ignoring_X(expected, out));
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    bhex_free(out);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(big_endian_wchar_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000  a: A\n"
+        "b+00000002  b: B";
+    // clang-format on
+
+    int              r      = TEST_SUCCEEDED;
+    char*            out    = NULL;
+    u8_t             data[] = {0, 'A', 0, 'B'};
+    DummyFilebuffer* tfb    = dummyfilebuffer_create(data, sizeof(data));
+    fb_seek(tfb->fb, 0);
+
+    const char* prog = "proc {"
+                       "    big_endian();"
+                       "    wchar a;"
+                       "    wchar b;"
+                       "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope != NULL);
+
+    out = strbuilder_reset(sb);
+    ASSERT(compare_strings_ignoring_X(expected, out));
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    bhex_free(out);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(enable_disable_print)(void)
+{
+    // Only b should appear - a is printed with print disabled
+    // clang-format off
+    const char* expected =
+        "b+00000004  b: 4748504a";
+    // clang-format on
+
+    const char* prog = "proc {"
+                       "    disable_print();"
+                       "    u32 a;"
+                       "    enable_print();"
+                       "    u32 b;"
+                       "}";
+    char*       out  = NULL;
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(pseudo_random, sizeof(pseudo_random));
+    fb_seek(tfb->fb, 0);
+
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope != NULL);
+
+    out = strbuilder_reset(sb);
+    ASSERT(compare_strings_ignoring_X(expected, out));
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    bhex_free(out);
     return r;
 
 fail:

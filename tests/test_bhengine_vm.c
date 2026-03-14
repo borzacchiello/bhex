@@ -218,6 +218,190 @@ fail:
     goto end;
 }
 
+int TEST(has_template)(void)
+{
+    int         r  = TEST_SUCCEEDED;
+    BHEngineVM* vm = bhengine_vm_create(empty_dirs);
+    ASSERT(vm != NULL);
+    ASSERT(bhengine_vm_add_template(vm, "elf", "./templates/elf.bhe") == 0);
+
+    ASSERT(bhengine_vm_has_template(vm, "elf") == 1);
+    ASSERT(bhengine_vm_has_template(vm, "nonexistent") == 0);
+
+end:
+    bhengine_vm_destroy(vm);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(has_bhe_struct)(void)
+{
+    int         r  = TEST_SUCCEEDED;
+    BHEngineVM* vm = bhengine_vm_create(empty_dirs);
+    ASSERT(vm != NULL);
+    ASSERT(bhengine_vm_add_template(vm, "elf", "./templates/elf.bhe") == 0);
+
+    ASSERT(bhengine_vm_has_bhe_struct(vm, "elf", "Elf_Ehdr") == 1);
+    ASSERT(bhengine_vm_has_bhe_struct(vm, "elf", "nonexistent") == 0);
+    ASSERT(bhengine_vm_has_bhe_struct(vm, "nonexistent", "Elf_Ehdr") == 0);
+
+end:
+    bhengine_vm_destroy(vm);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(process_bhe_struct)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000        e_ident: \n"
+        "b+00000000             ei_mag: 7f454c46\n"
+        "b+00000004           ei_class: ELFCLASS32\n"
+        "b+00000005            ei_data: ELFDATA2LSB\n"
+        "b+00000006         ei_version: 01\n"
+        "b+00000007           ei_osabi: ELFOSABI_NONE\n"
+        "b+00000008      ei_abiversion: 00\n"
+        "b+00000009             ei_pad: 000000000000\n"
+        "b+0000000f          ei_nident: 00\n"
+        "b+00000010         e_type: ET_EXEC\n"
+        "b+00000012      e_machine: EM_386\n"
+        "b+00000014      e_version: 00000001\n"
+        "b+00000018        e_entry: 08048074\n"
+        "b+0000001c        e_phoff: 00000034\n"
+        "b+00000020        e_shoff: 000000a4\n"
+        "b+00000024        e_flags: 00000000\n"
+        "b+00000028       e_ehsize: 0034\n"
+        "b+0000002a    e_phentsize: 0020\n"
+        "b+0000002c        e_phnum: 0002\n"
+        "b+0000002e    e_shentsize: 0028\n"
+        "b+00000030        e_shnum: 0004\n"
+        "b+00000032     e_shstrndx: 0003";
+    // clang-format on
+
+    int         r  = TEST_SUCCEEDED;
+    BHEngineVM* vm = bhengine_vm_create(empty_dirs);
+    ASSERT(vm != NULL);
+    ASSERT(bhengine_vm_add_template(vm, "elf", "./templates/elf.bhe") == 0);
+
+    fb_seek(elf_fb->fb, 0);
+    bhex_free(strbuilder_reset(sb));
+    bhex_free(strbuilder_reset(err_sb));
+    ASSERT(bhengine_vm_process_bhe_struct(vm, elf_fb->fb, "elf", "Elf_Ehdr") ==
+           0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    bhengine_vm_destroy(vm);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(process_bhe)(void)
+{
+    int         r  = TEST_SUCCEEDED;
+    BHEngineVM* vm = bhengine_vm_create(empty_dirs);
+    ASSERT(vm != NULL);
+    ASSERT(bhengine_vm_add_template(vm, "elf", "./templates/elf.bhe") == 0);
+
+    fb_seek(elf_fb->fb, 0);
+    ASSERT(bhengine_vm_process_bhe(vm, elf_fb->fb, "elf") == 0);
+
+    char* out = strbuilder_reset(sb);
+    ASSERT(out != NULL);
+    // Check that the output contains expected ELF fields
+    ASSERT(strstr(out, "e_ident") != NULL);
+    ASSERT(strstr(out, "ELFCLASS32") != NULL);
+    bhex_free(out);
+
+end:
+    bhengine_vm_destroy(vm);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(has_bhe_proc)(void)
+{
+    int         r  = TEST_SUCCEEDED;
+    BHEngineVM* vm = bhengine_vm_create(empty_dirs);
+    ASSERT(vm != NULL);
+    ASSERT(bhengine_vm_add_template(vm, "zip", "./templates/zip.bhe") == 0);
+
+    ASSERT(bhengine_vm_has_bhe_proc(vm, "zip", "list_files") == 1);
+    ASSERT(bhengine_vm_has_bhe_proc(vm, "zip", "nonexistent") == 0);
+
+end:
+    bhengine_vm_destroy(vm);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+static int  iter_template_count;
+static void test_iter_templates_cb(const char* name, ASTCtx* ast)
+{
+    (void)ast;
+    (void)name;
+    iter_template_count++;
+}
+
+static int  iter_struct_count;
+static void test_iter_structs_cb(const char* name, const char* elname,
+                                 ASTCtx* ast)
+{
+    (void)name;
+    (void)elname;
+    (void)ast;
+    iter_struct_count++;
+}
+
+int TEST(iter_templates)(void)
+{
+    int         r  = TEST_SUCCEEDED;
+    BHEngineVM* vm = bhengine_vm_create(empty_dirs);
+    ASSERT(vm != NULL);
+    ASSERT(bhengine_vm_add_template(vm, "elf", "./templates/elf.bhe") == 0);
+    ASSERT(bhengine_vm_add_template(vm, "zip", "./templates/zip.bhe") == 0);
+
+    iter_template_count = 0;
+    bhengine_vm_iter_templates(vm, test_iter_templates_cb);
+    ASSERT(iter_template_count == 2);
+
+    iter_struct_count = 0;
+    bhengine_vm_iter_structs(vm, test_iter_structs_cb);
+    ASSERT(iter_struct_count > 0);
+
+    iter_template_count = 0;
+    bhengine_vm_iter_named_procs(vm, test_iter_structs_cb);
+    // zip has list_files named proc
+    ASSERT(iter_template_count >= 0);
+
+end:
+    bhengine_vm_destroy(vm);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
 int TEST(zip_list_files)(void)
 {
     // clang-format off
