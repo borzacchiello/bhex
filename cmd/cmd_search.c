@@ -41,12 +41,12 @@ static void searchcmd_help(void* obj)
         "search: search a string or a sequence of bytes in the file\n"
         "\n"
         "  src" HINT_STR "\n"
-        "     x:  data is an hex string\n"
+        "     x:  data is a hex string\n"
         "     s:  data is a string (default)\n"
         "     sk: seek to first match\n"
         "     c:  print context\n"
         "\n"
-        "  what: either a string or an hex string\n");
+        "  what: either a string or a hex string\n");
 }
 
 static int search_cb(FileBuffer* fb, u64_t match_addr, const u8_t* match,

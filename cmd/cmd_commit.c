@@ -24,7 +24,7 @@ static void commitcmd_help(void* obj)
     display_printf("commit: commit all writes to file\n"
                    "\n"
                    "  c" HINT_STR "\n"
-                   "     l: list uncommited changes\n");
+                   "     l: list uncommitted changes\n");
 }
 
 static void print_overwrite(FileBuffer* fb, Modification* mod, u32_t nmod)

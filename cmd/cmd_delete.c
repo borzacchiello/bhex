@@ -12,7 +12,7 @@ static void deletecmd_dispose(void* obj) { return; }
 
 static void deletecmd_help(void* obj)
 {
-    display_printf("delete: delete bytes at current offset (all remeining "
+    display_printf("delete: delete bytes at current offset (all remaining "
                    "bytes if the argument is omitted)\n"
                    "\n"
                    "  d " HINT_STR "\n");

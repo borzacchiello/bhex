@@ -82,7 +82,7 @@ static void seekcmd_help(void* obj)
         "seek: change current offset\n"
         "  s" HINT_STR "\n"
         "    +: sum 'off' to current offset (wrap if greater than filesize)\n"
-        "    -: subtract 'off' to current offset (wrap if lower than zero)\n"
+        "    -: subtract 'off' from current offset (wrap if lower than zero)\n"
         "\n"
         "  off: can be either a number or the character '-'.\n"
         "       In the latter case seek to the offset before the last seek.\n"

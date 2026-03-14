@@ -19,6 +19,7 @@ Minimalistic and lightweight shell-based hex editor. It’s designed to have a l
 - Undo writes until committed.
 - Enumerate (ASCII) strings.
 - Search strings or binary data.
+- Calculate hashes, checksums, and CRCs.
 - Execute template files using a custom language (bhe), see examples in the `templates/` subdirectory.
 - Disassemble opcodes (using Capstone).
 - Assemble opcodes (using Keystone).
@@ -37,12 +38,12 @@ Usage:  bhex [ options ] inputfile
   -c  "c1; c2; ..." Execute the commands given as argument and exit
   -s  --script      Script mode (commands from raw stdin)
 
-command history is saved in "$HOME/.bhex_history", it can be changed setting BHEX_HISTORY_FILE environment variable
+command history is saved in "$HOME/.bhex_history", it can be changed by setting the BHEX_HISTORY_FILE environment variable
 ```
 
 # Compilation
 
-The project can be compiled using cmake. Without Captone and Keystone, it has no runtime dependencies (apart from libc), so it should be quite straightforward:
+The project can be compiled using cmake. Without Capstone and Keystone, it has no runtime dependencies (apart from libc), so it should be quite straightforward:
 
 ```
 $ mkdir build
@@ -79,11 +80,12 @@ If you type "help" (or "h"), you get the list of commands:
 
 Available commands:
     help [h]
-    interactive [int]
     info [i]
+    interactive [int]
     entropy [e]
     search [src]
     hash [hh]
+    checksum [cs]
     crc [cr]
     strings [str]
     template [t]
@@ -115,10 +117,10 @@ info: prints information about the opened binary
 
 entropy: display an entropy graph
 
-  e <len> <rows>
+  e [<rows> <len>]
 
-  len:  number of bytes to include starting from the current offset (if omitted or '-', the whole file)
-  rows: number of points in the graph (if omitted, defaults to 32)
+  rows: number of points in the graph (if omitted or '-', auto mode)
+  len:  number of bytes to include starting from the current offset (if omitted, use the whole file)
 
 [0x0000000] $ e - 8
 [ 00000000 - 000277c8 ] (5.980) ---------------------------------+
@@ -143,7 +145,7 @@ Start an interactive session.
 search: search a string or a sequence of bytes in the file
 
   src[/{x, s}/sk/p] <what>
-     x:  data is an hex string
+     x:  data is a hex string
      s:  data is a string (default)
      sk: seek to first match
      c:  print context
@@ -163,7 +165,7 @@ enumerate the strings in the file (i.e., sequences of printable ascii characters
      a: 8-bit only
      w: 16-bit only
 
-  pattern: print only strings that contains the pattern as substring (use * for any character)
+  pattern: print only strings that contain the pattern as substring (use * for any character)
   num:     minimum length (default: 3)
 ```
 
@@ -190,6 +192,7 @@ hash: calculate the hash of <size> bytes at current offset + <off>
   md6-256
   md6-384
   md6-512
+  sm3
   sha1
   sha224
   sha256
@@ -206,6 +209,7 @@ hash: calculate the hash of <size> bytes at current offset + <off>
   RipeMD-320
   blake2s
   blake2b
+  ghost
 ```
 
 ### Template
@@ -215,19 +219,27 @@ hash: calculate the hash of <size> bytes at current offset + <off>
 
 template: parse the file at current offset using a 'bhe' template file
 
-  t[/l] <name or file>
+  t[/l/i/x] <name or file>
      l: list available templates and structs
+     x: output in XML
+     i: interpret inline code
 
-  name: the name of the pre-loaded template/struct to use, or a path to a template file, or a filter if in list mode
+  arg: its meaning depends on the mode. It could be
+       - the name of the pre-loaded template/struct/proc to use
+       - a path to a template file
+       - a filter (if in list mode)
+       - inline bhex code (if in interpret mode)
 
 [0x0000000] $ t/l
 
 Available templates:
   squashfs
-  tar
   zip
+  tar
   jpeg
   elf
+  gzip
+  lzo
   png
   pe
   rpm
@@ -243,7 +255,7 @@ Available templates:
 seek: change current offset
   s[/{+,-}] <off>
     +: sum 'off' to current offset (wrap if greater than filesize)
-    -: subtract 'off' to current offset (wrap if lower than zero)
+    -: subtract 'off' from current offset (wrap if lower than zero)
 
   off: can be either a number or the character '-'.
        In the latter case seek to the offset before the last seek.
@@ -261,9 +273,24 @@ import: calculate the CRC <name> at current offset + <off>
   crc[/l] <name> [<size> <off>]
      l:   list the supported crc names
 
-  name:   name of the CRC (or a partial name)
+  name:   name of the CRC (or a partial name, or '*')
   size:   number of bytes to include in the crc (if omitted or zero, import the whole file starting from current offset)
   offset: starting offset of the imported file (if omitted, import from current offset)
+```
+
+### Checksum
+
+```
+[0x0000000] $ cs?
+
+checksum: calculate a checksum at current offset + <off>
+
+  checksum [/l] <name> [<size> <off>]
+     l:   list the supported checksum names
+
+  name:   name of the checksum (or a partial name, or '*')
+  size:   number of bytes to include (if omitted or zero, use the whole file starting from current offset)
+  offset: starting offset (if omitted, use current offset)
 ```
 
 ### Assemble
@@ -289,11 +316,13 @@ assemble: assemble code and write it at current offset
 
 disas: disassemble code at current offset
 
-  ds[/l] <arch> [<nbytes>]
+  ds[/l/i] [<arch>] [<nbytes>]
      l:  list supported architectures
+     i:  identify architecture; optional nbytes limits the scan to
+         that many bytes from the current offset (default: whole file)
 
   arch:   the architecture to use
-  nbytes: the number of opcodes to disassemble, default value: 8
+  nbytes: number of opcodes to disassemble (default: 8)
 ```
 
 ### Print
@@ -328,8 +357,9 @@ print: display the data at current offset in various formats
 
 diff: prints the differences with another file
 
-  df[/p] <file>
+  df[/p/w] <file>
      p:  print different bytes
+     w:  wide print (rows are 16 bytes)
 
   file: path to the file to compare
 ```
@@ -341,10 +371,10 @@ diff: prints the differences with another file
 
 export: write <size> bytes of the file starting from current offset to <ofile>
 
-  ex <ofile> <size>
+  ex <ofile> [<size>]
 
   ofile: output file
-  size:  number of bytes to export
+  size:  number of bytes to export (if omitted, all the remaining bytes)
 ```
 
 ### Import
@@ -382,8 +412,8 @@ write: write data at current offset
      u:   unsigned
      i:   insert
 
-  data: the data to write. The format depends on the type of 
-        write. Here there are some examples:
+  data: the data to write. The format depends on the type of
+        write. Here are some examples:
             w/x "00 01 02 03"
             w/s "a string"
             w/q/be 0x1234
@@ -394,16 +424,20 @@ write: write data at current offset
 ```
 [0x0000000] $ d?
 
-delete: delete bytes at current offset
+delete: delete bytes at current offset (all remaining bytes if the argument is omitted)
 
-  d <len>
+  d  [<nbytes>]
 ```
 
 ### Undo
 
 ```
 [0x0000000] $ u?
-undo the last write
+
+undo: undo the last write
+
+  u[/a]
+     a: undo all
 ```
 
 ### Commit
@@ -414,5 +448,5 @@ undo the last write
 commit: commit all writes to file
 
   c[/l]
-     l: list uncommited changes
+     l: list uncommitted changes
 ```

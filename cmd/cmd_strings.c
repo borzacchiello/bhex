@@ -45,7 +45,7 @@ static void stringscmd_help(void* obj)
         "     a: 8-bit only\n"
         "     w: 16-bit only\n"
         "\n"
-        "  pattern: print only strings that contains the pattern as "
+        "  pattern: print only strings that contain the pattern as "
         "substring (use * for any character)\n"
         "  num:     minimum length (default: 3)\n");
 }
