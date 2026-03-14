@@ -783,7 +783,7 @@ fail:
     goto end;
 }
 
-int TEST (and)(void)
+int TEST(and)(void)
 {
     const char* prog = "proc { local a = 0xffff; local b = a & 0xf0f0; }";
 
@@ -817,7 +817,7 @@ end:
     return r;
 }
 
-int TEST (xor)(void)
+int TEST(xor)(void)
 {
     const char* prog = "proc { local a = 0xff; local b = a ^ 0xf0; }";
 
@@ -3606,4 +3606,293 @@ end:
 fail:
     r = TEST_FAILED;
     goto end;
+}
+
+int TEST(filevar_byref_memory)(void)
+{
+    // With pass-by-reference, assigning a large file_var to N locals must NOT
+    // allocate N copies of the data.
+    //
+    // Strategy: use bhex_alloc_track_start/stop to count all live heap
+    // allocations while a scope is alive.  With 1 local the count is
+    // "live_1"; with N=1000 locals it must not grow by more than O(N) (just
+    // the map cells for the extra variable names).  The old pass-by-value code
+    // would add O(N * ARRAY_SIZE) extra BHEngineValue objects.
+    //
+    // Threshold: live_n - live_1 < N * ARRAY_SIZE / 4
+    //   new code: ~(N-1) extra map cells              ≈  999  (passes)
+    //   old code: ~(N-1)*(ARRAY_SIZE+2) extra objects ≈ 43956 (would fail)
+
+#define PERF_N          1000
+#define PERF_ARRAY_SIZE 42
+    /* ^^^ defines scoped to this test by convention; #undef'd below */
+
+    u8_t data[PERF_ARRAY_SIZE * 2];
+    for (int i = 0; i < PERF_ARRAY_SIZE * 2; i++)
+        data[i] = (u8_t)(i + 1);
+
+    // --- 1 local copy ---
+    DummyFilebuffer* tfb1  = dummyfilebuffer_create(data, sizeof(data));
+    const char*      prog1 = "proc {"
+                             "    disable_print();"
+                             "    u16 arr[42];"
+                             "    local a0 = arr;"
+                             "}";
+
+    bhex_alloc_track_start();
+    Scope* scope1 = bhengine_interpreter_run_on_string(tfb1->fb, prog1);
+    size_t live_1 = bhex_alloc_live_count();
+    if (scope1)
+        Scope_free(scope1);
+    bhex_alloc_track_stop();
+    dummyfilebuffer_destroy(tfb1);
+
+    // --- PERF_N local copies ---
+    DummyFilebuffer* tfb2 = dummyfilebuffer_create(data, sizeof(data));
+    StringBuilder*   sb   = strbuilder_new();
+    strbuilder_append(sb, "proc { disable_print(); u16 arr[42];");
+    for (int i = 0; i < PERF_N; i++)
+        strbuilder_appendf(sb, " local a%d = arr;", i);
+    strbuilder_append(sb, " }");
+    char* prog_n = strbuilder_finalize(sb);
+
+    bhex_alloc_track_start();
+    Scope* scope_n = bhengine_interpreter_run_on_string(tfb2->fb, prog_n);
+    size_t live_n  = bhex_alloc_live_count();
+    if (scope_n)
+        Scope_free(scope_n);
+    bhex_alloc_track_stop();
+    bhex_free(prog_n);
+    dummyfilebuffer_destroy(tfb2);
+
+    size_t threshold = (size_t)(PERF_N * PERF_ARRAY_SIZE / 4);
+    if (live_n < live_1 || live_n - live_1 >= threshold) {
+        printf("[!] live_1=%zu  live_n=%zu  threshold=%zu\n", live_1, live_n,
+               threshold);
+        return TEST_FAILED;
+    }
+    return TEST_SUCCEEDED;
+#undef PERF_N
+#undef PERF_ARRAY_SIZE
+}
+
+int TEST(filevar_to_local)(void)
+{
+    // EXPR_VAR for a file_var retains instead of copying
+    int              r    = 0;
+    DummyFilebuffer* tfb  = dummyfilebuffer_create((const u8_t*)"\x42\x43", 2);
+    const char*      prog = "proc {"
+                            "    disable_print();"
+                            "    u8 fv;"
+                            "    local a = fv;"
+                            "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    if (scope == NULL)
+        goto end;
+
+    BHEngineValue* v = Scope_get_local(scope, "a");
+    IS_TENGINE_UNUM_EQ(r, v, 0x42);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+}
+
+int TEST(filevar_to_multiple_locals)(void)
+{
+    // Same file_var retained by two locals; both must read correctly
+    // and no double-free when scope is released
+    int              r    = 0;
+    DummyFilebuffer* tfb  = dummyfilebuffer_create((const u8_t*)"\x42\x43", 2);
+    const char*      prog = "proc {"
+                            "    disable_print();"
+                            "    u8 fv;"
+                            "    local a = fv;"
+                            "    local b = fv;"
+                            "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    if (scope == NULL)
+        goto end;
+
+    BHEngineValue* va = Scope_get_local(scope, "a");
+    IS_TENGINE_UNUM_EQ(r, va, 0x42);
+    BHEngineValue* vb = Scope_get_local(scope, "b");
+    IS_TENGINE_UNUM_EQ(r, vb, 0x42);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+}
+
+int TEST(filevar_struct_field_to_local)(void)
+{
+    // EXPR_SUBSCR retains the field value instead of copying
+    int              r    = 0;
+    DummyFilebuffer* tfb  = dummyfilebuffer_create((const u8_t*)"\x10\x20", 2);
+    const char*      prog = "struct S { u8 x; u8 y; }"
+                            "proc {"
+                            "    disable_print();"
+                            "    S sv;"
+                            "    local a = sv.x;"
+                            "    local b = sv.y;"
+                            "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    if (scope == NULL)
+        goto end;
+
+    BHEngineValue* va = Scope_get_local(scope, "a");
+    IS_TENGINE_UNUM_EQ(r, va, 0x10);
+    BHEngineValue* vb = Scope_get_local(scope, "b");
+    IS_TENGINE_UNUM_EQ(r, vb, 0x20);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+}
+
+int TEST(filevar_passed_to_fn)(void)
+{
+    // file_var passed to a function is retained, not copied
+    int              r    = 0;
+    DummyFilebuffer* tfb  = dummyfilebuffer_create((const u8_t*)"\x07\x00", 2);
+    const char*      prog = "fn double(x) { result = u32(x + x); }"
+                            "proc {"
+                            "    disable_print();"
+                            "    u8 fv;"
+                            "    local a = double(fv);"
+                            "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    if (scope == NULL)
+        goto end;
+
+    BHEngineValue* v = Scope_get_local(scope, "a");
+    IS_TENGINE_UNUM_EQ(r, v, 14);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+}
+
+int TEST(filevar_struct_passed_to_fn)(void)
+{
+    // struct file_var passed to a function; field accessed inside
+    int              r    = 0;
+    DummyFilebuffer* tfb  = dummyfilebuffer_create((const u8_t*)"\x05\x0A", 2);
+    const char*      prog = "struct S { u8 x; u8 y; }"
+                            "fn get_x(s) { result = u8(s.x); }"
+                            "proc {"
+                            "    disable_print();"
+                            "    S sv;"
+                            "    local r = get_x(sv);"
+                            "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    if (scope == NULL)
+        goto end;
+
+    BHEngineValue* v = Scope_get_local(scope, "r");
+    IS_TENGINE_UNUM_EQ(r, v, 5);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+}
+
+int TEST(filevar_array_element_to_local)(void)
+{
+    // array file_var element retained via BHEngineValue_array_sub
+    int              r = 0;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create((const u8_t*)"\x01\x02\x03\x04\x05", 5);
+    const char* prog = "proc {"
+                       "    disable_print();"
+                       "    u8 arr[5];"
+                       "    local a = arr[0];"
+                       "    local b = arr[4];"
+                       "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    if (scope == NULL)
+        goto end;
+
+    BHEngineValue* va = Scope_get_local(scope, "a");
+    IS_TENGINE_UNUM_EQ(r, va, 1);
+    BHEngineValue* vb = Scope_get_local(scope, "b");
+    IS_TENGINE_UNUM_EQ(r, vb, 5);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+}
+
+int TEST(filevar_reused_after_fn_call)(void)
+{
+    // file_var refcount is restored after function call; still accessible
+    int              r    = 0;
+    DummyFilebuffer* tfb  = dummyfilebuffer_create((const u8_t*)"\x09\x00", 2);
+    const char*      prog = "fn inc(x) { result = u32(x + 1); }"
+                            "proc {"
+                            "    disable_print();"
+                            "    u8 fv;"
+                            "    local a = inc(fv);"
+                            "    local b = fv;"
+                            "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    if (scope == NULL)
+        goto end;
+
+    BHEngineValue* va = Scope_get_local(scope, "a");
+    IS_TENGINE_UNUM_EQ(r, va, 10);
+    BHEngineValue* vb = Scope_get_local(scope, "b");
+    IS_TENGINE_UNUM_EQ(r, vb, 9);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+}
+
+int TEST(filevar_struct_field_passed_to_fn)(void)
+{
+    // field obtained via EXPR_SUBSCR (retained) then passed to a function
+    int              r    = 0;
+    DummyFilebuffer* tfb  = dummyfilebuffer_create((const u8_t*)"\x06\x00", 2);
+    const char*      prog = "struct S { u8 x; }"
+                            "fn triple(v) { result = u32(v + v + v); }"
+                            "proc {"
+                            "    disable_print();"
+                            "    S sv;"
+                            "    local r = triple(sv.x);"
+                            "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    if (scope == NULL)
+        goto end;
+
+    BHEngineValue* v = Scope_get_local(scope, "r");
+    IS_TENGINE_UNUM_EQ(r, v, 18);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
 }

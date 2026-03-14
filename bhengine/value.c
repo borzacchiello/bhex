@@ -55,6 +55,7 @@ BHEngineValue* BHEngineValue_SNUM_new(s64_t v, u32_t size)
     }
 
     BHEngineValue* r = bhex_calloc(sizeof(BHEngineValue));
+    r->refcount      = 1;
     r->t             = TENGINE_SNUM;
     r->snum          = v;
     r->snum_size     = size;
@@ -68,6 +69,7 @@ BHEngineValue* BHEngineValue_UNUM_new(u64_t v, u32_t size)
     u64_t mask = (2ull << ((u64_t)size * 8 - 1ull)) - 1ull;
 
     BHEngineValue* r = bhex_calloc(sizeof(BHEngineValue));
+    r->refcount      = 1;
     r->t             = TENGINE_UNUM;
     r->unum          = v & mask;
     r->unum_size     = size;
@@ -77,6 +79,7 @@ BHEngineValue* BHEngineValue_UNUM_new(u64_t v, u32_t size)
 BHEngineValue* BHEngineValue_CHAR_new(char c)
 {
     BHEngineValue* r = bhex_calloc(sizeof(BHEngineValue));
+    r->refcount      = 1;
     r->t             = TENGINE_CHAR;
     r->c             = c;
     return r;
@@ -85,6 +88,7 @@ BHEngineValue* BHEngineValue_CHAR_new(char c)
 BHEngineValue* BHEngineValue_WCHAR_new(u16_t c)
 {
     BHEngineValue* r = bhex_calloc(sizeof(BHEngineValue));
+    r->refcount      = 1;
     r->t             = TENGINE_WCHAR;
     r->wc            = c;
     return r;
@@ -93,6 +97,7 @@ BHEngineValue* BHEngineValue_WCHAR_new(u16_t c)
 BHEngineValue* BHEngineValue_STRING_new(const u8_t* str, u32_t size)
 {
     BHEngineValue* r = bhex_calloc(sizeof(BHEngineValue));
+    r->refcount      = 1;
     r->t             = TENGINE_STRING;
     r->str           = bhex_calloc(size + 1);
     r->str_size      = size;
@@ -103,6 +108,7 @@ BHEngineValue* BHEngineValue_STRING_new(const u8_t* str, u32_t size)
 BHEngineValue* BHEngineValue_WSTRING_new(const u16_t* str, u32_t size)
 {
     BHEngineValue* r = bhex_calloc(sizeof(BHEngineValue));
+    r->refcount      = 1;
     r->t             = TENGINE_WSTRING;
     r->wstr          = bhex_calloc(2 * size + 2);
     r->wstr_size     = size;
@@ -113,6 +119,7 @@ BHEngineValue* BHEngineValue_WSTRING_new(const u16_t* str, u32_t size)
 BHEngineValue* BHEngineValue_OBJ_new(map* subvals)
 {
     BHEngineValue* r = bhex_calloc(sizeof(BHEngineValue));
+    r->refcount      = 1;
     r->t             = TENGINE_OBJ;
     r->subvals       = subvals;
     return r;
@@ -121,6 +128,7 @@ BHEngineValue* BHEngineValue_OBJ_new(map* subvals)
 BHEngineValue* BHEngineValue_ENUM_VALUE_new(const char* ename, u64_t econst)
 {
     BHEngineValue* r = bhex_calloc(sizeof(BHEngineValue));
+    r->refcount      = 1;
     r->t             = TENGINE_ENUM_VALUE;
     r->enum_value    = bhex_strdup(ename);
     r->enum_const    = econst;
@@ -130,6 +138,7 @@ BHEngineValue* BHEngineValue_ENUM_VALUE_new(const char* ename, u64_t econst)
 BHEngineValue* BHEngineValue_BUF_new(u64_t off, u64_t size)
 {
     BHEngineValue* r = bhex_calloc(sizeof(BHEngineValue));
+    r->refcount      = 1;
     r->t             = TENGINE_BUF;
     r->buf_off       = off;
     r->buf_size      = size;
@@ -139,6 +148,7 @@ BHEngineValue* BHEngineValue_BUF_new(u64_t off, u64_t size)
 BHEngineValue* BHEngineValue_ARRAY_new(void)
 {
     BHEngineValue* r = bhex_calloc(sizeof(BHEngineValue));
+    r->refcount      = 1;
     r->t             = TENGINE_ARRAY;
     r->array_data    = DList_new();
     return r;
@@ -168,7 +178,7 @@ BHEngineValue* BHEngineValue_array_sub(InterpreterContext*  ctx,
                     e->array_data->size, n_val);
                 return NULL;
             }
-            return BHEngineValue_dup(e->array_data->data[n_val]);
+            return BHEngineValue_retain(e->array_data->data[n_val]);
         }
         case TENGINE_BUF: {
             if (e->buf_size <= n_val) {
@@ -217,8 +227,8 @@ BHEngineValue* BHEngineValue_array_sub(InterpreterContext*  ctx,
     return NULL;
 }
 
-#define is_snum(e)       ((e)->t == TENGINE_SNUM)
-#define is_unum(e)       ((e)->t == TENGINE_UNUM || (e)->t == TENGINE_ENUM_VALUE)
+#define is_snum(e) ((e)->t == TENGINE_SNUM)
+#define is_unum(e) ((e)->t == TENGINE_UNUM || (e)->t == TENGINE_ENUM_VALUE)
 #define get_unum_size(e) (((e)->t == TENGINE_UNUM) ? (e)->unum_size : 8)
 #define get_unum_value(e)                                                      \
     (((e)->t == TENGINE_UNUM) ? (e)->unum : (e)->enum_const)
@@ -602,9 +612,18 @@ int BHEngineValue_as_s64(InterpreterContext* ctx, const BHEngineValue* v,
     return 1;
 }
 
-void BHEngineValue_free(BHEngineValue* v)
+BHEngineValue* BHEngineValue_retain(BHEngineValue* v)
+{
+    if (v)
+        v->refcount++;
+    return v;
+}
+
+void BHEngineValue_release(BHEngineValue* v)
 {
     if (!v)
+        return;
+    if (--v->refcount > 0)
         return;
 
     switch (v->t) {
@@ -627,13 +646,16 @@ void BHEngineValue_free(BHEngineValue* v)
             map_destroy(v->subvals);
             break;
         case TENGINE_ARRAY:
-            DList_destroy(v->array_data, (void (*)(void*))BHEngineValue_free);
+            DList_destroy(v->array_data,
+                          (void (*)(void*))BHEngineValue_release);
             break;
         default:
-            panic("invalid type in BHEngineValue_free");
+            panic("invalid type in BHEngineValue_release");
     }
     bhex_free(v);
 }
+
+void BHEngineValue_free(BHEngineValue* v) { BHEngineValue_release(v); }
 
 BHEngineValue* BHEngineValue_dup(BHEngineValue* v)
 {
@@ -657,7 +679,7 @@ BHEngineValue* BHEngineValue_dup(BHEngineValue* v)
             return BHEngineValue_ENUM_VALUE_new(v->enum_value, v->enum_const);
         case TENGINE_OBJ: {
             map* subvals = map_create();
-            map_set_dispose(subvals, (void (*)(void*))BHEngineValue_free);
+            map_set_dispose(subvals, (void (*)(void*))BHEngineValue_release);
             for (const char* key = map_first(v->subvals); key != NULL;
                  key             = map_next(v->subvals, key)) {
                 BHEngineValue* n = BHEngineValue_dup(map_get(v->subvals, key));

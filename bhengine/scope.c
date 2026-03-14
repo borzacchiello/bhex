@@ -9,8 +9,8 @@ Scope* Scope_new(void)
     Scope* s    = bhex_calloc(sizeof(Scope));
     s->locals   = map_create();
     s->filevars = map_create();
-    map_set_dispose(s->locals, (void (*)(void*))BHEngineValue_free);
-    map_set_dispose(s->filevars, (void (*)(void*))BHEngineValue_free);
+    map_set_dispose(s->locals, (void (*)(void*))BHEngineValue_release);
+    map_set_dispose(s->filevars, (void (*)(void*))BHEngineValue_release);
     return s;
 }
 

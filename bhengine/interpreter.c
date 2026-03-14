@@ -225,7 +225,7 @@ static BHEngineValue* handle_function_call(InterpreterContext* ctx,
     Scope_add_local(fn_scope, "result", BHEngineValue_UNUM_new(0, 8));
     for (u64_t i = 0; i < nparams; ++i)
         Scope_add_local(fn_scope, fn->params->data[i],
-                        BHEngineValue_dup(params_exprs->data[i]));
+                        BHEngineValue_retain(params_exprs->data[i]));
 
     if (process_stmts_no_exc(ctx, fn->block->stmts, fn_scope) != 0)
         goto end;
@@ -296,7 +296,10 @@ static BHEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
         case EXPR_STRING:
             return BHEngineValue_STRING_new(e->str, e->str_len);
         case EXPR_VAR: {
-            BHEngineValue* value = Scope_get_anyvar(scope, e->name);
+            BHEngineValue* value = Scope_get_filevar(scope, e->name);
+            if (value)
+                return BHEngineValue_retain(value);
+            value = Scope_get_local(scope, e->name);
             if (!value) {
                 bhengine_raise_exception(ctx, "no such variable '%s'", e->name);
                 return NULL;
@@ -327,9 +330,9 @@ static BHEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
             BHEngineValue* val = map_get(lhs->subvals, e->subscr_name);
             if (val == NULL)
                 panic("[tengine] NULL during subscription operator");
-            BHEngineValue* res = BHEngineValue_dup(val);
-            BHEngineValue_free(lhs);
-            return res;
+            BHEngineValue_retain(val);
+            BHEngineValue_release(lhs);
+            return val;
         }
         case EXPR_ARRAY_SUB: {
             BHEngineValue* lhs = evaluate_expr(ctx, scope, e->array_sub_e);

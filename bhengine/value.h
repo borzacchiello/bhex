@@ -25,6 +25,7 @@ typedef enum BHEngineValueType {
 
 typedef struct BHEngineValue {
     BHEngineValueType t;
+    u32_t             refcount;
     union {
         struct {
             // TENGINE_UNUM
@@ -86,6 +87,8 @@ BHEngineValue* BHEngineValue_BUF_new(u64_t off, u64_t size);
 BHEngineValue* BHEngineValue_ARRAY_new();
 BHEngineValue* BHEngineValue_OBJ_new(map* subvals);
 BHEngineValue* BHEngineValue_dup(BHEngineValue* v);
+BHEngineValue* BHEngineValue_retain(BHEngineValue* v);
+void           BHEngineValue_release(BHEngineValue* v);
 void           BHEngineValue_free(BHEngineValue* v);
 
 void BHEngineValue_ARRAY_append(BHEngineValue* arr, BHEngineValue* v);

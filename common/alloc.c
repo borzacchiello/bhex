@@ -167,3 +167,8 @@ void bhex_alloc_track_free_all()
 
     track_free_all();
 }
+
+size_t bhex_alloc_live_count()
+{
+    return g_track_size;
+}
