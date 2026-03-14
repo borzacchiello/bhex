@@ -89,6 +89,11 @@ void map_set(map* m, const char* key, void* value);
 void* map_get(const map* m, const char* key);
 
 /**
+ * Retrieve the value for a given key in a map, or NULL if not found.
+ */
+void* map_get_or_null(const map* m, const char* key);
+
+/**
  * Remove a key and return its value from a map. This call transfers the
  * ownership of the object to the caller
  *

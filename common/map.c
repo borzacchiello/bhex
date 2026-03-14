@@ -152,6 +152,20 @@ void* map_get(const map* m, const char* key)
 }
 
 /**
+ * Retrieve the value for a given key in a map, or NULL if not found.
+ */
+void* map_get_or_null(const map* m, const char* key)
+{
+    int b = hash(key) % m->capacity;
+
+    for (struct cell* curr = m->elems[b]; curr != NULL; curr = curr->next) {
+        if (strcmp(curr->key, key) == 0)
+            return curr->value;
+    }
+    return NULL;
+}
+
+/**
  * Remove a key and its value from a map.
  *
  * Crashes if the map does not already contain the key.

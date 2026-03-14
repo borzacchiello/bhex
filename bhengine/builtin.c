@@ -15,6 +15,7 @@
 #include <string.h>
 #include <alloc.h>
 #include <log.h>
+#include <map.h>
 
 /*
     Builtin Types
@@ -206,14 +207,15 @@ static BHEngineBuiltinType builtin_types[] = {
 
 const BHEngineBuiltinType* get_builtin_type(const char* type)
 {
-    for (u64_t i = 0; i < sizeof(builtin_types) / sizeof(BHEngineBuiltinType);
-         ++i) {
-        BHEngineBuiltinType* t = &builtin_types[i];
-        if (strcmp(t->name, type) == 0) {
-            return t;
-        }
+    static map* builtin_types_map = NULL;
+    if (builtin_types_map == NULL) {
+        builtin_types_map = map_create();
+        for (u64_t i = 0;
+             i < sizeof(builtin_types) / sizeof(BHEngineBuiltinType); ++i)
+            map_set(builtin_types_map, builtin_types[i].name,
+                    &builtin_types[i]);
     }
-    return NULL;
+    return map_get_or_null(builtin_types_map, type);
 }
 
 /*
@@ -742,12 +744,13 @@ static BHEngineBuiltinFunc builtin_funcs[] = {
 
 const BHEngineBuiltinFunc* get_builtin_func(const char* name)
 {
-    for (u64_t i = 0; i < sizeof(builtin_funcs) / sizeof(BHEngineBuiltinFunc);
-         ++i) {
-        BHEngineBuiltinFunc* t = &builtin_funcs[i];
-        if (strcmp(t->name, name) == 0) {
-            return t;
-        }
+    static map* builtin_funcs_map = NULL;
+    if (builtin_funcs_map == NULL) {
+        builtin_funcs_map = map_create();
+        for (u64_t i = 0;
+             i < sizeof(builtin_funcs) / sizeof(BHEngineBuiltinFunc); ++i)
+            map_set(builtin_funcs_map, builtin_funcs[i].name,
+                    &builtin_funcs[i]);
     }
-    return NULL;
+    return map_get_or_null(builtin_funcs_map, name);
 }

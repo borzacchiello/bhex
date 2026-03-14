@@ -26,16 +26,12 @@ void Scope_free(Scope* s)
 
 BHEngineValue* Scope_get_filevar(Scope* s, const char* name)
 {
-    if (!map_contains(s->filevars, name))
-        return NULL;
-    return map_get(s->filevars, name);
+    return map_get_or_null(s->filevars, name);
 }
 
 BHEngineValue* Scope_get_local(Scope* s, const char* name)
 {
-    if (!map_contains(s->locals, name))
-        return NULL;
-    return map_get(s->locals, name);
+    return map_get_or_null(s->locals, name);
 }
 
 BHEngineValue* Scope_get_anyvar(Scope* s, const char* name)

@@ -61,16 +61,12 @@ void bhengine_raise_exit_request(InterpreterContext* ctx) { ctx->halt = 1; }
 
 static Block* get_struct_body(ASTCtx* ast, const char* name)
 {
-    if (!map_contains(ast->structs, name))
-        return NULL;
-    return map_get(ast->structs, name);
+    return map_get_or_null(ast->structs, name);
 }
 
 static Enum* get_enum(ASTCtx* ast, const char* name)
 {
-    if (!map_contains(ast->enums, name))
-        return NULL;
-    return map_get(ast->enums, name);
+    return map_get_or_null(ast->enums, name);
 }
 
 static map* process_struct_type(InterpreterContext* ctx, Type* type)
@@ -278,13 +274,13 @@ static BHEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
         case EXPR_UCONST:
             return BHEngineValue_UNUM_new(e->uconst_value, e->uconst_size);
         case EXPR_ENUM_CONST: {
-            if (!map_contains(ctx->ast->enums, e->enum_name)) {
+            Enum* enumptr = map_get_or_null(ctx->ast->enums, e->enum_name);
+            if (!enumptr) {
                 bhengine_raise_exception(ctx, "no such enum '%s'",
                                          e->enum_name);
                 return NULL;
             }
             u64_t v;
-            Enum* enumptr = map_get(ctx->ast->enums, e->enum_name);
             if (Enum_find_value(enumptr, e->enum_field, &v) != 0) {
                 bhengine_raise_exception(ctx,
                                          "enum '%s' has no such field '%s'",
@@ -318,7 +314,8 @@ static BHEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
                 return NULL;
             }
 
-            if (!map_contains(lhs->subvals, e->subscr_name)) {
+            BHEngineValue* val = map_get_or_null(lhs->subvals, e->subscr_name);
+            if (val == NULL) {
                 BHEngineValue_free(lhs);
                 bhengine_raise_exception(
                     ctx,
@@ -327,9 +324,6 @@ static BHEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
                     e->subscr_name);
                 return NULL;
             }
-            BHEngineValue* val = map_get(lhs->subvals, e->subscr_name);
-            if (val == NULL)
-                panic("[tengine] NULL during subscription operator");
             BHEngineValue_retain(val);
             BHEngineValue_release(lhs);
             return val;
@@ -363,7 +357,8 @@ static BHEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
                                              e->fname);
                 return r;
             }
-            if (map_contains(ctx->ast->functions, e->fname)) {
+            Function* fn_expr = map_get_or_null(ctx->ast->functions, e->fname);
+            if (fn_expr != NULL) {
                 // Custom function
                 DList* params_vals = NULL;
                 if (e->params) {
@@ -371,7 +366,7 @@ static BHEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
                     if (params_vals == NULL)
                         return NULL;
                 }
-                Function*      fn = map_get(ctx->ast->functions, e->fname);
+                Function*      fn = fn_expr;
                 BHEngineValue* result =
                     handle_function_call(ctx, fn, params_vals, scope);
                 if (params_vals)
@@ -802,7 +797,8 @@ static int process_VOID_FUNC_CALL(InterpreterContext* ctx, Stmt* stmt,
         BHEngineValue_free(r);
         return 0;
     }
-    if (map_contains(ctx->ast->functions, stmt->fname)) {
+    Function* fn_stmt = map_get_or_null(ctx->ast->functions, stmt->fname);
+    if (fn_stmt != NULL) {
         // Custom function
         DList* params_vals = NULL;
         if (stmt->params) {
@@ -810,7 +806,7 @@ static int process_VOID_FUNC_CALL(InterpreterContext* ctx, Stmt* stmt,
             if (params_vals == NULL)
                 return 1;
         }
-        Function*      fn = map_get(ctx->ast->functions, stmt->fname);
+        Function*      fn = fn_stmt;
         BHEngineValue* result =
             handle_function_call(ctx, fn, params_vals, scope);
         if (params_vals)
@@ -1139,14 +1135,14 @@ int bhengine_interpreter_process_ast_struct(FileBuffer* fb, ASTCtx* ast,
     InterpreterContext ctx = {0};
     interpreter_context_init(&ctx, ast, fb);
 
-    int r = 1;
-    if (!map_contains(ast->structs, s)) {
+    int    r = 1;
+    Block* b = map_get_or_null(ast->structs, s);
+    if (!b) {
         error("no such struct '%s'", s);
         goto end;
     }
 
-    Block* b = map_get(ast->structs, s);
-    r        = process_stmts(&ctx, b->stmts, ctx.proc_scope);
+    r = process_stmts(&ctx, b->stmts, ctx.proc_scope);
 
 end:
     interpreter_context_deinit(&ctx);
@@ -1160,14 +1156,14 @@ int bhengine_interpreter_process_ast_named_proc(FileBuffer* fb, ASTCtx* ast,
     interpreter_context_init(&ctx, ast, fb);
     ctx.fmt->quiet_mode = 1;
 
-    int r = 1;
-    if (!map_contains(ast->named_procs, s)) {
+    int    r = 1;
+    Block* b = map_get_or_null(ast->named_procs, s);
+    if (!b) {
         error("no such named proc '%s'", s);
         goto end;
     }
 
-    Block* b = map_get(ast->named_procs, s);
-    r        = process_stmts(&ctx, b->stmts, ctx.proc_scope);
+    r = process_stmts(&ctx, b->stmts, ctx.proc_scope);
 
 end:
     interpreter_context_deinit(&ctx);
