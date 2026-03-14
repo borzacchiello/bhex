@@ -7,6 +7,6 @@ cd ..
 mkdir ./build
 cd ./build
 
-cmake -DCMAKE_BUILD_TYPE=Release -DENABLE_KEYSTONE=on -DENABLE_CAPSTONE=on -DPython_EXECUTABLE=$(which python3) ..
+cmake -DCMAKE_BUILD_TYPE=Release -DENABLE_KEYSTONE=on -DENABLE_CAPSTONE=on ..
 make
 sudo make install

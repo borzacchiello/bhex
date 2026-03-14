@@ -96,7 +96,7 @@ enum rpmTag_e : u32
     RPMTAG_RPMVERSION        = 1064,
     RPMTAG_TRIGGERSCRIPTS    = 1065,
     RPMTAG_TRIGGERNAME       = 1066,
-    RPMTAG_TRIGGERINDEX      = 1067,
+    RPMTAG_TRIGGERVERSION    = 1067,
     RPMTAG_TRIGGERFLAGS      = 1068,
     RPMTAG_TRIGGERINDEX      = 1069,
     RPMTAG_VERIFYSCRIPT      = 1079,
@@ -139,10 +139,6 @@ enum rpmTag_e : u32
     RPMTAG_DIRINDEXES        = 1116,
     RPMTAG_BASENAMES         = 1117,
     RPMTAG_DIRNAMES          = 1118,
-    RPMTAG_PROVIDEFLAGS      = 1112,
-    RPMTAG_PROVIDEVERSION    = 1113,
-    RPMTAG_OBSOLETEFLAGS     = 1114,
-    RPMTAG_OBSOLETEVERSION   = 1115,
     RPMTAG_OPTFLAGS          = 1122,
     RPMTAG_DISTURL           = 1123,
     RPMTAG_PAYLOADFORMAT     = 1124,
@@ -220,8 +216,9 @@ fn get_type_size(t)
         result = 4;
     } elif (t == rpmTagType_e::RPM_INT64_TYPE) {
         result = 8;
+    } else {
+        result = -1;
     }
-    result = -1;
 }
 
 struct rpm_index
@@ -259,20 +256,20 @@ fn process_data_el(store_off, idx_hdr)
     seek(store_off + idx_hdr.offset);
     if (idx_hdr.type == rpmTagType_e::RPM_BIN_TYPE) {
         u8 data[idx_hdr.count];
-    } elif (idx_hdr.type == rpmTagType_e::RPM_STRING_TYPE || idx_hdr.type == rpmTagType_e::RPM_I18NSTRING_TYPE) {
+    } elif (idx_hdr.type == rpmTagType_e::RPM_STRING_TYPE) {
         string data;
-    } elif (idx_hdr.type == rpmTagType_e::RPM_STRING_ARRAY_TYPE) {
+    } elif (idx_hdr.type == rpmTagType_e::RPM_STRING_ARRAY_TYPE || idx_hdr.type == rpmTagType_e::RPM_I18NSTRING_TYPE) {
         string data[idx_hdr.count];
     } elif (idx_hdr.type == rpmTagType_e::RPM_CHAR_TYPE) {
-        char data;
+        char data[idx_hdr.count];
     } elif (idx_hdr.type == rpmTagType_e::RPM_INT8_TYPE) {
-        i8 data;
+        i8 data[idx_hdr.count];
     } elif (idx_hdr.type == rpmTagType_e::RPM_INT16_TYPE) {
-        i16 data;
+        i16 data[idx_hdr.count];
     } elif (idx_hdr.type == rpmTagType_e::RPM_INT32_TYPE) {
-        i32 data;
+        i32 data[idx_hdr.count];
     } elif (idx_hdr.type == rpmTagType_e::RPM_INT64_TYPE) {
-        i64 data;
+        i64 data[idx_hdr.count];
     }
 
     seek(off);

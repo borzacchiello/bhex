@@ -9,6 +9,7 @@
 #include "data/sample_jpeg.h"
 #include "data/sample_lzo.h"
 #include "data/sample_png.h"
+#include "data/sample_rpm.h"
 #include "data/sample_zip.h"
 
 #ifndef TEST
@@ -1167,6 +1168,75 @@ int TEST(template_gzip_1)(void)
         dummyfilebuffer_create(sample_gzip, sizeof(sample_gzip));
     ASSERT(tfb != NULL);
     ASSERT(exec_commands_on("t ./templates/gzip.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_rpm_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000         lead: \n"
+        "b+00000000            magic: edabeedb\n"
+        "b+00000004            major: 03\n"
+        "b+00000005            minor: 00\n"
+        "b+00000006             type: 0000\n"
+        "b+00000008         arch_num: 0001\n"
+        "b+0000000a             name: 'test-pkg'\n"
+        "b+0000004c           os_num: 0001\n"
+        "b+0000004e         sig_type: 0005\n"
+        "b+00000050         reserved: 00000000000000000000000000000000\n"
+        "b+00000060      sig_hdr: \n"
+        "b+00000060            magic: 8eade8\n"
+        "b+00000063          version: 01\n"
+        "b+00000064         reserved: 00000000\n"
+        "b+00000068      index_count: 00000001\n"
+        "b+0000006c       store_size: 00000004\n"
+        "b+00000070  index_entry: \n"
+        "b+00000070              tag: RPMTAG_SIGSIZE\n"
+        "b+00000074             type: RPM_INT32_TYPE\n"
+        "b+00000078           offset: 00000000\n"
+        "b+0000007c            count: 00000001\n"
+        "b+00000080         data: [ 0000002a ]\n"
+        "b+00000080     raw_data: 0000002a\n"
+        "b+00000084      padding: 00000000\n"
+        "b+00000088     main_hdr: \n"
+        "b+00000088            magic: 8eade8\n"
+        "b+0000008b          version: 01\n"
+        "b+0000008c         reserved: 00000000\n"
+        "b+00000090      index_count: 00000002\n"
+        "b+00000094       store_size: 0000000f\n"
+        "b+00000098  index_entry: \n"
+        "b+00000098              tag: RPMTAG_NAME\n"
+        "b+0000009c             type: RPM_STRING_TYPE\n"
+        "b+000000a0           offset: 00000000\n"
+        "b+000000a4            count: 00000001\n"
+        "b+000000b8         data: 'test-pkg'\n"
+        "b+000000a8  index_entry: \n"
+        "b+000000a8              tag: RPMTAG_VERSION\n"
+        "b+000000ac             type: RPM_STRING_TYPE\n"
+        "b+000000b0           offset: 00000009\n"
+        "b+000000b4            count: 00000001\n"
+        "b+000000c1         data: '1.0.0'\n"
+        "b+000000b8     raw_data: 746573742d706b6700312e302e3000\n"
+        "b+000000c7  compressed_cpio: deadbeef\n";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_rpm, sizeof(sample_rpm));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/rpm.bhe", tfb) == 0);
 
     char* out = strbuilder_reset(sb);
     r         = compare_strings_ignoring_X(expected, out);

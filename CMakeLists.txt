@@ -152,6 +152,7 @@ endif()
 
 if (ENABLE_TESTS)
     include(CTest)
+    find_package(Python COMPONENTS Interpreter Development)
 
     add_custom_command(
             OUTPUT ${CMAKE_SOURCE_DIR}/tests/main.c

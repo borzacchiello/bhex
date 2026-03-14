@@ -111,7 +111,7 @@ jobs:
         run: >
           mkdir release-full &&
           cd release-full &&
-          cmake -DPython_EXECUTABLE=$(which python3) -DSTATIC_BUILD=on -DCMAKE_BUILD_TYPE=Release -DENABLE_CAPSTONE=on -DENABLE_KEYSTONE=on -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} -DCMAKE_CXX_COMPILER=${{ matrix.cxx_compiler }} ${{ matrix.cmake_flags }} .. &&
+          cmake -DSTATIC_BUILD=on -DCMAKE_BUILD_TYPE=Release -DENABLE_CAPSTONE=on -DENABLE_KEYSTONE=on -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} -DCMAKE_CXX_COMPILER=${{ matrix.cxx_compiler }} ${{ matrix.cmake_flags }} .. &&
           make
 
       - name: copy executables

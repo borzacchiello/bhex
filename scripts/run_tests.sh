@@ -7,7 +7,7 @@ cd ..
 mkdir ./build_tests
 cd ./build_tests
 
-rm -f tests/main.c
+rm -f ../tests/main.c
 CMAKE_FLAGS="-DENABLE_TESTS=on -DCMAKE_BUILD_TYPE=Debug -DASAN=on"
 
 if [ "$1" == "full" ]; then
