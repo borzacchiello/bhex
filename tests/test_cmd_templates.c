@@ -8,6 +8,8 @@
 #include "data/sample_gzip.h"
 #include "data/sample_jpeg.h"
 #include "data/sample_lzo.h"
+#include "data/sample_fat_macho.h"
+#include "data/sample_macho.h"
 #include "data/sample_png.h"
 #include "data/sample_rpm.h"
 #include "data/sample_zip.h"
@@ -1337,6 +1339,107 @@ int TEST(template_interactive_1)(void)
         dummyfilebuffer_create(pseudo_random, sizeof(pseudo_random));
     ASSERT(tfb != NULL);
     ASSERT(exec_commands_on_ex("t/i \"u32 a; u32 b;\"", tfb, 0) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_macho_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000          header: \n"
+        "b+00000000               magic: MH_MAGIC_64\n"
+        "b+00000004             cputype: CPU_TYPE_X86_64\n"
+        "b+00000008          cpusubtype: 00000003\n"
+        "b+0000000c            filetype: MH_EXECUTE\n"
+        "b+00000010               ncmds: 00000001\n"
+        "b+00000014          sizeofcmds: 00000048\n"
+        "b+00000018               flags: MH_NOUNDEFS | MH_DYLDLINK | MH_TWOLEVEL | MH_PIE\n"
+        "b+0000001c            reserved: 00000000\n"
+        "b+00000020     LoadCommand: \n"
+        "b+00000020                 cmd: LC_SEGMENT_64\n"
+        "b+00000024             cmdsize: 00000048\n"
+        "b+00000028             segname: '__TEXT'\n"
+        "b+00000038              vmaddr: 0000000100000000\n"
+        "b+00000040              vmsize: 0000000000001000\n"
+        "b+00000048             fileoff: 0000000000000000\n"
+        "b+00000050            filesize: 0000000000000068\n"
+        "b+00000058             maxprot: VM_PROT_READ | VM_PROT_WRITE | VM_PROT_EXECUTE\n"
+        "b+0000005c            initprot: VM_PROT_READ | VM_PROT_EXECUTE\n"
+        "b+00000060              nsects: 00000000\n"
+        "b+00000064               flags: NONE\n";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_macho, sizeof(sample_macho));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/macho.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_fat_macho_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000       fatHeader: \n"
+        "b+00000000               magic: FAT_MAGIC\n"
+        "b+00000004           nfat_arch: 00000001\n"
+        "b+00000008            arch: \n"
+        "b+00000008             cputype: CPU_TYPE_X86_64\n"
+        "b+0000000c          cpusubtype: 00000003\n"
+        "b+00000010              offset: 0000001c\n"
+        "b+00000014                size: 00000068\n"
+        "b+00000018               align: 00000000\n"
+        "b+0000001c  EmbeddedHeader: \n"
+        "b+0000001c               magic: MH_MAGIC_64\n"
+        "b+00000020             cputype: CPU_TYPE_X86_64\n"
+        "b+00000024          cpusubtype: 00000003\n"
+        "b+00000028            filetype: MH_EXECUTE\n"
+        "b+0000002c               ncmds: 00000001\n"
+        "b+00000030          sizeofcmds: 00000048\n"
+        "b+00000034               flags: MH_NOUNDEFS | MH_DYLDLINK | MH_TWOLEVEL | MH_PIE\n"
+        "b+00000038            reserved: 00000000\n"
+        "b+0000003c     LoadCommand: \n"
+        "b+0000003c                 cmd: LC_SEGMENT_64\n"
+        "b+00000040             cmdsize: 00000048\n"
+        "b+00000044             segname: '__TEXT'\n"
+        "b+00000054              vmaddr: 0000000100000000\n"
+        "b+0000005c              vmsize: 0000000000001000\n"
+        "b+00000064             fileoff: 0000000000000000\n"
+        "b+0000006c            filesize: 0000000000000068\n"
+        "b+00000074             maxprot: VM_PROT_READ | VM_PROT_WRITE | VM_PROT_EXECUTE\n"
+        "b+00000078            initprot: VM_PROT_READ | VM_PROT_EXECUTE\n"
+        "b+0000007c              nsects: 00000000\n"
+        "b+00000080               flags: NONE\n";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_fat_macho, sizeof(sample_fat_macho));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/macho.bhe", tfb) == 0);
 
     char* out = strbuilder_reset(sb);
     r         = compare_strings_ignoring_X(expected, out);

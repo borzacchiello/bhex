@@ -1,0 +1,525 @@
+// Copyright (c) 2022-2026, bageyelet
+
+enum MachoMagic : u32
+{
+    MH_MAGIC     = 0xFEEDFACE,
+    MH_CIGAM     = 0xCEFAEDFE,
+    MH_MAGIC_64  = 0xFEEDFACF,
+    MH_CIGAM_64  = 0xCFFAEDFE,
+    FAT_MAGIC    = 0xCAFEBABE,
+    FAT_CIGAM    = 0xBEBAFECA,
+    FAT_MAGIC_64 = 0xCAFEBABF,
+    FAT_CIGAM_64 = 0xBFBAFECA
+}
+
+enum MachoCpuType : u32
+{
+    CPU_TYPE_ANY       = 0xFFFFFFFF,
+    CPU_TYPE_VAX       = 1,
+    CPU_TYPE_MC680x0   = 6,
+    CPU_TYPE_X86       = 7,
+    CPU_TYPE_X86_64    = 0x01000007,
+    CPU_TYPE_MIPS      = 8,
+    CPU_TYPE_MC98000   = 10,
+    CPU_TYPE_HPPA      = 11,
+    CPU_TYPE_ARM       = 12,
+    CPU_TYPE_ARM64     = 0x0100000C,
+    CPU_TYPE_ARM64_32  = 0x0200000C,
+    CPU_TYPE_MC88000   = 13,
+    CPU_TYPE_SPARC     = 14,
+    CPU_TYPE_I860      = 15,
+    CPU_TYPE_POWERPC   = 18,
+    CPU_TYPE_POWERPC64 = 0x01000012
+}
+
+enum MachoFileType : u32
+{
+    MH_OBJECT      = 1,
+    MH_EXECUTE     = 2,
+    MH_FVMLIB      = 3,
+    MH_CORE        = 4,
+    MH_PRELOAD     = 5,
+    MH_DYLIB       = 6,
+    MH_DYLINKER    = 7,
+    MH_BUNDLE      = 8,
+    MH_DYLIB_STUB  = 9,
+    MH_DSYM        = 10,
+    MH_KEXT_BUNDLE = 11
+}
+
+orenum MachoFlags : u32
+{
+    MH_NOUNDEFS                = 0x00000001,
+    MH_INCRLINK                = 0x00000002,
+    MH_DYLDLINK                = 0x00000004,
+    MH_BINDATLOAD              = 0x00000008,
+    MH_PREBOUND                = 0x00000010,
+    MH_SPLIT_SEGS              = 0x00000020,
+    MH_LAZY_INIT               = 0x00000040,
+    MH_TWOLEVEL                = 0x00000080,
+    MH_FORCE_FLAT              = 0x00000100,
+    MH_NOMULTIDEFS             = 0x00000200,
+    MH_NOFIXPREBINDING         = 0x00000400,
+    MH_PREBINDABLE             = 0x00000800,
+    MH_ALLMODSBOUND            = 0x00001000,
+    MH_SUBSECTIONS_VIA_SYMBOLS = 0x00002000,
+    MH_CANONICAL               = 0x00004000,
+    MH_WEAK_DEFINES            = 0x00008000,
+    MH_BINDS_TO_WEAK           = 0x00010000,
+    MH_ALLOW_STACK_EXECUTION   = 0x00020000,
+    MH_ROOT_SAFE               = 0x00040000,
+    MH_SETUID_SAFE             = 0x00080000,
+    MH_NO_REEXPORTED_DYLIBS    = 0x00100000,
+    MH_PIE                     = 0x00200000,
+    MH_DEAD_STRIPPABLE_DYLIB   = 0x00400000,
+    MH_HAS_TLV_DESCRIPTORS     = 0x00800000,
+    MH_NO_HEAP_EXECUTION       = 0x01000000,
+    MH_APP_EXTENSION_SAFE      = 0x02000000
+}
+
+enum MachoLoadCommandType : u32
+{
+    LC_SEGMENT              = 0x00000001,
+    LC_SYMTAB               = 0x00000002,
+    LC_SYMSEG               = 0x00000003,
+    LC_THREAD               = 0x00000004,
+    LC_UNIXTHREAD           = 0x00000005,
+    LC_DYSYMTAB             = 0x0000000b,
+    LC_LOAD_DYLIB           = 0x0000000c,
+    LC_ID_DYLIB             = 0x0000000d,
+    LC_LOAD_DYLINKER        = 0x0000000e,
+    LC_ID_DYLINKER          = 0x0000000f,
+    LC_PREBOUND_DYLIB       = 0x00000010,
+    LC_SUB_FRAMEWORK        = 0x00000012,
+    LC_SUB_UMBRELLA         = 0x00000013,
+    LC_SUB_CLIENT           = 0x00000014,
+    LC_SUB_LIBRARY          = 0x00000015,
+    LC_LOAD_WEAK_DYLIB      = 0x80000018,
+    LC_SEGMENT_64           = 0x00000019,
+    LC_UUID                 = 0x0000001b,
+    LC_RPATH                = 0x8000001c,
+    LC_CODE_SIGNATURE       = 0x0000001d,
+    LC_SEGMENT_SPLIT_INFO   = 0x0000001e,
+    LC_REEXPORT_DYLIB       = 0x8000001f,
+    LC_LAZY_LOAD_DYLIB      = 0x00000020,
+    LC_ENCRYPTION_INFO      = 0x00000021,
+    LC_DYLD_INFO            = 0x00000022,
+    LC_DYLD_INFO_ONLY       = 0x80000022,
+    LC_VERSION_MIN_MACOSX   = 0x00000024,
+    LC_VERSION_MIN_IPHONEOS = 0x00000025,
+    LC_FUNCTION_STARTS      = 0x00000026,
+    LC_DYLD_ENVIRONMENT     = 0x00000027,
+    LC_MAIN                 = 0x80000028,
+    LC_DATA_IN_CODE         = 0x00000029,
+    LC_SOURCE_VERSION       = 0x0000002a,
+    LC_ENCRYPTION_INFO_64   = 0x0000002c,
+    LC_VERSION_MIN_TVOS     = 0x0000002f,
+    LC_VERSION_MIN_WATCHOS  = 0x00000030,
+    LC_NOTE                 = 0x00000031,
+    LC_BUILD_VERSION        = 0x00000032,
+    LC_DYLD_EXPORTS_TRIE    = 0x80000033,
+    LC_DYLD_CHAINED_FIXUPS  = 0x80000034,
+    LC_FILESET_ENTRY        = 0x80000035
+}
+
+orenum MachoVmProt : u32
+{
+    VM_PROT_READ    = 0x01,
+    VM_PROT_WRITE   = 0x02,
+    VM_PROT_EXECUTE = 0x04
+}
+
+orenum MachoSegmentFlags : u32
+{
+    SG_HIGHVM              = 0x1,
+    SG_FVMLIB              = 0x2,
+    SG_NORELOC             = 0x4,
+    SG_PROTECTED_VERSION_1 = 0x8,
+    SG_READ_ONLY           = 0x10
+}
+
+struct MachoHeader32
+{
+    MachoMagic    magic;
+    MachoCpuType  cputype;
+    u32           cpusubtype;
+    MachoFileType filetype;
+    u32           ncmds;
+    u32           sizeofcmds;
+    MachoFlags    flags;
+}
+
+struct MachoHeader64
+{
+    MachoMagic    magic;
+    MachoCpuType  cputype;
+    u32           cpusubtype;
+    MachoFileType filetype;
+    u32           ncmds;
+    u32           sizeofcmds;
+    MachoFlags    flags;
+    u32           reserved;
+}
+
+struct MachoSegmentCmd
+{
+    MachoLoadCommandType cmd;
+    u32                  cmdsize;
+    char                 segname[16];
+    u32                  vmaddr;
+    u32                  vmsize;
+    u32                  fileoff;
+    u32                  filesize;
+    MachoVmProt          maxprot;
+    MachoVmProt          initprot;
+    u32                  nsects;
+    MachoSegmentFlags    flags;
+}
+
+struct MachoSegmentCmd64
+{
+    MachoLoadCommandType cmd;
+    u32                  cmdsize;
+    char                 segname[16];
+    u64                  vmaddr;
+    u64                  vmsize;
+    u64                  fileoff;
+    u64                  filesize;
+    MachoVmProt          maxprot;
+    MachoVmProt          initprot;
+    u32                  nsects;
+    MachoSegmentFlags    flags;
+}
+
+struct MachoSymtab
+{
+    MachoLoadCommandType cmd;
+    u32                  cmdsize;
+    u32                  symoff;
+    u32                  nsyms;
+    u32                  stroff;
+    u32                  strsize;
+}
+
+struct MachoDysymtab
+{
+    MachoLoadCommandType cmd;
+    u32                  cmdsize;
+    u32                  ilocalsym;
+    u32                  nlocalsym;
+    u32                  iextdefsym;
+    u32                  nextdefsym;
+    u32                  iundefsym;
+    u32                  nundefsym;
+    u32                  tocoff;
+    u32                  ntoc;
+    u32                  modtaboff;
+    u32                  nmodtab;
+    u32                  extrefsymoff;
+    u32                  nextrefsyms;
+    u32                  indirectsymoff;
+    u32                  nindirectsyms;
+    u32                  extreloff;
+    u32                  nextrel;
+    u32                  locreloff;
+    u32                  nlocrel;
+}
+
+struct MachoDylibInfo
+{
+    u32 name_off;
+    u32 timestamp;
+    u32 cur_version;
+    u32 compat_version;
+}
+
+struct MachoLoadDylib
+{
+    MachoLoadCommandType cmd;
+    u32                  cmdsize;
+    MachoDylibInfo       dylib;
+}
+
+struct MachoLoadDylinker
+{
+    MachoLoadCommandType cmd;
+    u32                  cmdsize;
+    u32                  name_off;
+}
+
+struct MachoUUID
+{
+    MachoLoadCommandType cmd;
+    u32                  cmdsize;
+    u8                   uuid[16];
+}
+
+struct MachoLinkedItData
+{
+    MachoLoadCommandType cmd;
+    u32                  cmdsize;
+    u32                  dataoff;
+    u32                  datasize;
+}
+
+struct MachoEncryptionInfo32
+{
+    MachoLoadCommandType cmd;
+    u32                  cmdsize;
+    u32                  cryptoff;
+    u32                  cryptsize;
+    u32                  cryptid;
+}
+
+struct MachoEncryptionInfo64
+{
+    MachoLoadCommandType cmd;
+    u32                  cmdsize;
+    u32                  cryptoff;
+    u32                  cryptsize;
+    u32                  cryptid;
+    u32                  pad;
+}
+
+struct MachoVersionMin
+{
+    MachoLoadCommandType cmd;
+    u32                  cmdsize;
+    u32                  version;
+    u32                  sdk;
+}
+
+struct MachoMain
+{
+    MachoLoadCommandType cmd;
+    u32                  cmdsize;
+    u64                  entryoff;
+    u64                  stacksize;
+}
+
+struct MachoSourceVersion
+{
+    MachoLoadCommandType cmd;
+    u32                  cmdsize;
+    u64                  version;
+}
+
+struct MachoRpath
+{
+    MachoLoadCommandType cmd;
+    u32                  cmdsize;
+    u32                  path_off;
+}
+
+struct MachoBuildVersionTool
+{
+    u32 tool;
+    u32 version;
+}
+
+struct MachoBuildVersion
+{
+    MachoLoadCommandType cmd;
+    u32                  cmdsize;
+    u32                  platform;
+    u32                  minos;
+    u32                  sdk;
+    u32                  ntools;
+}
+
+struct MachoGenericCmd
+{
+    MachoLoadCommandType cmd;
+    u32                  cmdsize;
+    u8                   data[cmdsize - 8];
+}
+
+struct MachoFatHeader
+{
+    MachoMagic magic;
+    u32        nfat_arch;
+}
+
+struct MachoFatArch
+{
+    MachoCpuType cputype;
+    u32          cpusubtype;
+    u32          offset;
+    u32          size;
+    u32          align;
+}
+
+struct MachoFatArch64
+{
+    MachoCpuType cputype;
+    u32          cpusubtype;
+    u64          offset;
+    u64          size;
+    u32          align;
+    u32          reserved;
+}
+
+fn processLoadCommands(ncmds, is64)
+{
+    local i = 0;
+    while (i < ncmds) {
+        local cmd_off = off();
+
+        disable_print();
+        u32 cmd_type;
+        u32 cmd_size;
+        seek(cmd_off);
+        enable_print();
+
+        if (cmd_type == MachoLoadCommandType::LC_SEGMENT) {
+            MachoSegmentCmd LoadCommand;
+        } elif (cmd_type == MachoLoadCommandType::LC_SEGMENT_64) {
+            MachoSegmentCmd64 LoadCommand;
+        } elif (cmd_type == MachoLoadCommandType::LC_SYMTAB) {
+            MachoSymtab LoadCommand;
+        } elif (cmd_type == MachoLoadCommandType::LC_DYSYMTAB) {
+            MachoDysymtab LoadCommand;
+        } elif (cmd_type == MachoLoadCommandType::LC_LOAD_DYLIB) {
+            MachoLoadDylib LoadCommand;
+        } elif (cmd_type == MachoLoadCommandType::LC_ID_DYLIB) {
+            MachoLoadDylib LoadCommand;
+        } elif (cmd_type == MachoLoadCommandType::LC_LOAD_WEAK_DYLIB) {
+            MachoLoadDylib LoadCommand;
+        } elif (cmd_type == MachoLoadCommandType::LC_REEXPORT_DYLIB) {
+            MachoLoadDylib LoadCommand;
+        } elif (cmd_type == MachoLoadCommandType::LC_LAZY_LOAD_DYLIB) {
+            MachoLoadDylib LoadCommand;
+        } elif (cmd_type == MachoLoadCommandType::LC_LOAD_DYLINKER) {
+            MachoLoadDylinker LoadCommand;
+        } elif (cmd_type == MachoLoadCommandType::LC_ID_DYLINKER) {
+            MachoLoadDylinker LoadCommand;
+        } elif (cmd_type == MachoLoadCommandType::LC_DYLD_ENVIRONMENT) {
+            MachoLoadDylinker LoadCommand;
+        } elif (cmd_type == MachoLoadCommandType::LC_UUID) {
+            MachoUUID LoadCommand;
+        } elif (cmd_type == MachoLoadCommandType::LC_CODE_SIGNATURE) {
+            MachoLinkedItData LoadCommand;
+        } elif (cmd_type == MachoLoadCommandType::LC_SEGMENT_SPLIT_INFO) {
+            MachoLinkedItData LoadCommand;
+        } elif (cmd_type == MachoLoadCommandType::LC_FUNCTION_STARTS) {
+            MachoLinkedItData LoadCommand;
+        } elif (cmd_type == MachoLoadCommandType::LC_DATA_IN_CODE) {
+            MachoLinkedItData LoadCommand;
+        } elif (cmd_type == MachoLoadCommandType::LC_DYLD_EXPORTS_TRIE) {
+            MachoLinkedItData LoadCommand;
+        } elif (cmd_type == MachoLoadCommandType::LC_DYLD_CHAINED_FIXUPS) {
+            MachoLinkedItData LoadCommand;
+        } elif (cmd_type == MachoLoadCommandType::LC_ENCRYPTION_INFO) {
+            MachoEncryptionInfo32 LoadCommand;
+        } elif (cmd_type == MachoLoadCommandType::LC_ENCRYPTION_INFO_64) {
+            MachoEncryptionInfo64 LoadCommand;
+        } elif (cmd_type == MachoLoadCommandType::LC_VERSION_MIN_MACOSX) {
+            MachoVersionMin LoadCommand;
+        } elif (cmd_type == MachoLoadCommandType::LC_VERSION_MIN_IPHONEOS) {
+            MachoVersionMin LoadCommand;
+        } elif (cmd_type == MachoLoadCommandType::LC_VERSION_MIN_TVOS) {
+            MachoVersionMin LoadCommand;
+        } elif (cmd_type == MachoLoadCommandType::LC_VERSION_MIN_WATCHOS) {
+            MachoVersionMin LoadCommand;
+        } elif (cmd_type == MachoLoadCommandType::LC_MAIN) {
+            MachoMain LoadCommand;
+        } elif (cmd_type == MachoLoadCommandType::LC_SOURCE_VERSION) {
+            MachoSourceVersion LoadCommand;
+        } elif (cmd_type == MachoLoadCommandType::LC_RPATH) {
+            MachoRpath LoadCommand;
+        } elif (cmd_type == MachoLoadCommandType::LC_BUILD_VERSION) {
+            MachoBuildVersion LoadCommand;
+            local             j = 0;
+            while (j < LoadCommand.ntools) {
+                MachoBuildVersionTool tool;
+                j = j + 1;
+            }
+        } else {
+            MachoGenericCmd LoadCommand;
+        }
+
+        seek(cmd_off + cmd_size);
+        i = i + 1;
+    }
+}
+
+fn processEmbeddedMacho(arch_offset)
+{
+    little_endian();
+    seek(arch_offset);
+
+    disable_print();
+    u32 embed_magic;
+    seek(arch_offset);
+    enable_print();
+
+    if (embed_magic == MachoMagic::MH_MAGIC_64) {
+        MachoHeader64 EmbeddedHeader;
+        processLoadCommands(EmbeddedHeader.ncmds, 1);
+    } elif (embed_magic == MachoMagic::MH_CIGAM_64) {
+        big_endian();
+        MachoHeader64 EmbeddedHeader;
+        processLoadCommands(EmbeddedHeader.ncmds, 1);
+    } elif (embed_magic == MachoMagic::MH_MAGIC) {
+        MachoHeader32 EmbeddedHeader;
+        processLoadCommands(EmbeddedHeader.ncmds, 0);
+    } elif (embed_magic == MachoMagic::MH_CIGAM) {
+        big_endian();
+        MachoHeader32 EmbeddedHeader;
+        processLoadCommands(EmbeddedHeader.ncmds, 0);
+    } else {
+        error("invalid embedded Mach-O");
+    }
+}
+
+proc
+{
+    disable_print();
+    u32 magic;
+    seek(0);
+    enable_print();
+
+    if (magic == MachoMagic::MH_MAGIC_64) {
+        MachoHeader64 header;
+        processLoadCommands(header.ncmds, 1);
+    } elif (magic == MachoMagic::MH_CIGAM_64) {
+        big_endian();
+        MachoHeader64 header;
+        processLoadCommands(header.ncmds, 1);
+    } elif (magic == MachoMagic::MH_MAGIC) {
+        MachoHeader32 header;
+        processLoadCommands(header.ncmds, 0);
+    } elif (magic == MachoMagic::MH_CIGAM) {
+        big_endian();
+        MachoHeader32 header;
+        processLoadCommands(header.ncmds, 0);
+    } elif (magic == MachoMagic::FAT_CIGAM) {
+        big_endian();
+        MachoFatHeader fatHeader;
+        local          i = 0;
+        while (i < fatHeader.nfat_arch) {
+            MachoFatArch arch;
+            local        arch_offset = arch.offset;
+            local        next_pos = off();
+            processEmbeddedMacho(arch_offset);
+            seek(next_pos);
+            big_endian();
+            i = i + 1;
+        }
+    } elif (magic == MachoMagic::FAT_CIGAM_64) {
+        big_endian();
+        MachoFatHeader fatHeader;
+        local          i = 0;
+        while (i < fatHeader.nfat_arch) {
+            MachoFatArch64 arch;
+            local          arch_offset = arch.offset;
+            local          next_pos = off();
+            processEmbeddedMacho(arch_offset);
+            seek(next_pos);
+            big_endian();
+            i = i + 1;
+        }
+    } else {
+        error("not a valid Mach-O file");
+    }
+}
