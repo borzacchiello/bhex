@@ -419,12 +419,13 @@ fn getStringsOffset(header)
     local strtab_off =
         header.e_shoff + (header.e_shstrndx * header.e_shentsize);
     seek(strtab_off);
+    local str_off = 0;
     if (is64Bit(header)) {
         Elf64_Shdr shdr;
-        local      str_off = shdr.sh_offset;
+        str_off = shdr.sh_offset;
     } else {
         Elf32_Shdr shdr;
-        local      str_off = shdr.sh_offset;
+        str_off = shdr.sh_offset;
     }
 
     seek(off);

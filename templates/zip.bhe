@@ -212,16 +212,17 @@ fn seek_to_central_dir()
     if (find(magic, 1 /* backward search */ )) {
         // ZIP
         EndOfCentralDirZIP endOfCentralDir;
+        seek(endOfCentralDir.central_dir_offset);
+        result = endOfCentralDir;
     } elif (find(magic64, 1 /* backward search */ )) {
         // ZIP64
         print("[!] ZIP64 is poorly supported");
         EndOfCentralDirZIP64 endOfCentralDir;
+        seek(endOfCentralDir.central_dir_offset);
+        result = endOfCentralDir;
     } else {
         error("invalid ZIP");
     }
-
-    seek(endOfCentralDir.central_dir_offset);
-    result = endOfCentralDir;
 }
 
 proc list_files
@@ -239,7 +240,7 @@ proc list_files
 proc
 {
     local endOfCentralDir = seek_to_central_dir();
-    
+
     local i = 0;
     while ( i < endOfCentralDir.central_dir_entries ) {
         newline();

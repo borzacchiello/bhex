@@ -3896,3 +3896,180 @@ end:
     dummyfilebuffer_destroy(tfb);
     return r;
 }
+
+int TEST(scope_if_no_leak)(void)
+{
+    // a variable declared inside an if block must not be visible in the outer
+    // scope
+    const char* prog = "proc {"
+                       "  local a = 1;"
+                       "  if (a) {"
+                       "    local inner = 42;"
+                       "  }"
+                       "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    if (scope == NULL)
+        return 0;
+
+    int r = 1;
+    if (Scope_get_local(scope, "inner") != NULL)
+        r = 0;
+
+    Scope_free(scope);
+    return r;
+}
+
+int TEST(scope_while_no_leak)(void)
+{
+    // a variable declared inside a while block must not be visible in the outer
+    // scope
+    const char* prog = "proc {"
+                       "  local i = 0;"
+                       "  while (i < 3) {"
+                       "    local inner = 99;"
+                       "    i = i + 1;"
+                       "  }"
+                       "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    if (scope == NULL)
+        return 0;
+
+    int r = 1;
+    if (Scope_get_local(scope, "inner") != NULL)
+        r = 0;
+
+    Scope_free(scope);
+    return r;
+}
+
+int TEST(scope_if_outer_var_modified)(void)
+{
+    // a variable declared in the outer scope must be modifiable from inside an
+    // if block
+    const char* prog = "proc {"
+                       "  local a = 10;"
+                       "  local b = 0;"
+                       "  if (a) {"
+                       "    b = 42;"
+                       "  }"
+                       "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    if (scope == NULL)
+        return 0;
+
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
+    IS_TENGINE_SNUM_EQ(r, v, 42);
+
+end:
+    Scope_free(scope);
+    return r;
+}
+
+int TEST(scope_while_outer_var_modified)(void)
+{
+    // a variable declared in the outer scope must be modifiable from inside a
+    // while block
+    const char* prog = "proc {"
+                       "  local a = 0;"
+                       "  local b = 0;"
+                       "  while (a < 5) {"
+                       "    b = b + a;"
+                       "    a = a + 1;"
+                       "  }"
+                       "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    if (scope == NULL)
+        return 0;
+
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
+    IS_TENGINE_SNUM_EQ(r, v, 10);
+
+end:
+    Scope_free(scope);
+    return r;
+}
+
+int TEST(scope_else_no_leak)(void)
+{
+    // a variable declared in an else block must not be visible outside
+    const char* prog = "proc {"
+                       "  local a = 0;"
+                       "  if (a) {"
+                       "    local x = 1;"
+                       "  } else {"
+                       "    local y = 2;"
+                       "  }"
+                       "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    if (scope == NULL)
+        return 0;
+
+    int r = 1;
+    if (Scope_get_local(scope, "x") != NULL)
+        r = 0;
+    if (Scope_get_local(scope, "y") != NULL)
+        r = 0;
+
+    Scope_free(scope);
+    return r;
+}
+
+int TEST(scope_nested_if_while_no_leak)(void)
+{
+    // deeply nested declarations must not escape to the outer proc scope
+    const char* prog = "proc {"
+                       "  local a = 1;"
+                       "  local b = 0;"
+                       "  if (a) {"
+                       "    local c = 0;"
+                       "    while (c < 3) {"
+                       "      local d = c;"
+                       "      b = b + d;"
+                       "      c = c + 1;"
+                       "    }"
+                       "  }"
+                       "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    if (scope == NULL)
+        return 0;
+
+    int r = 1;
+    // b must have been updated (0+1+2 = 3)
+    BHEngineValue* vb = Scope_get_local(scope, "b");
+    if (vb == NULL || vb->snum != 3)
+        r = 0;
+    // c and d must not have leaked
+    if (Scope_get_local(scope, "c") != NULL)
+        r = 0;
+    if (Scope_get_local(scope, "d") != NULL)
+        r = 0;
+
+    Scope_free(scope);
+    return r;
+}
+
+int TEST(scope_if_no_access_after)(void)
+{
+    // accessing a variable declared inside a previous if block must raise an
+    // error
+    const char* prog = "proc {"
+                       "  local a = 1;"
+                       "  if (a) { local inner = 5; }"
+                       "  local b = inner;"
+                       "}";
+
+    // The interpreter should fail (inner is not in scope)
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    int    r     = (scope == NULL) ? 1 : 0;
+    if (scope)
+        Scope_free(scope);
+    return r;
+}

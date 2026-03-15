@@ -776,7 +776,7 @@ static int process_LOCAL_VAR_ASS(InterpreterContext* ctx, Stmt* stmt,
         return 1;
     }
 
-    Scope_add_local(scope, stmt->local_name, v);
+    Scope_update_local(scope, stmt->local_name, v);
     return 0;
 }
 
@@ -824,29 +824,29 @@ static int process_VOID_FUNC_CALL(InterpreterContext* ctx, Stmt* stmt,
 static int process_STMT_IF_ELIF_ELSE(InterpreterContext* ctx, Stmt* stmt,
                                      Scope* scope)
 {
-    // TODO: we are using the same context of the current block, to do the
-    // things correctly we should define a new var context and delete the
-    // new variables afterwards
-    // Ex, this is currently correct (for now it is fine though):
-    //   if (1) { u8 a; }
-    //   if (a) { u8 b; }
-
     for (u64_t i = 0; i < stmt->if_conditions->size; ++i) {
         IfCond* ic = stmt->if_conditions->data[i];
         u64_t   cond;
         if (eval_to_u64(ctx, scope, ic->cond, &cond) != 0)
             return 1;
-        if (cond)
-            return process_stmts_no_exc(ctx, ic->block->stmts, scope);
+        if (cond) {
+            Scope* inner = Scope_push(scope);
+            int    ret   = process_stmts_no_exc(ctx, ic->block->stmts, inner);
+            Scope_pop(inner);
+            return ret;
+        }
     }
-    if (stmt->else_block)
-        return process_stmts_no_exc(ctx, stmt->else_block->stmts, scope);
+    if (stmt->else_block) {
+        Scope* inner = Scope_push(scope);
+        int    ret = process_stmts_no_exc(ctx, stmt->else_block->stmts, inner);
+        Scope_pop(inner);
+        return ret;
+    }
     return 0;
 }
 
 static int process_STMT_WHILE(InterpreterContext* ctx, Stmt* stmt, Scope* scope)
 {
-    // TODO: same problem WRT STMT_IF
     int ret                             = 0;
     int saved_break_or_continue_allowed = ctx->break_or_continue_allowed;
     ctx->break_or_continue_allowed      = 1;
@@ -855,10 +855,12 @@ static int process_STMT_WHILE(InterpreterContext* ctx, Stmt* stmt, Scope* scope)
     if (eval_to_u64(ctx, scope, stmt->cond, &cond) != 0)
         goto fail;
 
-    ctx->break_or_continue_allowed = 1;
     while (cond != 0) {
         DList* stmts = stmt->body->stmts;
-        if (process_stmts_no_exc(ctx, stmts, scope) != 0)
+        Scope* inner = Scope_push(scope);
+        int    r     = process_stmts_no_exc(ctx, stmts, inner);
+        Scope_pop(inner);
+        if (r != 0)
             goto fail;
         if (ctx->breaked || ctx->halt)
             goto end;
