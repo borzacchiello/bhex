@@ -4,14 +4,8 @@
 #include "cmd.h"
 #include "tui.h"
 
-#include <util/byte_to_str.h>
-#include <util/math.h>
-#include <hash/md5.h>
 #include <display.h>
-#include <string.h>
 #include <alloc.h>
-
-#define min(x, y) ((x) < (y) ? (x) : (y))
 
 static void interactivecmd_dispose(void* obj) {}
 

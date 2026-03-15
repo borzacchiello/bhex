@@ -80,6 +80,7 @@ set(common_src
     common/display.c
     common/filebuffer.c
     common/cmdline_parser.c
+    common/terminal.c
     common/util/byte_to_num.c
     common/util/byte_to_str.c
     common/util/endian.c

@@ -3,9 +3,9 @@
 #ifndef CMD_H
 #define CMD_H
 
-#include <ll.h>
-#include <filebuffer.h>
 #include <cmdline_parser.h>
+#include <filebuffer.h>
+#include <ll.h>
 
 #define COMMAND_OK                   0
 #define COMMAND_ERR_NO_SUCH_COMMAND  1
