@@ -51,6 +51,7 @@ static u32_t fb_calculate_checksum(const checksum_algo_t* algo, FileBuffer* fb,
         if (block_size > size - processed)
             block_size = size - processed;
 
+        fb_seek(fb, off + processed);
         const u8_t* data = fb_read(fb, block_size);
         state            = algo->step(state, data, block_size);
 

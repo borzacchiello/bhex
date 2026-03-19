@@ -51,6 +51,7 @@ static u32_t fb_calculate_crc(const crc_params_t* params, FileBuffer* fb,
         if (block_size > size - processed)
             block_size = size - processed;
 
+        fb_seek(fb, off + processed);
         const u8_t* data = fb_read(fb, block_size);
         crc              = crc_step(crc, data, block_size, params);
 

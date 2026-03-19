@@ -1,6 +1,7 @@
 // Copyright (c) 2022-2026, bageyelet
 
 #include "t_cmd_common.h"
+#include "data/big_buffers.h"
 #include "t.h"
 
 #ifndef TEST
@@ -199,5 +200,28 @@ int TEST(size_too_big)(void)
     bhex_free(out);
 
 end:
+    return r;
+}
+
+int TEST(answer_to_universe_crc32)(void)
+{
+    // clang-format off
+    const char* expected =
+    "           CRC-32/ISO-HDLC : 0xd1058d01\n";
+    // clang-format on
+
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(answer_to_universe, sizeof(answer_to_universe));
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("crc CRC-32/ISO-HDLC", tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
     return r;
 }
