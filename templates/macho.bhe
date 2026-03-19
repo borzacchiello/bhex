@@ -476,10 +476,11 @@ proc
 {
     disable_print();
     u32 magic;
-    seek(0);
+    bwd(4);
     enable_print();
 
     if (magic == MachoMagic::MH_MAGIC_64) {
+        little_endian();
         MachoHeader64 header;
         processLoadCommands(header.ncmds, 1);
     } elif (magic == MachoMagic::MH_CIGAM_64) {
@@ -487,6 +488,7 @@ proc
         MachoHeader64 header;
         processLoadCommands(header.ncmds, 1);
     } elif (magic == MachoMagic::MH_MAGIC) {
+        little_endian();
         MachoHeader32 header;
         processLoadCommands(header.ncmds, 0);
     } elif (magic == MachoMagic::MH_CIGAM) {
