@@ -2012,6 +2012,43 @@ end:
     return r;
 }
 
+int TEST(return_while_1)(void)
+{
+    // A return inside a while body must unwind the whole function
+    // immediately, not just the current loop iteration.
+    int              r    = 0;
+    DummyFilebuffer* tfb  = dummyfilebuffer_create((const u8_t*)"\x00\xAA", 2);
+    const char*      prog = "fn parse_until_end(end_off) {"
+                            "   while (off() < end_off) {"
+                            "      u8 marker;"
+                            "      if (marker == 0) {"
+                            "         result = off();"
+                            "         return;"
+                            "      }"
+                            "   }"
+                            "}"
+                            "proc {"
+                            "   disable_print();"
+                            "   local end = parse_until_end(size());"
+                            "   local curr = off();"
+                            "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    if (scope == NULL)
+        goto end;
+
+    BHEngineValue* end = Scope_get_local(scope, "end");
+    IS_TENGINE_UNUM_EQ(r, end, 1);
+    BHEngineValue* curr = Scope_get_local(scope, "curr");
+    IS_TENGINE_UNUM_EQ(r, curr, 1);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+}
+
 int TEST(invalid_return_1)(void)
 {
     // clang-format off

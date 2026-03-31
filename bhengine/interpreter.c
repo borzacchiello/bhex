@@ -203,8 +203,14 @@ static BHEngineValue* handle_function_call(InterpreterContext* ctx,
     int            saved_endianess      = ctx->endianess;
     int saved_break_or_continue_allowed = ctx->break_or_continue_allowed;
     int saved_return_allowed            = ctx->return_allowed;
+    int saved_breaked                   = ctx->breaked;
+    int saved_continued                 = ctx->continued;
+    int saved_returned                  = ctx->returned;
     ctx->break_or_continue_allowed      = 0;
     ctx->return_allowed                 = 1;
+    ctx->breaked                        = 0;
+    ctx->continued                      = 0;
+    ctx->returned                       = 0;
 
     u64_t nparams         = params_exprs ? params_exprs->size : 0;
     u64_t expected_params = fn->params ? fn->params->size : 0;
@@ -233,6 +239,9 @@ static BHEngineValue* handle_function_call(InterpreterContext* ctx,
 end:
     ctx->break_or_continue_allowed = saved_break_or_continue_allowed;
     ctx->return_allowed            = saved_return_allowed;
+    ctx->breaked                   = saved_breaked;
+    ctx->continued                 = saved_continued;
+    ctx->returned                  = saved_returned;
     if (fn_scope)
         Scope_free(fn_scope);
     ctx->fmt->quiet_mode = saved_quiet_mode;
@@ -862,7 +871,7 @@ static int process_STMT_WHILE(InterpreterContext* ctx, Stmt* stmt, Scope* scope)
         Scope_pop(inner);
         if (r != 0)
             goto fail;
-        if (ctx->breaked || ctx->halt)
+        if (ctx->breaked || ctx->halt || ctx->returned)
             goto end;
         if (ctx->continued)
             ctx->continued = 0;
