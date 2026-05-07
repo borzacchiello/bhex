@@ -15,7 +15,7 @@ def iterate_files(path: str, recursive=False):
 def get_all_tests(fullpath):
     result = list()
 
-    pattern = r"int TEST\s*\((.*)\)\(.*\)"
+    pattern = r"int TEST\s*\(([A-Za-z0-9_]+)\)\(.*\)"
     with open(fullpath, "r") as fin:
         for line in fin:
             data = re.findall(pattern, line)

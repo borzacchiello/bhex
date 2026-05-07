@@ -154,11 +154,13 @@ endif()
 if (ENABLE_TESTS)
     include(CTest)
     find_package(Python COMPONENTS Interpreter Development)
+    file(GLOB TEST_SOURCE_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/tests/test_*.c)
 
     add_custom_command(
             OUTPUT ${CMAKE_SOURCE_DIR}/tests/main.c
             COMMAND ${CMAKE_COMMAND} -E remove -f ${CMAKE_SOURCE_DIR}/tests/main.c
             COMMAND python ${CMAKE_SOURCE_DIR}/tests/gen_tests.py
+            DEPENDS ${TEST_SOURCE_FILES} ${CMAKE_SOURCE_DIR}/tests/gen_tests.py ${CMAKE_SOURCE_DIR}/tests/t.h
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
             COMMENT "Generating test main")
 
@@ -185,6 +187,7 @@ if (ENABLE_TESTS)
 
     add_dependencies(bhex_tests gen_test_main)
     add_dependencies(bhex_tests copy_templates_to_build)
+    target_compile_definitions(bhex_tests PRIVATE BHEX_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 
     add_test(NAME bhex_tests COMMAND bhex_tests)
 

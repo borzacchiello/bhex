@@ -33,9 +33,9 @@
 #define PPC64_ARCH       11
 #define PPCLE32_ARCH     12
 #define PPCLE64_ARCH     13
-#define BPF_ARCH         14
-#define eBPF_ARCH        15
-#define M68K_ARCH        16
+#define M68K_ARCH        14
+#define BPF_ARCH         15
+#define eBPF_ARCH        16
 
 #define MAX_DEFAULT_SIZE 1024 * 1024 * 2
 
@@ -61,9 +61,9 @@ static CapstoneArchInfo map_arch[] = {
     {CS_ARCH_PPC, CS_MODE_64 + CS_MODE_BIG_ENDIAN},         // PPC64_ARCH
     {CS_ARCH_PPC, CS_MODE_LITTLE_ENDIAN},                   // PPCLE32_ARCH
     {CS_ARCH_PPC, CS_MODE_64 + CS_MODE_LITTLE_ENDIAN},      // PPCLE64_ARCH
+    {CS_ARCH_M68K, CS_MODE_BIG_ENDIAN | CS_MODE_M68K_000},  // M68K_ARCH
     {CS_ARCH_BPF, CS_MODE_BPF_CLASSIC},                     // BPF_ARCH
     {CS_ARCH_BPF, CS_MODE_BPF_EXTENDED},                    // eBPF_ARCH
-    {CS_ARCH_M68K, CS_MODE_BIG_ENDIAN | CS_MODE_M68K_000},  // M68K_ARCH
 };
 
 static const char* map_arch_names[] = {
@@ -81,9 +81,9 @@ static const char* map_arch_names[] = {
     "ppc64",       // PPC64_ARCH
     "ppcle32",     // PPCLE32_ARCH
     "ppcle64",     // PPCLE64_ARCH
+    "m68k",        // M68K_ARCH
     "bpf",         // BPF_ARCH
     "ebpf",        // eBPF_ARCH
-    "m68k",        // M68K_ARCH
 };
 
 /* ── architecture identification ─────────────────────────────────────────── */
@@ -126,11 +126,11 @@ static const double min_avg_insn_size[] = {
 #define CHAR_THRESHOLD 100
 
 #define N_ARCHS (sizeof(map_arch) / sizeof(map_arch[0]))
-/* BPF/eBPF/M68K are available for manual disassembly but are excluded from
- * automatic identification. BPF/eBPF are not general-purpose machine-code
- * ISAs, while M68K currently has manual-disassembly support only.
+/* BPF/eBPF are available for manual disassembly but are excluded from
+ * automatic identification because they are not general-purpose machine-code
+ * ISAs and would create noise in the scoring.
  */
-#define N_IDENTIFY_ARCHS (N_ARCHS - 3)
+#define N_IDENTIFY_ARCHS (N_ARCHS - 2)
 
 static const char* arch_char[N_IDENTIFY_ARCHS][2] = {
     {"call", "push"}, /* X86_64      */
@@ -143,10 +143,11 @@ static const char* arch_char[N_IDENTIFY_ARCHS][2] = {
     {"jal", "jr"},    /* MIPS64      */
     {"jal", "jr"},    /* MIPSEL32    */
     {"jal", "jr"},    /* MIPSEL64    */
-    {"blr", "mflr"},  /* PPC32       blr = return; mflr = prologue */
-    {"blr", "mflr"},  /* PPC64       */
-    {"blr", "mflr"},  /* PPCLE32     */
-    {"blr", "mflr"},  /* PPCLE64     */
+    {"lwz", "stw"},   /* PPC32       distinguish 32-bit load/store */
+    {"ld", "std"},    /* PPC64       distinguish 64-bit load/store */
+    {"lwz", "stw"},   /* PPCLE32     */
+    {"ld", "std"},    /* PPCLE64     */
+    {"move", "rts"},  /* M68K        ubiquitous move + return      */
 };
 
 /*
@@ -174,6 +175,7 @@ static const char* arch_char[N_IDENTIFY_ARCHS][2] = {
  *             pop.w  {regs,pc} = BD E8 XX [0x80|XX]
  *   MIPS BE : addiu sp,sp,-N = 27 BD FF XX; sw ra,N(sp) = AF BF XX XX
  *   MIPS LE : same words, byte-swapped
+ *   M68K    : link a6,#imm = 4E 56 XX XX; unlk a6 = 4E 5E; rts = 4E 75
  */
 #define MAX_PRO_PATTERNS 4
 
@@ -324,6 +326,17 @@ static const ProPattern pro_patterns[N_IDENTIFY_ARCHS][MAX_PRO_PATTERNS] = {
              {0xA6, 0x02, 0x08, 0x7C},
              1}, /* mflr r0 LE         */
         },
+    /* M68K */
+    [M68K_ARCH] =
+        {
+            {{0xFF, 0xFF, 0x00, 0x00},
+             {0x4E, 0x56, 0x00, 0x00},
+             0}, /* link a6,#imm       */
+            {{0xFF, 0xFF, 0x00, 0x00},
+             {0x4E, 0x5E, 0x00, 0x00},
+             0}, /* unlk a6            */
+            {{0xFF, 0xFF, 0x00, 0x00}, {0x4E, 0x75, 0x00, 0x00}, 0}, /* rts */
+        },
 };
 
 static const int pro_npatterns[N_IDENTIFY_ARCHS] = {
@@ -341,6 +354,7 @@ static const int pro_npatterns[N_IDENTIFY_ARCHS] = {
     2, /* PPC64       */
     2, /* PPCLE32     */
     2, /* PPCLE64     */
+    3, /* M68K        */
 };
 
 /* Count prologue/epilogue pattern hits in one buffer chunk. */
@@ -532,12 +546,19 @@ static ArchScore arch_finalize(const ArchAccum* a, int arch_idx,
 }
 static int cmp_arch_score(const void* a, const void* b)
 {
-    const ArchScore* sa = (const ArchScore*)a;
-    const ArchScore* sb = (const ArchScore*)b;
-    if (sb->score > sa->score + 1e-9)
+    const ArchScore* sa  = (const ArchScore*)a;
+    const ArchScore* sb  = (const ArchScore*)b;
+    const double     eps = 1e-6;
+
+    if (sb->score > sa->score + eps)
         return 1;
-    if (sa->score > sb->score + 1e-9)
+    if (sa->score > sb->score + eps)
         return -1;
+
+    if (sb->prologue_hits != sa->prologue_hits)
+        return sb->prologue_hits - sa->prologue_hits;
+    if (sb->valid_bytes != sa->valid_bytes)
+        return (sb->valid_bytes > sa->valid_bytes) ? 1 : -1;
     return sb->unique_mnemonics - sa->unique_mnemonics;
 }
 

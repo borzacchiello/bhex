@@ -45,9 +45,9 @@ int TEST(list_archs)(void)
                            "    ppc64\n"
                            "    ppcle32\n"
                            "    ppcle64\n"
+                           "    m68k\n"
                            "    bpf\n"
-                           "    ebpf\n"
-                           "    m68k\n";
+                           "    ebpf\n";
 
     int r = TEST_FAILED;
     if (exec_commands("ds/l") != 0)
@@ -347,12 +347,12 @@ end:
 }
 
 /*
- * Helper: run ds/i on a snippet and check the top-scoring arch name
- * contains `expected_substr`.  Returns TEST_SUCCEEDED / TEST_FAILED /
+ * Helper: run ds/i on a snippet and check the top-scoring arch name against
+ * one or more acceptable substrings. Returns TEST_SUCCEEDED / TEST_FAILED /
  * TEST_SKIPPED.
  */
-static int check_identify(const u8_t* data, size_t size,
-                          const char* expected_substr)
+static int check_identify_any(const u8_t* data, size_t size, const char* exp0,
+                              const char* exp1, const char* exp2)
 {
 #ifndef DISABLE_CAPSTONE
     DummyFilebuffer* tfb = dummyfilebuffer_create(data, size);
@@ -363,7 +363,6 @@ static int check_identify(const u8_t* data, size_t size,
 
     char* out = strbuilder_reset(sb);
 
-    /* Find the header line, then grab the first scored line after it */
     const char* hdr = strstr(out, "Architecture identification");
     if (!hdr)
         goto free_out;
@@ -375,7 +374,6 @@ static int check_identify(const u8_t* data, size_t size,
     if (!end_line)
         goto free_out;
 
-    /* Copy the first result line into a local buffer and search it */
     size_t line_len = (size_t)(end_line - first_line);
     char   line_buf[256];
     if (line_len >= sizeof(line_buf))
@@ -383,7 +381,9 @@ static int check_identify(const u8_t* data, size_t size,
     memcpy(line_buf, first_line, line_len);
     line_buf[line_len] = '\0';
 
-    if (strstr(line_buf, expected_substr) != NULL)
+    if ((exp0 && strstr(line_buf, exp0) != NULL) ||
+        (exp1 && strstr(line_buf, exp1) != NULL) ||
+        (exp2 && strstr(line_buf, exp2) != NULL))
         r = TEST_SUCCEEDED;
 
 free_out:
@@ -392,80 +392,101 @@ end:
     dummyfilebuffer_destroy(tfb);
     return r;
 #else
+    (void)data;
+    (void)size;
+    (void)exp0;
+    (void)exp1;
+    (void)exp2;
     return TEST_SKIPPED;
 #endif
 }
 
 int TEST(identify_snippet_x64)(void)
 {
-    /* x86-family modes (i8086/x86/x64) are hard to distinguish; accept any */
-#ifndef DISABLE_CAPSTONE
-    DummyFilebuffer* tfb =
-        dummyfilebuffer_create(snippet_x64, sizeof(snippet_x64));
-    int r = TEST_FAILED;
-
-    if (exec_commands_on("ds/i", tfb) != 0)
-        goto end;
-
-    char*       out = strbuilder_reset(sb);
-    const char* hdr = strstr(out, "Architecture identification");
-    if (!hdr)
-        goto free_out;
-    const char* nl = strchr(hdr, '\n');
-    if (!nl)
-        goto free_out;
-    const char* fl = nl + 1;
-    const char* el = strchr(fl, '\n');
-    if (!el)
-        goto free_out;
-    size_t ll = (size_t)(el - fl);
-    char   lb[256];
-    if (ll >= sizeof(lb))
-        ll = sizeof(lb) - 1;
-    memcpy(lb, fl, ll);
-    lb[ll] = '\0';
-
-    if (strstr(lb, "x64") || strstr(lb, "x86") || strstr(lb, "8086"))
-        r = TEST_SUCCEEDED;
-
-free_out:
-    bhex_free(out);
-end:
-    dummyfilebuffer_destroy(tfb);
-    return r;
-#else
-    return TEST_SKIPPED;
-#endif
+    return check_identify_any(snippet_x64, sizeof(snippet_x64), "x64", "x86",
+                              "i8086");
 }
 
-int TEST(identify_snippet_aarch64)(void)
+int TEST(identify_snippet_x86)(void)
 {
-    return check_identify(snippet_aarch64, sizeof(snippet_aarch64), "aarch64");
+    return check_identify_any(snippet_x86, sizeof(snippet_x86), "x86", "x64",
+                              "i8086");
+}
+
+int TEST(identify_snippet_i8086)(void)
+{
+    return check_identify_any(snippet_i8086, sizeof(snippet_i8086), "i8086",
+                              "x86", "x64");
 }
 
 int TEST(identify_snippet_arm32)(void)
 {
-    return check_identify(snippet_arm32, sizeof(snippet_arm32), "arm32");
+    return check_identify_any(snippet_arm32, sizeof(snippet_arm32), "arm32",
+                              NULL, NULL);
+}
+
+int TEST(identify_snippet_arm32_thumb)(void)
+{
+    return check_identify_any(snippet_arm32_thumb, sizeof(snippet_arm32_thumb),
+                              "arm32-thumb", "arm32", NULL);
+}
+
+int TEST(identify_snippet_aarch64)(void)
+{
+    return check_identify_any(snippet_aarch64, sizeof(snippet_aarch64),
+                              "aarch64", NULL, NULL);
 }
 
 int TEST(identify_snippet_mips32)(void)
 {
-    return check_identify(snippet_mips32, sizeof(snippet_mips32), "mips32");
+    return check_identify_any(snippet_mips32, sizeof(snippet_mips32), "mips32",
+                              NULL, NULL);
+}
+
+int TEST(identify_snippet_mips64)(void)
+{
+    return check_identify_any(snippet_mips64, sizeof(snippet_mips64), "mips64",
+                              NULL, NULL);
 }
 
 int TEST(identify_snippet_mipsel32)(void)
 {
-    return check_identify(snippet_mipsel32, sizeof(snippet_mipsel32),
-                          "mipsel32");
+    return check_identify_any(snippet_mipsel32, sizeof(snippet_mipsel32),
+                              "mipsel32", NULL, NULL);
+}
+
+int TEST(identify_snippet_mipsel64)(void)
+{
+    return check_identify_any(snippet_mipsel64, sizeof(snippet_mipsel64),
+                              "mipsel64", NULL, NULL);
 }
 
 int TEST(identify_snippet_ppc32)(void)
 {
-    return check_identify(snippet_ppc32, sizeof(snippet_ppc32), "ppc32");
+    return check_identify_any(snippet_ppc32, sizeof(snippet_ppc32), "ppc32",
+                              NULL, NULL);
+}
+
+int TEST(identify_snippet_ppc64)(void)
+{
+    return check_identify_any(snippet_ppc64, sizeof(snippet_ppc64), "ppc64",
+                              NULL, NULL);
+}
+
+int TEST(identify_snippet_ppcle32)(void)
+{
+    return check_identify_any(snippet_ppcle32, sizeof(snippet_ppcle32),
+                              "ppcle32", "ppcle64", NULL);
 }
 
 int TEST(identify_snippet_ppcle64)(void)
 {
-    /* ppcle32 and ppcle64 score nearly identically; accept either */
-    return check_identify(snippet_ppcle64, sizeof(snippet_ppcle64), "ppcle");
+    return check_identify_any(snippet_ppcle64, sizeof(snippet_ppcle64),
+                              "ppcle64", "ppcle32", NULL);
+}
+
+int TEST(identify_snippet_m68k)(void)
+{
+    return check_identify_any(snippet_m68k, sizeof(snippet_m68k), "m68k", NULL,
+                              NULL);
 }
