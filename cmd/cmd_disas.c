@@ -35,6 +35,7 @@
 #define PPCLE64_ARCH     13
 #define BPF_ARCH         14
 #define eBPF_ARCH        15
+#define M68K_ARCH        16
 
 #define MAX_DEFAULT_SIZE 1024 * 1024 * 2
 
@@ -62,6 +63,7 @@ static CapstoneArchInfo map_arch[] = {
     {CS_ARCH_PPC, CS_MODE_64 + CS_MODE_LITTLE_ENDIAN},      // PPCLE64_ARCH
     {CS_ARCH_BPF, CS_MODE_BPF_CLASSIC},                     // BPF_ARCH
     {CS_ARCH_BPF, CS_MODE_BPF_EXTENDED},                    // eBPF_ARCH
+    {CS_ARCH_M68K, CS_MODE_BIG_ENDIAN | CS_MODE_M68K_000},  // M68K_ARCH
 };
 
 static const char* map_arch_names[] = {
@@ -81,6 +83,7 @@ static const char* map_arch_names[] = {
     "ppcle64",     // PPCLE64_ARCH
     "bpf",         // BPF_ARCH
     "ebpf",        // eBPF_ARCH
+    "m68k",        // M68K_ARCH
 };
 
 /* ── architecture identification ─────────────────────────────────────────── */
@@ -112,6 +115,7 @@ static const double min_avg_insn_size[] = {
     0.0, /* PPC64_ARCH       fixed 4 bytes             */
     0.0, /* PPCLE32_ARCH     fixed 4 bytes             */
     0.0, /* PPCLE64_ARCH     fixed 4 bytes             */
+    2.0, /* M68K_ARCH        variable 2/4/6+ bytes     */
 };
 
 /*
@@ -122,10 +126,11 @@ static const double min_avg_insn_size[] = {
 #define CHAR_THRESHOLD 100
 
 #define N_ARCHS (sizeof(map_arch) / sizeof(map_arch[0]))
-/* BPF/eBPF are available for manual disassembly (ds bpf / ds ebpf) but are
- * excluded from automatic identification because they are not general-purpose
- * machine code ISAs and would create noise in the scoring.               */
-#define N_IDENTIFY_ARCHS (N_ARCHS - 2)
+/* BPF/eBPF/M68K are available for manual disassembly but are excluded from
+ * automatic identification. BPF/eBPF are not general-purpose machine-code
+ * ISAs, while M68K currently has manual-disassembly support only.
+ */
+#define N_IDENTIFY_ARCHS (N_ARCHS - 3)
 
 static const char* arch_char[N_IDENTIFY_ARCHS][2] = {
     {"call", "push"}, /* X86_64      */

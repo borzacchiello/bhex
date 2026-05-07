@@ -46,7 +46,8 @@ int TEST(list_archs)(void)
                            "    ppcle32\n"
                            "    ppcle64\n"
                            "    bpf\n"
-                           "    ebpf\n";
+                           "    ebpf\n"
+                           "    m68k\n";
 
     int r = TEST_FAILED;
     if (exec_commands("ds/l") != 0)
@@ -165,7 +166,7 @@ int TEST(identify_lists_all_archs)(void)
         goto end;
 
     char* out = strbuilder_reset(sb);
-    r         = strstr(out, "x64") != NULL && strstr(out, "arm32") != NULL &&
+    r = strstr(out, "x64") != NULL && strstr(out, "arm32") != NULL &&
         strstr(out, "mips32") != NULL && strstr(out, "mipsel64") != NULL &&
         strstr(out, "ppc32") != NULL;
     bhex_free(out);
@@ -312,6 +313,29 @@ int TEST(ppcle64_blr)(void)
 
     char* out = strbuilder_reset(sb);
     r         = strstr(out, "blr") != NULL;
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(m68k_nop)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    /* M68K nop = 4E 71 (big-endian) */
+    const u8_t       nop_bytes[] = {0x4E, 0x71, 0x00};
+    DummyFilebuffer* tfb = dummyfilebuffer_create(nop_bytes, sizeof(nop_bytes));
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("ds m68k 1", tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = strstr(out, "nop") != NULL;
     bhex_free(out);
 
 end:
