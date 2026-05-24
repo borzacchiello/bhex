@@ -86,7 +86,7 @@ static const char* map_arch_names[] = {
     "ebpf",        // eBPF_ARCH
 };
 
-/* ── architecture identification ─────────────────────────────────────────── */
+/* -- architecture identification ------------------------------------------- */
 
 typedef struct {
     int    arch_idx;
@@ -624,7 +624,7 @@ static void do_identify(FileBuffer* fb, u64_t limit)
     }
 }
 
-/* ── help / exec ─────────────────────────────────────────────────────────── */
+/* -- help / exec ----------------------------------------------------------- */
 
 static void disascmd_help(void* obj)
 {

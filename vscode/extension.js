@@ -1,12 +1,12 @@
 // Copyright (c) 2022-2026, bageyelet
 
 /*  extension.js
- *  Formatter for the “bhe” language ─ VS Code DocumentFormattingEditProvider
+ *  Formatter for the “bhe” language - VS Code DocumentFormattingEditProvider
  */
 
 const vscode = require('vscode');
 
-/*──────────────────────────  VS Code glue  ─────────────────────────────────*/
+/*--------------------------  VS Code glue  ---------------------------------*/
 function activate (ctx) {
     ctx.subscriptions.push(
         vscode.languages.registerDocumentFormattingEditProvider(
@@ -25,7 +25,7 @@ function activate (ctx) {
 }
 function deactivate () {}
 
-/*──────────────────────────  core pipeline  ───────────────────────────────*/
+/*--------------------------  core pipeline  -------------------------------*/
 function formatBhe (src) {
     const lines   = src.split(/\r?\n/);
     const stage1  = fixBracePlacement(lines);
@@ -36,7 +36,7 @@ function formatBhe (src) {
     return stage5.join('\n');                     // no comment-alignment stage
 }
 
-/*──────────────────────────  step 1  ───── brace placement ────────────────*/
+/*--------------------------  step 1  ----- brace placement ----------------*/
 function fixBracePlacement (rows) {
     const out = [];
 
@@ -75,7 +75,7 @@ function fixBracePlacement (rows) {
     return out;
 }
 
-/*──────────────────────────  step 2  ───── indentation ────────────────────*/
+/*--------------------------  step 2  ----- indentation --------------------*/
 function indent (rows) {
     const out = [];
     let depth = 0;
@@ -99,7 +99,7 @@ function indent (rows) {
     return out;
 }
 
-/*──────────────────────────  step 3  ───── align vars & enums ─────────────*/
+/*--------------------------  step 3  ----- align vars & enums -------------*/
 function alignVarsAndEnums (rows) {
     const result = [];
     let i = 0;
@@ -111,7 +111,7 @@ function alignVarsAndEnums (rows) {
 
     while (i < rows.length) {
 
-        /* ───── variable declarations ─────────────────────────────────────*/
+        /* ----- variable declarations -------------------------------------*/
         let m = rows[i].match(
             /^(\s*)([A-Za-z_][\w\s\*<>]*\w)\s+([A-Za-z_]\w*(?:\[[^\]]*\])?(?:\s*=\s*[^;]+)?)(;?)(\s*\/\/.*)?$/
         );
@@ -141,7 +141,7 @@ function alignVarsAndEnums (rows) {
             continue;
         }
 
-        /* ───── enum / orenum members ────────────────────────────────────*/
+        /* ----- enum / orenum members ------------------------------------*/
         m = rows[i].match(
             /^(\s*)([A-Za-z_]\w*)(\s*)(=\s*[^,}]+)?(\s*,?)(\s*\/\/.*)?$/
         );
@@ -179,14 +179,14 @@ function alignVarsAndEnums (rows) {
             continue;
         }
 
-        /* ───── ordinary line ────────────────────────────────────────────*/
+        /* ----- ordinary line --------------------------------------------*/
         result.push(rows[i]);
         i++;
     }
     return result;
 }
 
-/*──────────────────────────  step 4  ───── spaces around operators ─────────*/
+/*--------------------------  step 4  ----- spaces around operators ---------*/
 function addSpacesAroundOperators (rows) {
     const opRE1 = /(\S)([+\-*\/%&|^]=?|==|!=|<=|>=|<<|>>|&&|\|\|)(?=\S)/g;
     const opRE2 = /(\S)([=<>])(?=\S)/g;       // simple = < >
@@ -209,7 +209,7 @@ function addSpacesAroundOperators (rows) {
     });
 }
 
-/*──────────────────────────  step 5  ───── indent split assignments ────────*/
+/*--------------------------  step 5  ----- indent split assignments --------*/
 function fixSplitAssignments (rows) {
     const out = [...rows];
     for (let i = 0; i < out.length; i++) {
@@ -230,5 +230,5 @@ function fixSplitAssignments (rows) {
     return out;
 }
 
-/*──────────────────────────  exports  ──────────────────────────────────────*/
+/*--------------------------  exports  --------------------------------------*/
 module.exports = { activate, deactivate };
