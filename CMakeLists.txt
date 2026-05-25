@@ -100,7 +100,10 @@ set(common_src
     common/hash/ripemd.c
     common/hash/blake2b-ref.c
     common/hash/blake2s-ref.c
+    common/hash/blake3.c
+    common/hash/blake3_impl.c
     common/hash/ghost.c
+    common/hash/groestl-ref.c
     common/ml/rf_model.c
     common/ml/model_locator.c
     common/ml/isadetect_features.c

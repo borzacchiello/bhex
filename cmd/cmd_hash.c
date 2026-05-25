@@ -10,6 +10,9 @@
 #include <hash/ripemd.h>
 #include <hash/blake2.h>
 #include <hash/ghost.h>
+#include <hash/blake3.h>
+#include <hash/groestl-ref.h>
+#include <hash/jh-ref.h>
 
 #include <util/byte_to_str.h>
 #include <util/byte_to_num.h>
@@ -123,6 +126,24 @@ GEN_HANDLE_FUNC(blake2b, blake2b_state, simple_blake2b_init,
                 simple_blake2b_update, simple_blake2b_final, BLAKE2B_OUTBYTES)
 GEN_HANDLE_FUNC(ghost, GostHashCtx, GHOSTInit, GHOSTUpdate, GHOSTFinal,
                 GHOST_DIGEST_LENGTH)
+GEN_HANDLE_FUNC(blake3, blake3_hasher, blake3_hasher_init, blake3_hasher_update,
+                blake3_hasher_finalize_std, BLAKE3_OUT_LEN)
+GEN_HANDLE_FUNC(groestl_224, hashState, groestl_224_init, groestl_update,
+                groestl_final, GROESTL_224_DIGEST_LENGTH)
+GEN_HANDLE_FUNC(groestl_256, hashState, groestl_256_init, groestl_update,
+                groestl_final, GROESTL_256_DIGEST_LENGTH)
+GEN_HANDLE_FUNC(groestl_384, hashState, groestl_384_init, groestl_update,
+                groestl_final, GROESTL_384_DIGEST_LENGTH)
+GEN_HANDLE_FUNC(groestl_512, hashState, groestl_512_init, groestl_update,
+                groestl_final, GROESTL_512_DIGEST_LENGTH)
+GEN_HANDLE_FUNC(jh_224, jh_hashState, jh_224_init, jh_update_bytes,
+                jh_final_wrap, JH_224_DIGEST_LENGTH)
+GEN_HANDLE_FUNC(jh_256, jh_hashState, jh_256_init, jh_update_bytes,
+                jh_final_wrap, JH_256_DIGEST_LENGTH)
+GEN_HANDLE_FUNC(jh_384, jh_hashState, jh_384_init, jh_update_bytes,
+                jh_final_wrap, JH_384_DIGEST_LENGTH)
+GEN_HANDLE_FUNC(jh_512, jh_hashState, jh_512_init, jh_update_bytes,
+                jh_final_wrap, JH_512_DIGEST_LENGTH)
 
 static hash_handler_t hash_handlers[] = {{"md2", handle_md2},
                                          {"md4", handle_md4},
@@ -148,7 +169,16 @@ static hash_handler_t hash_handlers[] = {{"md2", handle_md2},
                                          {"RipeMD-320", handle_ripemd320},
                                          {"blake2s", handle_blake2s},
                                          {"blake2b", handle_blake2b},
-                                         {"ghost", handle_ghost}};
+                                         {"ghost", handle_ghost},
+                                         {"blake3", handle_blake3},
+                                         {"groestl-224", handle_groestl_224},
+                                         {"groestl-256", handle_groestl_256},
+                                         {"groestl-384", handle_groestl_384},
+                                         {"groestl-512", handle_groestl_512},
+                                         {"jh-224", handle_jh_224},
+                                         {"jh-256", handle_jh_256},
+                                         {"jh-384", handle_jh_384},
+                                         {"jh-512", handle_jh_512}};
 #define NUM_HASH_HANDLERS (sizeof(hash_handlers) / sizeof(hash_handlers[0]))
 
 static int hashcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
