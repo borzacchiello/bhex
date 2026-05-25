@@ -105,20 +105,19 @@ Available commands:
     commit [c]
 ```
 
-### Identify
+### ISA Identify
+
+Based on [isadetect](https://github.com/kairis/isadetect).
 
 ```
 [0x0000000] $ ii?
 
 isa_identify: identify the ISA of a block of bytes using the bundled AI model
 
-  isa_identify [<size>]
+  ii [<size>]
 
   size: number of bytes to analyze starting from the current offset
-        (if omitted, use the whole file starting from the current offset)
-
-The bundled model is copied to `build*/models/` for local runs and installed to
-`share/bhex/models/` by CMake.
+        (if omitted, use the whole file)
 ```
 
 ### Info
@@ -190,12 +189,14 @@ enumerate the strings in the file (i.e., sequences of printable ascii characters
 
 ### Findbase
 
+Based on [binbloom](https://github.com/quarkslab/binbloom).
+
 ```
 [0x0000000] $ fba?
 
-findbase: guess the base address of a raw firmware blob using [binbloom](https://github.com/quarkslab/binbloom)-like heuristics
+findbase: guess the base address of a raw firmware blob using binbloom heuristics
 
-  findbase[/{32,64}/{le,be}]
+  fba[/{32,64}/{le,be}]
      32: assume a 32-bit blob (default)
      64: assume a 64-bit blob
      le: force little-endian decoding

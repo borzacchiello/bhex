@@ -46,12 +46,11 @@ static void isa_identifycmd_help(void* obj)
         "isa_identify: identify the ISA of a block of bytes using the "
         "bundled AI model\n"
         "\n"
-        "  isa_identify" HINT_STR "\n"
+        "  ii" HINT_STR "\n"
         "\n"
         "  size: number of bytes to analyze starting from the current "
         "offset\n"
-        "        (if omitted, use the whole file starting from the current "
-        "offset)\n");
+        "        (if omitted, use the whole file)\n");
 }
 
 static void isa_identifycmd_dispose(IsaIdentifyCmdCtx* ctx)

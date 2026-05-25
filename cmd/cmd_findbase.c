@@ -1067,9 +1067,9 @@ static void findbasecmd_help(void* obj)
     (void)obj;
     display_printf(
         "findbase: guess the base address of a raw firmware blob using "
-        "binbloom-like heuristics\n"
+        "binbloom heuristics\n"
         "\n"
-        "  findbase" HINT_STR "\n"
+        "  fba" HINT_STR "\n"
         "     32: assume a 32-bit blob (default)\n"
         "     64: assume a 64-bit blob\n"
         "     le: force little-endian decoding\n"
