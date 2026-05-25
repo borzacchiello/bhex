@@ -81,6 +81,7 @@ set(common_src
     common/display.c
     common/filebuffer.c
     common/cmdline_parser.c
+    common/expr_eval.c
     common/terminal.c
     common/util/byte_to_num.c
     common/util/byte_to_str.c
@@ -133,6 +134,7 @@ set(command_src
     cmd/cmd_export.c
     cmd/cmd_import.c
     cmd/cmd_entropy.c
+    cmd/cmd_echo.c
     cmd/cmd_interactive.c
     cmd/cmd_isa_identify.c
     cmd/tui.c)

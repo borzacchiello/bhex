@@ -125,6 +125,11 @@ exec_commands_on_ex(const char* s, DummyFilebuffer* dummyfb, int split)
         ParsedCommand* pc;
         if (cmdline_parse(cmd, &pc) != 0)
             panic("parse failed");
+        int expr_r = parsed_command_resolve_expressions(pc, dummyfb->fb);
+        if (expr_r != 0) {
+            parsed_command_destroy(pc);
+            return 1;
+        }
         int r;
         if ((r = cmdctx_run(cc, pc, dummyfb->fb)) != 0) {
             parsed_command_destroy(pc);

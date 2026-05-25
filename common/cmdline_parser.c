@@ -7,10 +7,13 @@
 #include <alloc.h>
 #include <defs.h>
 #include <ll.h>
+#include <display.h>
+#include <expr_eval.h>
 
 static const char* space_tokens   = " \t\n";
 static const char  quotation_char = '"';
 static const char  backslash_char = '\\';
+static const char  backtick_char  = '`';
 
 const char* parser_err_to_string(int err)
 {
@@ -122,6 +125,36 @@ static int gen_token(const char* s, const char* one_char_tokens, char** o_token,
 
         *o_off   = len + 2; // +2 for the two quotes
         *o_token = strbuilder_finalize(o_token_sb);
+        return PARSER_OK;
+
+    } else if (*s == backtick_char) {
+        // expression: collect text until the closing backtick
+        // and prefix with sentinel to mark it as an expression token
+        curr += 1; // skip opening backtick
+
+        StringBuilder* o_token_sb = strbuilder_new();
+        while (*curr && *curr != backtick_char) {
+            strbuilder_append_char(o_token_sb, *curr);
+            len += 1;
+            curr += 1;
+        }
+        if (*curr != backtick_char) {
+            // backtick not closed
+            bhex_free(strbuilder_finalize(o_token_sb));
+            return PARSER_ERR_UNCLOSED_QUOTATION;
+        }
+
+        // Build the sentinel-prefixed token: \x01 + expression_text
+        size_t expr_len = o_token_sb->size;
+        char*  expr_str = strbuilder_finalize(o_token_sb);
+        char*  token    = bhex_malloc(expr_len + 2);
+        token[0]        = '\x01';
+        memcpy(token + 1, expr_str, expr_len);
+        token[expr_len + 1] = 0;
+        bhex_free(expr_str);
+
+        *o_off   = len + 2; // +2 for the two backticks
+        *o_token = token;
         return PARSER_OK;
 
     } else {
@@ -270,6 +303,57 @@ int cmdline_parse(const char* str, ParsedCommand** o_cmd)
 
     *o_cmd = pc;
     return PARSER_OK;
+}
+
+static int resolve_token_in_place(char** token_ptr, FileBuffer* fb)
+{
+    if (!token_ptr || !*token_ptr)
+        return EXPR_EVAL_OK;
+    if ((*token_ptr)[0] != '\x01')
+        return EXPR_EVAL_OK;
+
+    const char* expr = (*token_ptr) + 1;
+    u64_t       result;
+    int         r = expr_eval(expr, fb, &result);
+    if (r != EXPR_EVAL_OK) {
+        display_printf("expr error: %s\n", expr_eval_err_to_string(r));
+        return r;
+    }
+
+    // Replace with the decimal representation of the result
+    char  buf[32];
+    int   len       = snprintf(buf, sizeof(buf), "%llu", result);
+    char* new_token = bhex_malloc(len + 1);
+    memcpy(new_token, buf, len);
+    new_token[len] = 0;
+
+    bhex_free(*token_ptr);
+    *token_ptr = new_token;
+    return EXPR_EVAL_OK;
+}
+
+int parsed_command_resolve_expressions(ParsedCommand* pc, FileBuffer* fb)
+{
+    if (!pc || !fb)
+        return EXPR_EVAL_OK;
+
+    ll_node_t* node = pc->cmd_modifiers.head;
+    while (node) {
+        int r = resolve_token_in_place((char**)&node->data, fb);
+        if (r != EXPR_EVAL_OK)
+            return r;
+        node = node->next;
+    }
+
+    node = pc->args.head;
+    while (node) {
+        int r = resolve_token_in_place((char**)&node->data, fb);
+        if (r != EXPR_EVAL_OK)
+            return r;
+        node = node->next;
+    }
+
+    return EXPR_EVAL_OK;
 }
 
 void parsed_command_destroy(ParsedCommand* cmd)

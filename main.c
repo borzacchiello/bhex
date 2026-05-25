@@ -8,6 +8,7 @@
 #include <alloc.h>
 #include <log.h>
 #include <cmdline_parser.h>
+#include <expr_eval.h>
 
 #include "linenoise/linenoise.h"
 #include "completion.h"
@@ -147,11 +148,16 @@ static void main_loop(FileBuffer* fb, CmdContext* cc)
         }
 
         printf("\n");
-        r = cmdctx_run(cc, pc, fb);
-        if (r != COMMAND_OK && r != COMMAND_SILENT_ERROR)
-            error("%s\n", cmdctx_err_to_string(r));
-        else
+        int expr_r = parsed_command_resolve_expressions(pc, fb);
+        if (expr_r != EXPR_EVAL_OK) {
             printf("\n");
+        } else {
+            r = cmdctx_run(cc, pc, fb);
+            if (r != COMMAND_OK && r != COMMAND_SILENT_ERROR)
+                error("%s\n", cmdctx_err_to_string(r));
+            else
+                printf("\n");
+        }
 
         parsed_command_destroy(pc);
         bhex_free(inp);
@@ -168,6 +174,11 @@ static void command_loop(FileBuffer* fb, CmdContext* cc, char* commands)
     while (token) {
         if ((r = cmdline_parse(token, &pc)) != PARSER_OK) {
             error("%s", parser_err_to_string(r));
+            return;
+        }
+        int expr_r = parsed_command_resolve_expressions(pc, fb);
+        if (expr_r != EXPR_EVAL_OK) {
+            parsed_command_destroy(pc);
             return;
         }
         if ((r = cmdctx_run(cc, pc, fb)) != COMMAND_OK &&
@@ -193,6 +204,11 @@ static void stdin_loop(FileBuffer* fb, CmdContext* cc)
     while ((nread = getline(&lineptr, &len, stdin)) != -1) {
         if ((r = cmdline_parse(lineptr, &pc)) != PARSER_OK) {
             error("%s", parser_err_to_string(r));
+            return;
+        }
+        int expr_r = parsed_command_resolve_expressions(pc, fb);
+        if (expr_r != EXPR_EVAL_OK) {
+            parsed_command_destroy(pc);
             return;
         }
         if ((r = cmdctx_run(cc, pc, fb)) != COMMAND_OK &&

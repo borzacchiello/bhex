@@ -4,6 +4,7 @@
 #define PARSER_H
 
 #include <ll.h>
+#include <filebuffer.h>
 
 #define PARSER_OK                           0
 #define PARSER_ERR_UNCLOSED_QUOTATION       1
@@ -24,6 +25,11 @@ typedef struct ParsedCommand {
 
 int  cmdline_parse(const char* str, ParsedCommand** o_cmd);
 void parsed_command_destroy(ParsedCommand* cmd);
+
+// Resolve expression tokens (prefixed with \x01) in a ParsedCommand.
+// Returns 0 on success, non-zero if any expression failed to evaluate.
+// Requires a FileBuffer* for memory read operations in expressions.
+int parsed_command_resolve_expressions(ParsedCommand* pc, FileBuffer* fb);
 
 const char* parser_err_to_string(int err);
 
