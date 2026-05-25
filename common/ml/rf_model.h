@@ -33,6 +33,8 @@ int      bhex_rf_model_get_class_label(const bhex_rf_model_t* model,
                                        size_t class_index, int* label);
 int      bhex_rf_model_get_header_extra(const bhex_rf_model_t* model, void* out,
                                         size_t size);
+int      bhex_rf_model_get_header_double_le(const bhex_rf_model_t* model,
+                                            size_t offset, double* value);
 uint32_t bhex_rf_model_num_features(const bhex_rf_model_t* model);
 uint32_t bhex_rf_model_num_classes(const bhex_rf_model_t* model);
 const char* bhex_ml_err_to_string(int err);

@@ -393,6 +393,29 @@ int bhex_rf_model_get_header_extra(const bhex_rf_model_t* model, void* out,
     return BHEX_ML_OK;
 }
 
+int bhex_rf_model_get_header_double_le(const bhex_rf_model_t* model,
+                                       size_t offset, double* value)
+{
+    const uint8_t* p;
+    uint64_t       raw;
+
+    if (model == NULL || value == NULL || model->extra_header == NULL) {
+        return BHEX_ML_ERR_INVALID_INPUT;
+    }
+    if (offset > model->extra_header_size ||
+        sizeof(double) > model->extra_header_size - offset) {
+        return BHEX_ML_ERR_INVALID_INPUT;
+    }
+
+    p = model->extra_header + offset;
+    raw = ((uint64_t)p[0]) | ((uint64_t)p[1] << 8) | ((uint64_t)p[2] << 16) |
+          ((uint64_t)p[3] << 24) | ((uint64_t)p[4] << 32) |
+          ((uint64_t)p[5] << 40) | ((uint64_t)p[6] << 48) |
+          ((uint64_t)p[7] << 56);
+    memcpy(value, &raw, sizeof(raw));
+    return BHEX_ML_OK;
+}
+
 uint32_t bhex_rf_model_num_features(const bhex_rf_model_t* model)
 {
     return model != NULL ? model->num_features : 0u;

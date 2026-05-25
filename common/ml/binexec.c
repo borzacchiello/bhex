@@ -15,7 +15,7 @@ static int binexec_get_threshold(const binexec_model_t* model,
     if (threshold == NULL) {
         return BINEXEC_ERR_INVALID_INPUT;
     }
-    return bhex_rf_model_get_header_extra(model, threshold, sizeof(*threshold));
+    return bhex_rf_model_get_header_double_le(model, 0u, threshold);
 }
 
 int binexec_model_load(binexec_model_t** out_model, const char* path)
