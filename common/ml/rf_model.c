@@ -407,7 +407,7 @@ int bhex_rf_model_get_header_double_le(const bhex_rf_model_t* model,
         return BHEX_ML_ERR_INVALID_INPUT;
     }
 
-    p = model->extra_header + offset;
+    p   = model->extra_header + offset;
     raw = ((uint64_t)p[0]) | ((uint64_t)p[1] << 8) | ((uint64_t)p[2] << 16) |
           ((uint64_t)p[3] << 24) | ((uint64_t)p[4] << 32) |
           ((uint64_t)p[5] << 40) | ((uint64_t)p[6] << 48) |

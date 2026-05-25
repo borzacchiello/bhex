@@ -376,9 +376,12 @@ static size_t match_s390x_prolog_1(const uint8_t* data, size_t size, size_t i)
 static size_t match_alpha_prolog_1(const uint8_t* data, size_t size, size_t i)
 {
     /* lda sp,-N(sp): LDA opcode 0x08, Ra=sp=30, Rb=sp=30.
-     * LE bytes: disp[7:0] disp[15:8] 0xDE 0x23. Negative disp => second byte >= 0x80. */
+     * LE bytes: disp[7:0] disp[15:8] 0xDE 0x23. Negative disp => second byte >=
+     * 0x80. */
     NEED_BYTES(4);
-    return (data[i + 2] == 0xde && data[i + 3] == 0x23 && data[i + 1] >= 0x80) ? 4 : 0;
+    return (data[i + 2] == 0xde && data[i + 3] == 0x23 && data[i + 1] >= 0x80)
+               ? 4
+               : 0;
 }
 
 static size_t match_hppa_prolog_1(const uint8_t* data, size_t size, size_t i)
@@ -386,7 +389,8 @@ static size_t match_hppa_prolog_1(const uint8_t* data, size_t size, size_t i)
     /* stw rp,-14(sp): PA-RISC STW with rp=2, sp=30, disp=-20.
      * Encoding: 6b c2 23 d9 (big-endian). */
     NEED_BYTES(4);
-    return (data[i] == 0x6b && data[i + 1] == 0xc2 && data[i + 2] == 0x23) ? 4 : 0;
+    return (data[i] == 0x6b && data[i + 1] == 0xc2 && data[i + 2] == 0x23) ? 4
+                                                                           : 0;
 }
 
 static size_t match_ia64_prolog_1(const uint8_t* data, size_t size, size_t i)
@@ -394,7 +398,9 @@ static size_t match_ia64_prolog_1(const uint8_t* data, size_t size, size_t i)
     /* IA-64 bundle template 0x05 (MII) with stop bit. */
     NEED_BYTES(6);
     return (data[i] == 0x05 && data[i + 1] == 0x00 && data[i + 2] == 0x00 &&
-            data[i + 3] == 0x00 && data[i + 4] == 0x00 && data[i + 5] == 0x01) ? 6 : 0;
+            data[i + 3] == 0x00 && data[i + 4] == 0x00 && data[i + 5] == 0x01)
+               ? 6
+               : 0;
 }
 
 static size_t match_ia64_prolog_2(const uint8_t* data, size_t size, size_t i)
@@ -402,22 +408,27 @@ static size_t match_ia64_prolog_2(const uint8_t* data, size_t size, size_t i)
     /* IA-64 bundle template 0x0B (MIB) with stop bit. */
     NEED_BYTES(6);
     return (data[i] == 0x0b && data[i + 1] == 0x00 && data[i + 2] == 0x00 &&
-            data[i + 3] == 0x00 && data[i + 4] == 0x00 && data[i + 5] == 0x01) ? 6 : 0;
+            data[i + 3] == 0x00 && data[i + 4] == 0x00 && data[i + 5] == 0x01)
+               ? 6
+               : 0;
 }
 
 static size_t match_m68k_epilog_1(const uint8_t* data, size_t size, size_t i)
 {
     /* unlk a6; rts */
     NEED_BYTES(4);
-    return (data[i] == 0x4e && data[i + 1] == 0x5e &&
-            data[i + 2] == 0x4e && data[i + 3] == 0x75) ? 4 : 0;
+    return (data[i] == 0x4e && data[i + 1] == 0x5e && data[i + 2] == 0x4e &&
+            data[i + 3] == 0x75)
+               ? 4
+               : 0;
 }
 
 static size_t match_m68k_prolog_1(const uint8_t* data, size_t size, size_t i)
 {
     /* link a6,#-N  (4e56 + negative 16-bit displacement). */
     NEED_BYTES(4);
-    return (data[i] == 0x4e && data[i + 1] == 0x56 && data[i + 2] >= 0x80) ? 4 : 0;
+    return (data[i] == 0x4e && data[i + 1] == 0x56 && data[i + 2] >= 0x80) ? 4
+                                                                           : 0;
 }
 
 static size_t match_m68k_prolog_2(const uint8_t* data, size_t size, size_t i)
@@ -425,15 +436,19 @@ static size_t match_m68k_prolog_2(const uint8_t* data, size_t size, size_t i)
     /* movem.l d0-d7/a0-a6,-(sp)  -> 48e7 with large register mask. */
     NEED_BYTES(4);
     return (data[i] == 0x48 && data[i + 1] == 0xe7 &&
-            (data[i + 2] == 0xff || data[i + 2] == 0xfe || data[i + 2] == 0xfc)) ? 4 : 0;
+            (data[i + 2] == 0xff || data[i + 2] == 0xfe || data[i + 2] == 0xfc))
+               ? 4
+               : 0;
 }
 
 static size_t match_riscv64_epilog_1(const uint8_t* data, size_t size, size_t i)
 {
     /* ret (jalr x0,ra,0) = 67 80 00 00 in LE. */
     NEED_BYTES(4);
-    return (data[i] == 0x67 && data[i + 1] == 0x80 &&
-            data[i + 2] == 0x00 && data[i + 3] == 0x00) ? 4 : 0;
+    return (data[i] == 0x67 && data[i + 1] == 0x80 && data[i + 2] == 0x00 &&
+            data[i + 3] == 0x00)
+               ? 4
+               : 0;
 }
 
 static size_t match_riscv64_prolog_1(const uint8_t* data, size_t size, size_t i)
@@ -441,24 +456,28 @@ static size_t match_riscv64_prolog_1(const uint8_t* data, size_t size, size_t i)
     /* addi sp,sp,-N: opcode=0x13, rd=2, funct3=0, rs1=2.
      * LE: 13 01 xx yy where top nibble of yy >= 8 for negative imm. */
     NEED_BYTES(4);
-    return (data[i] == 0x13 && data[i + 1] == 0x01 &&
-            (data[i + 3] & 0x80)) ? 4 : 0;
+    return (data[i] == 0x13 && data[i + 1] == 0x01 && (data[i + 3] & 0x80)) ? 4
+                                                                            : 0;
 }
 
 static size_t match_sh4_epilog_1(const uint8_t* data, size_t size, size_t i)
 {
     /* mov.l @r15+,r14; rts */
     NEED_BYTES(4);
-    return (data[i] == 0xfe && data[i + 1] == 0x6e &&
-            data[i + 2] == 0x0b && data[i + 3] == 0x00) ? 4 : 0;
+    return (data[i] == 0xfe && data[i + 1] == 0x6e && data[i + 2] == 0x0b &&
+            data[i + 3] == 0x00)
+               ? 4
+               : 0;
 }
 
 static size_t match_sh4_epilog_2(const uint8_t* data, size_t size, size_t i)
 {
     /* rts; nop */
     NEED_BYTES(4);
-    return (data[i] == 0x0b && data[i + 1] == 0x00 &&
-            data[i + 2] == 0x09 && data[i + 3] == 0x00) ? 4 : 0;
+    return (data[i] == 0x0b && data[i + 1] == 0x00 && data[i + 2] == 0x09 &&
+            data[i + 3] == 0x00)
+               ? 4
+               : 0;
 }
 
 static size_t match_sh4_prolog_1(const uint8_t* data, size_t size, size_t i)
@@ -472,24 +491,30 @@ static size_t match_sparc_epilog_1(const uint8_t* data, size_t size, size_t i)
 {
     /* ret (jmpl %i7+8,%g0) = 81 c3 e0 08 */
     NEED_BYTES(4);
-    return (data[i] == 0x81 && data[i + 1] == 0xc3 &&
-            data[i + 2] == 0xe0 && data[i + 3] == 0x08) ? 4 : 0;
+    return (data[i] == 0x81 && data[i + 1] == 0xc3 && data[i + 2] == 0xe0 &&
+            data[i + 3] == 0x08)
+               ? 4
+               : 0;
 }
 
 static size_t match_sparc_epilog_2(const uint8_t* data, size_t size, size_t i)
 {
     /* ret variant (jmpl %i7+8,%g0) = 81 c7 e0 08 */
     NEED_BYTES(4);
-    return (data[i] == 0x81 && data[i + 1] == 0xc7 &&
-            data[i + 2] == 0xe0 && data[i + 3] == 0x08) ? 4 : 0;
+    return (data[i] == 0x81 && data[i + 1] == 0xc7 && data[i + 2] == 0xe0 &&
+            data[i + 3] == 0x08)
+               ? 4
+               : 0;
 }
 
 static size_t match_sparc_prolog_1(const uint8_t* data, size_t size, size_t i)
 {
     /* save %sp, -N, %sp  (9de3bf + negative simm13). */
     NEED_BYTES(4);
-    return (data[i] == 0x9d && data[i + 1] == 0xe3 &&
-            data[i + 2] == 0xbf && data[i + 3] >= 0x80) ? 4 : 0;
+    return (data[i] == 0x9d && data[i + 1] == 0xe3 && data[i + 2] == 0xbf &&
+            data[i + 3] >= 0x80)
+               ? 4
+               : 0;
 }
 
 static const isadetect_match_fn
@@ -691,37 +716,63 @@ int isadetect_extract_features(const uint8_t* buffer, size_t size,
  *     ff_ratio, byte_diversity, max_run_ratio)
  */
 
-#define BINEXEC_EXT_NUM_FEATURES 314
+#define BINEXEC_EXT_NUM_FEATURES  314
 #define BINEXEC_EXT_NUM_MATCH_FNS 52
 
-static const isadetect_match_fn BINEXEC_EXT_MATCH_FNS[BINEXEC_EXT_NUM_MATCH_FNS] = {
-    match_alpha_prolog_1,
-    match_amd64_epilog_1,      match_amd64_epilog_2,
-    match_amd64_epilog_3,      match_amd64_prolog_1,
-    match_amd64_prolog_2,      match_arm32_epilog_1,
-    match_arm32_epilog_2,      match_arm32_prolog_1,
-    match_arm32_prolog_2,      match_armel32_epilog_1,
-    match_armel32_epilog_2,    match_armel32_prolog_1,
-    match_armel32_prolog_2,    match_be_one,
-    match_be_stack,            match_hppa_prolog_1,
-    match_ia64_prolog_1,       match_ia64_prolog_2,
-    match_le_one,              match_le_stack,
-    match_m68k_epilog_1,       match_m68k_prolog_1,
-    match_m68k_prolog_2,       match_mips32_epilog_1,
-    match_mips32_prolog_1,     match_mips32_prolog_2,
-    match_mips32el_epilog_1,   match_mips32el_prolog_1,
-    match_mips32el_prolog_2,   match_powerpcspe_spe_instruction_evl,
-    match_powerpcspe_spe_instruction_isel, match_ppc32_epilog_1,
-    match_ppc32_prolog_1,      match_ppc64_epilog_1,
-    match_ppc64_prolog_1,      match_ppc64_prolog_2,
-    match_ppc64_prolog_3,      match_ppcel32_epilog_1,
-    match_ppcel32_prolog_1,    match_ppcel64_epilog_1,
-    match_ppcel64_prolog_1,    match_riscv64_epilog_1,
-    match_riscv64_prolog_1,    match_s390x_epilog_1,
-    match_s390x_prolog_1,      match_sh4_epilog_1,
-    match_sh4_epilog_2,        match_sh4_prolog_1,
-    match_sparc_epilog_1,      match_sparc_epilog_2,
-    match_sparc_prolog_1,
+static const isadetect_match_fn
+    BINEXEC_EXT_MATCH_FNS[BINEXEC_EXT_NUM_MATCH_FNS] = {
+        match_alpha_prolog_1,
+        match_amd64_epilog_1,
+        match_amd64_epilog_2,
+        match_amd64_epilog_3,
+        match_amd64_prolog_1,
+        match_amd64_prolog_2,
+        match_arm32_epilog_1,
+        match_arm32_epilog_2,
+        match_arm32_prolog_1,
+        match_arm32_prolog_2,
+        match_armel32_epilog_1,
+        match_armel32_epilog_2,
+        match_armel32_prolog_1,
+        match_armel32_prolog_2,
+        match_be_one,
+        match_be_stack,
+        match_hppa_prolog_1,
+        match_ia64_prolog_1,
+        match_ia64_prolog_2,
+        match_le_one,
+        match_le_stack,
+        match_m68k_epilog_1,
+        match_m68k_prolog_1,
+        match_m68k_prolog_2,
+        match_mips32_epilog_1,
+        match_mips32_prolog_1,
+        match_mips32_prolog_2,
+        match_mips32el_epilog_1,
+        match_mips32el_prolog_1,
+        match_mips32el_prolog_2,
+        match_powerpcspe_spe_instruction_evl,
+        match_powerpcspe_spe_instruction_isel,
+        match_ppc32_epilog_1,
+        match_ppc32_prolog_1,
+        match_ppc64_epilog_1,
+        match_ppc64_prolog_1,
+        match_ppc64_prolog_2,
+        match_ppc64_prolog_3,
+        match_ppcel32_epilog_1,
+        match_ppcel32_prolog_1,
+        match_ppcel64_epilog_1,
+        match_ppcel64_prolog_1,
+        match_riscv64_epilog_1,
+        match_riscv64_prolog_1,
+        match_s390x_epilog_1,
+        match_s390x_prolog_1,
+        match_sh4_epilog_1,
+        match_sh4_epilog_2,
+        match_sh4_prolog_1,
+        match_sparc_epilog_1,
+        match_sparc_epilog_2,
+        match_sparc_prolog_1,
 };
 
 int binexec_extract_features(const uint8_t* buffer, size_t size,
@@ -750,10 +801,9 @@ int binexec_extract_features(const uint8_t* buffer, size_t size,
 
     /* All 52 fingerprint features (alphabetical order). */
     for (idx = 0; idx < BINEXEC_EXT_NUM_MATCH_FNS; ++idx) {
-        features[256u + idx] =
-            ((double)isadetect_count_matches(buffer, size,
-                                             BINEXEC_EXT_MATCH_FNS[idx])) /
-            denom;
+        features[256u + idx] = ((double)isadetect_count_matches(
+                                   buffer, size, BINEXEC_EXT_MATCH_FNS[idx])) /
+                               denom;
     }
 
     /* --- Structural features --- */
@@ -790,8 +840,8 @@ int binexec_extract_features(const uint8_t* buffer, size_t size,
         if (cur_run > max_run)
             max_run = cur_run;
 
-        idx = 256u + BINEXEC_EXT_NUM_MATCH_FNS;
-        features[idx++] = entropy_sum / 8.0;           /* entropy */
+        idx             = 256u + BINEXEC_EXT_NUM_MATCH_FNS;
+        features[idx++] = entropy_sum / 8.0;            /* entropy */
         features[idx++] = (double)printable / denom;    /* printable_ratio */
         features[idx++] = (double)counts[0x00] / denom; /* zero_ratio */
         features[idx++] = (double)counts[0xff] / denom; /* ff_ratio */

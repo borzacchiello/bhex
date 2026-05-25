@@ -412,23 +412,23 @@ typedef struct {
     double probability;
 } ChunkClassification;
 
-#define SMOOTH_MAX_GAP_CHUNKS     1
-#define SMOOTH_MIN_PROBABILITY    0.05
+#define SMOOTH_MAX_GAP_CHUNKS  1
+#define SMOOTH_MIN_PROBABILITY 0.05
 
 static int isa_identifycmd_exec_graph(IsaIdentifyCmdCtx* ctx, FileBuffer* fb,
                                       u64_t start, size_t size)
 {
-    u64_t off          = start;
-    u64_t end          = start + (u64_t)size;
-    u64_t num_chunks   = 0;
-    u64_t chunk_idx;
-    u64_t i;
-    int   have_range   = 0;
-    int   current_type = 0;
-    u64_t range_start  = 0;
-    u64_t range_end    = 0;
-    int   printed      = 0;
-    int   rc;
+    u64_t                off        = start;
+    u64_t                end        = start + (u64_t)size;
+    u64_t                num_chunks = 0;
+    u64_t                chunk_idx;
+    u64_t                i;
+    int                  have_range   = 0;
+    int                  current_type = 0;
+    u64_t                range_start  = 0;
+    u64_t                range_end    = 0;
+    int                  printed      = 0;
+    int                  rc;
     ChunkClassification* chunks = NULL;
 
     display_printf("ISA graph (%zu bytes analyzed, %d-byte chunks):\n", size,
@@ -440,9 +440,8 @@ static int isa_identifycmd_exec_graph(IsaIdentifyCmdCtx* ctx, FileBuffer* fb,
 
         num_chunks = (end - start + (u64_t)BINEXEC_CHUNK_SIZE - 1) /
                      (u64_t)BINEXEC_CHUNK_SIZE;
-        chunks =
-            (ChunkClassification*)bhex_malloc((size_t)num_chunks *
-                                               sizeof(ChunkClassification));
+        chunks = (ChunkClassification*)bhex_malloc((size_t)num_chunks *
+                                                   sizeof(ChunkClassification));
         if (chunks == NULL) {
             error("out of memory allocating chunk results");
             return COMMAND_SILENT_ERROR;
@@ -473,8 +472,8 @@ static int isa_identifycmd_exec_graph(IsaIdentifyCmdCtx* ctx, FileBuffer* fb,
                 if (fb_seek(fb, _off) == 0) {
                     buf = fb_read(fb, chunk_size);
                     if (buf != NULL) {
-                        binexec_chunk_contains_code(
-                            ctx->binexec_model, buf, chunk_size, NULL, &prob);
+                        binexec_chunk_contains_code(ctx->binexec_model, buf,
+                                                    chunk_size, NULL, &prob);
                     }
                 }
                 fb_seek(fb, saved_off);
@@ -491,8 +490,7 @@ static int isa_identifycmd_exec_graph(IsaIdentifyCmdCtx* ctx, FileBuffer* fb,
         /* Drop isolated low-confidence code chunks. */
         if (chunks[i].contains_code &&
             chunks[i].probability < SMOOTH_MIN_PROBABILITY) {
-            int left_code =
-                (i > 0) ? chunks[i - 1].contains_code : 0;
+            int left_code = (i > 0) ? chunks[i - 1].contains_code : 0;
             int right_code =
                 (i + 1 < num_chunks) ? chunks[i + 1].contains_code : 0;
             if (!left_code && !right_code) {
