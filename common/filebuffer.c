@@ -19,7 +19,17 @@
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define max(x, y) ((x) > (y) ? (x) : (y))
 
-static u8_t tmp_block[fb_block_size];
+static void fb_lock(FileBuffer* fb)
+{
+    if (pthread_mutex_lock(&fb->lock) != 0)
+        panic("pthread_mutex_lock failed");
+}
+
+static void fb_unlock(FileBuffer* fb)
+{
+    if (pthread_mutex_unlock(&fb->lock) != 0)
+        panic("pthread_mutex_unlock failed");
+}
 
 static int was_file_modified(const char* path, time_t prev_time,
                              time_t* new_time)
@@ -71,12 +81,15 @@ static void fb_modified_check(FileBuffer* fb)
 
 int fb_seek(FileBuffer* fb, u64_t off)
 {
-    if (off > fb->size)
-        return 1;
-
-    fb->off         = off;
-    fb->block_dirty = 1;
-    return 0;
+    int r = 1;
+    fb_lock(fb);
+    if (off <= fb->size) {
+        fb->off         = off;
+        fb->block_dirty = 1;
+        r               = 0;
+    }
+    fb_unlock(fb);
+    return r;
 }
 
 FileBuffer* filebuffer_create(const char* path, int readonly)
@@ -88,6 +101,19 @@ FileBuffer* filebuffer_create(const char* path, int readonly)
     fb->block_dirty   = 1;
     fb->version       = 0;
     fb->search_index  = bhex_calloc(sizeof(SearchIndex));
+    fb->off           = 0;
+    memset(fb->block, 0, sizeof(fb->block));
+    memset(fb->tmp_block, 0, sizeof(fb->tmp_block));
+
+    pthread_mutexattr_t attr;
+    if (pthread_mutexattr_init(&attr) != 0)
+        panic("pthread_mutexattr_init failed");
+    if (pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE) != 0)
+        panic("pthread_mutexattr_settype failed");
+    if (pthread_mutex_init(&fb->lock, &attr) != 0)
+        panic("pthread_mutex_init failed");
+    if (pthread_mutexattr_destroy(&attr) != 0)
+        panic("pthread_mutexattr_destroy failed");
 
     FILE* f = NULL;
     if (!readonly) {
@@ -103,6 +129,8 @@ FileBuffer* filebuffer_create(const char* path, int readonly)
     }
     if (f == NULL) {
         error("cannot open the file");
+        pthread_mutex_destroy(&fb->lock);
+        bhex_free(fb->search_index);
         bhex_free(fb->path);
         bhex_free(fb);
         return NULL;
@@ -117,8 +145,6 @@ FileBuffer* filebuffer_create(const char* path, int readonly)
         panic("ftell failed");
     fb->size = filelen;
 
-    if (fb_seek(fb, 0) != 0)
-        panic("fseek failed");
     was_file_modified(fb->path, 0, &fb->mod_time);
     return fb;
 }
@@ -132,6 +158,8 @@ static void delete_modification(uptr_t o)
 
 int fb_write(FileBuffer* fb, u8_t* data, size_t size)
 {
+    int r = 0;
+    fb_lock(fb);
     fb_modified_check(fb);
     if (fb->readonly)
         warning("the file was opened in read-only mode, you cannot commit this "
@@ -139,7 +167,7 @@ int fb_write(FileBuffer* fb, u8_t* data, size_t size)
 
     if (fb->off + size > fb->size) {
         error("not enough space to write the data");
-        return 0;
+        goto end;
     }
 
     Modification* mod = bhex_malloc(sizeof(Modification));
@@ -153,11 +181,17 @@ int fb_write(FileBuffer* fb, u8_t* data, size_t size)
     ll_add(&fb->modifications, (uptr_t)mod);
     fb->block_dirty = 1;
     fb->version += 1;
-    return 1;
+    r = 1;
+
+end:
+    fb_unlock(fb);
+    return r;
 }
 
 int fb_insert(FileBuffer* fb, u8_t* data, size_t size)
 {
+    int r = 0;
+    fb_lock(fb);
     fb_modified_check(fb);
     if (fb->readonly)
         warning("the file was opened in read-only mode, you cannot commit this "
@@ -165,7 +199,7 @@ int fb_insert(FileBuffer* fb, u8_t* data, size_t size)
 
     if (size > fb_block_size) {
         error("cannot insert more than %lu bytes", fb_block_size);
-        return 0;
+        goto end;
     }
 
     Modification* mod = bhex_malloc(sizeof(Modification));
@@ -180,11 +214,17 @@ int fb_insert(FileBuffer* fb, u8_t* data, size_t size)
     fb->size += size;
     fb->block_dirty = 1;
     fb->version += 1;
-    return 1;
+    r = 1;
+
+end:
+    fb_unlock(fb);
+    return r;
 }
 
 int fb_delete(FileBuffer* fb, size_t size)
 {
+    int r = 0;
+    fb_lock(fb);
     fb_modified_check(fb);
     if (fb->readonly)
         warning("the file was opened in read-only mode, you cannot commit this "
@@ -192,7 +232,7 @@ int fb_delete(FileBuffer* fb, size_t size)
 
     if (fb->size - fb->off < size) {
         error("not enough data to delete");
-        return 0;
+        goto end;
     }
 
     u32_t num_blocks = 0;
@@ -223,14 +263,21 @@ int fb_delete(FileBuffer* fb, size_t size)
     fb->size -= size;
     fb->block_dirty = 1;
     fb->version += 1;
-    return 1;
+    r = 1;
+
+end:
+    fb_unlock(fb);
+    return r;
 }
 
 int fb_undo_last(FileBuffer* fb)
 {
+    int r = 0;
+    fb_lock(fb);
+
     ll_node_t* n = ll_pop(&fb->modifications);
     if (!n)
-        return 0;
+        goto end;
 
     Modification* mod = (Modification*)n->data;
     if (mod->type == MOD_TYPE_INSERT) {
@@ -249,13 +296,19 @@ int fb_undo_last(FileBuffer* fb)
     bhex_free(n);
     fb->block_dirty = 1;
     fb->version -= 1;
-    return 1;
+    r = 1;
+
+end:
+    fb_unlock(fb);
+    return r;
 }
 
 void fb_undo_all(FileBuffer* fb)
 {
+    fb_lock(fb);
     while (fb_undo_last(fb))
         ;
+    fb_unlock(fb);
 }
 
 static int commit_write(FileBuffer* fb, Modification* mod)
@@ -303,7 +356,7 @@ static int commit_insert(FileBuffer* fb, Modification* mod)
             error("commit_insert(): fseek failed [off: %llu]", off);
             return 0;
         }
-        if (fread(tmp_block, 1, size, fb->file) != size) {
+        if (fread(fb->tmp_block, 1, size, fb->file) != size) {
             error("commit_insert(): fread failed");
             return 0;
         }
@@ -311,7 +364,7 @@ static int commit_insert(FileBuffer* fb, Modification* mod)
             error("commit_insert(): fseek failed [off: %llu]", off + mod->size);
             return 0;
         }
-        if (fwrite(tmp_block, 1, size, fb->file) != size) {
+        if (fwrite(fb->tmp_block, 1, size, fb->file) != size) {
             error("commit_insert(): fwrite failed");
             return 0;
         }
@@ -357,7 +410,7 @@ static int commit_delete(FileBuffer* fb, Modification* mod)
             error("commit_delete(): fseek failed [off: %llu]", off);
             return 0;
         }
-        if (fread(tmp_block, 1, size, fb->file) != size) {
+        if (fread(fb->tmp_block, 1, size, fb->file) != size) {
             error("commit_delete(): fread failed");
             return 0;
         }
@@ -365,7 +418,7 @@ static int commit_delete(FileBuffer* fb, Modification* mod)
             error("commit_delete(): fseek failed [off: %llu]", off - mod->size);
             return 0;
         }
-        if (fwrite(tmp_block, 1, size, fb->file) != size) {
+        if (fwrite(fb->tmp_block, 1, size, fb->file) != size) {
             error("commit_delete(): fwrite failed");
             return 0;
         }
@@ -386,9 +439,11 @@ static int commit_delete(FileBuffer* fb, Modification* mod)
 
 void fb_commit(FileBuffer* fb)
 {
+    fb_lock(fb);
     fb_modified_check(fb);
     if (fb->readonly) {
         error("cannot commit, the file was opened in read-only mode");
+        fb_unlock(fb);
         return;
     }
 
@@ -424,6 +479,7 @@ void fb_commit(FileBuffer* fb)
         fb->version += 1 + fb->modifications.size;
         if (!fb_reload(fb))
             panic("unable to reload the file");
+        fb_unlock(fb);
         return;
     }
 
@@ -432,6 +488,7 @@ void fb_commit(FileBuffer* fb)
     fflush(fb->file);
     fb_seek(fb, origin_off);
     was_file_modified(fb->path, 0, &fb->mod_time);
+    fb_unlock(fb);
 }
 
 static int overlaps(u64_t startA, u64_t endA, u64_t startB, u64_t endB)
@@ -528,33 +585,21 @@ static int fb_read_internal(FileBuffer* fb, u64_t addr, u64_t fsize, u64_t idx,
         error("fseek failed @ 0x%llx", addr);
         return 0;
     }
-    size_t read_size = fread(tmp_block, 1, size, fb->file);
+    size_t read_size = fread(fb->tmp_block, 1, size, fb->file);
     for (i = 0; i < read_size; ++i) {
         if (block_map[i + idx])
             continue;
-        fb->block[i + idx] = tmp_block[i];
+        fb->block[i + idx] = fb->tmp_block[i];
         block_map[i + idx] = 1;
     }
     return 1;
 }
 
-const u8_t* fb_read_ex(FileBuffer* fb, size_t size, u32_t mod_idx)
+static size_t fb_get_effective_size(FileBuffer* fb, u32_t mod_idx)
 {
-    if (mod_idx > fb->modifications.size)
-        return NULL;
-
-    fb_modified_check(fb);
-    if (size > fb_block_size) {
-        // FIXME: this case could be useful, maybe implement it using a dynamic
-        //        buffer
-        error("you cannot read more than %lu bytes", fb_block_size);
-        return NULL;
-    }
-
     size_t fsize = fb->size;
     if (mod_idx != 0) {
         fb->block_dirty = 1;
-        // we should adjust fsize according to the skipped modifications
         u32_t      nmod = 0;
         ll_node_t* curr = fb->modifications.head;
         while (curr && nmod < mod_idx) {
@@ -571,10 +616,29 @@ const u8_t* fb_read_ex(FileBuffer* fb, size_t size, u32_t mod_idx)
             nmod += 1;
         }
     }
+    return fsize;
+}
 
+const u8_t* fb_read_ex(FileBuffer* fb, size_t size, u32_t mod_idx)
+{
+    const u8_t* result = NULL;
+    fb_lock(fb);
+
+    if (mod_idx > fb->modifications.size)
+        goto end;
+
+    fb_modified_check(fb);
+    if (size > fb_block_size) {
+        // FIXME: this case could be useful, maybe implement it using a dynamic
+        //        buffer
+        error("you cannot read more than %lu bytes", fb_block_size);
+        goto end;
+    }
+
+    size_t fsize = fb_get_effective_size(fb, mod_idx);
     if (size + fb->off > fsize) {
         error("too many bytes to read: %lu", size);
-        return NULL;
+        goto end;
     }
 
     if (fb->block_dirty) {
@@ -588,7 +652,11 @@ const u8_t* fb_read_ex(FileBuffer* fb, size_t size, u32_t mod_idx)
     }
     if (mod_idx == 0)
         fb->block_dirty = 0;
-    return (const u8_t*)fb->block;
+    result = (const u8_t*)fb->block;
+
+end:
+    fb_unlock(fb);
+    return result;
 }
 
 const u8_t* fb_read(FileBuffer* fb, size_t size)
@@ -596,11 +664,59 @@ const u8_t* fb_read(FileBuffer* fb, size_t size)
     return fb_read_ex(fb, size, 0);
 }
 
+u8_t* fb_read_alloc_ex(FileBuffer* fb, u64_t off, size_t size, u32_t mod_idx)
+{
+    u8_t* result = NULL;
+    fb_lock(fb);
+
+    if (mod_idx > fb->modifications.size)
+        goto end;
+
+    fb_modified_check(fb);
+    size_t fsize = fb_get_effective_size(fb, mod_idx);
+    if (off > fsize || size > fsize - off) {
+        error("too many bytes to read: %lu", size);
+        goto end;
+    }
+
+    if (size == 0) {
+        result = bhex_calloc(1);
+        goto end;
+    }
+
+    result = bhex_malloc(size);
+    u64_t orig_off = fb->off;
+    u64_t copied   = 0;
+    while (copied < size) {
+        size_t chunk = min((u64_t)fb_block_size, size - copied);
+        fb_seek(fb, off + copied);
+        const u8_t* block = fb_read_ex(fb, chunk, mod_idx);
+        if (block == NULL) {
+            bhex_free(result);
+            result = NULL;
+            break;
+        }
+        memcpy(result + copied, block, chunk);
+        copied += chunk;
+    }
+    fb_seek(fb, orig_off);
+
+end:
+    fb_unlock(fb);
+    return result;
+}
+
+u8_t* fb_read_alloc(FileBuffer* fb, u64_t off, size_t size)
+{
+    return fb_read_alloc_ex(fb, off, size, 0);
+}
+
 void filebuffer_destroy(FileBuffer* fb)
 {
     fclose(fb->file);
     ll_clear(&fb->modifications, delete_modification);
 
+    pthread_mutex_destroy(&fb->lock);
     bhex_free(fb->search_index);
     bhex_free(fb->path);
     bhex_free(fb);
@@ -692,6 +808,8 @@ void fb_search(FileBuffer* fb, const u8_t* data, size_t size, fb_search_cb_t cb,
 {
     if (size == 0)
         return;
+
+    fb_lock(fb);
     populate_index(fb);
 
     u64_t orig_off = fb->off;
@@ -757,4 +875,5 @@ void fb_search(FileBuffer* fb, const u8_t* data, size_t size, fb_search_cb_t cb,
 
     bhex_free(buf);
     fb_seek(fb, orig_off);
+    fb_unlock(fb);
 }

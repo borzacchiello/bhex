@@ -21,6 +21,7 @@
 #include "cmd_assemble.h"
 #include "cmd_disas.h"
 #include "cmd_strings.h"
+#include "cmd_findbase.h"
 #include "cmd_diff.h"
 #include "cmd_export.h"
 #include "cmd_import.h"
@@ -78,6 +79,7 @@ CmdContext* cmdctx_init(void)
     ll_add(&cc->commands, (uptr_t)seekcmd_create());
     ll_add(&cc->commands, (uptr_t)templatecmd_create());
     ll_add(&cc->commands, (uptr_t)stringscmd_create());
+    ll_add(&cc->commands, (uptr_t)findbasecmd_create());
     ll_add(&cc->commands, (uptr_t)crccmd_create());
     ll_add(&cc->commands, (uptr_t)checksumcmd_create());
     ll_add(&cc->commands, (uptr_t)hashcmd_create());

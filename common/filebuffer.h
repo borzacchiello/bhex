@@ -10,6 +10,7 @@
    file.
 */
 
+#include <pthread.h>
 #include <stdio.h>
 #include <time.h>
 #include <defs.h>
@@ -49,10 +50,12 @@ typedef struct FileBuffer {
     s8_t   readonly;
     u64_t  version;
 
-    ll_t         modifications;
-    SearchIndex* search_index;
+    ll_t            modifications;
+    SearchIndex*    search_index;
+    pthread_mutex_t lock;
 
     u8_t block[fb_block_size];
+    u8_t tmp_block[fb_block_size];
     s8_t block_dirty;
 } FileBuffer;
 
@@ -75,7 +78,14 @@ void fb_search(FileBuffer* fb, const u8_t* data, size_t size, fb_search_cb_t cb,
                void* user_data);
 
 // Calling this APIs two times will invalidate the old buffer
+// and the returned pointer must not be shared across threads.
 const u8_t* fb_read(FileBuffer* fb, size_t size);
 const u8_t* fb_read_ex(FileBuffer* fb, size_t size, u32_t mod_idx);
+
+// Returns a heap-allocated copy owned by the caller.
+// Safe to pass to worker threads after the call returns.
+u8_t* fb_read_alloc(FileBuffer* fb, u64_t off, size_t size);
+u8_t* fb_read_alloc_ex(FileBuffer* fb, u64_t off, size_t size,
+                       u32_t mod_idx);
 
 #endif

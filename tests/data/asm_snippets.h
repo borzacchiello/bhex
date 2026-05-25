@@ -2,7 +2,7 @@
 /*
  * Machine-code snippets for architecture identification tests.
  *
- * This file is generated from tests/data/identify/generated/*.bin by
+ * This file is generated from tests/data/identify/generated/ by
  * tests/data/identify/generate_asm_snippets.py.
  */
 

@@ -88,6 +88,7 @@ Available commands:
     checksum [cs]
     crc [cr]
     strings [str]
+    findbase [fba]
     template [t]
     seek [s]
     print [p]
@@ -167,6 +168,20 @@ enumerate the strings in the file (i.e., sequences of printable ascii characters
 
   pattern: print only strings that contain the pattern as substring (use * for any character)
   num:     minimum length (default: 3)
+```
+
+### Findbase
+
+```
+[0x0000000] $ fba?
+
+findbase: guess the base address of a raw firmware blob using [binbloom](https://github.com/quarkslab/binbloom)-like heuristics
+
+  findbase[/{32,64}/{le,be}]
+     32: assume a 32-bit blob (default)
+     64: assume a 64-bit blob
+     le: force little-endian decoding
+     be: force big-endian decoding
 ```
 
 ### Hash
