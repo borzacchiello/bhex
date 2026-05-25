@@ -412,8 +412,9 @@ typedef struct {
     double probability;
 } ChunkClassification;
 
-#define SMOOTH_MAX_GAP_CHUNKS  1
-#define SMOOTH_MIN_PROBABILITY 0.05
+#define SMOOTH_MAX_GAP_CHUNKS    1
+#define SMOOTH_MIN_PROBABILITY   0.05
+#define SMOOTH_GAP_FILL_MIN_PROB 0.10
 
 static int isa_identifycmd_exec_graph(IsaIdentifyCmdCtx* ctx, FileBuffer* fb,
                                       u64_t start, size_t size)
@@ -500,10 +501,12 @@ static int isa_identifycmd_exec_graph(IsaIdentifyCmdCtx* ctx, FileBuffer* fb,
     }
 
     for (i = 1; i + 1 < num_chunks; ++i) {
-        /* Fill isolated single-chunk gaps between code regions.
+        /* Fill isolated single-chunk gaps between code regions
+         * only if the gap chunk has some code-like probability.
          * Example: code | ___gap___ | code  ->  code | code | code */
         if (!chunks[i].contains_code && chunks[i - 1].contains_code &&
-            chunks[i + 1].contains_code) {
+            chunks[i + 1].contains_code &&
+            chunks[i].probability >= SMOOTH_GAP_FILL_MIN_PROB) {
             /* Only fill short gaps (SMOOTH_MAX_GAP_CHUNKS chunks). */
             u64_t gap_start = i;
             u64_t gap_end   = i;
