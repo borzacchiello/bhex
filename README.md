@@ -23,7 +23,7 @@ Minimalistic and lightweight shell-based hex editor.
 - Execute template files using a custom language (bhe), see examples in the `templates/` subdirectory.
 - Disassemble opcodes (using Capstone).
 - Assemble opcodes (using Keystone).
-- Identify the ISA of a byte block using a bundled AI model.
+- Identify the ISA of a byte block using bundled AI models, or graph code ranges across a file.
 
 Just run `bhex <file>` to start the shell.
 
@@ -112,12 +112,29 @@ Based on [isadetect](https://github.com/kairis/isadetect).
 ```
 [0x0000000] $ ii?
 
-isa_identify: identify the ISA of a block of bytes using the bundled AI model
+isa_identify: identify the ISA of a block of bytes using bundled AI models
 
-  ii [<size>]
+  ii[/g] [<size>]
+     g:  graph mode; scan the input in 1024-byte chunks, detect code ranges
 
   size: number of bytes to analyze starting from the current offset
         (if omitted, use the whole file)
+```
+
+Normal mode prints the top ISA candidates for the selected byte range.
+
+Graph mode (`ii/g`) scans the selected region in 1024-byte chunks, classifies
+which chunks likely contain executable code, merges contiguous chunks of the
+same type, and prints only the detected code ranges together with the top ISA
+for each range.
+
+Example:
+
+```
+[0x0000000] $ ii/g 4096
+ISA graph (4096 bytes analyzed, 1024-byte chunks):
+  [0x0000000000000000, 0x0000000000000800):      x64, le (confidence: 96.42%)
+  [0x0000000000000c00, 0x0000000000001000):      x86, le (confidence: 91.87%)
 ```
 
 ### Info
