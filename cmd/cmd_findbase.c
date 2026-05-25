@@ -28,7 +28,9 @@
 #include <filebuffer.h>
 #include <log.h>
 #include <util/endian.h>
+#include <util/math.h>
 
+#include <math.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
@@ -36,13 +38,14 @@
 
 #define HINT_STR "[/{32,64}/{le,be}]"
 
-#define FINDBASE_MIN_STRING_LEN  8
-#define FINDBASE_ARRAY_MIN_ITEMS 10
-#define FINDBASE_PAGE_SIZE       0x1000ull
-#define FINDBASE_PAGE_MASK       (FINDBASE_PAGE_SIZE - 1)
-#define FINDBASE_MAX_CANDIDATES  30
-#define FINDBASE_MAX_THREADS     8
-#define FINDBASE_SCAN_CHUNK      (256 * 1024ull)
+#define FINDBASE_MIN_STRING_LEN         8
+#define FINDBASE_ARRAY_MIN_ITEMS        10
+#define FINDBASE_PAGE_SIZE              0x1000ull
+#define FINDBASE_PAGE_MASK              (FINDBASE_PAGE_SIZE - 1)
+#define FINDBASE_MAX_CANDIDATES         30
+#define FINDBASE_MAX_THREADS            8
+#define FINDBASE_SCAN_CHUNK             (256 * 1024ull)
+#define FINDBASE_MEMORY_REGION_MIN_SIZE 1024ull
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 
@@ -105,16 +108,29 @@ typedef struct {
     u32_t*       hist_be;
 } EndianTask;
 
+typedef enum {
+    FINDBASE_REGION_UNKNOWN = 0,
+    FINDBASE_REGION_CODE,
+    FINDBASE_REGION_INIT_DATA,
+    FINDBASE_REGION_UNINIT_DATA,
+} FindbaseRegionType;
+
 typedef struct {
-    FileBuffer*    fb;
-    u64_t          file_size;
-    u64_t          start;
-    u64_t          end;
-    FindbaseArch   arch;
-    FindbaseEndian endian;
-    CandidateVec*  candidates;
-    size_t         candidate_count;
-    u32_t*         local_counts;
+    size_t count;
+    u8_t*  block_types;
+} FindbaseMemMap;
+
+typedef struct {
+    FileBuffer*           fb;
+    u64_t                 file_size;
+    u64_t                 start;
+    u64_t                 end;
+    FindbaseArch          arch;
+    FindbaseEndian        endian;
+    const FindbaseMemMap* memmap;
+    CandidateVec*         candidates;
+    size_t                candidate_count;
+    u32_t*                local_counts;
 } PointerCountTask;
 
 static int findbase_pointer_size(FindbaseArch arch)
@@ -141,20 +157,17 @@ static const char* findbase_endian_to_string(FindbaseEndian endian)
 
 static int is_printable_ascii_byte(u8_t v) { return v >= 0x20 && v <= 0x7E; }
 
+static int is_ascii_ptr_byte(u8_t v) { return v >= 0x20 && v <= 0x7F; }
+
 static int is_ascii_ptr(u64_t value, FindbaseArch arch)
 {
     int n = findbase_pointer_size(arch);
     for (int i = 0; i < n; ++i) {
-        if (!is_printable_ascii_byte((u8_t)(value & 0xFF)))
+        if (!is_ascii_ptr_byte((u8_t)(value & 0xFF)))
             return 0;
         value >>= 8;
     }
     return 1;
-}
-
-static int is_ptr_aligned(u64_t value, FindbaseArch arch)
-{
-    return (value % (u64_t)findbase_pointer_size(arch)) == 0;
 }
 
 static u64_t read_ptr(const u8_t* data, size_t offset, FindbaseArch arch,
@@ -168,7 +181,13 @@ static u64_t read_ptr(const u8_t* data, size_t offset, FindbaseArch arch,
                                         : read_at_le32(data, offset);
 }
 
-static u64_t u64_abs_diff(u64_t a, u64_t b) { return a > b ? a - b : b - a; }
+static int findbase_array_delta_within_page(u64_t value, u64_t prev)
+{
+    int diff = (int)(value - prev);
+    if (diff < 0)
+        diff = -diff;
+    return diff <= (int)FINDBASE_PAGE_SIZE;
+}
 
 static int base_can_fit_file(u64_t base, u64_t size, FindbaseArch arch)
 {
@@ -246,6 +265,91 @@ static void dlist_deinit_free_items(DList* list)
 {
     DList_foreach(list, bhex_free);
     DList_deinit(list);
+}
+
+static void findbase_memmap_init(FindbaseMemMap* memmap)
+{
+    memmap->count       = 0;
+    memmap->block_types = NULL;
+}
+
+static void findbase_memmap_deinit(FindbaseMemMap* memmap)
+{
+    bhex_free(memmap->block_types);
+    memmap->count       = 0;
+    memmap->block_types = NULL;
+}
+
+static double findbase_calc_entropy(FileBuffer* fb, u64_t addr, u64_t size)
+{
+    u32_t counts[256] = {0};
+    u64_t curr        = addr;
+    u64_t end         = addr + size;
+
+    while (curr < end) {
+        size_t chunk = min((u64_t)fb_block_size, end - curr);
+        u8_t*  buf   = fb_read_alloc(fb, curr, chunk);
+        if (buf == NULL)
+            return 0.0;
+
+        for (size_t i = 0; i < chunk; ++i)
+            counts[buf[i]] += 1;
+        bhex_free(buf);
+        curr += chunk;
+    }
+
+    double entropy = 0.0;
+    for (size_t i = 0; i < 256; ++i) {
+        double px = (double)counts[i] / (double)size;
+        if (px > 0.0)
+            entropy += -px * log2(px);
+    }
+    if (entropy < 0.0)
+        entropy = 0.0;
+    return entropy / 8.0;
+}
+
+static void findbase_analyze_memory(FileBuffer* fb, u64_t file_size,
+                                    FindbaseMemMap* memmap)
+{
+    size_t nsections = (size_t)(file_size / FINDBASE_MEMORY_REGION_MIN_SIZE);
+    if (nsections == 0)
+        return;
+
+    memmap->count       = nsections;
+    memmap->block_types = bhex_calloc(sizeof(u8_t) * nsections);
+    if (memmap->block_types == NULL)
+        panic("unable to allocate findbase memory map");
+
+    for (size_t i = 0; i < nsections; ++i) {
+        u64_t  off = (u64_t)i * FINDBASE_MEMORY_REGION_MIN_SIZE;
+        size_t chunk =
+            (size_t)min(FINDBASE_MEMORY_REGION_MIN_SIZE, file_size - off);
+        double ent = findbase_calc_entropy(fb, off, chunk);
+
+        if (ent >= 0.0f && ent < 0.05f)
+            memmap->block_types[i] = FINDBASE_REGION_UNINIT_DATA;
+        else if (ent >= 0.05f && ent < 0.6f)
+            memmap->block_types[i] = FINDBASE_REGION_INIT_DATA;
+        else if (ent >= 0.6f && ent < 0.9f)
+            memmap->block_types[i] = FINDBASE_REGION_CODE;
+        else
+            memmap->block_types[i] = FINDBASE_REGION_UNKNOWN;
+    }
+}
+
+static FindbaseRegionType findbase_memory_get_type(const FindbaseMemMap* memmap,
+                                                   u64_t                 offset)
+{
+    size_t idx;
+
+    if (memmap == NULL || memmap->block_types == NULL)
+        return FINDBASE_REGION_UNKNOWN;
+
+    idx = (size_t)(offset / FINDBASE_MEMORY_REGION_MIN_SIZE);
+    if (idx >= memmap->count)
+        return FINDBASE_REGION_UNKNOWN;
+    return (FindbaseRegionType)memmap->block_types[idx];
 }
 
 static FindbaseAddrNode* addrtree_node_alloc(void)
@@ -345,13 +449,13 @@ static void* detect_endianness_worker(void* arg)
             u64_t le = read_ptr(buf, i, task->arch, FINDBASE_ENDIAN_LE);
             u64_t be = read_ptr(buf, i, task->arch, FINDBASE_ENDIAN_BE);
 
-            if (le != 0 && is_ptr_aligned(le, task->arch)) {
+            if (le != 0 && (le % 4ull) == 0) {
                 u32_t idx =
                     (u32_t)((le >> (task->arch == FINDBASE_ARCH_64 ? 48 : 16)) &
                             0xFFFFu);
                 task->hist_le[idx] += 1;
             }
-            if (be != 0 && is_ptr_aligned(be, task->arch)) {
+            if (be != 0 && (be % 4ull) == 0) {
                 u32_t idx =
                     (u32_t)((be >> (task->arch == FINDBASE_ARCH_64 ? 48 : 16)) &
                             0xFFFFu);
@@ -373,7 +477,7 @@ static FindbaseEndian detect_endianness_mt(FileBuffer* fb, u64_t file_size,
     if (file_size < (u64_t)ptr_size)
         return FINDBASE_ENDIAN_UNKNOWN;
 
-    size_t scan_limit = (size_t)(file_size - (u64_t)ptr_size + 1);
+    size_t scan_limit = (size_t)(file_size - (u64_t)ptr_size);
     int    nthreads   = default_thread_count(scan_limit);
 
     pthread_t*  threads = bhex_calloc(sizeof(pthread_t) * (size_t)nthreads);
@@ -399,20 +503,32 @@ static FindbaseEndian detect_endianness_mt(FileBuffer* fb, u64_t file_size,
         }
     }
 
-    u32_t max_le = 0;
-    u32_t max_be = 0;
+    u32_t* hist_le = bhex_calloc(sizeof(u32_t) * 65536ull);
+    u32_t* hist_be = bhex_calloc(sizeof(u32_t) * 65536ull);
+    if (hist_le == NULL || hist_be == NULL)
+        panic("unable to allocate endianness histogram");
+
     for (int i = 0; i < nthreads; ++i) {
         pthread_join(threads[i], NULL);
         for (size_t j = 0; j < 65536ull; ++j) {
-            if (tasks[i].hist_le[j] > max_le)
-                max_le = tasks[i].hist_le[j];
-            if (tasks[i].hist_be[j] > max_be)
-                max_be = tasks[i].hist_be[j];
+            hist_le[j] += tasks[i].hist_le[j];
+            hist_be[j] += tasks[i].hist_be[j];
         }
         bhex_free(tasks[i].hist_le);
         bhex_free(tasks[i].hist_be);
     }
 
+    u32_t max_le = 0;
+    u32_t max_be = 0;
+    for (size_t j = 0; j < 65536ull; ++j) {
+        if (hist_le[j] > max_le)
+            max_le = hist_le[j];
+        if (hist_be[j] > max_be)
+            max_be = hist_be[j];
+    }
+
+    bhex_free(hist_le);
+    bhex_free(hist_be);
     bhex_free(tasks);
     bhex_free(threads);
 
@@ -485,7 +601,7 @@ static void index_arrays(FileBuffer* fb, u64_t file_size, FindbaseArch arch,
     u64_t prev     = 0;
     u64_t pos      = 0;
 
-    while (pos + (u64_t)ptr_size <= file_size) {
+    while (pos < file_size - (u64_t)ptr_size) {
         u64_t  remaining = file_size - pos;
         size_t chunk     = min((u64_t)FINDBASE_SCAN_CHUNK, remaining);
         chunk -= chunk % (size_t)ptr_size;
@@ -505,16 +621,16 @@ static void index_arrays(FileBuffer* fb, u64_t file_size, FindbaseArch arch,
                 if (is_valid) {
                     in_array = 1;
                     start    = pos + i;
-                    count    = 1;
+                    count    = 0;
                 }
                 prev = value;
                 continue;
             }
 
-            if (u64_abs_diff(value, prev) <= FINDBASE_PAGE_SIZE) {
+            if (findbase_array_delta_within_page(value, prev)) {
                 count += 1;
             } else {
-                if (count >= FINDBASE_ARRAY_MIN_ITEMS) {
+                if (count > 8) {
                     DList_add(pois, findbase_poi_new(start, count,
                                                      FINDBASE_POI_ARRAY));
                     *out_arrays += 1;
@@ -522,7 +638,7 @@ static void index_arrays(FileBuffer* fb, u64_t file_size, FindbaseArch arch,
 
                 if (is_valid) {
                     start = pos + i;
-                    count = 1;
+                    count = 0;
                 } else {
                     in_array = 0;
                     count    = 0;
@@ -533,11 +649,6 @@ static void index_arrays(FileBuffer* fb, u64_t file_size, FindbaseArch arch,
 
         bhex_free(buf);
         pos += chunk;
-    }
-
-    if (in_array && count >= FINDBASE_ARRAY_MIN_ITEMS) {
-        DList_add(pois, findbase_poi_new(start, count, FINDBASE_POI_ARRAY));
-        *out_arrays += 1;
     }
 }
 
@@ -571,7 +682,7 @@ static void build_candidate_tree(FileBuffer* fb, u64_t file_size, PoiVec* pois,
                   findbase_index_new(i));
     }
 
-    while (pos + (u64_t)ptr_size <= file_size) {
+    while (pos < file_size - (u64_t)ptr_size) {
         u64_t  remaining = file_size - pos;
         size_t chunk     = min((u64_t)FINDBASE_SCAN_CHUNK, remaining);
         chunk -= chunk % (size_t)ptr_size;
@@ -585,7 +696,7 @@ static void build_candidate_tree(FileBuffer* fb, u64_t file_size, PoiVec* pois,
         for (size_t i = 0; i + (size_t)ptr_size <= chunk;
              i += (size_t)ptr_size) {
             u64_t value = read_ptr(buf, i, arch, endian);
-            if (is_ascii_ptr(value, arch) || !is_ptr_aligned(value, arch))
+            if (is_ascii_ptr(value, arch))
                 continue;
 
             IndexVec* bucket = &buckets[value & FINDBASE_PAGE_MASK];
@@ -646,7 +757,7 @@ static u32_t count_valid_array_targets(const u8_t* data, size_t size,
             DList_add(&seen, findbase_u64_new(value));
     }
 
-    u32_t count = (u32_t)seen.size;
+    u32_t count = seen.size == 0 ? 1u : (u32_t)seen.size;
     dlist_deinit_free_items(&seen);
     return count;
 }
@@ -715,16 +826,23 @@ static void* pointer_count_worker(void* arg)
         for (size_t i = 0; i + (size_t)ptr_size <= chunk;
              i += (size_t)ptr_size) {
             u64_t value = read_ptr(buf, i, task->arch, task->endian);
-            if (value == 0 || is_ascii_ptr(value, task->arch) ||
-                !is_ptr_aligned(value, task->arch)) {
+            if (findbase_memory_get_type(task->memmap, pos + i) ==
+                FINDBASE_REGION_CODE) {
                 continue;
             }
 
             for (size_t j = 0; j < task->candidate_count; ++j) {
                 FindbaseCandidate* candidate = task->candidates->data[j];
                 u64_t              base      = candidate->address;
-                if (value >= base && value - base < task->file_size)
-                    task->local_counts[j] += 1;
+                if (value >= base && value < base + task->file_size &&
+                    value != 0) {
+                    FindbaseRegionType mem_type =
+                        findbase_memory_get_type(task->memmap, value - base);
+                    if (mem_type != FINDBASE_REGION_UNKNOWN &&
+                        mem_type != FINDBASE_REGION_UNINIT_DATA) {
+                        task->local_counts[j] += 1;
+                    }
+                }
             }
         }
 
@@ -735,18 +853,21 @@ static void* pointer_count_worker(void* arg)
     return NULL;
 }
 
-static void score_candidate_pointers_mt(FileBuffer* fb, u64_t file_size,
-                                        FindbaseArch   arch,
-                                        FindbaseEndian endian,
-                                        CandidateVec*  candidates,
-                                        size_t         candidate_count)
+static void
+score_candidate_pointers_mt(FileBuffer* fb, u64_t file_size, FindbaseArch arch,
+                            FindbaseEndian endian, const FindbaseMemMap* memmap,
+                            CandidateVec* candidates, size_t candidate_count)
 {
     if (candidate_count == 0)
         return;
 
     int    ptr_size   = findbase_pointer_size(arch);
-    size_t slot_count = (size_t)(file_size / (u64_t)ptr_size);
-    int    nthreads   = default_thread_count(slot_count);
+    size_t slot_count = 0;
+    if (file_size > (u64_t)ptr_size)
+        slot_count = (size_t)((file_size - (u64_t)ptr_size) / (u64_t)ptr_size);
+    if (slot_count == 0)
+        return;
+    int nthreads = default_thread_count(slot_count);
 
     pthread_t* threads = bhex_calloc(sizeof(pthread_t) * (size_t)nthreads);
     PointerCountTask* tasks =
@@ -762,6 +883,7 @@ static void score_candidate_pointers_mt(FileBuffer* fb, u64_t file_size,
         tasks[i].end             = (u64_t)end_slot * (u64_t)ptr_size;
         tasks[i].arch            = arch;
         tasks[i].endian          = endian;
+        tasks[i].memmap          = memmap;
         tasks[i].candidates      = candidates;
         tasks[i].candidate_count = candidate_count;
         tasks[i].local_counts    = bhex_calloc(sizeof(u32_t) * candidate_count);
@@ -816,20 +938,51 @@ static int candidate_compare_score_desc(const void* a, const void* b)
     return 0;
 }
 
+static size_t count_candidates_with_min_votes(CandidateVec* candidates,
+                                              size_t limit, int min_votes)
+{
+    size_t count = 0;
+
+    for (size_t i = 0; i < limit; ++i) {
+        FindbaseCandidate* candidate = candidates->data[i];
+        if (candidate->votes >= min_votes)
+            count += 1;
+    }
+    return count;
+}
+
+static size_t select_kept_candidates(CandidateVec* candidates,
+                                     size_t        eligible_count)
+{
+    if (eligible_count <= FINDBASE_MAX_CANDIDATES)
+        return eligible_count;
+
+    int max_votes = ((FindbaseCandidate*)candidates->data[0])->votes;
+    for (int votes = max_votes; votes >= 0; --votes) {
+        size_t kept =
+            count_candidates_with_min_votes(candidates, eligible_count, votes);
+        if (kept >= FINDBASE_MAX_CANDIDATES)
+            return kept;
+    }
+
+    return eligible_count;
+}
+
 static void compute_scores(FileBuffer* fb, u64_t file_size, FindbaseArch arch,
-                           FindbaseEndian endian, const PoiVec* pois,
-                           CandidateVec* candidates, size_t candidate_count)
+                           FindbaseEndian endian, const FindbaseMemMap* memmap,
+                           const PoiVec* pois, CandidateVec* candidates,
+                           size_t candidate_count)
 {
     score_candidate_arrays(fb, file_size, arch, endian, pois, candidates,
                            candidate_count);
-    score_candidate_pointers_mt(fb, file_size, arch, endian, candidates,
+    score_candidate_pointers_mt(fb, file_size, arch, endian, memmap, candidates,
                                 candidate_count);
 
     for (size_t i = 0; i < candidate_count; ++i) {
         FindbaseCandidate* candidate = candidates->data[i];
         candidate->score             = (u64_t)candidate->pointer_count *
-                                       (u64_t)candidate->votes *
-                                       (u64_t)candidate->array_score;
+                           (u64_t)candidate->votes *
+                           (u64_t)candidate->array_score;
     }
 }
 
@@ -854,17 +1007,17 @@ static void print_result(FindbaseArch arch, CandidateVec* candidates,
         best_address =
             ((FindbaseCandidate*)candidates->data[valid_array_index])->address;
         if (arch == FINDBASE_ARCH_64)
-            display_printf("[i] Base address found (valid array): 0x%016llX.\n",
+            display_printf("[i] Base address found (valid array): 0x%016llx.\n",
                            (unsigned long long)best_address);
         else
-            display_printf("[i] Base address found (valid array): 0x%08llX.\n",
+            display_printf("[i] Base address found (valid array): 0x%08llx.\n",
                            (unsigned long long)(best_address & 0xFFFFFFFFull));
     } else if (best_score && top_vote_address == best_address) {
         if (arch == FINDBASE_ARCH_64)
-            display_printf("[i] Base address found: 0x%016llX.\n",
+            display_printf("[i] Base address found: 0x%016llx.\n",
                            (unsigned long long)best_address);
         else
-            display_printf("[i] Base address found: 0x%08llX.\n",
+            display_printf("[i] Base address found: 0x%08llx.\n",
                            (unsigned long long)(best_address & 0xFFFFFFFFull));
     } else {
         best_address = top_vote_address;
@@ -878,17 +1031,17 @@ static void print_result(FindbaseArch arch, CandidateVec* candidates,
 
         if (arch == FINDBASE_ARCH_64)
             display_printf(
-                "[i] Base address seems to be 0x%016llX (not sure).\n",
+                "[i] Base address seems to be 0x%016llx (not sure).\n",
                 (unsigned long long)best_address);
         else
             display_printf(
-                "[i] Base address seems to be 0x%08llX (not sure).\n",
+                "[i] Base address seems to be 0x%08llx (not sure).\n",
                 (unsigned long long)(best_address & 0xFFFFFFFFull));
     }
 
     if (candidate_count > 1) {
         u64_t ref_score = ((FindbaseCandidate*)candidates->data[0])->score;
-        display_printf(" More base addresses to consider:\n");
+        display_printf(" More base addresses to consider (just in case):\n");
         for (size_t i = 0; i < candidate_count; ++i) {
             FindbaseCandidate* candidate = candidates->data[i];
             if (candidate->address == best_address || candidate->score == 0)
@@ -898,11 +1051,11 @@ static void print_result(FindbaseArch arch, CandidateVec* candidates,
                               ? 0.0f
                               : (float)candidate->score / (float)ref_score;
             if (arch == FINDBASE_ARCH_64)
-                display_printf("  0x%016llX (%.02f)\n",
+                display_printf("  0x%016llx (%.02f)\n",
                                (unsigned long long)candidate->address, ratio);
             else
                 display_printf(
-                    "  0x%08llX (%.02f)\n",
+                    "  0x%08llx (%.02f)\n",
                     (unsigned long long)(candidate->address & 0xFFFFFFFFull),
                     ratio);
         }
@@ -996,19 +1149,35 @@ static int findbasecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
           candidate_compare_votes_desc);
 
     size_t total_candidates = candidates.size;
+    size_t eligible_count   = candidates.size;
+    int    top_votes        = ((FindbaseCandidate*)candidates.data[0])->votes;
+    if (top_votes > 1) {
+        eligible_count = 0;
+        while (eligible_count < candidates.size) {
+            FindbaseCandidate* candidate = candidates.data[eligible_count];
+            if (candidate->votes <= 1)
+                break;
+            eligible_count += 1;
+        }
+    }
     size_t kept_candidates =
-        min(candidates.size, (size_t)FINDBASE_MAX_CANDIDATES);
+        select_kept_candidates(&candidates, eligible_count);
 
     display_printf("[i] Found %llu base addresses to test\n",
                    (unsigned long long)total_candidates);
 
+    FindbaseMemMap memmap;
+    findbase_memmap_init(&memmap);
+    findbase_analyze_memory(fb, fb->size, &memmap);
+
     u64_t top_vote_address = ((FindbaseCandidate*)candidates.data[0])->address;
-    compute_scores(fb, fb->size, arch, endian, &pois, &candidates,
+    compute_scores(fb, fb->size, arch, endian, &memmap, &pois, &candidates,
                    kept_candidates);
     qsort(candidates.data, kept_candidates, sizeof(void*),
           candidate_compare_score_desc);
 
     print_result(arch, &candidates, kept_candidates, top_vote_address);
+    findbase_memmap_deinit(&memmap);
 
     dlist_deinit_free_items(&candidates);
     dlist_deinit_free_items(&pois);
