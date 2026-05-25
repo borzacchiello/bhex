@@ -74,28 +74,28 @@ int bhex_model_resolve_path(char* out, size_t out_size, const char* model_name)
         return 0;
     }
 
+    /* Try local paths first (from executable directory), then system. */
+    if (get_executable_dir(exe_dir, sizeof(exe_dir))) {
+        for (i = 0; i < sizeof(local_suffixes) / sizeof(local_suffixes[0]); ++i) {
+            char suffix[PATH_MAX];
+            int n = snprintf(suffix, sizeof(suffix), local_suffixes[i], model_name);
+            if (n < 0 || (size_t)n >= sizeof(suffix)) {
+                continue;
+            }
+            if (!make_candidate(candidate, sizeof(candidate), exe_dir, suffix)) {
+                continue;
+            }
+            if (file_exists(candidate)) {
+                return copy_path(out, out_size, candidate);
+            }
+        }
+    }
+
+    /* Fall back to system path. */
     if (make_candidate(system_path, sizeof(system_path), BHEX_MODEL_SYSTEM_DIR,
                        model_name) &&
         file_exists(system_path)) {
         return copy_path(out, out_size, system_path);
-    }
-
-    if (!get_executable_dir(exe_dir, sizeof(exe_dir))) {
-        return 0;
-    }
-
-    for (i = 0; i < sizeof(local_suffixes) / sizeof(local_suffixes[0]); ++i) {
-        char suffix[PATH_MAX];
-        int n = snprintf(suffix, sizeof(suffix), local_suffixes[i], model_name);
-        if (n < 0 || (size_t)n >= sizeof(suffix)) {
-            continue;
-        }
-        if (!make_candidate(candidate, sizeof(candidate), exe_dir, suffix)) {
-            continue;
-        }
-        if (file_exists(candidate)) {
-            return copy_path(out, out_size, candidate);
-        }
     }
 
     return 0;

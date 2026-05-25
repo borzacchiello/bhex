@@ -103,7 +103,7 @@ int binexec_chunk_contains_code(const binexec_model_t* model,
     double features[BINEXEC_NUM_FEATURES];
     int    rc;
 
-    rc = isadetect_extract_features(buffer, size, features);
+    rc = binexec_extract_features(buffer, size, features);
     if (rc != ISADETECT_OK) {
         return rc;
     }
@@ -124,7 +124,7 @@ binexec_prediction_t binexec_predict_buffer(const binexec_model_t* model,
         return result;
     }
 
-    result.status = isadetect_extract_features(buffer, size, features);
+    result.status = binexec_extract_features(buffer, size, features);
     if (result.status != ISADETECT_OK) {
         return result;
     }

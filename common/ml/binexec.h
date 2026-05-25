@@ -6,7 +6,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define BINEXEC_NUM_FEATURES 293
+#define BINEXEC_NUM_FEATURES 314
 #define BINEXEC_NUM_CLASSES  2
 #define BINEXEC_CHUNK_SIZE   1024
 
@@ -43,5 +43,9 @@ int  binexec_chunk_contains_code(const binexec_model_t* model,
                                  double* positive_probability);
 binexec_prediction_t binexec_predict_buffer(const binexec_model_t* model,
                                             const uint8_t* buffer, size_t size);
+
+/* Extended feature extraction for binexec (314 features). */
+int binexec_extract_features(const uint8_t* buffer, size_t size,
+                             double features[314]);
 
 #endif

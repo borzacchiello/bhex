@@ -407,60 +407,152 @@ static int isa_identifycmd_exec_default(IsaIdentifyCmdCtx* ctx, FileBuffer* fb,
     return COMMAND_OK;
 }
 
+typedef struct {
+    int    contains_code;
+    double probability;
+} ChunkClassification;
+
+#define SMOOTH_MAX_GAP_CHUNKS     1
+#define SMOOTH_MIN_PROBABILITY    0.05
+
 static int isa_identifycmd_exec_graph(IsaIdentifyCmdCtx* ctx, FileBuffer* fb,
                                       u64_t start, size_t size)
 {
     u64_t off          = start;
     u64_t end          = start + (u64_t)size;
+    u64_t num_chunks   = 0;
+    u64_t chunk_idx;
+    u64_t i;
     int   have_range   = 0;
     int   current_type = 0;
     u64_t range_start  = 0;
     u64_t range_end    = 0;
     int   printed      = 0;
+    int   rc;
+    ChunkClassification* chunks = NULL;
 
     display_printf("ISA graph (%zu bytes analyzed, %d-byte chunks):\n", size,
                    BINEXEC_CHUNK_SIZE);
 
-    while (off < end) {
-        size_t chunk_size = (size_t)((end - off) < (u64_t)BINEXEC_CHUNK_SIZE
-                                         ? (end - off)
-                                         : (u64_t)BINEXEC_CHUNK_SIZE);
-        int    contains_code;
-        int    rc;
+    /* --- Pass 1: collect all chunk classifications --- */
+    {
+        u64_t _off = start;
 
-        rc = classify_chunk_from_fb(ctx, fb, off, chunk_size, &contains_code);
-        if (rc != BINEXEC_OK) {
-            error("executable-content prediction failed at 0x%llx: %s",
-                  (unsigned long long)off, bhex_ml_err_to_string(rc));
+        num_chunks = (end - start + (u64_t)BINEXEC_CHUNK_SIZE - 1) /
+                     (u64_t)BINEXEC_CHUNK_SIZE;
+        chunks =
+            (ChunkClassification*)bhex_malloc((size_t)num_chunks *
+                                               sizeof(ChunkClassification));
+        if (chunks == NULL) {
+            error("out of memory allocating chunk results");
             return COMMAND_SILENT_ERROR;
         }
 
+        chunk_idx = 0;
+        while (_off < end) {
+            size_t chunk_size =
+                (size_t)((end - _off) < (u64_t)BINEXEC_CHUNK_SIZE
+                             ? (end - _off)
+                             : (u64_t)BINEXEC_CHUNK_SIZE);
+            double prob = 0.0;
+
+            rc = classify_chunk_from_fb(ctx, fb, _off, chunk_size,
+                                        &chunks[chunk_idx].contains_code);
+            if (rc != BINEXEC_OK) {
+                error("executable-content prediction failed at 0x%llx: %s",
+                      (unsigned long long)_off, bhex_ml_err_to_string(rc));
+                bhex_free(chunks);
+                return COMMAND_SILENT_ERROR;
+            }
+
+            /* Also capture probability for smoothing decisions. */
+            {
+                const u8_t* buf;
+                u64_t       saved_off = fb->off;
+
+                if (fb_seek(fb, _off) == 0) {
+                    buf = fb_read(fb, chunk_size);
+                    if (buf != NULL) {
+                        binexec_chunk_contains_code(
+                            ctx->binexec_model, buf, chunk_size, NULL, &prob);
+                    }
+                }
+                fb_seek(fb, saved_off);
+            }
+            chunks[chunk_idx].probability = prob;
+
+            chunk_idx++;
+            _off += (u64_t)chunk_size;
+        }
+    }
+
+    /* --- Pass 2: boundary smoothing --- */
+    for (i = 0; i < num_chunks; ++i) {
+        /* Drop isolated low-confidence code chunks. */
+        if (chunks[i].contains_code &&
+            chunks[i].probability < SMOOTH_MIN_PROBABILITY) {
+            int left_code =
+                (i > 0) ? chunks[i - 1].contains_code : 0;
+            int right_code =
+                (i + 1 < num_chunks) ? chunks[i + 1].contains_code : 0;
+            if (!left_code && !right_code) {
+                chunks[i].contains_code = 0;
+            }
+        }
+    }
+
+    for (i = 1; i + 1 < num_chunks; ++i) {
+        /* Fill isolated single-chunk gaps between code regions.
+         * Example: code | ___gap___ | code  ->  code | code | code */
+        if (!chunks[i].contains_code && chunks[i - 1].contains_code &&
+            chunks[i + 1].contains_code) {
+            /* Only fill short gaps (SMOOTH_MAX_GAP_CHUNKS chunks). */
+            u64_t gap_start = i;
+            u64_t gap_end   = i;
+
+            while (gap_end < num_chunks && !chunks[gap_end].contains_code)
+                gap_end++;
+            gap_end--; /* last non-code chunk in this gap */
+
+            if (gap_end - gap_start + 1 <= (u64_t)SMOOTH_MAX_GAP_CHUNKS &&
+                gap_end + 1 < num_chunks && chunks[gap_end + 1].contains_code) {
+                for (u64_t j = gap_start; j <= gap_end; ++j)
+                    chunks[j].contains_code = 1;
+                i = gap_end; /* skip ahead */
+            }
+        }
+    }
+
+    /* --- Pass 3: print contiguous ranges --- */
+    for (i = 0; i < num_chunks; ++i) {
+        off = start + i * (u64_t)BINEXEC_CHUNK_SIZE;
+
         if (!have_range) {
             have_range   = 1;
-            current_type = contains_code;
+            current_type = chunks[i].contains_code;
             range_start  = off;
-            range_end    = off + (u64_t)chunk_size;
-        } else if (contains_code == current_type) {
-            range_end += (u64_t)chunk_size;
+            range_end    = off + (u64_t)BINEXEC_CHUNK_SIZE;
+        } else if (chunks[i].contains_code == current_type) {
+            range_end += (u64_t)BINEXEC_CHUNK_SIZE;
         } else {
             if (current_type != 0) {
                 rc = print_code_range(ctx, fb, range_start, range_end);
                 if (rc != COMMAND_OK) {
+                    bhex_free(chunks);
                     return rc;
                 }
                 printed = 1;
             }
-            current_type = contains_code;
+            current_type = chunks[i].contains_code;
             range_start  = off;
-            range_end    = off + (u64_t)chunk_size;
+            range_end    = off + (u64_t)BINEXEC_CHUNK_SIZE;
         }
-
-        off += (u64_t)chunk_size;
     }
 
     if (have_range && current_type != 0) {
-        int rc = print_code_range(ctx, fb, range_start, range_end);
+        rc = print_code_range(ctx, fb, range_start, range_end);
         if (rc != COMMAND_OK) {
+            bhex_free(chunks);
             return rc;
         }
         printed = 1;
@@ -470,6 +562,7 @@ static int isa_identifycmd_exec_graph(IsaIdentifyCmdCtx* ctx, FileBuffer* fb,
         display_printf("  no code ranges detected\n");
     }
 
+    bhex_free(chunks);
     return COMMAND_OK;
 }
 
