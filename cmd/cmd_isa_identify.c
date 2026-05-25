@@ -187,7 +187,7 @@ static const char* map_to_bhex_arch(const char* architecture,
 
     if (strcmp(architecture, "x32") == 0 && strcmp(endianness, "little") == 0 &&
         wordsize == 32)
-        return "x64";
+        return "x86";
 
     if ((strcmp(architecture, "arm") == 0 ||
          strcmp(architecture, "armhf") == 0) &&

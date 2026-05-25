@@ -191,12 +191,12 @@ int TEST(streaming_across_chunks)(void)
 int TEST(dataset_baseline)(void)
 {
     static const IsaBaseline baselines[] = {
-        {"x64", snippet_x64, sizeof(snippet_x64), {"x64", "x86", "x64"}},
-        {"x86", snippet_x86, sizeof(snippet_x86), {"x86", "x64", "s390x"}},
+        {"x64", snippet_x64, sizeof(snippet_x64), {"x64", "x86", "x86"}},
+        {"x86", snippet_x86, sizeof(snippet_x86), {"x86", "x86", "s390x"}},
         {"i8086",
          snippet_i8086,
          sizeof(snippet_i8086),
-         {"x86", "x64", "arm32"}},
+         {"x86", "x86", "arm32"}},
         {"arm32",
          snippet_arm32,
          sizeof(snippet_arm32),
