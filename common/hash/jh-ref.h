@@ -99,7 +99,7 @@ void R8(jh_hashState* state)
     for (i = 0; i < 256; i = i + 2)
         L(tem[i], tem[i + 1]);
 
-    /*The following is the permuation layer P_8$
+    /*The following is the permuation layer P_8$ */
 
     /*initial swap Pi_8*/
     for (i = 0; i < 256; i = i + 4) {
@@ -223,9 +223,7 @@ void E8_finaldegroup(jh_hashState* state)
 /*bijective function E8 */
 void E8(jh_hashState* state)
 {
-    unsigned int  i;
-    unsigned char t0, t1, t2, t3;
-    unsigned char tem[256];
+    unsigned int i;
 
     /*initialize the round constant*/
     for (i = 0; i < 64; i++)
