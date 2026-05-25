@@ -18,6 +18,7 @@ option(STATIC_BUILD "Statically link libc" OFF)
 set(CMAKE_C_STANDARD 99)
 
 include_directories("${CMAKE_SOURCE_DIR}/common")
+include_directories("${CMAKE_SOURCE_DIR}/common/ml")
 
 if (ENABLE_CAPSTONE)
     set(BUILD_SHARED_LIBS OFF)
@@ -100,7 +101,11 @@ set(common_src
     common/hash/blake2b-ref.c
     common/hash/blake2s-ref.c
     common/hash/ghost.c
-    common/isadetect.c)
+    common/ml/rf_model.c
+    common/ml/model_locator.c
+    common/ml/isadetect_features.c
+    common/ml/isadetect.c
+    common/ml/binexec.c)
 
 set(command_src
     cmd/cmd_arg_handler.c

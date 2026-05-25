@@ -3,31 +3,35 @@
 #include "cmd_isa_identify.h"
 #include "cmd_arg_handler.h"
 
-#include <isadetect.h>
-#include <util/byte_to_num.h>
-#include <display.h>
 #include <alloc.h>
+#include <display.h>
 #include <log.h>
+#include <ml/binexec.h>
+#include <ml/isadetect.h>
+#include <ml/model_locator.h>
+#include <ml/rf_model.h>
+#include <util/byte_to_num.h>
 
 #include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/stat.h>
-#include <unistd.h>
 
-#define HINT_STR              " [<size>]"
-#define ISA_MODEL_NAME        "isadetect_model.bin"
-#define ISA_MODEL_SYSTEM_PATH "/usr/local/share/bhex/models/" ISA_MODEL_NAME
-#define ISA_TOPK              3
+#define HINT_STR           "[/g] [<size>]"
+#define ISA_MODEL_NAME     "isadetect_model.bin"
+#define BINEXEC_MODEL_NAME "binexec_model_1024.bin"
+#define ISA_TOPK           3
+#define GRAPH_ARCH_WIDTH   8
 
 #ifndef PATH_MAX
 #define PATH_MAX 4096
 #endif
 
 typedef struct {
-    isadetect_model_t* model;
-    char               model_path[PATH_MAX];
+    isadetect_model_t* isa_model;
+    binexec_model_t*   binexec_model;
+    char               isa_model_path[PATH_MAX];
+    char               binexec_model_path[PATH_MAX];
 } IsaIdentifyCmdCtx;
 
 typedef struct {
@@ -43,10 +47,12 @@ static void isa_identifycmd_help(void* obj)
 {
     (void)obj;
     display_printf(
-        "isa_identify: identify the ISA of a block of bytes using the "
-        "bundled AI model\n"
+        "isa_identify: identify the ISA of a block of bytes using bundled "
+        "AI models\n"
         "\n"
         "  ii" HINT_STR "\n"
+        "     g:  graph mode; scan the input in 1024-byte chunks, detect code "
+        "ranges\n"
         "\n"
         "  size: number of bytes to analyze starting from the current "
         "offset\n"
@@ -55,116 +61,61 @@ static void isa_identifycmd_help(void* obj)
 
 static void isa_identifycmd_dispose(IsaIdentifyCmdCtx* ctx)
 {
-    if (ctx->model)
-        isadetect_model_free(ctx->model);
+    if (ctx->isa_model != NULL) {
+        isadetect_model_free(ctx->isa_model);
+    }
+    if (ctx->binexec_model != NULL) {
+        binexec_model_free(ctx->binexec_model);
+    }
     bhex_free(ctx);
 }
 
-static int file_exists(const char* path)
-{
-    struct stat st;
-    return stat(path, &st) == 0 && S_ISREG(st.st_mode);
-}
-
-static int copy_path(char* dst, size_t dst_size, const char* src)
-{
-    int n = snprintf(dst, dst_size, "%s", src);
-    return n >= 0 && (size_t)n < dst_size;
-}
-
-static int get_executable_dir(char* out, size_t out_size)
-{
-    char    exe_path[PATH_MAX];
-    ssize_t len = readlink("/proc/self/exe", exe_path, sizeof(exe_path) - 1);
-    char*   slash;
-
-    if (len <= 0 || (size_t)len >= sizeof(exe_path))
-        return 0;
-
-    exe_path[len] = '\0';
-    slash         = strrchr(exe_path, '/');
-    if (!slash)
-        return 0;
-
-    *slash = '\0';
-    return copy_path(out, out_size, exe_path);
-}
-
-static int make_candidate(char* out, size_t out_size, const char* dir,
-                          const char* suffix)
-{
-    int n = snprintf(out, out_size, "%s/%s", dir, suffix);
-    return n >= 0 && (size_t)n < out_size;
-}
-
-static int resolve_model_path(char* out, size_t out_size)
-{
-    char               exe_dir[PATH_MAX];
-    char               candidate[PATH_MAX];
-    size_t             i;
-    static const char* local_suffixes[] = {
-        "models/" ISA_MODEL_NAME,
-        ISA_MODEL_NAME,
-        "../models/" ISA_MODEL_NAME,
-        "../share/bhex/models/" ISA_MODEL_NAME,
-    };
-
-    if (file_exists(ISA_MODEL_SYSTEM_PATH))
-        return copy_path(out, out_size, ISA_MODEL_SYSTEM_PATH);
-
-    if (!get_executable_dir(exe_dir, sizeof(exe_dir)))
-        return 0;
-
-    for (i = 0; i < sizeof(local_suffixes) / sizeof(local_suffixes[0]); ++i) {
-        if (!make_candidate(candidate, sizeof(candidate), exe_dir,
-                            local_suffixes[i]))
-            continue;
-        if (file_exists(candidate))
-            return copy_path(out, out_size, candidate);
-    }
-
-    return 0;
-}
-
-static const char* isadetect_err_to_string(int err)
-{
-    switch (err) {
-        case ISADETECT_OK:
-            return "no error";
-        case ISADETECT_ERR_INVALID_INPUT:
-            return "invalid input";
-        case ISADETECT_ERR_IO:
-            return "I/O error";
-        case ISADETECT_ERR_FORMAT:
-            return "invalid model format";
-        case ISADETECT_ERR_UNSUPPORTED:
-            return "unsupported model";
-        case ISADETECT_ERR_NOMEM:
-            return "out of memory";
-        default:
-            return "unknown error";
-    }
-}
-
-static int ensure_model_loaded(IsaIdentifyCmdCtx* ctx)
+static int ensure_isa_model_loaded(IsaIdentifyCmdCtx* ctx)
 {
     int rc;
 
-    if (ctx->model)
+    if (ctx->isa_model != NULL) {
         return 1;
+    }
 
-    if (!resolve_model_path(ctx->model_path, sizeof(ctx->model_path))) {
-        error("unable to find ISA model '%s'; searched %s and paths relative "
-              "to the executable",
-              ISA_MODEL_NAME, ISA_MODEL_SYSTEM_PATH);
+    if (!bhex_model_resolve_path(ctx->isa_model_path,
+                                 sizeof(ctx->isa_model_path), ISA_MODEL_NAME)) {
+        error("unable to find ISA model '%s'", ISA_MODEL_NAME);
         return 0;
     }
 
-    rc = isadetect_model_load(&ctx->model, ctx->model_path);
+    rc = isadetect_model_load(&ctx->isa_model, ctx->isa_model_path);
     if (rc != ISADETECT_OK) {
-        error("unable to load ISA model '%s': %s", ctx->model_path,
-              isadetect_err_to_string(rc));
-        ctx->model = NULL;
+        error("unable to load ISA model '%s': %s", ctx->isa_model_path,
+              bhex_ml_err_to_string(rc));
+        ctx->isa_model = NULL;
+        return 0;
+    }
+
+    return 1;
+}
+
+static int ensure_binexec_model_loaded(IsaIdentifyCmdCtx* ctx)
+{
+    int rc;
+
+    if (ctx->binexec_model != NULL) {
+        return 1;
+    }
+
+    if (!bhex_model_resolve_path(ctx->binexec_model_path,
+                                 sizeof(ctx->binexec_model_path),
+                                 BINEXEC_MODEL_NAME)) {
+        error("unable to find executable-content model '%s'",
+              BINEXEC_MODEL_NAME);
+        return 0;
+    }
+
+    rc = binexec_model_load(&ctx->binexec_model, ctx->binexec_model_path);
+    if (rc != BINEXEC_OK) {
+        error("unable to load executable-content model '%s': %s",
+              ctx->binexec_model_path, bhex_ml_err_to_string(rc));
+        ctx->binexec_model = NULL;
         return 0;
     }
 
@@ -174,7 +125,7 @@ static int ensure_model_loaded(IsaIdentifyCmdCtx* ctx)
 static const char* map_to_bhex_arch(const char* architecture,
                                     const char* endianness, int wordsize)
 {
-    if (!architecture || !endianness)
+    if (architecture == NULL || endianness == NULL)
         return NULL;
 
     if (strcmp(architecture, "amd64") == 0 &&
@@ -285,15 +236,17 @@ static int extract_features_from_fb(FileBuffer* fb, u64_t start, size_t size,
         }
 
         rc = isadetect_feature_extractor_update(&extractor, data, chunk);
-        if (rc != ISADETECT_OK)
+        if (rc != ISADETECT_OK) {
             break;
+        }
 
         off += chunk;
     }
 
     fb_seek(fb, orig_off);
-    if (rc != ISADETECT_OK)
+    if (rc != ISADETECT_OK) {
         return rc;
+    }
 
     return isadetect_feature_extractor_finalize(&extractor, features);
 }
@@ -350,22 +303,189 @@ static int rank_predictions(const isadetect_model_t* model,
     return ISADETECT_OK;
 }
 
-static int isa_identifycmd_exec(IsaIdentifyCmdCtx* ctx, FileBuffer* fb,
-                                ParsedCommand* pc)
+static int predict_topk_for_range(IsaIdentifyCmdCtx* ctx, FileBuffer* fb,
+                                  u64_t start, size_t size,
+                                  RankedPrediction top[ISA_TOPK])
 {
-    char*            size_str = NULL;
-    u64_t            requested_size;
-    u64_t            remaining;
-    u64_t            analyzed_u64;
-    size_t           analyzed_size;
-    double           features[ISADETECT_NUM_FEATURES];
-    double           probabilities[ISADETECT_NUM_CLASSES];
+    double features[ISADETECT_NUM_FEATURES];
+    double probabilities[ISADETECT_NUM_CLASSES];
+    int    rc;
+
+    rc = extract_features_from_fb(fb, start, size, features);
+    if (rc != ISADETECT_OK) {
+        return rc;
+    }
+
+    rc = isadetect_model_predict_proba(ctx->isa_model, features, probabilities);
+    if (rc != ISADETECT_OK) {
+        return rc;
+    }
+
+    return rank_predictions(ctx->isa_model, probabilities, top);
+}
+
+static int classify_chunk_from_fb(IsaIdentifyCmdCtx* ctx, FileBuffer* fb,
+                                  u64_t start, size_t size, int* contains_code)
+{
+    const u8_t* buffer;
+    u64_t       orig_off = fb->off;
+    int         rc;
+    double      probability;
+
+    if (fb_seek(fb, start) != 0) {
+        return BINEXEC_ERR_IO;
+    }
+
+    buffer = fb_read(fb, size);
+    if (buffer == NULL) {
+        fb_seek(fb, orig_off);
+        return BINEXEC_ERR_IO;
+    }
+
+    rc = binexec_chunk_contains_code(ctx->binexec_model, buffer, size,
+                                     contains_code, &probability);
+    fb_seek(fb, orig_off);
+    return rc;
+}
+
+static const char* graph_endianness_name(const char* endianness)
+{
+    if (endianness == NULL)
+        return "?";
+    if (strcmp(endianness, "little") == 0)
+        return "le";
+    if (strcmp(endianness, "big") == 0)
+        return "be";
+    return endianness;
+}
+
+static int print_code_range(IsaIdentifyCmdCtx* ctx, FileBuffer* fb, u64_t start,
+                            u64_t end)
+{
+    RankedPrediction top[ISA_TOPK];
+    int              rc;
+
+    rc = predict_topk_for_range(ctx, fb, start, (size_t)(end - start), top);
+    if (rc != ISADETECT_OK) {
+        error("ISA prediction failed for code range [0x%llx, 0x%llx): %s",
+              (unsigned long long)start, (unsigned long long)end,
+              bhex_ml_err_to_string(rc));
+        return COMMAND_SILENT_ERROR;
+    }
+
+    display_printf(
+        "  [0x%016llx, 0x%016llx): %*s, %s (confidence: %.2f%%)\n",
+        (unsigned long long)start, (unsigned long long)end, GRAPH_ARCH_WIDTH,
+        top[0].display_name != NULL ? top[0].display_name : "unknown",
+        graph_endianness_name(top[0].endianness), top[0].probability * 100.0);
+
+    return COMMAND_OK;
+}
+
+static int isa_identifycmd_exec_default(IsaIdentifyCmdCtx* ctx, FileBuffer* fb,
+                                        u64_t start, size_t size)
+{
     RankedPrediction top[ISA_TOPK];
     int              rc;
     size_t           i;
 
-    if (pc->cmd_modifiers.size != 0)
-        return COMMAND_UNSUPPORTED_MOD;
+    rc = predict_topk_for_range(ctx, fb, start, size, top);
+    if (rc != ISADETECT_OK) {
+        error("ISA prediction failed: %s", bhex_ml_err_to_string(rc));
+        return COMMAND_SILENT_ERROR;
+    }
+
+    display_printf("ISA identification (%zu bytes analyzed):\n", size);
+    for (i = 0; i < ISA_TOPK; ++i) {
+        display_printf(
+            "  top %zu: %s, %s-endian (confidence: %.2f%%)\n", i + 1,
+            top[i].display_name != NULL ? top[i].display_name : "unknown",
+            top[i].endianness != NULL ? top[i].endianness : "unknown",
+            top[i].probability * 100.0);
+    }
+
+    return COMMAND_OK;
+}
+
+static int isa_identifycmd_exec_graph(IsaIdentifyCmdCtx* ctx, FileBuffer* fb,
+                                      u64_t start, size_t size)
+{
+    u64_t off          = start;
+    u64_t end          = start + (u64_t)size;
+    int   have_range   = 0;
+    int   current_type = 0;
+    u64_t range_start  = 0;
+    u64_t range_end    = 0;
+    int   printed      = 0;
+
+    display_printf("ISA graph (%zu bytes analyzed, %d-byte chunks):\n", size,
+                   BINEXEC_CHUNK_SIZE);
+
+    while (off < end) {
+        size_t chunk_size = (size_t)((end - off) < (u64_t)BINEXEC_CHUNK_SIZE
+                                         ? (end - off)
+                                         : (u64_t)BINEXEC_CHUNK_SIZE);
+        int    contains_code;
+        int    rc;
+
+        rc = classify_chunk_from_fb(ctx, fb, off, chunk_size, &contains_code);
+        if (rc != BINEXEC_OK) {
+            error("executable-content prediction failed at 0x%llx: %s",
+                  (unsigned long long)off, bhex_ml_err_to_string(rc));
+            return COMMAND_SILENT_ERROR;
+        }
+
+        if (!have_range) {
+            have_range   = 1;
+            current_type = contains_code;
+            range_start  = off;
+            range_end    = off + (u64_t)chunk_size;
+        } else if (contains_code == current_type) {
+            range_end += (u64_t)chunk_size;
+        } else {
+            if (current_type != 0) {
+                rc = print_code_range(ctx, fb, range_start, range_end);
+                if (rc != COMMAND_OK) {
+                    return rc;
+                }
+                printed = 1;
+            }
+            current_type = contains_code;
+            range_start  = off;
+            range_end    = off + (u64_t)chunk_size;
+        }
+
+        off += (u64_t)chunk_size;
+    }
+
+    if (have_range && current_type != 0) {
+        int rc = print_code_range(ctx, fb, range_start, range_end);
+        if (rc != COMMAND_OK) {
+            return rc;
+        }
+        printed = 1;
+    }
+
+    if (!printed) {
+        display_printf("  no code ranges detected\n");
+    }
+
+    return COMMAND_OK;
+}
+
+static int isa_identifycmd_exec(IsaIdentifyCmdCtx* ctx, FileBuffer* fb,
+                                ParsedCommand* pc)
+{
+    int    graph_mode = -1;
+    char*  size_str   = NULL;
+    u64_t  requested_size;
+    u64_t  remaining;
+    u64_t  analyzed_u64;
+    size_t analyzed_size;
+
+    if (handle_mods(pc, "g", &graph_mode) != 0)
+        return COMMAND_INVALID_MOD;
+    graph_mode = graph_mode == 0;
 
     if (handle_args(pc, 1, 0, &size_str) != 0)
         return COMMAND_INVALID_ARG;
@@ -380,7 +500,9 @@ static int isa_identifycmd_exec(IsaIdentifyCmdCtx* ctx, FileBuffer* fb,
         return COMMAND_SILENT_ERROR;
     }
 
-    if (!ensure_model_loaded(ctx))
+    if (!ensure_isa_model_loaded(ctx))
+        return COMMAND_SILENT_ERROR;
+    if (graph_mode && !ensure_binexec_model_loaded(ctx))
         return COMMAND_SILENT_ERROR;
 
     remaining    = fb->size - fb->off;
@@ -402,35 +524,11 @@ static int isa_identifycmd_exec(IsaIdentifyCmdCtx* ctx, FileBuffer* fb,
 
     analyzed_size = (size_t)analyzed_u64;
 
-    rc = extract_features_from_fb(fb, fb->off, analyzed_size, features);
-    if (rc != ISADETECT_OK) {
-        error("ISA feature extraction failed: %s", isadetect_err_to_string(rc));
-        return COMMAND_SILENT_ERROR;
+    if (graph_mode) {
+        return isa_identifycmd_exec_graph(ctx, fb, fb->off, analyzed_size);
     }
 
-    rc = isadetect_model_predict_proba(ctx->model, features, probabilities);
-    if (rc != ISADETECT_OK) {
-        error("ISA prediction failed: %s", isadetect_err_to_string(rc));
-        return COMMAND_SILENT_ERROR;
-    }
-
-    rc = rank_predictions(ctx->model, probabilities, top);
-    if (rc != ISADETECT_OK) {
-        error("unable to rank ISA predictions: %s",
-              isadetect_err_to_string(rc));
-        return COMMAND_SILENT_ERROR;
-    }
-
-    display_printf("ISA identification (%zu bytes analyzed):\n", analyzed_size);
-    for (i = 0; i < ISA_TOPK; ++i) {
-        display_printf(
-            "  top %zu: %s, %s-endian, %d-bit (confidence: %.2f%%)\n", i + 1,
-            top[i].display_name ? top[i].display_name : "unknown",
-            top[i].endianness ? top[i].endianness : "unknown", top[i].wordsize,
-            top[i].probability * 100.0);
-    }
-
-    return COMMAND_OK;
+    return isa_identifycmd_exec_default(ctx, fb, fb->off, analyzed_size);
 }
 
 Cmd* isa_identifycmd_create(void)

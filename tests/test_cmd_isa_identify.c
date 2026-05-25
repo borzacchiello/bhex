@@ -5,6 +5,7 @@
 #include "t.h"
 #include "data/asm_snippets.h"
 
+#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -106,6 +107,96 @@ end:
     return ok;
 }
 
+static int run_command_capture_output(const char* command, const u8_t* data,
+                                      size_t size, char** out)
+{
+    DummyFilebuffer* tfb = dummyfilebuffer_create(data, size);
+    int              ok  = 0;
+
+    if (out == NULL)
+        goto end;
+    *out = NULL;
+
+    if (exec_commands_on(command, tfb) != 0)
+        goto end;
+
+    *out = strbuilder_reset(sb);
+    ok   = 1;
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return ok;
+}
+
+static void fill_repeating(u8_t* dst, size_t dst_size, const u8_t* src,
+                           size_t src_size)
+{
+    size_t copied = 0;
+
+    while (copied < dst_size) {
+        size_t chunk = src_size;
+        if (chunk > dst_size - copied)
+            chunk = dst_size - copied;
+        memcpy(dst + copied, src, chunk);
+        copied += chunk;
+    }
+}
+
+static int count_graph_ranges(const char* out)
+{
+    int         count = 0;
+    const char* p     = out;
+
+    while ((p = strstr(p, "  [0x")) != NULL) {
+        ++count;
+        p += 4;
+    }
+
+    return count;
+}
+
+static int extract_graph_arch_for_range(const char* out, int range_index,
+                                        char* value, size_t value_size)
+{
+    const char* p = out;
+    int         i;
+
+    for (i = 0; i < range_index; ++i) {
+        p = strstr(p, "  [0x");
+        if (p == NULL)
+            return 0;
+        if (i + 1 < range_index)
+            p += 4;
+    }
+
+    p = strstr(p, "): ");
+    if (p == NULL || value_size == 0)
+        return 0;
+    p += 3;
+
+    {
+        const char* begin = p;
+        const char* comma = strchr(p, ',');
+        const char* end;
+        size_t      len;
+
+        if (comma == NULL)
+            return 0;
+        while (*begin != '\0' && isspace((unsigned char)*begin))
+            ++begin;
+        end = comma;
+        while (end > begin && isspace((unsigned char)*(end - 1)))
+            --end;
+        len = (size_t)(end - begin);
+        if (len >= value_size)
+            len = value_size - 1;
+        memcpy(value, begin, len);
+        value[len] = '\0';
+    }
+
+    return 1;
+}
+
 static int check_command_output(const char* command_name)
 {
     int  r = TEST_FAILED;
@@ -186,6 +277,57 @@ int TEST(streaming_across_chunks)(void)
         return TEST_FAILED;
 
     return strcmp(top[0], "x64") == 0 ? TEST_SUCCEEDED : TEST_FAILED;
+}
+
+int TEST(graph_detects_code_ranges_and_isas)(void)
+{
+    enum { CHUNK = 1024 };
+    u8_t  buffer[CHUNK * 3];
+    char* out = NULL;
+    char  arch1[64];
+    char  arch2[64];
+    int   ok;
+
+    fill_repeating(buffer, CHUNK, snippet_x64, sizeof(snippet_x64));
+    memset(buffer + CHUNK, 0, CHUNK);
+    fill_repeating(buffer + (CHUNK * 2), CHUNK, snippet_x86,
+                   sizeof(snippet_x86));
+
+    ok = run_command_capture_output("ii/g 3072", buffer, sizeof(buffer), &out);
+    if (!ok)
+        return TEST_FAILED;
+
+    ok = count_graph_ranges(out) == 2 &&
+         strstr(out, ", le (confidence:") != NULL &&
+         extract_graph_arch_for_range(out, 1, arch1, sizeof(arch1)) &&
+         extract_graph_arch_for_range(out, 2, arch2, sizeof(arch2)) &&
+         strcmp(arch1, "x64") == 0 && strcmp(arch2, "x86") == 0;
+
+    bhex_free(out);
+    return ok ? TEST_SUCCEEDED : TEST_FAILED;
+}
+
+int TEST(graph_merges_contiguous_code_chunks)(void)
+{
+    enum { CHUNK = 1024 };
+    u8_t  buffer[CHUNK * 2];
+    char* out = NULL;
+    char  arch[64];
+    int   ok;
+
+    fill_repeating(buffer, sizeof(buffer), snippet_x64, sizeof(snippet_x64));
+
+    ok = run_command_capture_output("ii/g 2048", buffer, sizeof(buffer), &out);
+    if (!ok)
+        return TEST_FAILED;
+
+    ok = count_graph_ranges(out) == 1 &&
+         strstr(out, "0x0000000000000800") != NULL &&
+         extract_graph_arch_for_range(out, 1, arch, sizeof(arch)) &&
+         strcmp(arch, "x64") == 0;
+
+    bhex_free(out);
+    return ok ? TEST_SUCCEEDED : TEST_FAILED;
 }
 
 int TEST(dataset_baseline)(void)
