@@ -2,11 +2,11 @@
 
 /*
  * A small freestanding program compiled into per-architecture .text blobs for
- * ds/i regression tests.
+ * ISA-identification regression tests.
  *
  * The goal is not to be fast, but to force a representative mix of call,
  * branch, stack, arithmetic, load/store and switch instructions so the
- * architecture-identification heuristics see realistic code.
+ * model sees realistic code.
  */
 
 typedef unsigned char u8;

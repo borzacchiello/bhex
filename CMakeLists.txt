@@ -25,7 +25,7 @@ if (ENABLE_CAPSTONE)
 
     set(CAPSTONE_X86_ATT_DISABLE ON)
     set(CAPSTONE_PPC_SUPPORT ON)
-    set(CAPSTONE_SPARC_SUPPORT OFF)
+    set(CAPSTONE_SPARC_SUPPORT ON)
     set(CAPSTONE_SYSZ_SUPPORT OFF)
     set(CAPSTONE_XCORE_SUPPORT OFF)
     set(CAPSTONE_M68K_SUPPORT ON)
@@ -34,12 +34,12 @@ if (ENABLE_CAPSTONE)
     set(CAPSTONE_EVM_SUPPORT OFF)
     set(CAPSTONE_WASM_SUPPORT OFF)
     set(CAPSTONE_MOS65XX_SUPPORT OFF)
-    set(CAPSTONE_RISCV_SUPPORT OFF)
+    set(CAPSTONE_RISCV_SUPPORT ON)
     set(CAPSTONE_OSXKERNEL_SUPPORT OFF)
-    set(CAPSTONE_SYSTEMZ_SUPPORT OFF)
+    set(CAPSTONE_SYSTEMZ_SUPPORT ON)
     set(CAPSTONE_SH_SUPPORT OFF)
     set(CAPSTONE_TRICORE_SUPPORT OFF)
-    set(CAPSTONE_ALPHA_SUPPORT OFF)
+    set(CAPSTONE_ALPHA_SUPPORT ON)
     set(CAPSTONE_HPPA_SUPPORT OFF)
     set(CAPSTONE_LOONGARCH_SUPPORT OFF)
     set(CAPSTONE_XTENSA_SUPPORT OFF)
@@ -60,7 +60,7 @@ endif()
 if (ENABLE_KEYSTONE)
     set(BUILD_SHARED_LIBS OFF)
     set(BUILD_LIBS_ONLY ON)
-    set(LLVM_TARGETS_TO_BUILD "AArch64, ARM, Mips, X86")
+    set(LLVM_TARGETS_TO_BUILD "AArch64, ARM, Mips, RISCV, Sparc, SystemZ, X86")
     add_subdirectory(keystone EXCLUDE_FROM_ALL)
 
     include_directories("${CMAKE_SOURCE_DIR}/keystone/include")
@@ -99,7 +99,8 @@ set(common_src
     common/hash/ripemd.c
     common/hash/blake2b-ref.c
     common/hash/blake2s-ref.c
-    common/hash/ghost.c)
+    common/hash/ghost.c
+    common/isadetect.c)
 
 set(command_src
     cmd/cmd_arg_handler.c
@@ -125,6 +126,7 @@ set(command_src
     cmd/cmd_import.c
     cmd/cmd_entropy.c
     cmd/cmd_interactive.c
+    cmd/cmd_isa_identify.c
     cmd/tui.c)
 
 set(bhengine_src
@@ -151,6 +153,13 @@ if(ASAN)
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address,undefined")
     set(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fsanitize=address,undefined")
 endif()
+
+file(GLOB MODEL_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/models/*.bin)
+
+add_custom_target(copy_models_to_build ALL
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/models
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${MODEL_FILES} ${CMAKE_CURRENT_BINARY_DIR}/models
+        COMMENT "Copying models to build")
 
 if (ENABLE_TESTS)
     include(CTest)
@@ -188,10 +197,12 @@ if (ENABLE_TESTS)
 
     add_dependencies(bhex_tests gen_test_main)
     add_dependencies(bhex_tests copy_templates_to_build)
+    add_dependencies(bhex_tests copy_models_to_build)
     target_compile_definitions(bhex_tests PRIVATE BHEX_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 
     add_test(NAME bhex_tests COMMAND bhex_tests)
 
+    target_link_libraries(bhex_tests LINK_PUBLIC m)
     if (ENABLE_CAPSTONE)
         target_link_libraries(bhex_tests LINK_PUBLIC capstone)
     endif()
@@ -230,12 +241,15 @@ add_executable(bhex
     completion.c
     main.c)
 
+add_dependencies(bhex copy_models_to_build)
+
 if (STATIC_BUILD)
     set_target_properties(bhex PROPERTIES LINK_SEARCH_START_STATIC ON)
     set_target_properties(bhex PROPERTIES LINK_SEARCH_END_STATIC ON)
     target_link_options(bhex PRIVATE -static-libgcc -static)
 endif()
 
+target_link_libraries(bhex LINK_PUBLIC m)
 if (ENABLE_CAPSTONE)
     target_link_libraries(bhex LINK_PUBLIC capstone)
 endif()
@@ -250,3 +264,6 @@ install(PROGRAMS ${CMAKE_SOURCE_DIR}/bin/bhengine DESTINATION bin)
 install(DIRECTORY templates/
         DESTINATION share/bhex/templates
         FILES_MATCHING PATTERN "*.bhe")
+install(DIRECTORY models/
+        DESTINATION share/bhex/models
+        FILES_MATCHING PATTERN "*.bin")

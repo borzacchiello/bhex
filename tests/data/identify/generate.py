@@ -142,7 +142,8 @@ def sha256(path):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate ds/i testcase binaries")
+    parser = argparse.ArgumentParser(
+        description="Generate ISA-identification testcase binaries")
     parser.add_argument("--out-dir", default=str(DEFAULT_OUT))
     args = parser.parse_args()
 

@@ -29,6 +29,11 @@
 #define PPC64_ARCH       11
 #define PPCLE32_ARCH     12
 #define PPCLE64_ARCH     13
+#define RISCV32_ARCH     14
+#define RISCV64_ARCH     15
+#define S390X_ARCH       16
+#define SPARC_ARCH       17
+#define SPARC64_ARCH     18
 
 #define HINT_STR "[/l/i/s] <arch> 'instr1; instr2; ...'"
 
@@ -52,6 +57,11 @@ static KeystoneArchInfo map_arch[] = {
     {KS_ARCH_PPC, KS_MODE_PPC64 + KS_MODE_BIG_ENDIAN},      // PPC64_ARCH
     {KS_ARCH_PPC, KS_MODE_PPC32 + KS_MODE_LITTLE_ENDIAN},   // PPCLE32_ARCH
     {KS_ARCH_PPC, KS_MODE_PPC64 + KS_MODE_LITTLE_ENDIAN},   // PPCLE64_ARCH
+    {KS_ARCH_RISCV, KS_MODE_RISCV32 + KS_MODE_LITTLE_ENDIAN}, // RISCV32_ARCH
+    {KS_ARCH_RISCV, KS_MODE_RISCV64 + KS_MODE_LITTLE_ENDIAN}, // RISCV64_ARCH
+    {KS_ARCH_SYSTEMZ, KS_MODE_BIG_ENDIAN},                    // S390X_ARCH
+    {KS_ARCH_SPARC, KS_MODE_SPARC32 + KS_MODE_BIG_ENDIAN},    // SPARC_ARCH
+    {KS_ARCH_SPARC, KS_MODE_SPARC64 + KS_MODE_BIG_ENDIAN},    // SPARC64_ARCH
 };
 
 static const char* map_arch_names[] = {
@@ -69,6 +79,11 @@ static const char* map_arch_names[] = {
     "ppc64",       // PPC64_ARCH
     "ppcle32",     // PPCLE32_ARCH
     "ppcle64",     // PPCLE64_ARCH
+    "riscv32",     // RISCV32_ARCH
+    "riscv64",     // RISCV64_ARCH
+    "s390x",       // S390X_ARCH
+    "sparc",       // SPARC_ARCH
+    "sparc64",     // SPARC64_ARCH
 };
 
 static void assemblecmd_help(void* obj)

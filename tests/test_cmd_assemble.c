@@ -43,7 +43,12 @@ int TEST(list_archs)(void)
                            "    ppc32\n"
                            "    ppc64\n"
                            "    ppcle32\n"
-                           "    ppcle64\n";
+                           "    ppcle64\n"
+                           "    riscv32\n"
+                           "    riscv64\n"
+                           "    s390x\n"
+                           "    sparc\n"
+                           "    sparc64\n";
 
     int r = TEST_FAILED;
     if (exec_commands("as/l") != 0)
@@ -155,6 +160,66 @@ int TEST(x64_insert)(void)
 
 end:
     dummyfilebuffer_destroy(tfb);
+    return r;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(riscv64_addiw)(void)
+{
+#ifndef DISABLE_KEYSTONE
+    const char* expected = "1B00A000\n";
+
+    int r = TEST_FAILED;
+    if (exec_commands("as riscv64 \"addiw x0, x0, 10\" ; p/r 4 ; u") != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    return r;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(s390x_a)(void)
+{
+#ifndef DISABLE_KEYSTONE
+    const char* expected = "5A0F1FFF\n";
+
+    int r = TEST_FAILED;
+    if (exec_commands("as s390x \"a %r0, 4095(%r15,%r1)\" ; p/r 4 ; u") != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    return r;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(sparc_add)(void)
+{
+#ifndef DISABLE_KEYSTONE
+    const char* expected = "86004002\n";
+
+    int r = TEST_FAILED;
+    if (exec_commands("as sparc \"add %g1, %g2, %g3\" ; p/r 4 ; u") != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
     return r;
 #else
     return TEST_SKIPPED;

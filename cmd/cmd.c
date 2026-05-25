@@ -27,6 +27,7 @@
 #include "cmd_import.h"
 #include "cmd_entropy.h"
 #include "cmd_interactive.h"
+#include "cmd_isa_identify.h"
 
 const char* cmdctx_err_to_string(int err)
 {
@@ -86,6 +87,7 @@ CmdContext* cmdctx_init(void)
     ll_add(&cc->commands, (uptr_t)searchcmd_create());
     ll_add(&cc->commands, (uptr_t)entropycmd_create());
     ll_add(&cc->commands, (uptr_t)interactivecmd_create());
+    ll_add(&cc->commands, (uptr_t)isa_identifycmd_create());
     ll_add(&cc->commands, (uptr_t)infocmd_create());
     return cc;
 }

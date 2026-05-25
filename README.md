@@ -23,6 +23,7 @@ Minimalistic and lightweight shell-based hex editor.
 - Execute template files using a custom language (bhe), see examples in the `templates/` subdirectory.
 - Disassemble opcodes (using Capstone).
 - Assemble opcodes (using Keystone).
+- Identify the ISA of a byte block using a bundled AI model.
 
 Just run `bhex <file>` to start the shell.
 
@@ -81,6 +82,7 @@ If you type "help" (or "h"), you get the list of commands:
 Available commands:
     help [h]
     info [i]
+    isa_identify [ii]
     interactive [int]
     entropy [e]
     search [src]
@@ -101,6 +103,22 @@ Available commands:
     delete [d]
     undo [u]
     commit [c]
+```
+
+### Identify
+
+```
+[0x0000000] $ ii?
+
+isa_identify: identify the ISA of a block of bytes using the bundled AI model
+
+  isa_identify [<size>]
+
+  size: number of bytes to analyze starting from the current offset
+        (if omitted, use the whole file starting from the current offset)
+
+The bundled model is copied to `build*/models/` for local runs and installed to
+`share/bhex/models/` by CMake.
 ```
 
 ### Info
@@ -331,10 +349,8 @@ assemble: assemble code and write it at current offset
 
 disas: disassemble code at current offset
 
-  ds[/l/i] [<arch>] [<nbytes>]
+  ds[/l] <arch> [<nbytes>]
      l:  list supported architectures
-     i:  identify architecture; optional nbytes limits the scan to
-         that many bytes from the current offset (default: whole file)
 
   arch:   the architecture to use
   nbytes: number of opcodes to disassemble (default: 8)

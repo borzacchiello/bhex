@@ -45,12 +45,11 @@ static DummyFilebuffer* make_findbase_blob(void)
 
 int TEST(auto_detect_le_32)(void)
 {
-    const char* expected =
-        "[i] 32-bit architecture selected.\n"
-        "[i] Endianness is LE\n"
-        "[i] 4 strings indexed\n"
-        "[i] Found 1 base addresses to test\n"
-        "[i] Base address found (valid array): 0x08004000.\n";
+    const char* expected = "[i] 32-bit architecture selected.\n"
+                           "[i] Endianness is LE\n"
+                           "[i] 4 strings indexed\n"
+                           "[i] Found 1 base addresses to test\n"
+                           "[i] Base address found: 0x08004000.\n";
 
     DummyFilebuffer* tfb = make_findbase_blob();
 

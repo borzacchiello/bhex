@@ -3,7 +3,6 @@
 #include "dummy_filebuffer.h"
 #include "t_cmd_common.h"
 #include "t.h"
-#include "data/asm_snippets.h"
 
 #ifndef TEST
 #define TEST(name) test_##name
@@ -46,6 +45,12 @@ int TEST(list_archs)(void)
                            "    ppcle32\n"
                            "    ppcle64\n"
                            "    m68k\n"
+                           "    alpha\n"
+                           "    riscv32\n"
+                           "    riscv64\n"
+                           "    s390x\n"
+                           "    sparc\n"
+                           "    sparc64\n"
                            "    bpf\n"
                            "    ebpf\n";
 
@@ -67,7 +72,6 @@ end:
 int TEST(x64_nop)(void)
 {
 #ifndef DISABLE_CAPSTONE
-    /* Two bytes: the second is needed because do_disas uses code_size - 1 */
     const u8_t       nop_bytes[] = {0x90, 0x90};
     DummyFilebuffer* tfb = dummyfilebuffer_create(nop_bytes, sizeof(nop_bytes));
 
@@ -131,86 +135,9 @@ end:
 #endif
 }
 
-int TEST(identify_too_many_args)(void)
-{
-#ifndef DISABLE_CAPSTONE
-    return exec_commands("ds/i a b") != 0;
-#else
-    return TEST_SKIPPED;
-#endif
-}
-
-int TEST(identify_produces_output)(void)
-{
-#ifndef DISABLE_CAPSTONE
-    int r = TEST_FAILED;
-    if (exec_commands("ds/i") != 0)
-        goto end;
-
-    char* out = strbuilder_reset(sb);
-    r         = strstr(out, "Architecture identification") != NULL;
-    bhex_free(out);
-
-end:
-    return r;
-#else
-    return TEST_SKIPPED;
-#endif
-}
-
-int TEST(identify_lists_all_archs)(void)
-{
-#ifndef DISABLE_CAPSTONE
-    int r = TEST_FAILED;
-    if (exec_commands("ds/i") != 0)
-        goto end;
-
-    char* out = strbuilder_reset(sb);
-    r = strstr(out, "x64") != NULL && strstr(out, "arm32") != NULL &&
-        strstr(out, "mips32") != NULL && strstr(out, "mipsel64") != NULL &&
-        strstr(out, "ppc32") != NULL;
-    bhex_free(out);
-
-end:
-    return r;
-#else
-    return TEST_SKIPPED;
-#endif
-}
-
-int TEST(identify_custom_nbytes)(void)
-{
-#ifndef DISABLE_CAPSTONE
-    /* ds/i <nbytes> should succeed and produce output */
-    int r = TEST_FAILED;
-    if (exec_commands("ds/i 4") != 0)
-        goto end;
-
-    char* out = strbuilder_reset(sb);
-    r         = strstr(out, "Architecture identification") != NULL;
-    bhex_free(out);
-
-end:
-    return r;
-#else
-    return TEST_SKIPPED;
-#endif
-}
-
-int TEST(identify_too_many_args2)(void)
-{
-#ifndef DISABLE_CAPSTONE
-    /* ds/i with two numeric args must be rejected */
-    return exec_commands("ds/i 4 8") != 0;
-#else
-    return TEST_SKIPPED;
-#endif
-}
-
 int TEST(ppc32_blr)(void)
 {
 #ifndef DISABLE_CAPSTONE
-    /* PPC blr = 4E 80 00 20 (big-endian, fixed 4 bytes) */
     const u8_t       blr_bytes[] = {0x4E, 0x80, 0x00, 0x20, 0x00};
     DummyFilebuffer* tfb = dummyfilebuffer_create(blr_bytes, sizeof(blr_bytes));
 
@@ -233,7 +160,6 @@ end:
 int TEST(ppc32_nop)(void)
 {
 #ifndef DISABLE_CAPSTONE
-    /* PPC nop = 60 00 00 00 (ori 0,0,0) */
     const u8_t       nop_bytes[] = {0x60, 0x00, 0x00, 0x00, 0x00};
     DummyFilebuffer* tfb = dummyfilebuffer_create(nop_bytes, sizeof(nop_bytes));
 
@@ -256,7 +182,6 @@ end:
 int TEST(ppc64_mflr)(void)
 {
 #ifndef DISABLE_CAPSTONE
-    /* PPC mflr r0 = 7C 08 02 A6 (big-endian) */
     const u8_t       mflr_bytes[] = {0x7C, 0x08, 0x02, 0xA6, 0x00};
     DummyFilebuffer* tfb =
         dummyfilebuffer_create(mflr_bytes, sizeof(mflr_bytes));
@@ -280,7 +205,6 @@ end:
 int TEST(ppc32_add)(void)
 {
 #ifndef DISABLE_CAPSTONE
-    /* PPC add 1,2,3 = 7C 22 1A 14 (big-endian) */
     const u8_t       add_bytes[] = {0x7C, 0x22, 0x1A, 0x14, 0x00};
     DummyFilebuffer* tfb = dummyfilebuffer_create(add_bytes, sizeof(add_bytes));
 
@@ -303,7 +227,6 @@ end:
 int TEST(ppcle64_blr)(void)
 {
 #ifndef DISABLE_CAPSTONE
-    /* PPC blr in little-endian = 20 00 80 4E */
     const u8_t       blr_bytes[] = {0x20, 0x00, 0x80, 0x4E, 0x00};
     DummyFilebuffer* tfb = dummyfilebuffer_create(blr_bytes, sizeof(blr_bytes));
 
@@ -326,7 +249,6 @@ end:
 int TEST(m68k_nop)(void)
 {
 #ifndef DISABLE_CAPSTONE
-    /* M68K nop = 4E 71 (big-endian) */
     const u8_t       nop_bytes[] = {0x4E, 0x71, 0x00};
     DummyFilebuffer* tfb = dummyfilebuffer_create(nop_bytes, sizeof(nop_bytes));
 
@@ -346,147 +268,92 @@ end:
 #endif
 }
 
-/*
- * Helper: run ds/i on a snippet and check the top-scoring arch name against
- * one or more acceptable substrings. Returns TEST_SUCCEEDED / TEST_FAILED /
- * TEST_SKIPPED.
- */
-static int check_identify_any(const u8_t* data, size_t size, const char* exp0,
-                              const char* exp1, const char* exp2)
+int TEST(alpha_addq)(void)
 {
 #ifndef DISABLE_CAPSTONE
-    DummyFilebuffer* tfb = dummyfilebuffer_create(data, size);
-    int              r   = TEST_FAILED;
+    const u8_t       addq_bytes[] = {0x03, 0x04, 0x22, 0x40, 0x00};
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(addq_bytes, sizeof(addq_bytes));
 
-    if (exec_commands_on("ds/i", tfb) != 0)
+    int r = TEST_FAILED;
+    if (exec_commands_on("ds alpha 1", tfb) != 0)
         goto end;
 
     char* out = strbuilder_reset(sb);
-
-    const char* hdr = strstr(out, "Architecture identification");
-    if (!hdr)
-        goto free_out;
-    const char* nl = strchr(hdr, '\n');
-    if (!nl)
-        goto free_out;
-    const char* first_line = nl + 1;
-    const char* end_line   = strchr(first_line, '\n');
-    if (!end_line)
-        goto free_out;
-
-    size_t line_len = (size_t)(end_line - first_line);
-    char   line_buf[256];
-    if (line_len >= sizeof(line_buf))
-        line_len = sizeof(line_buf) - 1;
-    memcpy(line_buf, first_line, line_len);
-    line_buf[line_len] = '\0';
-
-    if ((exp0 && strstr(line_buf, exp0) != NULL) ||
-        (exp1 && strstr(line_buf, exp1) != NULL) ||
-        (exp2 && strstr(line_buf, exp2) != NULL))
-        r = TEST_SUCCEEDED;
-
-free_out:
+    r         = strstr(out, "addq") != NULL;
     bhex_free(out);
+
 end:
     dummyfilebuffer_destroy(tfb);
     return r;
 #else
-    (void)data;
-    (void)size;
-    (void)exp0;
-    (void)exp1;
-    (void)exp2;
     return TEST_SKIPPED;
 #endif
 }
 
-int TEST(identify_snippet_x64)(void)
+int TEST(riscv64_addiw)(void)
 {
-    return check_identify_any(snippet_x64, sizeof(snippet_x64), "x64", "x86",
-                              "i8086");
+#ifndef DISABLE_CAPSTONE
+    const u8_t       addiw_bytes[] = {0x1B, 0x00, 0xA0, 0x00, 0x00};
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(addiw_bytes, sizeof(addiw_bytes));
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("ds riscv64 1", tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = strstr(out, "addiw") != NULL;
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+#else
+    return TEST_SKIPPED;
+#endif
 }
 
-int TEST(identify_snippet_x86)(void)
+int TEST(s390x_agr)(void)
 {
-    return check_identify_any(snippet_x86, sizeof(snippet_x86), "x86", "x64",
-                              "i8086");
+#ifndef DISABLE_CAPSTONE
+    const u8_t       agr_bytes[] = {0xB9, 0x08, 0x00, 0x78, 0x00};
+    DummyFilebuffer* tfb = dummyfilebuffer_create(agr_bytes, sizeof(agr_bytes));
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("ds s390x 1", tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = strstr(out, "agr") != NULL;
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+#else
+    return TEST_SKIPPED;
+#endif
 }
 
-int TEST(identify_snippet_i8086)(void)
+int TEST(sparc_add)(void)
 {
-    return check_identify_any(snippet_i8086, sizeof(snippet_i8086), "i8086",
-                              "x86", "x64");
-}
+#ifndef DISABLE_CAPSTONE
+    const u8_t       add_bytes[] = {0x86, 0x00, 0x40, 0x02, 0x00};
+    DummyFilebuffer* tfb = dummyfilebuffer_create(add_bytes, sizeof(add_bytes));
 
-int TEST(identify_snippet_arm32)(void)
-{
-    return check_identify_any(snippet_arm32, sizeof(snippet_arm32), "arm32",
-                              NULL, NULL);
-}
+    int r = TEST_FAILED;
+    if (exec_commands_on("ds sparc 1", tfb) != 0)
+        goto end;
 
-int TEST(identify_snippet_arm32_thumb)(void)
-{
-    return check_identify_any(snippet_arm32_thumb, sizeof(snippet_arm32_thumb),
-                              "arm32-thumb", "arm32", NULL);
-}
+    char* out = strbuilder_reset(sb);
+    r         = strstr(out, "add") != NULL;
+    bhex_free(out);
 
-int TEST(identify_snippet_aarch64)(void)
-{
-    return check_identify_any(snippet_aarch64, sizeof(snippet_aarch64),
-                              "aarch64", NULL, NULL);
-}
-
-int TEST(identify_snippet_mips32)(void)
-{
-    return check_identify_any(snippet_mips32, sizeof(snippet_mips32), "mips32",
-                              NULL, NULL);
-}
-
-int TEST(identify_snippet_mips64)(void)
-{
-    return check_identify_any(snippet_mips64, sizeof(snippet_mips64), "mips64",
-                              NULL, NULL);
-}
-
-int TEST(identify_snippet_mipsel32)(void)
-{
-    return check_identify_any(snippet_mipsel32, sizeof(snippet_mipsel32),
-                              "mipsel32", NULL, NULL);
-}
-
-int TEST(identify_snippet_mipsel64)(void)
-{
-    return check_identify_any(snippet_mipsel64, sizeof(snippet_mipsel64),
-                              "mipsel64", NULL, NULL);
-}
-
-int TEST(identify_snippet_ppc32)(void)
-{
-    return check_identify_any(snippet_ppc32, sizeof(snippet_ppc32), "ppc32",
-                              NULL, NULL);
-}
-
-int TEST(identify_snippet_ppc64)(void)
-{
-    return check_identify_any(snippet_ppc64, sizeof(snippet_ppc64), "ppc64",
-                              NULL, NULL);
-}
-
-int TEST(identify_snippet_ppcle32)(void)
-{
-    return check_identify_any(snippet_ppcle32, sizeof(snippet_ppcle32),
-                              "ppcle32", "ppcle64", NULL);
-}
-
-int TEST(identify_snippet_ppcle64)(void)
-{
-    return check_identify_any(snippet_ppcle64, sizeof(snippet_ppcle64),
-                              "ppcle64", "ppcle32", NULL);
-}
-
-int TEST(identify_snippet_m68k)(void)
-{
-    return check_identify_any(snippet_m68k, sizeof(snippet_m68k), "m68k", NULL,
-                              NULL);
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+#else
+    return TEST_SKIPPED;
+#endif
 }
