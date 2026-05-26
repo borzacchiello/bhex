@@ -8,7 +8,7 @@
 #include <string.h>
 #include <alloc.h>
 
-#define HINT_STR "<base>"
+#define HINT_STR " <base>"
 
 static void setbasecmd_dispose(void* obj) { (void)obj; }
 
@@ -20,9 +20,7 @@ static void setbasecmd_help(void* obj)
         "  sb" HINT_STR "\n"
         "\n"
         "  base: the new base address (if omitted, display current base)\n"
-        "\n"
-        "  The base address is added to all displayed offsets.\n"
-        "  Default: 0.\n");
+        "\n");
 }
 
 static int setbasecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)

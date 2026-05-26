@@ -184,7 +184,7 @@ void blake3_compress_xof(const uint32_t cv[8],
 
 void blake3_xof_many(const uint32_t cv[8],
                      const uint8_t block[BLAKE3_BLOCK_LEN], uint8_t block_len,
-                     uint64_t counter, uint8_t flags, uint8_t* out,
+                     uint64_t counter, uint8_t flags, uint8_t out[64],
                      size_t outblocks)
 {
     for (size_t i = 0; i < outblocks; i++) {
