@@ -1,11 +1,9 @@
 // Copyright (c) 2022-2026, bageyelet
 
 #include "cmd_setbase.h"
-#include "cmd_arg_handler.h"
 
 #include <util/byte_to_num.h>
 #include <display.h>
-#include <string.h>
 #include <alloc.h>
 
 #define HINT_STR " <base>"
