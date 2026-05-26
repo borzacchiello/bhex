@@ -109,7 +109,7 @@ int TEST(near_end_2)(void)
     const char* expected =
     "       00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F \n"
     "       -----------------------------------------------\n"
-    " 0000: 00                                                .\n";
+    " 0143: 00                                                .\n";
     // clang-format on
 
     int r = TEST_FAILED;
@@ -910,4 +910,25 @@ end:
 fail:
     r = TEST_FAILED;
     goto end;
+}
+
+int TEST(base_and_offset)(void)
+{
+    // clang-format off
+    const char* expected =
+    "       00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F \n"
+    "       -----------------------------------------------\n"
+    " 10c8: 00 00 00 00 0B 00 00 00 01 00 00 00 06 00 00 00   ................\n";
+    // clang-format on
+
+    int r = TEST_FAILED;
+    if (exec_commands("sb 0x1000 ; s 0x10c8 ; p 16") != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = strcmp(out, expected) == 0 ? TEST_SUCCEEDED : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    return r;
 }

@@ -127,7 +127,7 @@ static int printcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     size_t size =
         min(args.n_els * get_width_bytes(args.width), fb->size - fb->off);
 
-    u64_t  addr           = 0;
+    u64_t  addr           = fb->off;
     size_t remaining_size = size;
     u64_t  orig_off       = fb->off;
     while (remaining_size != 0) {
@@ -136,7 +136,7 @@ static int printcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
         if (!bytes)
             return COMMAND_INVALID_ARG;
 
-        int print_header = addr == 0;
+        int print_header = addr == orig_off;
         int print_footer = remaining_size == read_size;
         switch (args.width) {
             case WIDTH_UNSET:
