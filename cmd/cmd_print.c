@@ -142,25 +142,26 @@ static int printcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
             case WIDTH_UNSET:
             case WIDTH_BYTE:
                 print_hex(bytes, read_size, args.raw_mode, print_header,
-                          print_footer, args.wide_mode ? 32 : 16, addr);
+                          print_footer, args.wide_mode ? 32 : 16,
+                          addr + fb->base_addr);
                 break;
             case WIDTH_WORD:
                 print_words(bytes, read_size,
                             args.endianess == ENDIANESS_LITTLE, args.raw_mode,
                             print_header, print_footer,
-                            args.wide_mode ? 32 : 16, addr);
+                            args.wide_mode ? 32 : 16, addr + fb->base_addr);
                 break;
             case WIDTH_DWORD:
                 print_dwords(bytes, read_size,
                              args.endianess == ENDIANESS_LITTLE, args.raw_mode,
                              print_header, print_footer,
-                             args.wide_mode ? 32 : 16, addr);
+                             args.wide_mode ? 32 : 16, addr + fb->base_addr);
                 break;
             case WIDTH_QWORD:
                 print_qwords(bytes, read_size,
                              args.endianess == ENDIANESS_LITTLE, args.raw_mode,
                              print_header, print_footer,
-                             args.wide_mode ? 32 : 16, addr);
+                             args.wide_mode ? 32 : 16, addr + fb->base_addr);
                 break;
             case WIDTH_CBUFFER:
                 print_c_buffer(bytes, read_size, print_header, print_footer);

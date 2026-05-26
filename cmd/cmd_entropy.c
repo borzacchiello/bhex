@@ -121,8 +121,8 @@ static int entropycmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 
         float entropy = calc_entropy(fb, addr, bytes_per_raw);
 
-        display_printf("[ %08llx - %08llx ] (%.03f) ", addr,
-                       addr + bytes_per_raw, entropy);
+        display_printf("[ %08llx - %08llx ] (%.03f) ", addr + fb->base_addr,
+                       addr + bytes_per_raw + fb->base_addr, entropy);
         u32_t bar_value = entropy * 45 / 8;
         for (u32_t i = 0; i < bar_value; ++i)
             display_printf("-");

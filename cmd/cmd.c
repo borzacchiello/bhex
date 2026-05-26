@@ -29,6 +29,7 @@
 #include "cmd_interactive.h"
 #include "cmd_isa_identify.h"
 #include "cmd_echo.h"
+#include "cmd_setbase.h"
 
 const char* cmdctx_err_to_string(int err)
 {
@@ -91,6 +92,7 @@ CmdContext* cmdctx_init(void)
     ll_add(&cc->commands, (uptr_t)isa_identifycmd_create());
     ll_add(&cc->commands, (uptr_t)infocmd_create());
     ll_add(&cc->commands, (uptr_t)echocmd_create());
+    ll_add(&cc->commands, (uptr_t)setbasecmd_create());
     return cc;
 }
 

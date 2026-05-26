@@ -46,6 +46,7 @@ typedef struct FileBuffer {
     FILE*  file;
     time_t mod_time;
     u64_t  off;
+    u64_t  base_addr;
     u64_t  size;
     s8_t   readonly;
     u64_t  version;
@@ -85,7 +86,6 @@ const u8_t* fb_read_ex(FileBuffer* fb, size_t size, u32_t mod_idx);
 // Returns a heap-allocated copy owned by the caller.
 // Safe to pass to worker threads after the call returns.
 u8_t* fb_read_alloc(FileBuffer* fb, u64_t off, size_t size);
-u8_t* fb_read_alloc_ex(FileBuffer* fb, u64_t off, size_t size,
-                       u32_t mod_idx);
+u8_t* fb_read_alloc_ex(FileBuffer* fb, u64_t off, size_t size, u32_t mod_idx);
 
 #endif

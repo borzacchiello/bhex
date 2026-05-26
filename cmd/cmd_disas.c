@@ -67,11 +67,11 @@ static const CapstoneArchInfo map_arch[] = {
     {CS_ARCH_ALPHA, CS_MODE_LITTLE_ENDIAN},                 // ALPHA_ARCH
     {CS_ARCH_RISCV, CS_MODE_RISCV32 + CS_MODE_LITTLE_ENDIAN}, // RISCV32_ARCH
     {CS_ARCH_RISCV, CS_MODE_RISCV64 + CS_MODE_LITTLE_ENDIAN}, // RISCV64_ARCH
-    {CS_ARCH_SYSTEMZ, CS_MODE_BIG_ENDIAN},                  // S390X_ARCH
-    {CS_ARCH_SPARC, CS_MODE_BIG_ENDIAN},                    // SPARC_ARCH
-    {CS_ARCH_SPARC, CS_MODE_BIG_ENDIAN | CS_MODE_V9},       // SPARC64_ARCH
-    {CS_ARCH_BPF, CS_MODE_BPF_CLASSIC},                     // BPF_ARCH
-    {CS_ARCH_BPF, CS_MODE_BPF_EXTENDED},                    // EBPF_ARCH
+    {CS_ARCH_SYSTEMZ, CS_MODE_BIG_ENDIAN},                    // S390X_ARCH
+    {CS_ARCH_SPARC, CS_MODE_BIG_ENDIAN},                      // SPARC_ARCH
+    {CS_ARCH_SPARC, CS_MODE_BIG_ENDIAN | CS_MODE_V9},         // SPARC64_ARCH
+    {CS_ARCH_BPF, CS_MODE_BPF_CLASSIC},                       // BPF_ARCH
+    {CS_ARCH_BPF, CS_MODE_BPF_EXTENDED},                      // EBPF_ARCH
 };
 
 static const char* map_arch_names[] = {
@@ -234,7 +234,7 @@ static int disascmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     if (!bytes)
         return COMMAND_INVALID_ARG;
 
-    do_disas(arch, fb->off, bytes, size, nopcodes);
+    do_disas(arch, fb->off + fb->base_addr, bytes, size, nopcodes);
     return COMMAND_OK;
 }
 

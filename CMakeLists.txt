@@ -135,6 +135,7 @@ set(command_src
     cmd/cmd_import.c
     cmd/cmd_entropy.c
     cmd/cmd_echo.c
+    cmd/cmd_setbase.c
     cmd/cmd_interactive.c
     cmd/cmd_isa_identify.c
     cmd/tui.c)

@@ -102,6 +102,7 @@ FileBuffer* filebuffer_create(const char* path, int readonly)
     fb->version       = 0;
     fb->search_index  = bhex_calloc(sizeof(SearchIndex));
     fb->off           = 0;
+    fb->base_addr     = 0;
     memset(fb->block, 0, sizeof(fb->block));
     memset(fb->tmp_block, 0, sizeof(fb->tmp_block));
 
@@ -684,7 +685,7 @@ u8_t* fb_read_alloc_ex(FileBuffer* fb, u64_t off, size_t size, u32_t mod_idx)
         goto end;
     }
 
-    result = bhex_malloc(size);
+    result         = bhex_malloc(size);
     u64_t orig_off = fb->off;
     u64_t copied   = 0;
     while (copied < size) {

@@ -188,6 +188,21 @@ static int parse_primary(const char** p, FileBuffer* fb, u64_t* o_result)
 {
     skip_spaces(p);
 
+    if (**p == '$') {
+        (*p)++; // consume '$'
+        char var = **p;
+        if (var == 'c') {
+            (*p)++;
+            *o_result = fb->off + fb->base_addr;
+            return EXPR_EVAL_OK;
+        } else if (var == 'b') {
+            (*p)++;
+            *o_result = fb->base_addr;
+            return EXPR_EVAL_OK;
+        }
+        return EXPR_EVAL_ERR_SYNTAX;
+    }
+
     if (**p == '(') {
         (*p)++; // consume '('
         int r = parse_expr(p, fb, o_result);

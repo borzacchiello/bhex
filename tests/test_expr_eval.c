@@ -424,3 +424,116 @@ int TEST(complex2)(void)
 fail:
     return TEST_FAILED;
 }
+
+// --- Builtin variables ---
+
+int TEST(var_current_default)(void)
+{
+    /* $c at offset 0 with base 0 should be 0 */
+    u64_t r;
+    ASSERT(eval("$c", &r) == EXPR_EVAL_OK);
+    ASSERT(r == 0);
+    return TEST_SUCCEEDED;
+fail:
+    return TEST_FAILED;
+}
+
+int TEST(var_base_default)(void)
+{
+    /* $b should be 0 by default */
+    u64_t r;
+    ASSERT(eval("$b", &r) == EXPR_EVAL_OK);
+    ASSERT(r == 0);
+    return TEST_SUCCEEDED;
+fail:
+    return TEST_FAILED;
+}
+
+int TEST(var_current_after_seek)(void)
+{
+    /* $c should reflect offset after seeking */
+    elf_fb->fb->base_addr = 0;
+    fb_seek(elf_fb->fb, 0x42);
+    u64_t r;
+    ASSERT(eval("$c", &r) == EXPR_EVAL_OK);
+    ASSERT(r == 0x42);
+    return TEST_SUCCEEDED;
+fail:
+    return TEST_FAILED;
+}
+
+int TEST(var_current_with_base)(void)
+{
+    /* $c should be offset + base */
+    elf_fb->fb->base_addr = 0x1000;
+    fb_seek(elf_fb->fb, 0x20);
+    u64_t r;
+    ASSERT(eval("$c", &r) == EXPR_EVAL_OK);
+    ASSERT(r == 0x1020);
+    return TEST_SUCCEEDED;
+fail:
+    return TEST_FAILED;
+}
+
+int TEST(var_base_after_set)(void)
+{
+    /* $b should reflect base after being set */
+    elf_fb->fb->base_addr = 0xABCD;
+    fb_seek(elf_fb->fb, 0);
+    u64_t r;
+    ASSERT(eval("$b", &r) == EXPR_EVAL_OK);
+    ASSERT(r == 0xABCD);
+    return TEST_SUCCEEDED;
+fail:
+    return TEST_FAILED;
+}
+
+int TEST(var_current_arithmetic)(void)
+{
+    /* $c + 10 should work */
+    elf_fb->fb->base_addr = 0x1000;
+    fb_seek(elf_fb->fb, 0x50);
+    u64_t r;
+    ASSERT(eval("$c + 0x10", &r) == EXPR_EVAL_OK);
+    ASSERT(r == 0x1060);
+    return TEST_SUCCEEDED;
+fail:
+    return TEST_FAILED;
+}
+
+int TEST(var_both_in_expr)(void)
+{
+    /* $b + $c should work */
+    elf_fb->fb->base_addr = 0x100;
+    fb_seek(elf_fb->fb, 0x50);
+    u64_t r;
+    ASSERT(eval("$b + $c", &r) == EXPR_EVAL_OK);
+    ASSERT(r == 0x100 + 0x150);
+    return TEST_SUCCEEDED;
+fail:
+    return TEST_FAILED;
+}
+
+int TEST(var_in_mem_deref)(void)
+{
+    /* [$c] should dereference memory at current offset */
+    elf_fb->fb->base_addr = 0;
+    fb_seek(elf_fb->fb, 0);
+    u64_t r;
+    ASSERT(eval("[32 $c]", &r) == EXPR_EVAL_OK);
+    u32_t expected = read_at_le32(elf_fb->fb->block, 0);
+    ASSERT(r == (u64_t)expected);
+    return TEST_SUCCEEDED;
+fail:
+    return TEST_FAILED;
+}
+
+int TEST(var_invalid)(void)
+{
+    /* $x is not a valid variable */
+    u64_t r;
+    ASSERT(eval("$x", &r) != EXPR_EVAL_OK);
+    return TEST_SUCCEEDED;
+fail:
+    return TEST_FAILED;
+}

@@ -88,7 +88,8 @@ static void print_diffs(FileBuffer* self, FileBuffer* other, int print_diffs,
             if (print_diffs) {
                 if (was_skipped)
                     display_printf("     *\n");
-                display_printf("%010llx  ", (u64_t)(addr + off));
+                display_printf("%010llx  ",
+                               (u64_t)(addr + off) + self->base_addr);
                 for (u64_t i = 0; i < linelen; ++i) {
                     if (i >= nbytes) {
                         display_printf("   ");

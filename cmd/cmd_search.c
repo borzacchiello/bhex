@@ -57,7 +57,7 @@ static int search_cb(FileBuffer* fb, u64_t match_addr, const u8_t* match,
         display_printf("\n\n");
     else
         ctx->first_match = 0;
-    display_printf(" >> Match @ 0x%07llX\n", match_addr);
+    display_printf(" >> Match @ 0x%07llX\n", match_addr + fb->base_addr);
     if (ctx->seek_to_match) {
         ctx->seek_addr = match_addr;
     }
@@ -88,7 +88,7 @@ static int search_cb(FileBuffer* fb, u64_t match_addr, const u8_t* match,
         const u8_t* data_to_print =
             fb_read(fb, print_addr_end - print_addr_begin);
         print_hex(data_to_print, print_addr_end - print_addr_begin, 0, 1, 1, 16,
-                  print_addr_begin);
+                  print_addr_begin + fb->base_addr);
     }
     return 1;
 }

@@ -23,6 +23,7 @@ typedef struct SeekState {
 typedef struct SeekArg {
     int   print_off;
     int   off_mode;
+    int   is_prev_off;
     u64_t off;
 } SeekArg;
 
@@ -57,7 +58,8 @@ static int parse_seek_arg(SeekState* state, ParsedCommand* pc, SeekArg* o_arg)
     if (strcmp(p, "-") == 0) {
         if (off_mode != OFF_ABSOLUTE)
             return COMMAND_INVALID_MOD;
-        o_arg->off = state->prev_off;
+        o_arg->off         = state->prev_off;
+        o_arg->is_prev_off = 1;
         return COMMAND_OK;
     }
 
@@ -86,6 +88,8 @@ static void seekcmd_help(void* obj)
         "\n"
         "  off: can be either a number or the character '-'.\n"
         "       In the latter case seek to the offset before the last seek.\n"
+        "       If a base address is set (see 'sb'), absolute addresses are\n"
+        "       relative to the base and cannot go below it.\n"
         "\n"
         "  NOTE: if called without arguments, print current offset\n");
 }
@@ -100,8 +104,18 @@ static int seekcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
         return r;
 
     if (a.print_off) {
-        display_printf("0x%llx\n", fb->off);
+        display_printf("0x%llx\n", fb->off + fb->base_addr);
         return COMMAND_OK;
+    }
+
+    if (a.off_mode == OFF_ABSOLUTE && !a.is_prev_off && fb->base_addr != 0) {
+        if (a.off < fb->base_addr) {
+            error("cannot seek below base address (base: 0x%llx, "
+                  "requested: 0x%llx)\n",
+                  fb->base_addr, a.off);
+            return COMMAND_INVALID_ARG;
+        }
+        a.off -= fb->base_addr;
     }
 
     if (a.off_mode == OFF_SUM)
@@ -114,8 +128,8 @@ static int seekcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     }
 
     if (a.off > fb->size) {
-        error("trying to seek (%llu) after the size of the file (%llu)\n",
-              a.off, fb->size);
+        error("trying to seek to 0x%llx after the size of the file (0x%llx)\n",
+              a.off + fb->base_addr, fb->size + fb->base_addr);
         return COMMAND_INVALID_ARG;
     }
 

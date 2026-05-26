@@ -129,7 +129,8 @@ static void main_loop(FileBuffer* fb, CmdContext* cc)
     printf("Write '?' after a command to read the relative help\n\n");
 
     while (1) {
-        snprintf(prompt, sizeof(prompt), "[0x%07llX] $ ", fb->off);
+        snprintf(prompt, sizeof(prompt), "[0x%07llX] $ ",
+                 fb->off + fb->base_addr);
         char* inp = linenoise(prompt);
         if (!inp || strcmp(inp, "exit") == 0) {
             bhex_free(inp);

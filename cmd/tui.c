@@ -198,7 +198,8 @@ static int refresh_screen(TuiState* ts)
 
     u64_t off = 0;
     for (int i = 0; i < sw.rows - 5; ++i) {
-        snprintf(buf, sizeof(buf) - 1, " %08llx: ", (u64_t)off + ts->fb->off);
+        snprintf(buf, sizeof(buf) - 1,
+                 " %08llx: ", (u64_t)off + ts->fb->off + ts->fb->base_addr);
         sw_append(&sw, buf);
 
         for (u64_t j = 0; j < ts->chunk_size; ++j) {
