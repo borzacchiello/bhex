@@ -111,7 +111,7 @@ static int seekcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     if (a.off_mode == OFF_ABSOLUTE && !a.is_prev_off && fb->base_addr != 0) {
         if (a.off < fb->base_addr) {
             error("cannot seek below base address (base: 0x%llx, "
-                  "requested: 0x%llx)\n",
+                  "requested: 0x%llx)",
                   fb->base_addr, a.off);
             return COMMAND_INVALID_ARG;
         }
@@ -128,7 +128,7 @@ static int seekcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     }
 
     if (a.off > fb->size) {
-        error("trying to seek to 0x%llx after the size of the file (0x%llx)\n",
+        error("trying to seek to 0x%llx after the size of the file (0x%llx)",
               a.off + fb->base_addr, fb->size + fb->base_addr);
         return COMMAND_INVALID_ARG;
     }

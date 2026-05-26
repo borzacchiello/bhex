@@ -155,7 +155,7 @@ static void main_loop(FileBuffer* fb, CmdContext* cc)
         } else {
             r = cmdctx_run(cc, pc, fb);
             if (r != COMMAND_OK && r != COMMAND_SILENT_ERROR)
-                error("%s\n", cmdctx_err_to_string(r));
+                error("%s", cmdctx_err_to_string(r));
             else
                 printf("\n");
         }
