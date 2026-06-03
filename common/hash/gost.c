@@ -10,7 +10,7 @@
 
 // Updated 12 Jan 2016  by Markku-Juhani O. Saarinen <mjos@iki.fi>
 
-#include "ghost.h"
+#include "gost.h"
 #include <string.h>
 
 /* lookup tables : each of these has two rotated 4-bit S-Boxes */
@@ -22,7 +22,7 @@ static u32_t gost_sbox_4[256];
 
 /* initialize the lookup tables */
 
-void GHOSTInit(GostHashCtx* ctx)
+void GOSTInit(GostHashCtx* ctx)
 {
     static int initialized = 0;
     if (!initialized) {
@@ -299,7 +299,7 @@ static void gost_bytes(GostHashCtx* ctx, const uint8_t* buf, u32_t bits)
 
 /* Mix in len bytes of data for the given buffer. */
 
-void GHOSTUpdate(GostHashCtx* ctx, const uint8_t* buf, u32_t len)
+void GOSTUpdate(GostHashCtx* ctx, const uint8_t* buf, u32_t len)
 {
     u32_t i, j;
 
@@ -327,7 +327,7 @@ void GHOSTUpdate(GostHashCtx* ctx, const uint8_t* buf, u32_t len)
 
 /* Compute and save the 32-byte digest. */
 
-void GHOSTFinal(uint8_t digest[GHOST_DIGEST_LENGTH], GostHashCtx* ctx)
+void GOSTFinal(uint8_t digest[GOST_DIGEST_LENGTH], GostHashCtx* ctx)
 {
     int   i, j;
     u32_t a;

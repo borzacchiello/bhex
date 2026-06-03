@@ -8,8 +8,51 @@
 
 #include "groestl-ref.h"
 
+#include <alloc.h>
+#define NEED_UINT_64T
+#include "brg-types.h"
+
+/* Internal constants and types (kept private to this translation unit). */
+#define ROWS           8
+#define LENGTHFIELDLEN ROWS
+#define COLS512        8
+#define COLS1024       16
+#define SIZE512        (ROWS * COLS512)
+#define SIZE1024       (ROWS * COLS1024)
+#define ROUNDS512      10
+#define ROUNDS1024     14
+
+typedef enum { P512 = 0, Q512 = 1, P1024 = 2, Q1024 = 3 } Variant;
+
+#define mul1(b) ((u8)(b))
+#define mul2(b) ((u8)((b) >> 7 ? ((b) << 1) ^ 0x1b : ((b) << 1)))
+#define mul3(b) (mul2(b) ^ mul1(b))
+#define mul4(b) mul2(mul2(b))
+#define mul5(b) (mul4(b) ^ mul1(b))
+#define mul6(b) (mul4(b) ^ mul2(b))
+#define mul7(b) (mul4(b) ^ mul2(b) ^ mul1(b))
+
+typedef unsigned char      BitSequence;
+typedef unsigned long long DataLength;
+typedef enum { SUCCESS = 0, FAIL = 1, BAD_HASHLEN = 2 } HashReturn;
+
+/* The actual hash state, hidden behind the opaque GroestlCtx pointer. The
+ * array dimensions are the maximums needed by the 1024-bit permutation
+ * (8 rows x 16 columns); the 512-bit variant uses a subset. */
+typedef struct GroestlState {
+    u8          chaining[ROWS][COLS1024]; /* the actual state */
+    u64         block_counter;            /* block counter */
+    int         hashbitlen;               /* output length */
+    BitSequence buffer[SIZE1024];         /* block buffer */
+    int         buf_ptr;                  /* buffer pointer */
+    int         bits_in_last_byte; /* number of bits in incomplete byte */
+    int         columns;           /* number of columns in state */
+    int         rounds;            /* number of rounds in P and Q */
+    int         statesize;         /* size of state (ROWS*columns) */
+} GroestlState;
+
 /* S-box */
-u8 S[256] = {
+static const u8 S[256] = {
     0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b,
     0xfe, 0xd7, 0xab, 0x76, 0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0,
     0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0, 0xb7, 0xfd, 0x93, 0x26,
@@ -34,12 +77,13 @@ u8 S[256] = {
     0xb0, 0x54, 0xbb, 0x16};
 
 /* Shift values for short/long variants */
-int Shift[2][2][ROWS] = {
+static const int Shift[2][2][ROWS] = {
     {{0, 1, 2, 3, 4, 5, 6, 7}, {1, 3, 5, 7, 0, 2, 4, 6}},
     {{0, 1, 2, 3, 4, 5, 6, 11}, {1, 3, 5, 11, 0, 2, 4, 6}}};
 
 /* AddRoundConstant xors a round-dependent constant to the state */
-void AddRoundConstant(u8 x[ROWS][COLS1024], int columns, u8 round, Variant v)
+static void AddRoundConstant(u8 x[ROWS][COLS1024], int columns, u8 round,
+                             Variant v)
 {
     int i, j;
     switch (v & 1) {
@@ -58,7 +102,7 @@ void AddRoundConstant(u8 x[ROWS][COLS1024], int columns, u8 round, Variant v)
 }
 
 /* SubBytes replaces each byte by a value from the S-box */
-void SubBytes(u8 x[ROWS][COLS1024], int columns)
+static void SubBytes(u8 x[ROWS][COLS1024], int columns)
 {
     int i, j;
 
@@ -69,11 +113,11 @@ void SubBytes(u8 x[ROWS][COLS1024], int columns)
 
 /* ShiftBytes cyclically shifts each row to the left by a number of
    positions */
-void ShiftBytes(u8 x[ROWS][COLS1024], int columns, Variant v)
+static void ShiftBytes(u8 x[ROWS][COLS1024], int columns, Variant v)
 {
-    int* R = Shift[v / 2][v & 1];
-    int  i, j;
-    u8   temp[COLS1024];
+    const int* R = Shift[v / 2][v & 1];
+    int        i, j;
+    u8         temp[COLS1024];
 
     for (i = 0; i < ROWS; i++) {
         for (j = 0; j < columns; j++) {
@@ -86,7 +130,7 @@ void ShiftBytes(u8 x[ROWS][COLS1024], int columns, Variant v)
 }
 
 /* MixBytes reversibly mixes the bytes within a column */
-void MixBytes(u8 x[ROWS][COLS1024], int columns)
+static void MixBytes(u8 x[ROWS][COLS1024], int columns)
 {
     int i, j;
     u8  temp[ROWS];
@@ -105,7 +149,7 @@ void MixBytes(u8 x[ROWS][COLS1024], int columns)
 }
 
 /* apply P-permutation to x */
-void P(hashState* ctx, u8 x[ROWS][COLS1024])
+static void P(GroestlState* ctx, u8 x[ROWS][COLS1024])
 {
     u8      i;
     Variant v = ctx->columns == 8 ? P512 : P1024;
@@ -118,7 +162,7 @@ void P(hashState* ctx, u8 x[ROWS][COLS1024])
 }
 
 /* apply Q-permutation to x */
-void Q(hashState* ctx, u8 x[ROWS][COLS1024])
+static void Q(GroestlState* ctx, u8 x[ROWS][COLS1024])
 {
     u8      i;
     Variant v = ctx->columns == 8 ? Q512 : Q1024;
@@ -131,7 +175,7 @@ void Q(hashState* ctx, u8 x[ROWS][COLS1024])
 }
 
 /* digest (up to) msglen bytes */
-void Transform(hashState* ctx, const BitSequence* input, u32 msglen)
+static void Transform(GroestlState* ctx, const BitSequence* input, u32 msglen)
 {
     int i, j;
     u8  temp1[ROWS][COLS1024], temp2[ROWS][COLS1024];
@@ -164,7 +208,7 @@ void Transform(hashState* ctx, const BitSequence* input, u32 msglen)
 }
 
 /* do output transformation, P(h)+h */
-void OutputTransformation(hashState* ctx)
+static void OutputTransformation(GroestlState* ctx)
 {
     int i, j;
     u8  temp[ROWS][COLS1024];
@@ -188,7 +232,7 @@ void OutputTransformation(hashState* ctx)
 }
 
 /* initialise context */
-HashReturn Init(hashState* ctx, int hashbitlen)
+static HashReturn Init(GroestlState* ctx, int hashbitlen)
 {
     int i, j;
 
@@ -226,8 +270,8 @@ HashReturn Init(hashState* ctx, int hashbitlen)
     return SUCCESS;
 }
 
-HashReturn Update(hashState* ctx, const BitSequence* input,
-                  DataLength databitlen)
+static HashReturn Update(GroestlState* ctx, const BitSequence* input,
+                         DataLength databitlen)
 {
     int        index  = 0;
     DataLength msglen = databitlen / 8; /* no. of (full) bytes supplied */
@@ -277,7 +321,7 @@ HashReturn Update(hashState* ctx, const BitSequence* input,
 }
 
 #define BILB ctx->bits_in_last_byte
-HashReturn Final(hashState* ctx, BitSequence* output)
+static HashReturn Final(GroestlState* ctx, BitSequence* output)
 {
     int i, j, hashbytelen = ctx->hashbitlen / 8;
 
@@ -332,54 +376,35 @@ HashReturn Final(hashState* ctx, BitSequence* output)
     return SUCCESS;
 }
 
-/* hash bit sequence */
-HashReturn Hash(int hashbitlen, const BitSequence* data, DataLength databitlen,
-                BitSequence* hashval)
-{
-    HashReturn ret;
-    hashState  ctx;
-
-    /* initialise */
-    if ((ret = Init(&ctx, hashbitlen)))
-        return ret;
-
-    /* process message */
-    if ((ret = Update(&ctx, data, databitlen)))
-        return ret;
-
-    /* finalise */
-    ret = Final(&ctx, hashval);
-
-    return ret;
-}
-
-/* print hash result */
-void PrintHash(BitSequence* hashval, int hashbitlen)
-{
-    int i;
-    for (i = 0; i < (hashbitlen + 7) / 8; i++)
-        printf("%02x", hashval[i]);
-    printf("\n");
-}
-
 /*
  * Wrappers for GEN_HANDLE_FUNC macro compatibility.
  * These adapt the NIST-style API (Init with hashbitlen, Update with bits,
- * Final with (ctx, out) order) to the macro's calling convention.
+ * Final with (ctx, out) order) to the macro's calling convention, and hide the
+ * GroestlState allocation behind the opaque GroestlCtx handle: init allocates,
+ * final frees.
  */
 
-void groestl_224_init(hashState* ctx) { Init(ctx, 224); }
-void groestl_256_init(hashState* ctx) { Init(ctx, 256); }
-void groestl_384_init(hashState* ctx) { Init(ctx, 384); }
-void groestl_512_init(hashState* ctx) { Init(ctx, 512); }
-
-void groestl_update(hashState* ctx, const unsigned char* data,
-                    unsigned long long len)
+static void groestl_init(GroestlCtx* ctx, int hashbitlen)
 {
-    Update(ctx, data, (DataLength)(len * 8));
+    GroestlState* state = bhex_malloc(sizeof(*state));
+    Init(state, hashbitlen);
+    *ctx = state;
 }
 
-void groestl_final(unsigned char* digest, hashState* ctx)
+void groestl_224_init(GroestlCtx* ctx) { groestl_init(ctx, 224); }
+void groestl_256_init(GroestlCtx* ctx) { groestl_init(ctx, 256); }
+void groestl_384_init(GroestlCtx* ctx) { groestl_init(ctx, 384); }
+void groestl_512_init(GroestlCtx* ctx) { groestl_init(ctx, 512); }
+
+void groestl_update(GroestlCtx* ctx, const unsigned char* data,
+                    unsigned long long len)
 {
-    Final(ctx, digest);
+    Update(*ctx, data, (DataLength)(len * 8));
+}
+
+void groestl_final(unsigned char* digest, GroestlCtx* ctx)
+{
+    Final(*ctx, digest);
+    bhex_free(*ctx);
+    *ctx = NULL;
 }

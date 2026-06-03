@@ -37,7 +37,7 @@ typedef struct {
 } jh_hashState;
 
 /*The constant for the Round 0 of E8*/
-const unsigned char roundconstant_zero[64] = {
+static const unsigned char roundconstant_zero[64] = {
     0x6, 0xa, 0x0, 0x9, 0xe, 0x6, 0x6, 0x7, 0xf, 0x3, 0xb, 0xc, 0xc,
     0x9, 0x0, 0x8, 0xb, 0x2, 0xf, 0xb, 0x1, 0x3, 0x6, 0x6, 0xe, 0xa,
     0x9, 0x5, 0x7, 0xd, 0x3, 0xe, 0x3, 0xa, 0xd, 0xe, 0xc, 0x1, 0x7,
@@ -56,15 +56,16 @@ static unsigned char jh_S[2][16] = {
         (a) ^= (((b) << 1) ^ ((b) >> 3) ^ (((b) >> 2) & 2)) & 0xf;             \
     }
 
-void R8(jh_hashState* state); /* The round function of E8 */
-void update_roundconstant(
-    jh_hashState* state);                  /* Update the round constant of E8 */
-void E8_initialgroup(jh_hashState* state); /* Grouping the state into 4-bit
-                                           elements at the beginning of E8 */
-void E8_finaldegroup(
-    jh_hashState* state);     /* Inverse of the grouping at the end of E8 */
-void E8(jh_hashState* state); /* The bijective function E8 */
-void F8(jh_hashState* state); /* The compression function F8 */
+static void R8(jh_hashState* state); /* The round function of E8 */
+static void
+update_roundconstant(jh_hashState* state); /* Update the round constant of E8 */
+static void
+E8_initialgroup(jh_hashState* state); /* Grouping the state into 4-bit
+                               elements at the beginning of E8 */
+static void E8_finaldegroup(
+    jh_hashState* state); /* Inverse of the grouping at the end of E8 */
+static void E8(jh_hashState* state); /* The bijective function E8 */
+static void F8(jh_hashState* state); /* The compression function F8 */
 
 /*The API functions*/
 jh_HashReturn jh_Init(jh_hashState* state, int hashbitlen);
@@ -75,7 +76,7 @@ jh_HashReturn jh_Hash(int hashbitlen, const jh_BitSequence* data,
                       jh_DataLength databitlen, jh_BitSequence* hashval);
 
 /*the round function of E8 */
-void R8(jh_hashState* state)
+static void R8(jh_hashState* state)
 {
     unsigned int  i;
     unsigned char tem[256], t;
@@ -126,7 +127,7 @@ void R8(jh_hashState* state)
   round constant;  R6 is used for generating round constants for E8, with
   the round constants of R6 being set as 0;
 */
-void update_roundconstant(jh_hashState* state)
+static void update_roundconstant(jh_hashState* state)
 {
     int           i;
     unsigned char tem[64], t;
@@ -166,7 +167,7 @@ void update_roundconstant(jh_hashState* state)
   of A. After the grouping, the i-th, (i+256)-th, (i+512)-th, (i+768)-th bits of
   state->H become the i-th 4-bit element of state->A
 */
-void E8_initialgroup(jh_hashState* state)
+static void E8_initialgroup(jh_hashState* state)
 {
     unsigned int  i;
     unsigned char t0, t1, t2, t3;
@@ -193,7 +194,7 @@ void E8_initialgroup(jh_hashState* state)
 /*de-group at the end of E_8:  it is the inverse of E8_initialgroup
   The 256 4-bit elements in state->A are degouped into the 1024-bit state->H
 */
-void E8_finaldegroup(jh_hashState* state)
+static void E8_finaldegroup(jh_hashState* state)
 {
     unsigned int  i;
     unsigned char t0, t1, t2, t3;
@@ -221,7 +222,7 @@ void E8_finaldegroup(jh_hashState* state)
 }
 
 /*bijective function E8 */
-void E8(jh_hashState* state)
+static void E8(jh_hashState* state)
 {
     unsigned int i;
 
@@ -245,7 +246,7 @@ void E8(jh_hashState* state)
 }
 
 /* compression function F8 */
-void F8(jh_hashState* state)
+static void F8(jh_hashState* state)
 {
     unsigned int i;
 

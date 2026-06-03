@@ -639,7 +639,7 @@ int md6_update(md6_state* st, const u8_t* data, u64_t databitlen)
 /* Extract last d bits of chaining variable as hash value.
  */
 
-void trim_hashval(md6_state* st)
+static void trim_hashval(md6_state* st)
 { /* trim hashval to desired length d bits by taking only last d bits */
     /* note that high-order bit of a byte is considered its *first* bit */
     int full_or_partial_bytes = (st->d + 7) / 8;
@@ -833,8 +833,8 @@ int md6_hash(int   d,          /* hash bit length */
 #define RL14 loop_body(6, 31, 14)
 #define RL15 loop_body(12, 9, 15)
 
-const md6_word S0    = (md6_word)0x0123456789abcdefULL;
-const md6_word Smask = (md6_word)0x7311c2812425cfa0ULL;
+static const md6_word S0    = (md6_word)0x0123456789abcdefULL;
+static const md6_word Smask = (md6_word)0x7311c2812425cfa0ULL;
 
 #elif (w == 32) /* for variant word size */
 #define RL00 loop_body(5, 4, 0)
@@ -854,8 +854,8 @@ const md6_word Smask = (md6_word)0x7311c2812425cfa0ULL;
 #define RL14 loop_body(7, 2, 14)
 #define RL15 loop_body(5, 11, 15)
 
-const md6_word S0    = (md6_word)0x01234567UL;
-const md6_word Smask = (md6_word)0x7311c281UL;
+static const md6_word S0    = (md6_word)0x01234567UL;
+static const md6_word Smask = (md6_word)0x7311c281UL;
 
 /* Loop-unrolling setup (continued).
 **
@@ -880,8 +880,8 @@ const md6_word Smask = (md6_word)0x7311c281UL;
 #define RL14 loop_body(7, 4, 14)
 #define RL15 loop_body(2, 3, 15)
 
-const md6_word S0    = (md6_word)0x01234;
-const md6_word Smask = (md6_word)0x7311;
+static const md6_word S0    = (md6_word)0x01234;
+static const md6_word Smask = (md6_word)0x7311;
 
 #elif (w == 8) /* for variant word size */
 
@@ -902,8 +902,8 @@ const md6_word Smask = (md6_word)0x7311;
 #define RL14 loop_body(2, 3, 14)
 #define RL15 loop_body(3, 4, 15)
 
-const md6_word S0    = (md6_word)0x01;
-const md6_word Smask = (md6_word)0x73;
+static const md6_word S0    = (md6_word)0x01;
+static const md6_word Smask = (md6_word)0x73;
 
 #endif
 

@@ -16,7 +16,7 @@
 
 #include <defs.h>
 
-#define GHOST_DIGEST_LENGTH 32
+#define GOST_DIGEST_LENGTH 32
 
 /* State structure */
 
@@ -30,14 +30,14 @@ typedef struct {
 
 /* Compute some lookup-tables that are needed by all other functions. */
 
-void GHOSTInit(GostHashCtx* ctx);
+void GOSTInit(GostHashCtx* ctx);
 
 /* Mix in len bytes of data for the given buffer. */
 
-void GHOSTUpdate(GostHashCtx* ctx, const uint8_t* buf, u32_t len);
+void GOSTUpdate(GostHashCtx* ctx, const uint8_t* buf, u32_t len);
 
 /* Compute and save the 32-byte digest. */
 
-void GHOSTFinal(uint8_t digest[GHOST_DIGEST_LENGTH], GostHashCtx* ctx);
+void GOSTFinal(uint8_t digest[GOST_DIGEST_LENGTH], GostHashCtx* ctx);
 
 #endif /* GOSTHASH_H */
