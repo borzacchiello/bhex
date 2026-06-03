@@ -11,6 +11,7 @@
 
 #include <alloc.h>
 #include <log.h>
+#include <pthread.h>
 
 #define MOD_TYPE_OVERWRITE 1
 #define MOD_TYPE_INSERT    2
@@ -723,62 +724,221 @@ void filebuffer_destroy(FileBuffer* fb)
     bhex_free(fb);
 }
 
-static void populate_index(FileBuffer* fb)
+static inline BlockInfo* get_block_at(SearchIndex* ctx, u64_t addr)
 {
-#define is_within_block(block_n, block_off, block_size)                        \
-    ((((block_n) < fb_index_size - 1) && ((block_off) < (block_size))) ||      \
-     ((block_n) == fb_index_size - 1))
+    u64_t off = addr / ctx->block_size;
+    if (off >= fb_index_size)
+        panic("invalid address");
+    return &ctx->blocks[off];
+}
 
+typedef struct {
+    FileBuffer*    fb;
+    const u8_t*    data;
+    size_t         data_size;
+    u64_t          start;
+    u64_t          end;
+    fb_search_cb_t cb;
+    void*          user_data;
+    volatile int*  stop;
+} SearchTask;
+
+static void* search_worker(void* arg)
+{
+    SearchTask* task = (SearchTask*)arg;
+
+    u8_t data_min = task->data[0];
+    u8_t data_max = task->data[0];
+    for (size_t i = 1; i < task->data_size; ++i) {
+        if (task->data[i] < data_min)
+            data_min = task->data[i];
+        if (task->data[i] > data_max)
+            data_max = task->data[i];
+    }
+
+    size_t buf_size = max(task->data_size * 2, fb_block_size * 2);
+    u8_t*  buf      = bhex_malloc(buf_size);
+    size_t buf_off  = 0;
+    size_t buf_end  = 0;
+
+    SearchIndex* ctx  = task->fb->search_index;
+    u64_t        addr = task->start;
+
+    while (addr + task->data_size <= task->end && !*task->stop) {
+        if (ctx->has_index) {
+            BlockInfo* binfo = get_block_at(ctx, addr);
+            if (!(binfo->min <= data_min && data_max <= binfo->max)) {
+                addr = (addr / ctx->block_size) * ctx->block_size +
+                       ctx->block_size;
+                buf_off = 0;
+                buf_end = 0;
+                continue;
+            }
+        }
+
+        if (buf_off + task->data_size > buf_end) {
+            size_t to_read = min((u64_t)buf_size, task->end - addr);
+            u8_t*  chunk   = fb_read_alloc(task->fb, addr, to_read);
+            if (chunk == NULL)
+                break;
+            memcpy(buf, chunk, to_read);
+            bhex_free(chunk);
+            buf_off = 0;
+            buf_end = to_read;
+        }
+
+        int match = 1;
+        for (size_t j = 0; j < task->data_size; ++j) {
+            if (task->data[j] != buf[buf_off + j]) {
+                match = 0;
+                break;
+            }
+        }
+
+        if (match) {
+            fb_lock(task->fb);
+            if (!task->cb(task->fb, addr, task->data, task->data_size,
+                          task->user_data))
+                *task->stop = 1;
+            fb_unlock(task->fb);
+        }
+
+        addr += 1;
+        buf_off += 1;
+    }
+
+    bhex_free(buf);
+    return NULL;
+}
+
+static void split_work(size_t total, int parts, int idx, size_t* begin,
+                       size_t* end)
+{
+    size_t base = total / (size_t)parts;
+    size_t rem  = total % (size_t)parts;
+
+    *begin = (size_t)idx * base + min((size_t)idx, rem);
+    *end   = *begin + base + ((size_t)idx < rem ? 1 : 0);
+}
+
+typedef struct {
+    FileBuffer* fb;
+    u64_t       block_size;
+    u64_t       file_size;
+    int         block_begin; // inclusive
+    int         block_end;   // exclusive
+    BlockInfo*  blocks;
+} IndexTask;
+
+// Computes the [min, max] byte value for a disjoint range of index blocks.
+// Block 'b' covers the file range [b * block_size, min((b+1) * block_size,
+// file_size)); this is provably equivalent to the sequential block assignment
+// (including the trailing block that absorbs the remainder of the file).
+static void* index_worker(void* arg)
+{
+    IndexTask* task = (IndexTask*)arg;
+
+    for (int b = task->block_begin; b < task->block_end; ++b) {
+        u8_t  bmin  = 255;
+        u8_t  bmax  = 0;
+        u64_t start = (u64_t)b * task->block_size;
+        if (start < task->file_size) {
+            u64_t end  = min(start + task->block_size, task->file_size);
+            u64_t addr = start;
+            while (addr < end) {
+                size_t chunk = min((u64_t)fb_block_size, end - addr);
+                u8_t*  buf   = fb_read_alloc(task->fb, addr, chunk);
+                if (buf == NULL)
+                    break;
+                for (size_t i = 0; i < chunk; ++i) {
+                    if (buf[i] < bmin)
+                        bmin = buf[i];
+                    if (buf[i] > bmax)
+                        bmax = buf[i];
+                }
+                bhex_free(buf);
+                addr += chunk;
+            }
+        }
+        task->blocks[b].min = bmin;
+        task->blocks[b].max = bmax;
+    }
+    return NULL;
+}
+
+static void populate_index(FileBuffer* fb, int nthreads)
+{
     SearchIndex* ctx = fb->search_index;
-    if (ctx->has_index && (ctx->version == fb->version))
+
+    fb_lock(fb);
+    if (ctx->has_index && (ctx->version == fb->version)) {
+        fb_unlock(fb);
         return;
+    }
 
     ctx->version = fb->version;
     if (fb->size < fb_index_size * 8) {
         // if the file size is not big enough, it makes
         // no sense to keep the index
         ctx->has_index = 0;
+        fb_unlock(fb);
         return;
     }
-    ctx->has_index = 1;
+    ctx->has_index  = 1;
+    ctx->block_size = fb->size / fb_index_size + 1;
+    u64_t file_size = fb->size;
+    // Release the lock before spawning workers: fb_read_alloc() locks the
+    // (recursive) mutex itself, so holding it here would deadlock the workers.
+    fb_unlock(fb);
 
-    u64_t orig_off = fb->off;
-    fb_seek(fb, 0);
+    if (nthreads < 1)
+        nthreads = 1;
+    // No point in spawning more workers than there are blocks to index.
+    else if (nthreads > fb_index_size)
+        nthreads = fb_index_size;
 
-    u32_t block_n      = 0;
-    u32_t block_off    = 0;
-    ctx->blocks[0].min = 255;
-    ctx->blocks[0].max = 0;
-    ctx->block_size    = fb->size / fb_index_size + 1;
-
-    u64_t addr = 0;
-    while (addr < fb->size) {
-        fb_seek(fb, addr);
-        const u8_t* block = fb_read(fb, min(fb_block_size, fb->size - fb->off));
-        u32_t       i;
-        for (i = 0; i < min(fb_block_size, fb->size - fb->off); i++) {
-            if (!is_within_block(block_n, block_off, ctx->block_size)) {
-                block_n += 1;
-                block_off = 0;
-
-                ctx->blocks[block_n].min = 255;
-                ctx->blocks[block_n].max = 0;
-            }
-            if (block[i] < ctx->blocks[block_n].min)
-                ctx->blocks[block_n].min = block[i];
-            if (block[i] > ctx->blocks[block_n].max)
-                ctx->blocks[block_n].max = block[i];
-            block_off += 1;
-        }
-        addr += min(fb_block_size, fb->size - fb->off);
+    if (nthreads == 1) {
+        IndexTask task = {
+            .fb          = fb,
+            .block_size  = ctx->block_size,
+            .file_size   = file_size,
+            .block_begin = 0,
+            .block_end   = fb_index_size,
+            .blocks      = ctx->blocks,
+        };
+        index_worker(&task);
+        return;
     }
-    fb_seek(fb, orig_off);
+
+    pthread_t* threads = bhex_malloc(sizeof(pthread_t) * (size_t)nthreads);
+    IndexTask* tasks   = bhex_malloc(sizeof(IndexTask) * (size_t)nthreads);
+
+    for (int t = 0; t < nthreads; ++t) {
+        size_t begin, end;
+        split_work(fb_index_size, nthreads, t, &begin, &end);
+
+        tasks[t].fb          = fb;
+        tasks[t].block_size  = ctx->block_size;
+        tasks[t].file_size   = file_size;
+        tasks[t].block_begin = (int)begin;
+        tasks[t].block_end   = (int)end;
+        tasks[t].blocks      = ctx->blocks;
+
+        if (pthread_create(&threads[t], NULL, index_worker, &tasks[t]) != 0)
+            panic("pthread_create failed");
+    }
+
+    for (int t = 0; t < nthreads; ++t)
+        pthread_join(threads[t], NULL);
+
+    bhex_free(threads);
+    bhex_free(tasks);
 }
 
 __attribute__((unused)) static void print_block_info(FileBuffer* fb)
 {
     SearchIndex* ctx = fb->search_index;
-    populate_index(fb);
+    populate_index(fb, 1);
     if (!ctx->has_index) {
         warning("file is too short, no blocks info");
         return;
@@ -796,85 +956,63 @@ __attribute__((unused)) static void print_block_info(FileBuffer* fb)
     }
 }
 
-static inline BlockInfo* get_block_at(SearchIndex* ctx, u64_t addr)
-{
-    u64_t off = addr / ctx->block_size;
-    if (off >= fb_index_size)
-        panic("invalid address");
-    return &ctx->blocks[off];
-}
-
 void fb_search(FileBuffer* fb, const u8_t* data, size_t size, fb_search_cb_t cb,
-               void* user_data)
+               void* user_data, int nthreads)
 {
     if (size == 0)
         return;
 
+    if (nthreads < 1)
+        nthreads = 1;
+
+    populate_index(fb, nthreads);
+
     fb_lock(fb);
-    populate_index(fb);
-
-    u64_t orig_off = fb->off;
-    fb_seek(fb, 0);
-
-    size_t buf_off  = 0;
-    size_t buf_size = max(size * 2, fb_block_size * 2);
-    u8_t*  buf      = bhex_malloc(buf_size);
-
-    memcpy(buf, fb_read(fb, min(buf_size / 2, fb->size)),
-           min(buf_size / 2, fb->size));
-
-    u8_t   data_min = data[0];
-    u8_t   data_max = data[0];
-    size_t i;
-    for (i = 1; i < size; ++i) {
-        if (data[i] < data_min)
-            data_min = data[i];
-        if (data[i] > data_max)
-            data_max = data[i];
-    }
-
-    SearchIndex* ctx  = fb->search_index;
-    u64_t        addr = 0;
-    while (addr + size <= fb->size) {
-        if (ctx->has_index) {
-            BlockInfo* binfo = get_block_at(ctx, addr);
-            if (!(binfo->min <= data_min && data_max <= binfo->max)) {
-                // skip a block
-                addr = (addr / ctx->block_size) * ctx->block_size +
-                       ctx->block_size;
-                buf_off = 0;
-                continue;
-            }
-        }
-        u64_t begin_addr = addr;
-
-        int    eq = 1;
-        size_t j  = 0;
-        for (j = 0; j < size; ++j) {
-            size_t curr_off = (buf_off + j) % buf_size;
-            if (curr_off == 0 && fb->off != addr + j) {
-                fb_seek(fb, addr + j);
-                memcpy(buf, fb_read(fb, min(buf_size / 2, fb->size - fb->off)),
-                       min(buf_size / 2, fb->size - fb->off));
-            } else if (curr_off == buf_size / 2 && fb->off != addr + j) {
-                fb_seek(fb, addr + j);
-                memcpy(buf + buf_size / 2,
-                       fb_read(fb, min(buf_size / 2, fb->size - fb->off)),
-                       min(buf_size / 2, fb->size - fb->off));
-            }
-
-            eq = data[j] == buf[curr_off];
-            if (!eq)
-                break;
-        }
-        if (eq && !cb(fb, begin_addr, data, size, user_data))
-            break;
-
-        addr += 1;
-        buf_off += 1;
-    }
-
-    bhex_free(buf);
-    fb_seek(fb, orig_off);
+    u64_t orig_off  = fb->off;
+    u64_t file_size = fb->size;
     fb_unlock(fb);
+
+    if (file_size < size)
+        return;
+
+    // Number of candidate start positions to scan.
+    u64_t total = file_size - size + 1;
+    if ((u64_t)nthreads > total)
+        nthreads = (int)total;
+
+    volatile int stop    = 0;
+    pthread_t*   threads = bhex_malloc(sizeof(pthread_t) * (size_t)nthreads);
+    SearchTask*  tasks   = bhex_malloc(sizeof(SearchTask) * (size_t)nthreads);
+
+    for (int t = 0; t < nthreads; ++t) {
+        size_t begin, end;
+        split_work(total, nthreads, t, &begin, &end);
+        // Extend the range so a pattern straddling the split is still found.
+        end += (size - 1);
+
+        tasks[t].fb        = fb;
+        tasks[t].data      = data;
+        tasks[t].data_size = size;
+        tasks[t].start     = (u64_t)begin;
+        tasks[t].end       = (u64_t)end;
+        tasks[t].cb        = cb;
+        tasks[t].user_data = user_data;
+        tasks[t].stop      = &stop;
+    }
+
+    if (nthreads == 1) {
+        // Run in the calling thread: matches are reported in ascending order.
+        search_worker(&tasks[0]);
+    } else {
+        for (int t = 0; t < nthreads; ++t)
+            if (pthread_create(&threads[t], NULL, search_worker, &tasks[t]) !=
+                0)
+                panic("pthread_create failed");
+        for (int t = 0; t < nthreads; ++t)
+            pthread_join(threads[t], NULL);
+    }
+
+    bhex_free(threads);
+    bhex_free(tasks);
+    fb_seek(fb, orig_off);
 }

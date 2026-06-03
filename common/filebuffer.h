@@ -76,7 +76,7 @@ void fb_undo_all(FileBuffer* fb);
 void fb_commit(FileBuffer* fb);
 
 void fb_search(FileBuffer* fb, const u8_t* data, size_t size, fb_search_cb_t cb,
-               void* user_data);
+               void* user_data, int nthreads);
 
 // Calling this APIs two times will invalidate the old buffer
 // and the returned pointer must not be shared across threads.

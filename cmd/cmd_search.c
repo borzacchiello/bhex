@@ -13,6 +13,7 @@
 #include <alloc.h>
 #include <defs.h>
 #include <log.h>
+#include <unistd.h>
 
 #define HINT_STR "[/{x, s}/sk/p] <what>"
 
@@ -126,7 +127,9 @@ static int searchcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
         .seek_addr     = 0,
     };
 
-    fb_search(fb, data, data_size, search_cb, &ctx);
+    long ncpu     = sysconf(_SC_NPROCESSORS_ONLN);
+    int  nthreads = ncpu > 0 ? (int)ncpu : 1;
+    fb_search(fb, data, data_size, search_cb, &ctx, nthreads);
     if (ctx.seek_to_match && fb->off != ctx.seek_addr)
         fb_seek(fb, ctx.seek_addr);
 

@@ -43,7 +43,6 @@
 #define FINDBASE_PAGE_SIZE              0x1000ull
 #define FINDBASE_PAGE_MASK              (FINDBASE_PAGE_SIZE - 1)
 #define FINDBASE_MAX_CANDIDATES         30
-#define FINDBASE_MAX_THREADS            8
 #define FINDBASE_SCAN_CHUNK             (256 * 1024ull)
 #define FINDBASE_MEMORY_REGION_MIN_SIZE 1024ull
 
@@ -201,8 +200,6 @@ static int default_thread_count(size_t work_units)
     long ncpu = sysconf(_SC_NPROCESSORS_ONLN);
     if (ncpu < 1)
         ncpu = 1;
-    if (ncpu > FINDBASE_MAX_THREADS)
-        ncpu = FINDBASE_MAX_THREADS;
     if (work_units > 0 && (size_t)ncpu > work_units)
         ncpu = (long)work_units;
     if (ncpu < 1)
