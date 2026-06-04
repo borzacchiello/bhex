@@ -58,6 +58,17 @@ typedef struct FileBuffer {
     u8_t block[fb_block_size];
     u8_t tmp_block[fb_block_size];
     s8_t block_dirty;
+
+    // Cache describing what `block` currently holds, so that consecutive reads
+    // that fall within the loaded window can be served without re-reading from
+    // disk (and without re-stat()ing the file). `block[0]` corresponds to file
+    // offset `cache_off`, and `cache_len` bytes are valid. The cache is only
+    // trusted while `cache_version == version` (any modification bumps
+    // `version`).
+    u64_t cache_off;
+    u64_t cache_len;
+    u64_t cache_version;
+    s8_t  cache_valid;
 } FileBuffer;
 
 typedef int (*fb_search_cb_t)(FileBuffer* fb, u64_t match_addr,

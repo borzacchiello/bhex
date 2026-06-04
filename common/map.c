@@ -31,11 +31,13 @@ map* map_create(void)
 {
     // Allocate space for the map's primary data structure. More space will be
     // allocated in the future when values are added to the map.
-    map* m   = bhex_malloc(sizeof(map));
-    m->elems = bhex_calloc(sizeof(struct cell*));
+    map* m = bhex_malloc(sizeof(map));
 
-    // Initialize metadata. The map starts with capacity for one entry.
-    m->capacity   = 1;
+    // Start empty: the bucket array is allocated lazily on the first insert.
+    // Many maps (e.g. the scopes pushed for every loop iteration or if-branch)
+    // never receive an entry, so this avoids an allocation per empty map.
+    m->elems      = NULL;
+    m->capacity   = 0;
     m->size       = 0;
     m->el_dispose = NULL;
 
@@ -88,6 +90,8 @@ int map_size(const map* m) { return m->size; }
  */
 int map_contains(const map* m, const char* key)
 {
+    if (m->capacity == 0)
+        return 0;
     int b = hash(key) % m->capacity;
 
     // Search linearly for a matching key through the appropriate linked list.
@@ -106,21 +110,22 @@ int map_contains(const map* m, const char* key)
  */
 void map_set(map* m, const char* key, void* value)
 {
-    int b = hash(key) % m->capacity;
-
     // First, look for an existing entry with the given key in the map. If it
     // exists, simply update its value.
-    for (struct cell* curr = m->elems[b]; curr != NULL; curr = curr->next) {
-        if (strcmp(curr->key, key) == 0) {
-            if (m->el_dispose)
-                m->el_dispose(curr->value);
-            curr->value = value;
-            return;
+    if (m->capacity > 0) {
+        int b = hash(key) % m->capacity;
+        for (struct cell* curr = m->elems[b]; curr != NULL; curr = curr->next) {
+            if (strcmp(curr->key, key) == 0) {
+                if (m->el_dispose)
+                    m->el_dispose(curr->value);
+                curr->value = value;
+                return;
+            }
         }
     }
 
     extend_if_necessary(m);
-    b = hash(key) % m->capacity;
+    int b = hash(key) % m->capacity;
 
     // No existing key was found, so insert it as a new entry at the head of the
     // list.
@@ -139,6 +144,8 @@ void map_set(map* m, const char* key, void* value)
  */
 void* map_get(const map* m, const char* key)
 {
+    if (m->capacity == 0)
+        panic("map_get(): key not found");
     int b = hash(key) % m->capacity;
 
     // Search linearly for a matching key through the appropriate linked list.
@@ -156,6 +163,8 @@ void* map_get(const map* m, const char* key)
  */
 void* map_get_or_null(const map* m, const char* key)
 {
+    if (m->capacity == 0)
+        return NULL;
     int b = hash(key) % m->capacity;
 
     for (struct cell* curr = m->elems[b]; curr != NULL; curr = curr->next) {
@@ -172,6 +181,8 @@ void* map_get_or_null(const map* m, const char* key)
  */
 void* map_remove(map* m, const char* key)
 {
+    if (m->capacity == 0)
+        panic("map_remove(): key not found");
     int b = hash(key) % m->capacity;
 
     // Here, use a double pointer to make removal easier.
@@ -268,9 +279,10 @@ static void extend_if_necessary(map* m)
         struct cell** elems    = m->elems;
 
         // Doubling the capacity when necessary allows for an amortized constant
-        // runtime for extension.
-        m->capacity *= 2;
-        m->elems = bhex_calloc(m->capacity * sizeof(struct cell*));
+        // runtime for extension. A lazily-initialized map starts at capacity 0,
+        // so the first growth goes to 1.
+        m->capacity = m->capacity ? m->capacity * 2 : 1;
+        m->elems    = bhex_calloc(m->capacity * sizeof(struct cell*));
 
         for (int i = 0; i < capacity; i += 1) {
             struct cell* curr = elems[i];

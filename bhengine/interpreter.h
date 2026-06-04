@@ -38,6 +38,7 @@ void bhengine_interpreter_set_fmt_type(fmt_t t);
 
 int bhengine_interpreter_process_filename(FileBuffer* fb, const char* bhe);
 int bhengine_interpreter_process_file(FileBuffer* fb, FILE* f);
+int bhengine_interpreter_process_string(FileBuffer* fb, const char* str);
 int bhengine_interpreter_process_ast(FileBuffer* fb, ASTCtx* ast);
 int bhengine_interpreter_process_ast_struct(FileBuffer* fb, ASTCtx* ast,
                                             const char* s);

@@ -32,6 +32,12 @@ static void fb_unlock(FileBuffer* fb)
         panic("pthread_mutex_unlock failed");
 }
 
+// Invalidate the read cache. Must be called by every operation that changes
+// the file contents/structure (write/insert/delete/undo/commit/reload). It is
+// intentionally NOT called on a plain seek: the cache is keyed on absolute file
+// offsets, so seeking within an already-loaded window stays a cache hit.
+static void fb_invalidate_cache(FileBuffer* fb) { fb->cache_valid = 0; }
+
 static int was_file_modified(const char* path, time_t prev_time,
                              time_t* new_time)
 {
@@ -46,6 +52,7 @@ static int was_file_modified(const char* path, time_t prev_time,
 
 static int fb_reload(FileBuffer* fb)
 {
+    fb_invalidate_cache(fb);
     fb_undo_all(fb);
 
     if (fseek(fb->file, 0, SEEK_END) < 0) {
@@ -100,6 +107,7 @@ FileBuffer* filebuffer_create(const char* path, int readonly)
     fb->readonly      = readonly;
     fb->modifications = ll_create();
     fb->block_dirty   = 1;
+    fb->cache_valid   = 0;
     fb->version       = 0;
     fb->search_index  = bhex_calloc(sizeof(SearchIndex));
     fb->off           = 0;
@@ -162,6 +170,7 @@ int fb_write(FileBuffer* fb, u8_t* data, size_t size)
 {
     int r = 0;
     fb_lock(fb);
+    fb_invalidate_cache(fb);
     fb_modified_check(fb);
     if (fb->readonly)
         warning("the file was opened in read-only mode, you cannot commit this "
@@ -194,6 +203,7 @@ int fb_insert(FileBuffer* fb, u8_t* data, size_t size)
 {
     int r = 0;
     fb_lock(fb);
+    fb_invalidate_cache(fb);
     fb_modified_check(fb);
     if (fb->readonly)
         warning("the file was opened in read-only mode, you cannot commit this "
@@ -227,6 +237,7 @@ int fb_delete(FileBuffer* fb, size_t size)
 {
     int r = 0;
     fb_lock(fb);
+    fb_invalidate_cache(fb);
     fb_modified_check(fb);
     if (fb->readonly)
         warning("the file was opened in read-only mode, you cannot commit this "
@@ -276,6 +287,7 @@ int fb_undo_last(FileBuffer* fb)
 {
     int r = 0;
     fb_lock(fb);
+    fb_invalidate_cache(fb);
 
     ll_node_t* n = ll_pop(&fb->modifications);
     if (!n)
@@ -442,6 +454,7 @@ static int commit_delete(FileBuffer* fb, Modification* mod)
 void fb_commit(FileBuffer* fb)
 {
     fb_lock(fb);
+    fb_invalidate_cache(fb);
     fb_modified_check(fb);
     if (fb->readonly) {
         error("cannot commit, the file was opened in read-only mode");
@@ -629,7 +642,6 @@ const u8_t* fb_read_ex(FileBuffer* fb, size_t size, u32_t mod_idx)
     if (mod_idx > fb->modifications.size)
         goto end;
 
-    fb_modified_check(fb);
     if (size > fb_block_size) {
         // FIXME: this case could be useful, maybe implement it using a dynamic
         //        buffer
@@ -637,23 +649,45 @@ const u8_t* fb_read_ex(FileBuffer* fb, size_t size, u32_t mod_idx)
         goto end;
     }
 
+    // Fast path: the requested range is already in `block` and nothing has
+    // changed since it was loaded. This avoids a stat() + fseek() + fread() per
+    // read, which is the dominant cost when a template reads many small fields.
+    // External-modification detection still happens on every cache miss (i.e.
+    // at least once per loaded window), preserving the best-effort guarantee.
+    if (mod_idx == 0 && fb->cache_valid && fb->cache_version == fb->version &&
+        fb->off >= fb->cache_off &&
+        fb->off + size <= fb->cache_off + fb->cache_len) {
+        result = (const u8_t*)fb->block + (fb->off - fb->cache_off);
+        goto end;
+    }
+
+    fb_modified_check(fb);
+
     size_t fsize = fb_get_effective_size(fb, mod_idx);
     if (size + fb->off > fsize) {
         error("too many bytes to read: %lu", size);
         goto end;
     }
 
-    if (fb->block_dirty) {
-        s8_t block_map[fb_block_size] = {0};
-        if (!fb_read_internal(fb, fb->off, fsize, 0, mod_idx, block_map)) {
-            error("something went wrong while reading the file. Reloading it");
-            fb->version += 1 + fb->modifications.size;
-            if (!fb_reload(fb))
-                panic("unable to reload the file");
-        }
+    s8_t block_map[fb_block_size] = {0};
+    if (!fb_read_internal(fb, fb->off, fsize, 0, mod_idx, block_map)) {
+        error("something went wrong while reading the file. Reloading it");
+        fb->version += 1 + fb->modifications.size;
+        if (!fb_reload(fb))
+            panic("unable to reload the file");
     }
-    if (mod_idx == 0)
-        fb->block_dirty = 0;
+    fb->block_dirty = 0;
+    if (mod_idx == 0) {
+        // Record the loaded window so subsequent reads can hit the fast path.
+        fb->cache_valid   = 1;
+        fb->cache_off     = fb->off;
+        fb->cache_len     = min(fb_block_size, fsize - fb->off);
+        fb->cache_version = fb->version;
+    } else {
+        // The block now holds an alternative (modification-shifted) view; it no
+        // longer reflects the committed file, so the normal cache is invalid.
+        fb->cache_valid = 0;
+    }
     result = (const u8_t*)fb->block;
 
 end:
