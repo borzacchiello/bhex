@@ -758,6 +758,65 @@ void filebuffer_destroy(FileBuffer* fb)
     bhex_free(fb);
 }
 
+void fb_reader_init(FbReader* reader, FileBuffer* fb)
+{
+    reader->fb = fb;
+    reader->fd = -1;
+
+    fb_lock(fb);
+    int has_mods = fb->modifications.size != 0;
+    fb_unlock(fb);
+
+    // With pending modifications the on-disk bytes do not match the logical
+    // view, so we must go through the (locked) modification-aware read path.
+    if (!has_mods)
+        reader->fd = open(fb->path, O_RDONLY);
+}
+
+void fb_reader_deinit(FbReader* reader)
+{
+    if (reader->fd >= 0) {
+        close(reader->fd);
+        reader->fd = -1;
+    }
+}
+
+int fb_reader_read(FbReader* reader, u64_t off, u8_t* out, size_t size)
+{
+    if (reader->fd >= 0) {
+        // A modification may have been added since init (e.g. by a search
+        // callback). The check is a brief uncontended lock, negligible next
+        // to the pread() it guards; if it trips, demote the reader to the
+        // locked modification-aware path for the rest of its lifetime.
+        fb_lock(reader->fb);
+        int has_mods = reader->fb->modifications.size != 0;
+        fb_unlock(reader->fb);
+        if (has_mods)
+            fb_reader_deinit(reader);
+    }
+
+    if (reader->fd >= 0) {
+        size_t done = 0;
+        while (done < size) {
+            ssize_t n = pread(reader->fd, out + done, size - done,
+                              (off_t)(off + done));
+            if (n < 0 && errno == EINTR)
+                continue;
+            if (n <= 0)
+                return 0;
+            done += (size_t)n;
+        }
+        return 1;
+    }
+
+    u8_t* chunk = fb_read_alloc(reader->fb, off, size);
+    if (chunk == NULL)
+        return 0;
+    memcpy(out, chunk, size);
+    bhex_free(chunk);
+    return 1;
+}
+
 static inline BlockInfo* get_block_at(SearchIndex* ctx, u64_t addr)
 {
     u64_t off = addr / ctx->block_size;
@@ -780,6 +839,9 @@ typedef struct {
 static void* search_worker(void* arg)
 {
     SearchTask* task = (SearchTask*)arg;
+
+    FbReader reader;
+    fb_reader_init(&reader, task->fb);
 
     u8_t data_min = task->data[0];
     u8_t data_max = task->data[0];
@@ -812,11 +874,8 @@ static void* search_worker(void* arg)
 
         if (buf_off + task->data_size > buf_end) {
             size_t to_read = min((u64_t)buf_size, task->end - addr);
-            u8_t*  chunk   = fb_read_alloc(task->fb, addr, to_read);
-            if (chunk == NULL)
+            if (!fb_reader_read(&reader, addr, buf, to_read))
                 break;
-            memcpy(buf, chunk, to_read);
-            bhex_free(chunk);
             buf_off = 0;
             buf_end = to_read;
         }
@@ -842,6 +901,7 @@ static void* search_worker(void* arg)
     }
 
     bhex_free(buf);
+    fb_reader_deinit(&reader);
     return NULL;
 }
 
@@ -872,6 +932,10 @@ static void* index_worker(void* arg)
 {
     IndexTask* task = (IndexTask*)arg;
 
+    FbReader reader;
+    fb_reader_init(&reader, task->fb);
+    u8_t* buf = bhex_malloc(fb_block_size);
+
     for (int b = task->block_begin; b < task->block_end; ++b) {
         u8_t  bmin  = 255;
         u8_t  bmax  = 0;
@@ -881,8 +945,7 @@ static void* index_worker(void* arg)
             u64_t addr = start;
             while (addr < end) {
                 size_t chunk = min((u64_t)fb_block_size, end - addr);
-                u8_t*  buf   = fb_read_alloc(task->fb, addr, chunk);
-                if (buf == NULL)
+                if (!fb_reader_read(&reader, addr, buf, chunk))
                     break;
                 for (size_t i = 0; i < chunk; ++i) {
                     if (buf[i] < bmin)
@@ -890,13 +953,15 @@ static void* index_worker(void* arg)
                     if (buf[i] > bmax)
                         bmax = buf[i];
                 }
-                bhex_free(buf);
                 addr += chunk;
             }
         }
         task->blocks[b].min = bmin;
         task->blocks[b].max = bmax;
     }
+
+    bhex_free(buf);
+    fb_reader_deinit(&reader);
     return NULL;
 }
 

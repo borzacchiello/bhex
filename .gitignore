@@ -5,6 +5,8 @@ install_*/
 
 .vscode/
 .cache/
+.devcontainer/
+.sessions/
 
 CMakeFiles/
 CMakeCache.txt

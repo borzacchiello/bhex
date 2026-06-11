@@ -72,11 +72,16 @@ typedef struct {
 
 typedef DList PoiVec;
 
-typedef struct FindbaseAddrNode {
-    int                      votes;
-    int                      leaf;
-    struct FindbaseAddrNode* subs[256];
-} FindbaseAddrNode;
+// Open-addressing hash map from base address to vote count. It replaces a
+// 256-ary trie (~2KB per node): at ~12 bytes per distinct base, per-thread
+// maps are cheap enough to accumulate the votes in parallel and merge them,
+// without blowing up memory.
+typedef struct {
+    u64_t* keys;
+    u32_t* votes; // votes[i] == 0 marks an empty slot (live entries have >= 1)
+    size_t cap;   // always a power of two
+    size_t size;
+} VoteMap;
 
 typedef struct {
     u64_t address;
@@ -89,13 +94,6 @@ typedef struct {
 
 typedef DList CandidateVec;
 typedef DList IndexVec;
-
-typedef struct {
-    u64_t address;
-    int   votes;
-} CandidateLeaf;
-
-typedef DList CandidateLeafVec;
 
 typedef struct {
     FileBuffer*  fb;
@@ -236,14 +234,6 @@ static FindbaseCandidate* findbase_candidate_new(u64_t address, int votes)
     return candidate;
 }
 
-static CandidateLeaf* candidate_leaf_new(u64_t address, int votes)
-{
-    CandidateLeaf* leaf = bhex_malloc(sizeof(CandidateLeaf));
-    leaf->address       = address;
-    leaf->votes         = votes;
-    return leaf;
-}
-
 static size_t* findbase_index_new(size_t value)
 {
     size_t* index = bhex_malloc(sizeof(size_t));
@@ -277,21 +267,20 @@ static void findbase_memmap_deinit(FindbaseMemMap* memmap)
     memmap->block_types = NULL;
 }
 
-static double findbase_calc_entropy(FileBuffer* fb, u64_t addr, u64_t size)
+static double findbase_calc_entropy(FbReader* reader, u64_t addr, u64_t size)
 {
     u32_t counts[256] = {0};
-    u64_t curr        = addr;
-    u64_t end         = addr + size;
+    u8_t  buf[fb_block_size];
+    u64_t curr = addr;
+    u64_t end  = addr + size;
 
     while (curr < end) {
         size_t chunk = min((u64_t)fb_block_size, end - curr);
-        u8_t*  buf   = fb_read_alloc(fb, curr, chunk);
-        if (buf == NULL)
+        if (!fb_reader_read(reader, curr, buf, chunk))
             return 0.0;
 
         for (size_t i = 0; i < chunk; ++i)
             counts[buf[i]] += 1;
-        bhex_free(buf);
         curr += chunk;
     }
 
@@ -306,6 +295,41 @@ static double findbase_calc_entropy(FileBuffer* fb, u64_t addr, u64_t size)
     return entropy / 8.0;
 }
 
+typedef struct {
+    FileBuffer* fb;
+    u64_t       file_size;
+    size_t      region_begin; // inclusive
+    size_t      region_end;   // exclusive
+    u8_t*       block_types;
+} MemMapTask;
+
+static void* analyze_memory_worker(void* arg)
+{
+    MemMapTask* task = (MemMapTask*)arg;
+
+    FbReader reader;
+    fb_reader_init(&reader, task->fb);
+
+    for (size_t i = task->region_begin; i < task->region_end; ++i) {
+        u64_t  off = (u64_t)i * FINDBASE_MEMORY_REGION_MIN_SIZE;
+        size_t chunk =
+            (size_t)min(FINDBASE_MEMORY_REGION_MIN_SIZE, task->file_size - off);
+        double ent = findbase_calc_entropy(&reader, off, chunk);
+
+        if (ent >= 0.0f && ent < 0.05f)
+            task->block_types[i] = FINDBASE_REGION_UNINIT_DATA;
+        else if (ent >= 0.05f && ent < 0.6f)
+            task->block_types[i] = FINDBASE_REGION_INIT_DATA;
+        else if (ent >= 0.6f && ent < 0.9f)
+            task->block_types[i] = FINDBASE_REGION_CODE;
+        else
+            task->block_types[i] = FINDBASE_REGION_UNKNOWN;
+    }
+
+    fb_reader_deinit(&reader);
+    return NULL;
+}
+
 static void findbase_analyze_memory(FileBuffer* fb, u64_t file_size,
                                     FindbaseMemMap* memmap)
 {
@@ -318,21 +342,30 @@ static void findbase_analyze_memory(FileBuffer* fb, u64_t file_size,
     if (memmap->block_types == NULL)
         panic("unable to allocate findbase memory map");
 
-    for (size_t i = 0; i < nsections; ++i) {
-        u64_t  off = (u64_t)i * FINDBASE_MEMORY_REGION_MIN_SIZE;
-        size_t chunk =
-            (size_t)min(FINDBASE_MEMORY_REGION_MIN_SIZE, file_size - off);
-        double ent = findbase_calc_entropy(fb, off, chunk);
+    int        nthreads = default_thread_count(nsections);
+    pthread_t* threads  = bhex_calloc(sizeof(pthread_t) * (size_t)nthreads);
+    MemMapTask* tasks   = bhex_calloc(sizeof(MemMapTask) * (size_t)nthreads);
 
-        if (ent >= 0.0f && ent < 0.05f)
-            memmap->block_types[i] = FINDBASE_REGION_UNINIT_DATA;
-        else if (ent >= 0.05f && ent < 0.6f)
-            memmap->block_types[i] = FINDBASE_REGION_INIT_DATA;
-        else if (ent >= 0.6f && ent < 0.9f)
-            memmap->block_types[i] = FINDBASE_REGION_CODE;
-        else
-            memmap->block_types[i] = FINDBASE_REGION_UNKNOWN;
+    for (int t = 0; t < nthreads; ++t) {
+        size_t begin, end;
+        split_work(nsections, nthreads, t, &begin, &end);
+
+        tasks[t].fb           = fb;
+        tasks[t].file_size    = file_size;
+        tasks[t].region_begin = begin;
+        tasks[t].region_end   = end;
+        tasks[t].block_types  = memmap->block_types;
+
+        if (pthread_create(&threads[t], NULL, analyze_memory_worker,
+                           &tasks[t]) != 0)
+            panic("pthread_create failed");
     }
+
+    for (int t = 0; t < nthreads; ++t)
+        pthread_join(threads[t], NULL);
+
+    bhex_free(tasks);
+    bhex_free(threads);
 }
 
 static FindbaseRegionType findbase_memory_get_type(const FindbaseMemMap* memmap,
@@ -349,56 +382,77 @@ static FindbaseRegionType findbase_memory_get_type(const FindbaseMemMap* memmap,
     return (FindbaseRegionType)memmap->block_types[idx];
 }
 
-static FindbaseAddrNode* addrtree_node_alloc(void)
+#define VOTEMAP_INITIAL_CAP 4096
+
+static u64_t votemap_hash(u64_t x)
 {
-    FindbaseAddrNode* node = bhex_calloc(sizeof(FindbaseAddrNode));
-    node->leaf             = 1;
-    node->votes            = 1;
-    return node;
+    // splitmix64 finalizer
+    x ^= x >> 33;
+    x *= 0xff51afd7ed558ccdull;
+    x ^= x >> 33;
+    x *= 0xc4ceb9fe1a85ec53ull;
+    x ^= x >> 33;
+    return x;
 }
 
-static void addrtree_node_free(FindbaseAddrNode* node)
+static void votemap_init(VoteMap* map)
 {
-    if (node == NULL)
-        return;
-    if (!node->leaf) {
-        for (int i = 0; i < 256; ++i) {
-            if (node->subs[i] != NULL)
-                addrtree_node_free(node->subs[i]);
-        }
-    }
-    bhex_free(node);
+    map->cap   = VOTEMAP_INITIAL_CAP;
+    map->size  = 0;
+    map->keys  = bhex_malloc(sizeof(u64_t) * map->cap);
+    map->votes = bhex_calloc(sizeof(u32_t) * map->cap);
 }
 
-static void addrtree_register_address(FindbaseAddrNode* root, u64_t address)
+static void votemap_deinit(VoteMap* map)
 {
-    FindbaseAddrNode* node = root;
-    for (int shift = 56; shift >= 0; shift -= 8) {
-        u8_t b = (address >> shift) & 0xFF;
-        if (node->subs[b] != NULL) {
-            node = node->subs[b];
-            if (node->leaf)
-                node->votes += 1;
-        } else {
-            node->subs[b] = addrtree_node_alloc();
-            node->leaf    = 0;
-            node          = node->subs[b];
-        }
-    }
+    bhex_free(map->keys);
+    bhex_free(map->votes);
+    map->keys  = NULL;
+    map->votes = NULL;
+    map->cap   = 0;
+    map->size  = 0;
 }
 
-static void addrtree_browse_into(FindbaseAddrNode* node, CandidateLeafVec* out,
-                                 u64_t base)
-{
-    if (node->leaf) {
-        if (node->votes > 0)
-            DList_add(out, candidate_leaf_new(base, node->votes));
-        return;
-    }
+static void votemap_add(VoteMap* map, u64_t key, u32_t votes);
 
-    for (int i = 0; i < 256; ++i) {
-        if (node->subs[i] != NULL)
-            addrtree_browse_into(node->subs[i], out, (base << 8) | (u64_t)i);
+static void votemap_grow(VoteMap* map)
+{
+    VoteMap bigger;
+    bigger.cap   = map->cap * 2;
+    bigger.size  = 0;
+    bigger.keys  = bhex_malloc(sizeof(u64_t) * bigger.cap);
+    bigger.votes = bhex_calloc(sizeof(u32_t) * bigger.cap);
+
+    for (size_t i = 0; i < map->cap; ++i) {
+        if (map->votes[i] != 0)
+            votemap_add(&bigger, map->keys[i], map->votes[i]);
+    }
+    votemap_deinit(map);
+    *map = bigger;
+}
+
+static void votemap_add(VoteMap* map, u64_t key, u32_t votes)
+{
+    // Keep the load factor below ~70%
+    if ((map->size + 1) * 10 > map->cap * 7)
+        votemap_grow(map);
+
+    size_t i = votemap_hash(key) & (map->cap - 1);
+    while (map->votes[i] != 0 && map->keys[i] != key)
+        i = (i + 1) & (map->cap - 1);
+
+    if (map->votes[i] == 0) {
+        map->keys[i] = key;
+        map->size += 1;
+    }
+    map->votes[i] += votes;
+}
+
+static void votemap_merge_into(VoteMap* dst, const VoteMap* src)
+{
+    for (size_t i = 0; i < src->cap; ++i) {
+        if (src->votes[i] != 0)
+            votemap_add(dst, src->keys[i], src->votes[i]);
     }
 }
 
@@ -429,6 +483,10 @@ static void* detect_endianness_worker(void* arg)
     EndianTask* task     = (EndianTask*)arg;
     int         ptr_size = findbase_pointer_size(task->arch);
 
+    FbReader reader;
+    fb_reader_init(&reader, task->fb);
+    u8_t* buf = bhex_malloc(FINDBASE_SCAN_CHUNK + (size_t)ptr_size - 1);
+
     u64_t pos = task->start;
     while (pos < task->end) {
         size_t starts_this_chunk =
@@ -437,9 +495,8 @@ static void* detect_endianness_worker(void* arg)
         if (pos + read_size > task->file_size)
             read_size = (size_t)(task->file_size - pos);
 
-        u8_t* buf = fb_read_alloc(task->fb, pos, read_size);
-        if (buf == NULL)
-            return NULL;
+        if (!fb_reader_read(&reader, pos, buf, read_size))
+            break;
 
         for (size_t i = 0;
              i < starts_this_chunk && i + (size_t)ptr_size <= read_size; ++i) {
@@ -460,10 +517,11 @@ static void* detect_endianness_worker(void* arg)
             }
         }
 
-        bhex_free(buf);
         pos += starts_this_chunk;
     }
 
+    bhex_free(buf);
+    fb_reader_deinit(&reader);
     return NULL;
 }
 
@@ -649,12 +707,69 @@ static void index_arrays(FileBuffer* fb, u64_t file_size, FindbaseArch arch,
     }
 }
 
-static void build_candidate_tree(FileBuffer* fb, u64_t file_size, PoiVec* pois,
-                                 FindbaseArch arch, FindbaseEndian endian,
-                                 FindbaseAddrNode* tree)
+typedef struct {
+    FileBuffer*     fb;
+    u64_t           start; // byte offset, multiple of the pointer size
+    u64_t           end;   // byte offset (exclusive), multiple of the same
+    u64_t           file_size;
+    FindbaseArch    arch;
+    FindbaseEndian  endian;
+    const PoiVec*   pois;
+    const IndexVec* buckets;
+    VoteMap         map;
+} VoteTask;
+
+static void* candidate_votes_worker(void* arg)
+{
+    VoteTask* task     = (VoteTask*)arg;
+    int       ptr_size = findbase_pointer_size(task->arch);
+
+    FbReader reader;
+    fb_reader_init(&reader, task->fb);
+    u8_t* buf = bhex_malloc(FINDBASE_SCAN_CHUNK);
+
+    u64_t pos = task->start;
+    while (pos < task->end) {
+        // start/end are pointer-aligned and FINDBASE_SCAN_CHUNK is a multiple
+        // of every supported pointer size, so chunk stays aligned too
+        size_t chunk = min((u64_t)FINDBASE_SCAN_CHUNK, task->end - pos);
+        if (!fb_reader_read(&reader, pos, buf, chunk))
+            break;
+
+        for (size_t i = 0; i + (size_t)ptr_size <= chunk;
+             i += (size_t)ptr_size) {
+            u64_t value = read_ptr(buf, i, task->arch, task->endian);
+            if (is_ascii_ptr(value, task->arch))
+                continue;
+
+            const IndexVec* bucket = &task->buckets[value & FINDBASE_PAGE_MASK];
+            for (size_t j = 0; j < bucket->size; ++j) {
+                size_t       poi_index = *(size_t*)bucket->data[j];
+                FindbasePoi* poi       = task->pois->data[poi_index];
+                if (value < poi->offset)
+                    continue;
+
+                u64_t base = value - poi->offset;
+                if (!base_can_fit_file(base, task->file_size, task->arch))
+                    continue;
+
+                votemap_add(&task->map, base, 1);
+            }
+        }
+
+        pos += chunk;
+    }
+
+    bhex_free(buf);
+    fb_reader_deinit(&reader);
+    return NULL;
+}
+
+static void build_candidate_map(FileBuffer* fb, u64_t file_size, PoiVec* pois,
+                                FindbaseArch arch, FindbaseEndian endian,
+                                VoteMap* votes)
 {
     int      ptr_size    = findbase_pointer_size(arch);
-    u64_t    pos         = 0;
     int      want_string = 0;
     IndexVec buckets[FINDBASE_PAGE_SIZE];
 
@@ -679,59 +794,56 @@ static void build_candidate_tree(FileBuffer* fb, u64_t file_size, PoiVec* pois,
                   findbase_index_new(i));
     }
 
-    while (pos < file_size - (u64_t)ptr_size) {
-        u64_t  remaining = file_size - pos;
-        size_t chunk     = min((u64_t)FINDBASE_SCAN_CHUNK, remaining);
-        chunk -= chunk % (size_t)ptr_size;
-        if (chunk == 0)
-            break;
+    u64_t total_slots = file_size / (u64_t)ptr_size;
+    if (total_slots > 0) {
+        int nthreads = default_thread_count((size_t)total_slots);
 
-        u8_t* buf = fb_read_alloc(fb, pos, chunk);
-        if (buf == NULL)
-            break;
+        pthread_t* threads = bhex_calloc(sizeof(pthread_t) * (size_t)nthreads);
+        VoteTask*  tasks   = bhex_calloc(sizeof(VoteTask) * (size_t)nthreads);
 
-        for (size_t i = 0; i + (size_t)ptr_size <= chunk;
-             i += (size_t)ptr_size) {
-            u64_t value = read_ptr(buf, i, arch, endian);
-            if (is_ascii_ptr(value, arch))
-                continue;
+        for (int t = 0; t < nthreads; ++t) {
+            size_t begin_slot, end_slot;
+            split_work((size_t)total_slots, nthreads, t, &begin_slot,
+                       &end_slot);
 
-            IndexVec* bucket = &buckets[value & FINDBASE_PAGE_MASK];
-            for (size_t j = 0; j < bucket->size; ++j) {
-                size_t       poi_index = *(size_t*)bucket->data[j];
-                FindbasePoi* poi       = pois->data[poi_index];
-                if (value < poi->offset)
-                    continue;
+            tasks[t].fb        = fb;
+            tasks[t].start     = (u64_t)begin_slot * (u64_t)ptr_size;
+            tasks[t].end       = (u64_t)end_slot * (u64_t)ptr_size;
+            tasks[t].file_size = file_size;
+            tasks[t].arch      = arch;
+            tasks[t].endian    = endian;
+            tasks[t].pois      = pois;
+            tasks[t].buckets   = buckets;
+            votemap_init(&tasks[t].map);
 
-                u64_t base = value - poi->offset;
-                if (!base_can_fit_file(base, file_size, arch))
-                    continue;
-
-                addrtree_register_address(tree, base);
-            }
+            if (pthread_create(&threads[t], NULL, candidate_votes_worker,
+                               &tasks[t]) != 0)
+                panic("pthread_create failed");
         }
 
-        bhex_free(buf);
-        pos += chunk;
+        for (int t = 0; t < nthreads; ++t) {
+            pthread_join(threads[t], NULL);
+            // Merging right after each join keeps at most one extra
+            // per-thread map alive at a time
+            votemap_merge_into(votes, &tasks[t].map);
+            votemap_deinit(&tasks[t].map);
+        }
+
+        bhex_free(threads);
+        bhex_free(tasks);
     }
 
     for (size_t i = 0; i < FINDBASE_PAGE_SIZE; ++i)
         dlist_deinit_free_items(&buckets[i]);
 }
 
-static void collect_candidates_from_tree(FindbaseAddrNode* root,
-                                         CandidateVec*     out)
+static void collect_candidates_from_map(const VoteMap* votes, CandidateVec* out)
 {
-    CandidateLeafVec leaves;
-    DList_init(&leaves);
-    addrtree_browse_into(root, &leaves, 0);
-
-    for (size_t i = 0; i < leaves.size; ++i) {
-        CandidateLeaf* leaf = leaves.data[i];
-        DList_add(out, findbase_candidate_new(leaf->address, leaf->votes));
+    for (size_t i = 0; i < votes->cap; ++i) {
+        if (votes->votes[i] != 0)
+            DList_add(out, findbase_candidate_new(votes->keys[i],
+                                                  (int)votes->votes[i]));
     }
-
-    dlist_deinit_free_items(&leaves);
 }
 
 static u32_t count_valid_array_targets(const u8_t* data, size_t size,
@@ -809,6 +921,10 @@ static void* pointer_count_worker(void* arg)
     int               ptr_size = findbase_pointer_size(task->arch);
     u64_t             pos      = task->start;
 
+    FbReader reader;
+    fb_reader_init(&reader, task->fb);
+    u8_t* buf = bhex_malloc(FINDBASE_SCAN_CHUNK);
+
     while (pos < task->end) {
         u64_t  remaining = task->end - pos;
         size_t chunk     = min((u64_t)FINDBASE_SCAN_CHUNK, remaining);
@@ -816,9 +932,8 @@ static void* pointer_count_worker(void* arg)
         if (chunk == 0)
             break;
 
-        u8_t* buf = fb_read_alloc(task->fb, pos, chunk);
-        if (buf == NULL)
-            return NULL;
+        if (!fb_reader_read(&reader, pos, buf, chunk))
+            break;
 
         for (size_t i = 0; i + (size_t)ptr_size <= chunk;
              i += (size_t)ptr_size) {
@@ -843,10 +958,11 @@ static void* pointer_count_worker(void* arg)
             }
         }
 
-        bhex_free(buf);
         pos += chunk;
     }
 
+    bhex_free(buf);
+    fb_reader_deinit(&reader);
     return NULL;
 }
 
@@ -1126,14 +1242,14 @@ static int findbasecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
         return COMMAND_SILENT_ERROR;
     }
 
-    FindbaseAddrNode* tree = addrtree_node_alloc();
-    tree->votes            = 0;
-    build_candidate_tree(fb, fb->size, &pois, arch, endian, tree);
+    VoteMap votes;
+    votemap_init(&votes);
+    build_candidate_map(fb, fb->size, &pois, arch, endian, &votes);
 
     CandidateVec candidates;
     DList_init(&candidates);
-    collect_candidates_from_tree(tree, &candidates);
-    addrtree_node_free(tree);
+    collect_candidates_from_map(&votes, &candidates);
+    votemap_deinit(&votes);
 
     if (candidates.size == 0) {
         dlist_deinit_free_items(&candidates);

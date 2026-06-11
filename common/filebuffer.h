@@ -99,4 +99,20 @@ const u8_t* fb_read_ex(FileBuffer* fb, size_t size, u32_t mod_idx);
 u8_t* fb_read_alloc(FileBuffer* fb, u64_t off, size_t size);
 u8_t* fb_read_alloc_ex(FileBuffer* fb, u64_t off, size_t size, u32_t mod_idx);
 
+// Per-thread reader for parallel scans. When the FileBuffer has no pending
+// modification at init time, the reader owns a private file descriptor and
+// reads with pread(), so concurrent readers do not contend on the FileBuffer
+// lock. Otherwise every read falls back to the (locked) fb_read_alloc() path,
+// which sees the modified view. A reader must be used by a single thread.
+typedef struct {
+    FileBuffer* fb;
+    int         fd;
+} FbReader;
+
+void fb_reader_init(FbReader* reader, FileBuffer* fb);
+void fb_reader_deinit(FbReader* reader);
+// Reads exactly `size` bytes at absolute offset `off` into `out`.
+// Returns 1 on success, 0 on failure.
+int fb_reader_read(FbReader* reader, u64_t off, u8_t* out, size_t size);
+
 #endif
