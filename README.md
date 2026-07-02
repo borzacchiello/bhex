@@ -39,7 +39,7 @@ Usage:  bhex [ options ] inputfile
   -c  "c1; c2; ..." Execute the commands given as argument and exit
   -s  --script      Script mode (commands from raw stdin)
 
-command history is saved in "$HOME/.bhex_history", it can be changed by setting the BHEX_HISTORY_FILE environment variable
+command history is saved in "$HOME/.bhex_history", it can be changed setting BHEX_HISTORY_FILE environment variable
 ```
 
 # Compilation
@@ -61,6 +61,10 @@ To enable an ASAN build, use "-DASAN=on -DCMAKE_BUILD_TYPE=Debug".
 
 To enable tests, use "-DENABLE_TESTS=on".
 
+To enable fuzz test binaries, use "-DENABLE_FUZZ_TESTS=on".
+
+To statically link libc, use "-DSTATIC_BUILD=on".
+
 # Command Format
 
 Every command has the following structure:
@@ -81,6 +85,8 @@ If you type "help" (or "h"), you get the list of commands:
 
 Available commands:
     help [h]
+    setbase [sb]
+    echo [ec]
     info [i]
     isa_identify [ii]
     interactive [int]
@@ -89,8 +95,8 @@ Available commands:
     hash [hh]
     checksum [cs]
     crc [cr]
-    strings [str]
     findbase [fba]
+    strings [str]
     template [t]
     seek [s]
     print [p]
@@ -135,6 +141,30 @@ Example:
 ISA graph (4096 bytes analyzed, 1024-byte chunks):
   [0x0000000000000000, 0x0000000000000800):      x64, le (confidence: 96.42%)
   [0x0000000000000c00, 0x0000000000001000):      x86, le (confidence: 91.87%)
+```
+
+### Setbase
+
+```
+[0x0000000] $ sb?
+
+setbase: set or display the base address
+
+  sb <base>
+
+  base: the new base address (if omitted, display current base)
+```
+
+### Echo
+
+```
+[0x0000000] $ ec?
+
+echo: print arguments to stdout
+  echo [/x|/d] <arg1> [arg2] ...
+    /x: force hexadecimal output for numbers (default)
+    /d: force decimal output for numbers
+  Expressions in backticks are evaluated before printing.
 ```
 
 ### Info
@@ -185,7 +215,7 @@ search: search a string or a sequence of bytes in the file
      sk: seek to first match
      c:  print context
 
-  what: either a string or an hex string
+  what: either a string or a hex string
 ```
 
 ### Strings
@@ -260,7 +290,20 @@ hash: calculate the hash of <size> bytes at current offset + <off>
   RipeMD-320
   blake2s
   blake2b
-  ghost
+  blake3
+  gost
+  groestl-224
+  groestl-256
+  groestl-384
+  groestl-512
+  jh-224
+  jh-256
+  jh-384
+  jh-512
+  snefru-128
+  snefru-256
+  spectral-256
+  spectral-512
 ```
 
 ### Template
@@ -285,8 +328,8 @@ template: parse the file at current offset using a 'bhe' template file
 
 Available templates:
   squashfs
-  zip
   tar
+  zip
   jpeg
   elf
   gzip
@@ -294,6 +337,7 @@ Available templates:
   png
   pe
   rpm
+  macho
 
 ...
 ```
@@ -304,12 +348,14 @@ Available templates:
 [0x0000000] $ s?
 
 seek: change current offset
-  s[/{+,-}] <off>
+  s[/{+,-}] <addr>
     +: sum 'off' to current offset (wrap if greater than filesize)
     -: subtract 'off' from current offset (wrap if lower than zero)
 
   off: can be either a number or the character '-'.
        In the latter case seek to the offset before the last seek.
+       If a base address is set (see 'sb'), absolute addresses are
+       relative to the base and cannot go below it.
 
   NOTE: if called without arguments, print current offset
 ```
@@ -351,7 +397,7 @@ checksum: calculate a checksum at current offset + <off>
 
 assemble: assemble code and write it at current offset
 
-  as[/l/i/s] <arch> "<code>"
+  as[/l/i/s] <arch> 'instr1; instr2; ...'
      l:  list supported architectures
      i:  insert instead of overwrite
      s:  seek to the end of the write
@@ -449,7 +495,7 @@ import: import the content of <file> at current offset
 
 write: write data at current offset
 
-  w[{s,x,b,w,d,q}/{le,be}/u/i] <data>
+  w[/{s,x,b,w,d,q}/{le,be}/u/i] <data>
      s:   string input (default)
      x:   hex input
      b:   byte
