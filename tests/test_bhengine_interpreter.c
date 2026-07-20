@@ -4114,6 +4114,7 @@ int TEST(scope_if_no_access_after)(void)
 int TEST(tostring_unum)(void)
 {
     const char* prog = "proc {"
+                       "  nums_in_dec();"
                        "  local a = 42u8;"
                        "  local b = tostring(a);"
                        "}";
@@ -4134,6 +4135,7 @@ end:
 int TEST(tostring_snum)(void)
 {
     const char* prog = "proc {"
+                       "  nums_in_dec();"
                        "  local a = -123;"
                        "  local b = tostring(a);"
                        "}";
@@ -4173,7 +4175,7 @@ end:
 
 int TEST(tostring_enum)(void)
 {
-    DummyFilebuffer* tfb = dummyfilebuffer_create((const u8_t*)"\x03\x00", 2);
+    DummyFilebuffer* tfb = dummyfilebuffer_create((const u8_t*)"\x04\x00", 2);
 
     const char* prog = "enum MyEnum : u16 { A = 1, B = 2, C = 4 }"
                        "proc {"
@@ -4187,7 +4189,7 @@ int TEST(tostring_enum)(void)
         goto end;
 
     BHEngineValue* v = Scope_get_local(scope, "s");
-    IS_TENGINE_STRING_EQ(r, v, "A | B");
+    IS_TENGINE_STRING_EQ(r, v, "C");
 
 end:
     if (scope)
@@ -4235,7 +4237,7 @@ int TEST(tostring_hex)(void)
 
     int            r = 0;
     BHEngineValue* v = Scope_get_local(scope, "b");
-    IS_TENGINE_STRING_EQ(r, v, "0xff");
+    IS_TENGINE_STRING_EQ(r, v, "ff");
 
 end:
     Scope_free(scope);

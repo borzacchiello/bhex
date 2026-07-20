@@ -97,12 +97,16 @@ __attribute__((destructor)) static void __deinit(void)
 
 __attribute__((unused)) static void reset_global_state()
 {
+    fb_undo_all(elf_fb->fb);
     fb_seek(elf_fb->fb, 0);
     elf_fb->fb->base_addr = 0;
+    fb_undo_all(pe_fb->fb);
     fb_seek(pe_fb->fb, 0);
     pe_fb->fb->base_addr = 0;
+    fb_undo_all(dfb_alt_1->fb);
     fb_seek(dfb_alt_1->fb, 0);
     dfb_alt_1->fb->base_addr = 0;
+    fb_undo_all(dfb_alt_2->fb);
     fb_seek(dfb_alt_2->fb, 0);
     dfb_alt_2->fb->base_addr = 0;
     bhex_free(strbuilder_reset(sb));
