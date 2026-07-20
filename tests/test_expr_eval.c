@@ -296,7 +296,7 @@ fail:
 
 int TEST(mem_deref_nested)(void)
 {
-    // [8 [32le 0x0]] — read the first 4 bytes (LE) as an address,
+    // [8 [32le 0x0]] -- read the first 4 bytes (LE) as an address,
     // then read 1 byte at that address. This test is complex,
     // so just check that it parses and runs without error.
     u64_t r;
@@ -322,7 +322,7 @@ int TEST(mem_deref_paren_addr)(void)
 {
     u64_t r;
     ASSERT(eval("[8 (2 * 2)]", &r) == EXPR_EVAL_OK);
-    // offset 4 in the ELF header — just check that it reads without error
+    // offset 4 in the ELF header -- just check that it reads without error
     return TEST_SUCCEEDED;
 fail:
     return TEST_FAILED;
@@ -356,7 +356,7 @@ fail:
 
 int TEST(err_read_oob_32)(void)
 {
-    // Read 32-bit near the end — only 1 byte available
+    // Read 32-bit near the end -- only 1 byte available
     u64_t r;
     u64_t off = (u64_t)elf_fb->fb->size;
     char  buf[64];
@@ -429,9 +429,9 @@ fail:
 
 int TEST(var_current_default)(void)
 {
-    /* $c at offset 0 with base 0 should be 0 */
+    /* $o at offset 0 with base 0 should be 0 */
     u64_t r;
-    ASSERT(eval("$c", &r) == EXPR_EVAL_OK);
+    ASSERT(eval("$o", &r) == EXPR_EVAL_OK);
     ASSERT(r == 0);
     return TEST_SUCCEEDED;
 fail:
@@ -451,11 +451,11 @@ fail:
 
 int TEST(var_current_after_seek)(void)
 {
-    /* $c should reflect offset after seeking */
+    /* $o should reflect offset after seeking */
     elf_fb->fb->base_addr = 0;
     fb_seek(elf_fb->fb, 0x42);
     u64_t r;
-    ASSERT(eval("$c", &r) == EXPR_EVAL_OK);
+    ASSERT(eval("$o", &r) == EXPR_EVAL_OK);
     ASSERT(r == 0x42);
     return TEST_SUCCEEDED;
 fail:
@@ -464,11 +464,11 @@ fail:
 
 int TEST(var_current_with_base)(void)
 {
-    /* $c should be offset + base */
+    /* $o should be offset + base */
     elf_fb->fb->base_addr = 0x1000;
     fb_seek(elf_fb->fb, 0x20);
     u64_t r;
-    ASSERT(eval("$c", &r) == EXPR_EVAL_OK);
+    ASSERT(eval("$o", &r) == EXPR_EVAL_OK);
     ASSERT(r == 0x1020);
     return TEST_SUCCEEDED;
 fail:
@@ -490,11 +490,11 @@ fail:
 
 int TEST(var_current_arithmetic)(void)
 {
-    /* $c + 10 should work */
+    /* $o + 10 should work */
     elf_fb->fb->base_addr = 0x1000;
     fb_seek(elf_fb->fb, 0x50);
     u64_t r;
-    ASSERT(eval("$c + 0x10", &r) == EXPR_EVAL_OK);
+    ASSERT(eval("$o + 0x10", &r) == EXPR_EVAL_OK);
     ASSERT(r == 0x1060);
     return TEST_SUCCEEDED;
 fail:
@@ -503,11 +503,11 @@ fail:
 
 int TEST(var_both_in_expr)(void)
 {
-    /* $b + $c should work */
+    /* $b + $o should work */
     elf_fb->fb->base_addr = 0x100;
     fb_seek(elf_fb->fb, 0x50);
     u64_t r;
-    ASSERT(eval("$b + $c", &r) == EXPR_EVAL_OK);
+    ASSERT(eval("$b + $o", &r) == EXPR_EVAL_OK);
     ASSERT(r == 0x100 + 0x150);
     return TEST_SUCCEEDED;
 fail:
@@ -516,11 +516,11 @@ fail:
 
 int TEST(var_in_mem_deref)(void)
 {
-    /* [$c] should dereference memory at current offset */
+    /* [$o] should dereference memory at current offset */
     elf_fb->fb->base_addr = 0;
     fb_seek(elf_fb->fb, 0);
     u64_t r;
-    ASSERT(eval("[32 $c]", &r) == EXPR_EVAL_OK);
+    ASSERT(eval("[32 $o]", &r) == EXPR_EVAL_OK);
     u32_t expected = read_at_le32(elf_fb->fb->block, 0);
     ASSERT(r == (u64_t)expected);
     return TEST_SUCCEEDED;
@@ -533,6 +533,116 @@ int TEST(var_invalid)(void)
     /* $x is not a valid variable */
     u64_t r;
     ASSERT(eval("$x", &r) != EXPR_EVAL_OK);
+    return TEST_SUCCEEDED;
+fail:
+    return TEST_FAILED;
+}
+
+int TEST(var_invalid_err_code)(void)
+{
+    /* $unknown should fail with EXPR_EVAL_ERR_UNKNOWN_GLOBAL_VAR */
+    u64_t r;
+    ASSERT(eval("$unknown", &r) == EXPR_EVAL_ERR_UNKNOWN_GLOBAL_VAR);
+    return TEST_SUCCEEDED;
+fail:
+    return TEST_FAILED;
+}
+
+int TEST(var_off_default)(void)
+{
+    /* $off at offset 0 should be 0 */
+    elf_fb->fb->base_addr = 0;
+    fb_seek(elf_fb->fb, 0);
+    u64_t r;
+    ASSERT(eval("$off", &r) == EXPR_EVAL_OK);
+    ASSERT(r == 0);
+    return TEST_SUCCEEDED;
+fail:
+    return TEST_FAILED;
+}
+
+int TEST(var_off_after_seek)(void)
+{
+    /* $off includes base address */
+    elf_fb->fb->base_addr = 0x1000;
+    fb_seek(elf_fb->fb, 0x42);
+    u64_t r;
+    ASSERT(eval("$off", &r) == EXPR_EVAL_OK);
+    ASSERT(r == 0x1042);
+    return TEST_SUCCEEDED;
+fail:
+    return TEST_FAILED;
+}
+
+int TEST(var_off_alias_o)(void)
+{
+    /* $o is an alias for $off */
+    elf_fb->fb->base_addr = 0x2000;
+    fb_seek(elf_fb->fb, 0x10);
+    u64_t r;
+    ASSERT(eval("$o", &r) == EXPR_EVAL_OK);
+    ASSERT(r == 0x2010);
+    return TEST_SUCCEEDED;
+fail:
+    return TEST_FAILED;
+}
+
+int TEST(var_size_default)(void)
+{
+    /* $size should return the file size */
+    u64_t r;
+    ASSERT(eval("$size", &r) == EXPR_EVAL_OK);
+    ASSERT(r == elf_fb->fb->size);
+    return TEST_SUCCEEDED;
+fail:
+    return TEST_FAILED;
+}
+
+int TEST(var_size_alias_s)(void)
+{
+    /* $s is an alias for $size */
+    u64_t r;
+    ASSERT(eval("$s", &r) == EXPR_EVAL_OK);
+    ASSERT(r == elf_fb->fb->size);
+    return TEST_SUCCEEDED;
+fail:
+    return TEST_FAILED;
+}
+
+int TEST(var_off_arithmetic)(void)
+{
+    /* $off + 10 should work */
+    elf_fb->fb->base_addr = 0;
+    fb_seek(elf_fb->fb, 0x50);
+    u64_t r;
+    ASSERT(eval("$off + 0x10", &r) == EXPR_EVAL_OK);
+    ASSERT(r == 0x60);
+    return TEST_SUCCEEDED;
+fail:
+    return TEST_FAILED;
+}
+
+int TEST(var_base_alias)(void)
+{
+    /* $base is the full name for $b */
+    elf_fb->fb->base_addr = 0xBEEF;
+    fb_seek(elf_fb->fb, 0);
+    u64_t r;
+    ASSERT(eval("$base", &r) == EXPR_EVAL_OK);
+    ASSERT(r == 0xBEEF);
+    return TEST_SUCCEEDED;
+fail:
+    return TEST_FAILED;
+}
+
+int TEST(var_size_in_expr)(void)
+{
+    /* $size - $off should give remaining bytes (base=0) */
+    elf_fb->fb->base_addr = 0;
+    fb_seek(elf_fb->fb, 10);
+    u64_t r;
+    ASSERT(eval("$size - $off", &r) == EXPR_EVAL_OK);
+    ASSERT(r == elf_fb->fb->size - 10);
     return TEST_SUCCEEDED;
 fail:
     return TEST_FAILED;

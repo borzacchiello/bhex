@@ -28,6 +28,8 @@ const char* expr_eval_err_to_string(int err)
             return "memory read out of bounds";
         case EXPR_EVAL_ERR_INVALID_ENDIAN:
             return "invalid endian (must be 'be' or 'le')";
+        case EXPR_EVAL_ERR_UNKNOWN_GLOBAL_VAR:
+            return "unknown global variable";
         default:
             return "unknown expression error";
     }
@@ -118,7 +120,7 @@ static int parse_mem_deref(const char** p, FileBuffer* fb, u64_t* o_result)
             *p = before_num;
         } else if (candidate == 8 || candidate == 16 || candidate == 32 ||
                    candidate == 64) {
-            // Valid bitlen candidate — check what follows
+            // Valid bitlen candidate, check what follows
             if ((*p)[0] == 'b' && (*p)[1] == 'e') {
                 bitlen     = candidate;
                 big_endian = 1;
@@ -128,7 +130,7 @@ static int parse_mem_deref(const char** p, FileBuffer* fb, u64_t* o_result)
                 big_endian = 0;
                 *p += 2;
             } else {
-                // No endian — check if there's an expression after
+                // No endian, check if there's an expression after
                 skip_spaces(p);
                 if (**p != ']' && **p != '\0') {
                     // Something follows: this number is the bitlen
@@ -139,7 +141,13 @@ static int parse_mem_deref(const char** p, FileBuffer* fb, u64_t* o_result)
                 }
             }
         } else {
-            // Not a valid bitlen — must be the address
+            // Not a valid bitlen, check if user intended it as one
+            skip_spaces(p);
+            if (**p != ']' && **p != '\0') {
+                // Something follows: user intended this as a bitlen
+                return EXPR_EVAL_ERR_INVALID_BITLEN;
+            }
+            // Just a lone number in brackets, treat as address
             *p = before_num;
         }
     }
@@ -184,23 +192,47 @@ static int parse_mem_deref(const char** p, FileBuffer* fb, u64_t* o_result)
     return EXPR_EVAL_OK;
 }
 
+typedef void (*ExprGlobalVarCallback)(FileBuffer* fb, u64_t* o_result);
+
+typedef struct {
+    const char*           name;
+    ExprGlobalVarCallback get_value;
+} ExprGlobalVar;
+
+static void gvar_offset(FileBuffer* fb, u64_t* o_result)
+{
+    *o_result = fb->off + fb->base_addr;
+}
+
+static void gvar_base(FileBuffer* fb, u64_t* o_result)
+{
+    *o_result = fb->base_addr;
+}
+
+static void gvar_size(FileBuffer* fb, u64_t* o_result) { *o_result = fb->size; }
+
+static const ExprGlobalVar global_vars[] = {
+    {"off", gvar_offset}, {"o", gvar_offset},  {"base", gvar_base},
+    {"b", gvar_base},     {"size", gvar_size}, {"s", gvar_size},
+};
+
 static int parse_primary(const char** p, FileBuffer* fb, u64_t* o_result)
 {
     skip_spaces(p);
 
     if (**p == '$') {
         (*p)++; // consume '$'
-        char var = **p;
-        if (var == 'c') {
-            (*p)++;
-            *o_result = fb->off + fb->base_addr;
-            return EXPR_EVAL_OK;
-        } else if (var == 'b') {
-            (*p)++;
-            *o_result = fb->base_addr;
-            return EXPR_EVAL_OK;
+
+        for (size_t i = 0; i < sizeof(global_vars) / sizeof(global_vars[0]);
+             i++) {
+            size_t len = strlen(global_vars[i].name);
+            if (strncmp(*p, global_vars[i].name, len) == 0) {
+                *p += len;
+                global_vars[i].get_value(fb, o_result);
+                return EXPR_EVAL_OK;
+            }
         }
-        return EXPR_EVAL_ERR_SYNTAX;
+        return EXPR_EVAL_ERR_UNKNOWN_GLOBAL_VAR;
     }
 
     if (**p == '(') {
