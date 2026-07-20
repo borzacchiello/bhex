@@ -474,6 +474,30 @@ fn processShdr(header)
     }
 }
 
+proc load_segments
+{
+    Elf_Ehdr header;
+    seek(header.e_phoff);
+
+    local i = 0;
+    while (i < header.e_phnum) {
+        if (is64Bit(header)) {
+            Elf64_Phdr phdr;
+        } else {
+            Elf32_Phdr phdr;
+        }
+        
+        if (phdr.p_type == PhdrType::PT_LOAD) {
+            print("");
+            print("flags:", phdr.p_flags);
+            print("fsize:", tostring(phdr.p_filesz));
+            print("faddr:", tostring(phdr.p_offset), "->", tostring(phdr.p_offset+phdr.p_filesz));
+            print("vaddr:", tostring(phdr.p_vaddr), "->", tostring(phdr.p_vaddr+phdr.p_memsz));
+        }
+        i = i + 1;
+    }
+}
+
 proc
 {
     Elf_Ehdr header;

@@ -568,6 +568,25 @@ static BHEngineValue* builtin_exit(InterpreterContext* ctx, DList* params)
     return NULL;
 }
 
+static BHEngineValue* builtin_tostring(InterpreterContext* ctx, DList* params)
+{
+    if (!params || params->size != 1) {
+        bhengine_raise_exception(ctx,
+                                 "tostring: expected exactly one parameter");
+        return NULL;
+    }
+
+    BHEngineValue* param = params->data[0];
+    if (param->t == TENGINE_STRING) {
+        return BHEngineValue_dup(param);
+    }
+
+    char* str        = BHEngineValue_tostring(param, ctx->fmt->print_in_hex, 0);
+    BHEngineValue* r = BHEngineValue_STRING_new((const u8_t*)str, strlen(str));
+    bhex_free(str);
+    return r;
+}
+
 static BHEngineValue* builtin_find(InterpreterContext* ctx, DList* params)
 {
     if (!params || params->size == 0) {
@@ -740,6 +759,7 @@ static BHEngineBuiltinFunc builtin_funcs[] = {
     {"strip", builtin_strip},
     {"strlen", builtin_strlen},
     {"find", builtin_find},
+    {"tostring", builtin_tostring},
 };
 
 const BHEngineBuiltinFunc* get_builtin_func(const char* name)
