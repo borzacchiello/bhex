@@ -61,7 +61,7 @@ endif()
 if (ENABLE_KEYSTONE)
     set(BUILD_SHARED_LIBS OFF)
     set(BUILD_LIBS_ONLY ON)
-    set(LLVM_TARGETS_TO_BUILD "AArch64, ARM, Mips, RISCV, Sparc, SystemZ, X86")
+    set(LLVM_TARGETS_TO_BUILD AArch64 ARM Mips RISCV Sparc SystemZ X86)
     add_subdirectory(keystone EXCLUDE_FROM_ALL)
 
     include_directories("${CMAKE_SOURCE_DIR}/keystone/include")
