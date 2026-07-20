@@ -16,6 +16,42 @@
 
 #define max(x, y) ((x) > (y) ? (x) : (y))
 
+// ---------------------------------------------------------------------------
+// Value pool
+//
+// Arithmetic-heavy templates create and destroy an enormous number of
+// short-lived scalar BHEngineValue objects (every intermediate result of an
+// expression is a fresh allocation). Recycling the fixed-size structs through
+// a small freelist keeps them off the malloc/free hot path, which dominates
+// the interpreter's cost on tight numeric loops.
+//
+// The pool is bypassed whenever the allocation tracker is active (see
+// alloc.c), so leak-accounting tests still observe every live allocation
+// exactly as they would without the pool.
+// ---------------------------------------------------------------------------
+#define VALUE_POOL_MAX 1024
+static BHEngineValue* g_value_pool[VALUE_POOL_MAX];
+static u32_t          g_value_pool_size = 0;
+
+// The pool is a hot path, so it reads the tracker flag directly rather than
+// through bhex_alloc_is_tracking() (which is a real call in unoptimized
+// builds).
+static inline BHEngineValue* value_alloc(void)
+{
+    if (!g_bhex_alloc_tracking && g_value_pool_size > 0)
+        return g_value_pool[--g_value_pool_size];
+    return bhex_malloc(sizeof(BHEngineValue));
+}
+
+static inline void value_dealloc(BHEngineValue* v)
+{
+    if (!g_bhex_alloc_tracking && g_value_pool_size < VALUE_POOL_MAX) {
+        g_value_pool[g_value_pool_size++] = v;
+        return;
+    }
+    bhex_free(v);
+}
+
 static const char* type_to_string(BHEngineValueType t)
 {
     switch (t) {
@@ -54,7 +90,7 @@ BHEngineValue* BHEngineValue_SNUM_new(s64_t v, u32_t size)
         v = (s64_t)vu;
     }
 
-    BHEngineValue* r = bhex_calloc(sizeof(BHEngineValue));
+    BHEngineValue* r = value_alloc();
     r->refcount      = 1;
     r->t             = TENGINE_SNUM;
     r->snum          = v;
@@ -68,7 +104,7 @@ BHEngineValue* BHEngineValue_UNUM_new(u64_t v, u32_t size)
         panic("BHEngineValue_UNUM_new() invalid size");
     u64_t mask = (2ull << ((u64_t)size * 8 - 1ull)) - 1ull;
 
-    BHEngineValue* r = bhex_calloc(sizeof(BHEngineValue));
+    BHEngineValue* r = value_alloc();
     r->refcount      = 1;
     r->t             = TENGINE_UNUM;
     r->unum          = v & mask;
@@ -78,7 +114,7 @@ BHEngineValue* BHEngineValue_UNUM_new(u64_t v, u32_t size)
 
 BHEngineValue* BHEngineValue_CHAR_new(char c)
 {
-    BHEngineValue* r = bhex_calloc(sizeof(BHEngineValue));
+    BHEngineValue* r = value_alloc();
     r->refcount      = 1;
     r->t             = TENGINE_CHAR;
     r->c             = c;
@@ -87,7 +123,7 @@ BHEngineValue* BHEngineValue_CHAR_new(char c)
 
 BHEngineValue* BHEngineValue_WCHAR_new(u16_t c)
 {
-    BHEngineValue* r = bhex_calloc(sizeof(BHEngineValue));
+    BHEngineValue* r = value_alloc();
     r->refcount      = 1;
     r->t             = TENGINE_WCHAR;
     r->wc            = c;
@@ -96,7 +132,7 @@ BHEngineValue* BHEngineValue_WCHAR_new(u16_t c)
 
 BHEngineValue* BHEngineValue_STRING_new(const u8_t* str, u32_t size)
 {
-    BHEngineValue* r = bhex_calloc(sizeof(BHEngineValue));
+    BHEngineValue* r = value_alloc();
     r->refcount      = 1;
     r->t             = TENGINE_STRING;
     r->str           = bhex_calloc(size + 1);
@@ -107,7 +143,7 @@ BHEngineValue* BHEngineValue_STRING_new(const u8_t* str, u32_t size)
 
 BHEngineValue* BHEngineValue_WSTRING_new(const u16_t* str, u32_t size)
 {
-    BHEngineValue* r = bhex_calloc(sizeof(BHEngineValue));
+    BHEngineValue* r = value_alloc();
     r->refcount      = 1;
     r->t             = TENGINE_WSTRING;
     r->wstr          = bhex_calloc(2 * size + 2);
@@ -118,7 +154,7 @@ BHEngineValue* BHEngineValue_WSTRING_new(const u16_t* str, u32_t size)
 
 BHEngineValue* BHEngineValue_OBJ_new(map* subvals)
 {
-    BHEngineValue* r = bhex_calloc(sizeof(BHEngineValue));
+    BHEngineValue* r = value_alloc();
     r->refcount      = 1;
     r->t             = TENGINE_OBJ;
     r->subvals       = subvals;
@@ -127,7 +163,7 @@ BHEngineValue* BHEngineValue_OBJ_new(map* subvals)
 
 BHEngineValue* BHEngineValue_ENUM_VALUE_new(const char* ename, u64_t econst)
 {
-    BHEngineValue* r = bhex_calloc(sizeof(BHEngineValue));
+    BHEngineValue* r = value_alloc();
     r->refcount      = 1;
     r->t             = TENGINE_ENUM_VALUE;
     r->enum_value    = bhex_strdup(ename);
@@ -137,7 +173,7 @@ BHEngineValue* BHEngineValue_ENUM_VALUE_new(const char* ename, u64_t econst)
 
 BHEngineValue* BHEngineValue_BUF_new(u64_t off, u64_t size)
 {
-    BHEngineValue* r = bhex_calloc(sizeof(BHEngineValue));
+    BHEngineValue* r = value_alloc();
     r->refcount      = 1;
     r->t             = TENGINE_BUF;
     r->buf_off       = off;
@@ -147,7 +183,7 @@ BHEngineValue* BHEngineValue_BUF_new(u64_t off, u64_t size)
 
 BHEngineValue* BHEngineValue_ARRAY_new(void)
 {
-    BHEngineValue* r = bhex_calloc(sizeof(BHEngineValue));
+    BHEngineValue* r = value_alloc();
     r->refcount      = 1;
     r->t             = TENGINE_ARRAY;
     r->array_data    = DList_new();
@@ -227,8 +263,8 @@ BHEngineValue* BHEngineValue_array_sub(InterpreterContext*  ctx,
     return NULL;
 }
 
-#define is_snum(e) ((e)->t == TENGINE_SNUM)
-#define is_unum(e) ((e)->t == TENGINE_UNUM || (e)->t == TENGINE_ENUM_VALUE)
+#define is_snum(e)       ((e)->t == TENGINE_SNUM)
+#define is_unum(e)       ((e)->t == TENGINE_UNUM || (e)->t == TENGINE_ENUM_VALUE)
 #define get_unum_size(e) (((e)->t == TENGINE_UNUM) ? (e)->unum_size : 8)
 #define get_unum_value(e)                                                      \
     (((e)->t == TENGINE_UNUM) ? (e)->unum : (e)->enum_const)
@@ -652,7 +688,7 @@ void BHEngineValue_release(BHEngineValue* v)
         default:
             panic("invalid type in BHEngineValue_release");
     }
-    bhex_free(v);
+    value_dealloc(v);
 }
 
 void BHEngineValue_free(BHEngineValue* v) { BHEngineValue_release(v); }

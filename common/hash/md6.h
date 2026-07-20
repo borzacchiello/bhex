@@ -153,7 +153,7 @@ md6_control_word md6_make_control_word(int r,      /* number rounds */
 typedef u64_t md6_nodeID;              /* (ell,i) */
 md6_nodeID    md6_make_nodeID(int ell, /* level number */
                               int i    /* index (0,1,2,...) within level */
-);
+   );
 
 void md6_pack(md6_word*       N, /* output */
               const md6_word* Q, /* fractional part sqrt(6) */

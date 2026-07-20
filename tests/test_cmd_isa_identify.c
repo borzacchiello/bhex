@@ -254,7 +254,7 @@ int TEST(help_output)(void)
 
     char* out = strbuilder_reset(sb);
     r         = strstr(out, "isa_identify: identify the ISA") != NULL &&
-                strstr(out, "if omitted, use the whole file") != NULL;
+        strstr(out, "if omitted, use the whole file") != NULL;
     bhex_free(out);
 
 end:

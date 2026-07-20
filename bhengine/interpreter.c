@@ -778,14 +778,12 @@ static int process_LOCAL_VAR_ASS(InterpreterContext* ctx, Stmt* stmt,
     if (v == NULL)
         return 1;
 
-    if (Scope_get_local(scope, stmt->local_name) == NULL) {
+    if (!Scope_update_local(scope, stmt->local_name, v)) {
         bhengine_raise_exception(ctx, "no such local variable '%s",
                                  stmt->local_name);
         BHEngineValue_free(v);
         return 1;
     }
-
-    Scope_update_local(scope, stmt->local_name, v);
     return 0;
 }
 
@@ -864,19 +862,31 @@ static int process_STMT_WHILE(InterpreterContext* ctx, Stmt* stmt, Scope* scope)
     if (eval_to_u64(ctx, scope, stmt->cond, &cond) != 0)
         goto fail;
 
+    // Reuse a single inner scope across all iterations: it is emptied (rather
+    // than freed and reallocated) at the end of each pass, which keeps the
+    // hot loop off the allocator when the body declares no locals.
+    Scope* inner = cond != 0 ? Scope_push(scope) : NULL;
     while (cond != 0) {
         DList* stmts = stmt->body->stmts;
-        Scope* inner = Scope_push(scope);
         int    r     = process_stmts_no_exc(ctx, stmts, inner);
-        Scope_pop(inner);
-        if (r != 0)
+        if (r != 0) {
+            Scope_pop(inner);
             goto fail;
-        if (ctx->breaked || ctx->halt || ctx->returned)
+        }
+        if (ctx->breaked || ctx->halt || ctx->returned) {
+            Scope_pop(inner);
             goto end;
+        }
         if (ctx->continued)
             ctx->continued = 0;
-        if (eval_to_u64(ctx, scope, stmt->cond, &cond) != 0)
+        if (eval_to_u64(ctx, scope, stmt->cond, &cond) != 0) {
+            Scope_pop(inner);
             goto fail;
+        }
+        if (cond != 0)
+            Scope_reset(inner);
+        else
+            Scope_pop(inner);
     }
 
 end:

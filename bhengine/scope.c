@@ -31,6 +31,14 @@ Scope* Scope_pop(Scope* child)
     return parent;
 }
 
+void Scope_reset(Scope* s)
+{
+    // Empty a scope so it can be reused for the next iteration of a loop
+    // without reallocating its underlying maps.
+    map_clear(s->locals);
+    map_clear(s->filevars);
+}
+
 void Scope_free(Scope* s)
 {
     if (!s)
@@ -86,15 +94,16 @@ void Scope_add_local(Scope* s, const char* name, BHEngineValue* value)
     map_set(s->locals, name, value);
 }
 
-void Scope_update_local(Scope* s, const char* name, BHEngineValue* value)
+int Scope_update_local(Scope* s, const char* name, BHEngineValue* value)
 {
+    // Single hash+compare pass per scope: map_replace both locates and updates
+    // the binding, so we no longer probe with map_contains and then map_set.
     while (s != NULL) {
-        if (map_contains(s->locals, name)) {
-            map_set(s->locals, name, value);
-            return;
-        }
+        if (map_replace(s->locals, name, value))
+            return 1;
         s = s->parent;
     }
+    return 0;
 }
 
 map* Scope_free_and_get_filevars(Scope* s)

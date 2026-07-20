@@ -1094,8 +1094,8 @@ static void compute_scores(FileBuffer* fb, u64_t file_size, FindbaseArch arch,
     for (size_t i = 0; i < candidate_count; ++i) {
         FindbaseCandidate* candidate = candidates->data[i];
         candidate->score             = (u64_t)candidate->pointer_count *
-                                       (u64_t)candidate->votes *
-                                       (u64_t)candidate->array_score;
+                           (u64_t)candidate->votes *
+                           (u64_t)candidate->array_score;
     }
 }
 

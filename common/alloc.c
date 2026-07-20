@@ -13,11 +13,11 @@
 static void** g_track_ptr;
 static u64_t  g_track_capacity;
 static u64_t  g_track_size;
-static int    g_tracking;
+int           g_bhex_alloc_tracking;
 
 static inline void track_add(void* ptr)
 {
-    if (likely(!g_tracking))
+    if (likely(!g_bhex_alloc_tracking))
         return;
 
     if (g_track_capacity == g_track_size) {
@@ -31,7 +31,7 @@ static inline void track_add(void* ptr)
 
 static inline int track_remove(void* ptr)
 {
-    if (likely(!g_tracking))
+    if (likely(!g_bhex_alloc_tracking))
         return 0;
 
     for (u64_t i = 0; i < g_track_size; ++i) {
@@ -47,32 +47,32 @@ static inline int track_remove(void* ptr)
 
 static inline void track_start()
 {
-    if (g_tracking)
+    if (g_bhex_alloc_tracking)
         return;
 
-    g_tracking       = 1;
-    g_track_capacity = 16;
-    g_track_size     = 0;
-    g_track_ptr      = malloc(sizeof(void*) * g_track_capacity);
+    g_bhex_alloc_tracking = 1;
+    g_track_capacity      = 16;
+    g_track_size          = 0;
+    g_track_ptr           = malloc(sizeof(void*) * g_track_capacity);
     if (!g_track_ptr)
         panic("unable to allocate buffer for tracker");
 }
 
 static inline void track_stop()
 {
-    if (!g_tracking)
+    if (!g_bhex_alloc_tracking)
         return;
 
     free(g_track_ptr);
-    g_tracking       = 0;
-    g_track_ptr      = NULL;
-    g_track_size     = 0;
-    g_track_capacity = 0;
+    g_bhex_alloc_tracking = 0;
+    g_track_ptr           = NULL;
+    g_track_size          = 0;
+    g_track_capacity      = 0;
 }
 
 static inline void track_free_all()
 {
-    if (!g_tracking)
+    if (!g_bhex_alloc_tracking)
         return;
 
     for (u64_t i = 0; i < g_track_size; ++i)
@@ -146,7 +146,7 @@ char* bhex_getline(void)
 
 void bhex_alloc_track_start()
 {
-    if (g_tracking)
+    if (g_bhex_alloc_tracking)
         return;
 
     track_start();
@@ -154,7 +154,7 @@ void bhex_alloc_track_start()
 
 void bhex_alloc_track_stop()
 {
-    if (!g_tracking)
+    if (!g_bhex_alloc_tracking)
         return;
 
     track_stop();
@@ -162,7 +162,7 @@ void bhex_alloc_track_stop()
 
 void bhex_alloc_track_free_all()
 {
-    if (!g_tracking)
+    if (!g_bhex_alloc_tracking)
         return;
 
     track_free_all();

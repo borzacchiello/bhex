@@ -79,6 +79,29 @@ void map_destroy(map* m)
 }
 
 /**
+ * Remove every entry from a map, disposing values as `map_destroy` would, but
+ * keep the map (and its bucket array) allocated for reuse.
+ *
+ * This lets callers recycle a single map across many iterations of a loop
+ * instead of allocating and freeing a fresh one each time.
+ */
+void map_clear(map* m)
+{
+    for (int i = 0; i < m->capacity; i += 1) {
+        struct cell* curr = m->elems[i];
+        while (curr != NULL) {
+            struct cell* next = curr->next;
+            if (m->el_dispose)
+                m->el_dispose(curr->value);
+            bhex_free(curr);
+            curr = next;
+        }
+        m->elems[i] = NULL;
+    }
+    m->size = 0;
+}
+
+/**
  * Get the size of a map.
  */
 int map_size(const map* m) { return m->size; }
@@ -92,7 +115,7 @@ int map_contains(const map* m, const char* key)
 {
     if (m->capacity == 0)
         return 0;
-    int b = hash(key) % m->capacity;
+    int b = hash(key) & (m->capacity - 1);
 
     // Search linearly for a matching key through the appropriate linked list.
     for (struct cell* curr = m->elems[b]; curr != NULL; curr = curr->next) {
@@ -113,7 +136,7 @@ void map_set(map* m, const char* key, void* value)
     // First, look for an existing entry with the given key in the map. If it
     // exists, simply update its value.
     if (m->capacity > 0) {
-        int b = hash(key) % m->capacity;
+        int b = hash(key) & (m->capacity - 1);
         for (struct cell* curr = m->elems[b]; curr != NULL; curr = curr->next) {
             if (strcmp(curr->key, key) == 0) {
                 if (m->el_dispose)
@@ -125,7 +148,7 @@ void map_set(map* m, const char* key, void* value)
     }
 
     extend_if_necessary(m);
-    int b = hash(key) % m->capacity;
+    int b = hash(key) & (m->capacity - 1);
 
     // No existing key was found, so insert it as a new entry at the head of the
     // list.
@@ -138,6 +161,30 @@ void map_set(map* m, const char* key, void* value)
 }
 
 /**
+ * Replace the value for an existing key, disposing the previous value.
+ *
+ * Returns 1 if the key existed (and was updated), 0 otherwise. Unlike
+ * `map_set` this never inserts a new key, which lets callers probe-and-update
+ * a map in a single hash+compare pass.
+ */
+int map_replace(map* m, const char* key, void* value)
+{
+    if (m->capacity == 0)
+        return 0;
+    int b = hash(key) & (m->capacity - 1);
+
+    for (struct cell* curr = m->elems[b]; curr != NULL; curr = curr->next) {
+        if (strcmp(curr->key, key) == 0) {
+            if (m->el_dispose)
+                m->el_dispose(curr->value);
+            curr->value = value;
+            return 1;
+        }
+    }
+    return 0;
+}
+
+/**
  * Retrieve the value for a given key in a map.
  *
  * Crashes if the map does not contain the given key.
@@ -146,7 +193,7 @@ void* map_get(const map* m, const char* key)
 {
     if (m->capacity == 0)
         panic("map_get(): key not found");
-    int b = hash(key) % m->capacity;
+    int b = hash(key) & (m->capacity - 1);
 
     // Search linearly for a matching key through the appropriate linked list.
     for (struct cell* curr = m->elems[b]; curr != NULL; curr = curr->next) {
@@ -165,7 +212,7 @@ void* map_get_or_null(const map* m, const char* key)
 {
     if (m->capacity == 0)
         return NULL;
-    int b = hash(key) % m->capacity;
+    int b = hash(key) & (m->capacity - 1);
 
     for (struct cell* curr = m->elems[b]; curr != NULL; curr = curr->next) {
         if (strcmp(curr->key, key) == 0)
@@ -183,7 +230,7 @@ void* map_remove(map* m, const char* key)
 {
     if (m->capacity == 0)
         panic("map_remove(): key not found");
-    int b = hash(key) % m->capacity;
+    int b = hash(key) & (m->capacity - 1);
 
     // Here, use a double pointer to make removal easier.
     struct cell** curr;
@@ -240,7 +287,7 @@ const char* map_next(map* m, const char* key)
 
     // If no immediate successor exists, begin searching the rest of the
     // buckets.
-    int b = hash(key) % m->capacity;
+    int b = hash(key) & (m->capacity - 1);
     for (int i = b + 1; i < m->capacity; i += 1) {
         if (m->elems[i] != NULL) {
             return m->elems[i]->key;
@@ -290,7 +337,7 @@ static void extend_if_necessary(map* m)
                 struct cell* next = curr->next;
 
                 // Move the entry from the old data structure to the new.
-                int b       = hash(curr->key) % m->capacity;
+                int b       = hash(curr->key) & (m->capacity - 1);
                 curr->next  = m->elems[b];
                 m->elems[b] = curr;
 

@@ -22,7 +22,12 @@ Scope* Scope_push(Scope* parent);
 // Pop a child scope from the stack: free child and return its parent.
 Scope* Scope_pop(Scope* child);
 
-void           Scope_free(Scope* s);
+void Scope_free(Scope* s);
+
+// Empty a scope (dispose all locals and filevars) while keeping it allocated,
+// so it can be reused across loop iterations.
+void Scope_reset(Scope* s);
+
 BHEngineValue* Scope_get_filevar(Scope* s, const char* name);
 BHEngineValue* Scope_get_local(Scope* s, const char* name);
 BHEngineValue* Scope_get_anyvar(Scope* s, const char* name);
@@ -32,7 +37,8 @@ void Scope_add_filevar(Scope* s, const char* name, BHEngineValue* value);
 void Scope_add_local(Scope* s, const char* name, BHEngineValue* value);
 
 // Update an existing local variable, searching up the parent chain.
-void Scope_update_local(Scope* s, const char* name, BHEngineValue* value);
+// Returns 1 if the variable was found and updated, 0 otherwise.
+int Scope_update_local(Scope* s, const char* name, BHEngineValue* value);
 
 map*           Scope_free_and_get_filevars(Scope* s);
 map*           Scope_free_and_get_locals(Scope* s);

@@ -62,6 +62,12 @@ void map_set_dispose(map* m, void (*c)(void*));
 void map_destroy(map* m);
 
 /**
+ * Remove every entry from a map, disposing values via the dispose callback,
+ * while keeping the map allocated (and its capacity) for reuse.
+ */
+void map_clear(map* m);
+
+/**
  * Get the size of a map.
  */
 int map_size(const map* m);
@@ -80,6 +86,12 @@ int map_contains(const map* m, const char* key);
  * new value will replace the old one.
  */
 void map_set(map* m, const char* key, void* value);
+
+/**
+ * Replace the value for an existing key, disposing the previous value. Returns
+ * 1 if the key existed (and was updated), 0 otherwise. Never inserts.
+ */
+int map_replace(map* m, const char* key, void* value);
 
 /**
  * Retrieve the value for a given key in a map.

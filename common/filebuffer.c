@@ -864,8 +864,8 @@ static void* search_worker(void* arg)
         if (ctx->has_index) {
             BlockInfo* binfo = get_block_at(ctx, addr);
             if (!(binfo->min <= data_min && data_max <= binfo->max)) {
-                addr    = (addr / ctx->block_size) * ctx->block_size +
-                          ctx->block_size;
+                addr = (addr / ctx->block_size) * ctx->block_size +
+                       ctx->block_size;
                 buf_off = 0;
                 buf_end = 0;
                 continue;
