@@ -18,14 +18,12 @@ static DummyFilebuffer* tui_dfb;
 __attribute__((constructor)) static void __tui_init(void)
 {
     static const u8_t data[] = {
-        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-        0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
-        0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
-        0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F,
-        0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27,
-        0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F,
-        0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48,
-        0x49, 0x4A, 0x4B, 0x4C, 0x4D, 0x4E, 0x4F, 0x50,
+        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A,
+        0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15,
+        0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x20,
+        0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2A, 0x2B,
+        0x2C, 0x2D, 0x2E, 0x2F, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47,
+        0x48, 0x49, 0x4A, 0x4B, 0x4C, 0x4D, 0x4E, 0x4F, 0x50,
     };
     tui_dfb = dummyfilebuffer_create(data, sizeof(data));
     if (!tui_dfb)
@@ -43,10 +41,10 @@ static TuiState tui_test_reset(void)
     fb_seek(tui_dfb->fb, 0);
     fb_undo_all(tui_dfb->fb);
 
-    TuiState ts          = {0};
-    ts.fb                = tui_dfb->fb;
-    ts.chunk_size        = 16;
-    ts.max_visible_addr  = 63;
+    TuiState ts         = {0};
+    ts.fb               = tui_dfb->fb;
+    ts.chunk_size       = 16;
+    ts.max_visible_addr = 63;
     return ts;
 }
 
@@ -54,7 +52,7 @@ static TuiState tui_test_reset(void)
 
 int TEST(sw_append_basic)(void)
 {
-    int r = TEST_SUCCEEDED;
+    int          r = TEST_SUCCEEDED;
     ScreenWriter sw;
     sw_init_with_size(&sw, 10, 80);
 
@@ -73,7 +71,7 @@ fail:
 
 int TEST(sw_append_truncates_at_col_limit)(void)
 {
-    int r = TEST_SUCCEEDED;
+    int          r = TEST_SUCCEEDED;
     ScreenWriter sw;
     sw_init_with_size(&sw, 10, 10);
 
@@ -92,7 +90,7 @@ fail:
 
 int TEST(sw_end_line_pads)(void)
 {
-    int r = TEST_SUCCEEDED;
+    int          r = TEST_SUCCEEDED;
     ScreenWriter sw;
     sw_init_with_size(&sw, 10, 20);
 
@@ -112,7 +110,7 @@ fail:
 
 int TEST(sw_add_line)(void)
 {
-    int r = TEST_SUCCEEDED;
+    int          r = TEST_SUCCEEDED;
     ScreenWriter sw;
     sw_init_with_size(&sw, 10, 20);
 
@@ -134,7 +132,7 @@ fail:
 
 int TEST(sw_respects_row_limit)(void)
 {
-    int r = TEST_SUCCEEDED;
+    int          r = TEST_SUCCEEDED;
     ScreenWriter sw;
     sw_init_with_size(&sw, 3, 20);
 
@@ -156,7 +154,7 @@ fail:
 
 int TEST(nav_arrow_right)(void)
 {
-    int r = TEST_SUCCEEDED;
+    int      r  = TEST_SUCCEEDED;
     TuiState ts = tui_test_reset();
 
     tui_process_key(&ts, ARROW_RIGHT, 30);
@@ -175,7 +173,7 @@ fail:
 
 int TEST(nav_arrow_right_at_end)(void)
 {
-    int r = TEST_SUCCEEDED;
+    int      r  = TEST_SUCCEEDED;
     TuiState ts = tui_test_reset();
     ts.selected = tui_dfb->fb->size;
 
@@ -192,7 +190,7 @@ fail:
 
 int TEST(nav_arrow_left)(void)
 {
-    int r = TEST_SUCCEEDED;
+    int      r  = TEST_SUCCEEDED;
     TuiState ts = tui_test_reset();
     ts.selected = 5;
 
@@ -209,7 +207,7 @@ fail:
 
 int TEST(nav_arrow_left_at_zero)(void)
 {
-    int r = TEST_SUCCEEDED;
+    int      r  = TEST_SUCCEEDED;
     TuiState ts = tui_test_reset();
 
     tui_process_key(&ts, ARROW_LEFT, 30);
@@ -225,7 +223,7 @@ fail:
 
 int TEST(nav_arrow_down)(void)
 {
-    int r = TEST_SUCCEEDED;
+    int      r  = TEST_SUCCEEDED;
     TuiState ts = tui_test_reset();
 
     tui_process_key(&ts, ARROW_DOWN, 30);
@@ -241,7 +239,7 @@ fail:
 
 int TEST(nav_arrow_up)(void)
 {
-    int r = TEST_SUCCEEDED;
+    int      r  = TEST_SUCCEEDED;
     TuiState ts = tui_test_reset();
     ts.selected = 32;
 
@@ -258,7 +256,7 @@ fail:
 
 int TEST(nav_arrow_up_at_zero)(void)
 {
-    int r = TEST_SUCCEEDED;
+    int      r  = TEST_SUCCEEDED;
     TuiState ts = tui_test_reset();
     ts.selected = 5;
 
@@ -275,7 +273,7 @@ fail:
 
 int TEST(nav_home)(void)
 {
-    int r = TEST_SUCCEEDED;
+    int      r  = TEST_SUCCEEDED;
     TuiState ts = tui_test_reset();
     ts.selected = 42;
 
@@ -293,7 +291,7 @@ fail:
 
 int TEST(nav_end)(void)
 {
-    int r = TEST_SUCCEEDED;
+    int      r  = TEST_SUCCEEDED;
     TuiState ts = tui_test_reset();
 
     tui_process_key(&ts, END_KEY, 30);
@@ -309,7 +307,7 @@ fail:
 
 int TEST(nav_tab_toggles_ascii)(void)
 {
-    int r = TEST_SUCCEEDED;
+    int      r  = TEST_SUCCEEDED;
     TuiState ts = tui_test_reset();
     ASSERT(ts.in_ascii_panel == 0);
 
@@ -329,7 +327,7 @@ fail:
 
 int TEST(nav_ctrl_l_toggles_insert)(void)
 {
-    int r = TEST_SUCCEEDED;
+    int      r  = TEST_SUCCEEDED;
     TuiState ts = tui_test_reset();
     ASSERT(ts.insert_mode == 0);
 
@@ -349,7 +347,7 @@ fail:
 
 int TEST(nav_ctrl_x_quits)(void)
 {
-    int r = TEST_SUCCEEDED;
+    int      r  = TEST_SUCCEEDED;
     TuiState ts = tui_test_reset();
 
     ASSERT(tui_process_key(&ts, CTRL_X, 30) == 1);
@@ -364,8 +362,8 @@ fail:
 
 int TEST(nav_resets_nibble)(void)
 {
-    int r = TEST_SUCCEEDED;
-    TuiState ts = tui_test_reset();
+    int      r       = TEST_SUCCEEDED;
+    TuiState ts      = tui_test_reset();
     ts.second_nibble = 1;
 
     tui_process_key(&ts, ARROW_RIGHT, 30);
@@ -383,7 +381,7 @@ fail:
 
 int TEST(write_hex_nibble)(void)
 {
-    int r = TEST_SUCCEEDED;
+    int      r  = TEST_SUCCEEDED;
     TuiState ts = tui_test_reset();
 
     tui_write_key(&ts, 'A');
@@ -409,8 +407,8 @@ fail:
 
 int TEST(write_ascii_panel)(void)
 {
-    int r = TEST_SUCCEEDED;
-    TuiState ts = tui_test_reset();
+    int      r        = TEST_SUCCEEDED;
+    TuiState ts       = tui_test_reset();
     ts.in_ascii_panel = 1;
 
     tui_write_key(&ts, 'Z');
@@ -432,7 +430,7 @@ fail:
 
 int TEST(write_non_printable_ignored)(void)
 {
-    int r = TEST_SUCCEEDED;
+    int      r  = TEST_SUCCEEDED;
     TuiState ts = tui_test_reset();
 
     tui_write_key(&ts, 1); // CTRL_A
@@ -449,7 +447,7 @@ fail:
 
 int TEST(write_invalid_hex_ignored)(void)
 {
-    int r = TEST_SUCCEEDED;
+    int      r  = TEST_SUCCEEDED;
     TuiState ts = tui_test_reset();
 
     tui_write_key(&ts, 'Z');
@@ -466,9 +464,9 @@ fail:
 
 int TEST(delete_key)(void)
 {
-    int r = TEST_SUCCEEDED;
-    TuiState ts = tui_test_reset();
-    u64_t orig_size = ts.fb->size;
+    int      r         = TEST_SUCCEEDED;
+    TuiState ts        = tui_test_reset();
+    u64_t    orig_size = ts.fb->size;
 
     tui_process_key(&ts, DEL_KEY, 30);
     ASSERT(ts.fb->size == orig_size - 1);

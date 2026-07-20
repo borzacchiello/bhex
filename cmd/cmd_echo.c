@@ -32,13 +32,7 @@ static int echocmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     int fmt = FMT_DEFAULT;
     if (handle_mods(pc, "x,d", &fmt) != 0)
         return COMMAND_INVALID_MOD;
-    // FMT_DEFAULT = 0 (neither mod set), FMT_HEX = 1 (/x), FMT_DEC = 2 (/d)
-    // handle_mods returns the index within the group: x=0, d=1
-    // But wait — handle_mods assigns 0 or 1 based on position in the group.
-    // x is at index 0, d is at index 1. We want 0=hex, 1=dec.
-    // Actually let me re-check: FMT_DEFAULT was 0 above, which collides with
-    // handle_mods returning 0 for /x. Let's use -1 for default.
-    int use_hex = (fmt != 1); // default or /x → hex; /d → dec
+    int use_hex = (fmt != 1); // default or /x -> hex; /d -> dec
 
     ll_node_t* node  = pc->args.head;
     int        first = 1;
@@ -49,13 +43,13 @@ static int echocmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 
         u64_t num;
         if (str_to_uint64(arg, &num)) {
-            // Numeric argument — print in the requested format
+            // Numeric argument, print in the requested format
             if (use_hex)
                 display_printf("0x%llx", num);
             else
                 display_printf("%llu", num);
         } else {
-            // Non-numeric — print as-is
+            // Non-numeric, print as-is
             display_printf("%s", arg);
         }
 

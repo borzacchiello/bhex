@@ -170,7 +170,7 @@ int TEST(echo_mixed_args)(void)
     ASSERT(exec_commands("echo value: `10 + 5`") == 0);
 
     char* out = strbuilder_reset(sb);
-    // "value:" is a string, "15" is a number → printed in hex
+    // "value:" is a string, "15" is a number -> printed in hex
     ASSERT(strcmp(out, "value: 0xf\n") == 0);
     bhex_free(out);
 

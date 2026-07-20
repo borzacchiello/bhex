@@ -798,8 +798,8 @@ int fb_reader_read(FbReader* reader, u64_t off, u8_t* out, size_t size)
     if (reader->fd >= 0) {
         size_t done = 0;
         while (done < size) {
-            ssize_t n = pread(reader->fd, out + done, size - done,
-                              (off_t)(off + done));
+            ssize_t n =
+                pread(reader->fd, out + done, size - done, (off_t)(off + done));
             if (n < 0 && errno == EINTR)
                 continue;
             if (n <= 0)
@@ -864,8 +864,8 @@ static void* search_worker(void* arg)
         if (ctx->has_index) {
             BlockInfo* binfo = get_block_at(ctx, addr);
             if (!(binfo->min <= data_min && data_max <= binfo->max)) {
-                addr = (addr / ctx->block_size) * ctx->block_size +
-                       ctx->block_size;
+                addr    = (addr / ctx->block_size) * ctx->block_size +
+                          ctx->block_size;
                 buf_off = 0;
                 buf_end = 0;
                 continue;

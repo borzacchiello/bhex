@@ -18,7 +18,7 @@ INLINE uint32_t rotr32(uint32_t w, unsigned int c)
 }
 
 /* ------------------------------------------------------------------ */
-/*  G function – one quarter-round of the BLAKE3 permutation          */
+/*  G function - one quarter-round of the BLAKE3 permutation          */
 /* ------------------------------------------------------------------ */
 static void g(uint32_t* state, size_t a, size_t b, size_t c, size_t d,
               uint32_t mx, uint32_t my)
@@ -34,7 +34,7 @@ static void g(uint32_t* state, size_t a, size_t b, size_t c, size_t d,
 }
 
 /* ------------------------------------------------------------------ */
-/*  round – one full round (8 G calls)                                */
+/*  round - one full round (8 G calls)                                */
 /* ------------------------------------------------------------------ */
 static void round_fn(uint32_t* state, const uint32_t* msg, size_t round)
 {
@@ -53,7 +53,7 @@ static void round_fn(uint32_t* state, const uint32_t* msg, size_t round)
 }
 
 /* ------------------------------------------------------------------ */
-/*  compress  –  single-block compression (7 rounds for BLAKE3)       */
+/*  compress  -  single-block compression (7 rounds for BLAKE3)       */
 /* ------------------------------------------------------------------ */
 static void compress(uint32_t state[16], const uint32_t cv[8],
                      const uint8_t block[BLAKE3_BLOCK_LEN], uint8_t block_len,
@@ -161,7 +161,7 @@ void blake3_hash_many_portable(const uint8_t* const* inputs, size_t num_inputs,
 }
 
 /* ------------------------------------------------------------------ */
-/*  dispatch helpers  –  always resolve to portable on this build     */
+/*  dispatch helpers  -  always resolve to portable on this build     */
 /* ------------------------------------------------------------------ */
 
 size_t blake3_simd_degree(void) { return 1; }

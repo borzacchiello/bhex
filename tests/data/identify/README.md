@@ -7,10 +7,10 @@ architecture-identification regression fixtures.
 
 Running the generator produces, for each target architecture:
 
-- `<arch>.o` — the compiled object file
-- `<arch>.bin` — the raw `.text` section used by the tests
-- `<arch>.objdump.txt` — a disassembly dump for inspection/debugging
-- `manifest.json` — metadata and hashes for the generated fixtures
+- `<arch>.o`: the compiled object file
+- `<arch>.bin`: the raw `.text` section used by the tests
+- `<arch>.objdump.txt`: a disassembly dump for inspection/debugging
+- `manifest.json`: metadata and hashes for the generated fixtures
 
 The generated files are written into `tests/data/identify/generated/`.
 After that, `tests/data/identify/generate_asm_snippets.py` refreshes
@@ -37,13 +37,13 @@ So a single command regenerates both the raw fixture binaries and the checked-in
 
 ## Directory layout
 
-- `identify_sample.c` — source program compiled for each target ISA
-- `docker/Dockerfile` — container image used for fixture generation
-- `generate.py` — compiles the sample and extracts `.text` into raw binaries
-- `generate_asm_snippets.py` — converts generated `.bin` files into
+- `identify_sample.c` -- source program compiled for each target ISA
+- `docker/Dockerfile` -- container image used for fixture generation
+- `generate.py` -- compiles the sample and extracts `.text` into raw binaries
+- `generate_asm_snippets.py` -- converts generated `.bin` files into
   `tests/data/asm_snippets.h`
-- `gen_identify_testcases.sh` — one-shot wrapper that runs the full pipeline
-- `generated/` — output directory for fixture artifacts and `manifest.json`
+- `gen_identify_testcases.sh` -- one-shot wrapper that runs the full pipeline
+- `generated/` -- output directory for fixture artifacts and `manifest.json`
 
 ## Why Docker
 

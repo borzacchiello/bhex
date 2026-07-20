@@ -3657,8 +3657,8 @@ int TEST(filevar_byref_memory)(void)
     // would add O(N * ARRAY_SIZE) extra BHEngineValue objects.
     //
     // Threshold: live_n - live_1 < N * ARRAY_SIZE / 4
-    //   new code: ~(N-1) extra map cells              ≈  999  (passes)
-    //   old code: ~(N-1)*(ARRAY_SIZE+2) extra objects ≈ 43956 (would fail)
+    //   new code: ~(N-1) extra map cells              ~  999  (passes)
+    //   old code: ~(N-1)*(ARRAY_SIZE+2) extra objects ~ 43956 (would fail)
 
 #define PERF_N          1000
 #define PERF_ARRAY_SIZE 42
@@ -4108,5 +4108,161 @@ int TEST(scope_if_no_access_after)(void)
     int    r     = (scope == NULL) ? 1 : 0;
     if (scope)
         Scope_free(scope);
+    return r;
+}
+
+int TEST(tostring_unum)(void)
+{
+    const char* prog = "proc {"
+                       "  local a = 42u8;"
+                       "  local b = tostring(a);"
+                       "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    if (scope == NULL)
+        return 0;
+
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
+    IS_TENGINE_STRING_EQ(r, v, "42");
+
+end:
+    Scope_free(scope);
+    return r;
+}
+
+int TEST(tostring_snum)(void)
+{
+    const char* prog = "proc {"
+                       "  local a = -123;"
+                       "  local b = tostring(a);"
+                       "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    if (scope == NULL)
+        return 0;
+
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
+    IS_TENGINE_STRING_EQ(r, v, "-123");
+
+end:
+    Scope_free(scope);
+    return r;
+}
+
+int TEST(tostring_string)(void)
+{
+    const char* prog = "proc {"
+                       "  local a = \"hello\";"
+                       "  local b = tostring(a);"
+                       "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    if (scope == NULL)
+        return 0;
+
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
+    IS_TENGINE_STRING_EQ(r, v, "hello");
+
+end:
+    Scope_free(scope);
+    return r;
+}
+
+int TEST(tostring_enum)(void)
+{
+    DummyFilebuffer* tfb = dummyfilebuffer_create((const u8_t*)"\x03\x00", 2);
+
+    const char* prog = "enum MyEnum : u16 { A = 1, B = 2, C = 4 }"
+                       "proc {"
+                       "  MyEnum v;"
+                       "  local s = tostring(v);"
+                       "}";
+
+    int    r     = 0;
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    if (scope == NULL)
+        goto end;
+
+    BHEngineValue* v = Scope_get_local(scope, "s");
+    IS_TENGINE_STRING_EQ(r, v, "A | B");
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+}
+
+int TEST(tostring_enum_single)(void)
+{
+    DummyFilebuffer* tfb = dummyfilebuffer_create((const u8_t*)"\x01\x00", 2);
+
+    const char* prog = "enum MyEnum : u16 { A = 1, B = 2, C = 4 }"
+                       "proc {"
+                       "  MyEnum v;"
+                       "  local s = tostring(v);"
+                       "}";
+
+    int    r     = 0;
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    if (scope == NULL)
+        goto end;
+
+    BHEngineValue* v = Scope_get_local(scope, "s");
+    IS_TENGINE_STRING_EQ(r, v, "A");
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+}
+
+int TEST(tostring_hex)(void)
+{
+    const char* prog = "proc {"
+                       "  nums_in_hex();"
+                       "  local a = 255u8;"
+                       "  local b = tostring(a);"
+                       "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    if (scope == NULL)
+        return 0;
+
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "b");
+    IS_TENGINE_STRING_EQ(r, v, "0xff");
+
+end:
+    Scope_free(scope);
+    return r;
+}
+
+int TEST(tostring_orenum)(void)
+{
+    DummyFilebuffer* tfb = dummyfilebuffer_create((const u8_t*)"\x03\x00", 2);
+
+    const char* prog = "orenum MyFlags : u16 { A = 1, B = 2, C = 4 }"
+                       "proc {"
+                       "  MyFlags v;"
+                       "  local s = tostring(v);"
+                       "}";
+
+    int    r     = 0;
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    if (scope == NULL)
+        goto end;
+
+    BHEngineValue* v = Scope_get_local(scope, "s");
+    IS_TENGINE_STRING_EQ(r, v, "A | B");
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
     return r;
 }

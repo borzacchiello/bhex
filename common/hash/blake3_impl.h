@@ -32,7 +32,7 @@ enum blake3_flags {
 #define NOEXCEPT
 #endif
 
-/* Portable-only build — single-threaded, single-chunk-at-a-time */
+/* Portable-only build -- single-threaded, single-chunk-at-a-time */
 #define MAX_SIMD_DEGREE      1
 #define MAX_SIMD_DEGREE_OR_2 2
 

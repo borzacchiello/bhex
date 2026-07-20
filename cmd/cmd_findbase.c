@@ -342,9 +342,9 @@ static void findbase_analyze_memory(FileBuffer* fb, u64_t file_size,
     if (memmap->block_types == NULL)
         panic("unable to allocate findbase memory map");
 
-    int        nthreads = default_thread_count(nsections);
-    pthread_t* threads  = bhex_calloc(sizeof(pthread_t) * (size_t)nthreads);
-    MemMapTask* tasks   = bhex_calloc(sizeof(MemMapTask) * (size_t)nthreads);
+    int         nthreads = default_thread_count(nsections);
+    pthread_t*  threads  = bhex_calloc(sizeof(pthread_t) * (size_t)nthreads);
+    MemMapTask* tasks    = bhex_calloc(sizeof(MemMapTask) * (size_t)nthreads);
 
     for (int t = 0; t < nthreads; ++t) {
         size_t begin, end;
@@ -1094,8 +1094,8 @@ static void compute_scores(FileBuffer* fb, u64_t file_size, FindbaseArch arch,
     for (size_t i = 0; i < candidate_count; ++i) {
         FindbaseCandidate* candidate = candidates->data[i];
         candidate->score             = (u64_t)candidate->pointer_count *
-                           (u64_t)candidate->votes *
-                           (u64_t)candidate->array_score;
+                                       (u64_t)candidate->votes *
+                                       (u64_t)candidate->array_score;
     }
 }
 
