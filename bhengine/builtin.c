@@ -925,6 +925,20 @@ static BHEngineValue* builtin_nums_in(InterpreterContext* ctx, DList* params)
     return NULL;
 }
 
+// max_array_print(n): print at most n elements of an array, 0 meaning "all of
+// them". It lets a template describe a big table (a symbol table, a sample
+// table, ...) without flooding the output with one entry per element
+static BHEngineValue* builtin_max_array_print(InterpreterContext* ctx,
+                                              DList*              params)
+{
+    u64_t n;
+    if (param_as_u64(ctx, "max_array_print", params, 0, &n) != 0)
+        return NULL;
+
+    ctx->fmt->max_array_print = n;
+    return NULL;
+}
+
 static BHEngineValue* builtin_disable_print(InterpreterContext* ctx,
                                             DList*              params)
 {
@@ -1482,6 +1496,7 @@ static BHEngineBuiltinFunc builtin_funcs[] = {
     {"little_endian", 0, 0, builtin_little_endian},
     {"big_endian", 0, 0, builtin_big_endian},
     {"nums_in", 1, 1, builtin_nums_in},
+    {"max_array_print", 1, 1, builtin_max_array_print},
     {"disable_print", 0, 0, builtin_disable_print},
     {"enable_print", 0, 0, builtin_enable_print},
     {"print", 1, BUILTIN_VARIADIC, builtin_print},

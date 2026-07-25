@@ -57,10 +57,10 @@ static void print_diffs(FileBuffer* self, FileBuffer* other, int print_diffs,
         }
     }
 
-    u64_t     ndiffs      = 0;
-    u64_t     addr        = 0;
-    const u64_t linelen   = wide ? 16 : 8;
-    int       was_skipped = 0;
+    u64_t       ndiffs      = 0;
+    u64_t       addr        = 0;
+    const u64_t linelen     = wide ? 16 : 8;
+    int         was_skipped = 0;
     while (1) {
         if (addr >= self->size || addr >= other->size)
             break;

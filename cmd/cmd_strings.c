@@ -98,8 +98,7 @@ static int print_ascii_string(ProcessingCtx* ctx)
 {
     u64_t begin_addr = ctx->addr;
     u32_t app_off    = 0;
-    while (ctx->addr < ctx->fb->size &&
-           is_printable_ascii(ctx_cur_byte(ctx))) {
+    while (ctx->addr < ctx->fb->size && is_printable_ascii(ctx_cur_byte(ctx))) {
 
         enlarge_app_if_needed(ctx, app_off + 1);
         ctx->app[app_off++] = ctx_cur_byte(ctx);

@@ -11,6 +11,7 @@
 #include "data/sample_lzo.h"
 #include "data/sample_fat_macho.h"
 #include "data/sample_macho.h"
+#include "data/sample_mp4.h"
 #include "data/sample_pdf.h"
 #include "data/not_kitty_png.h"
 #include "data/sample_rpm.h"
@@ -1097,6 +1098,96 @@ int TEST(template_png_1)(void)
         dummyfilebuffer_create(not_kitty_png, sizeof(not_kitty_png));
     ASSERT(tfb != NULL);
     ASSERT(exec_commands_on("t ./templates/png.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_mp4_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000                      ftyp: \n"
+        "b+00000000                      box_size: 00000020\n"
+        "b+00000004                          type: 'ftyp'\n"
+        "b+00000008                   major_brand: 'isom'\n"
+        "b+0000000c                 minor_version: 00000200\n"
+        "b+00000010             compatible_brands: 'isomiso2avc1mp41'\n"
+        "b+00000020                       box: \n"
+        "b+00000020                      box_size: 00000008\n"
+        "b+00000024                          type: 'free'\n"
+        "b+00000028                       box: \n"
+        "b+00000028                      box_size: 00000008\n"
+        "b+0000002c                          type: 'mdat'\n"
+        "b+00000030                 container: \n"
+        "b+00000030                      box_size: 000000d6\n"
+        "b+00000034                          type: 'moov'\n"
+        "b+00000038                          mvhd: \n"
+        "b+00000038                          box_size: 0000006c\n"
+        "b+0000003c                              type: 'mvhd'\n"
+        "b+00000040                           version: 00\n"
+        "b+00000041                             flags: 000000\n"
+        "b+00000044                     creation_time: 00000000\n"
+        "b+00000048                 modification_time: 00000000\n"
+        "b+0000004c                         timescale: 000003e8\n"
+        "b+00000050                          duration: 00000000\n"
+        "b+00000054                              rate: \n"
+        "b+00000054                               integer: 0001\n"
+        "b+00000056                              fraction: 0000\n"
+        "b+00000058                            volume: \n"
+        "b+00000058                               integer: 01\n"
+        "b+00000059                              fraction: 00\n"
+        "b+0000005a                          reserved: 0000\n"
+        "b+0000005c                         reserved2: [ 00000000, 00000000 ]\n"
+        "b+00000064                            matrix: \n"
+        "b+00000064                                values: [ 00010000, 00000000, 00000000, 00000000, 00010000, 00000000, 00000000, 00000000, 40000000 ]\n"
+        "b+00000088                       pre_defined: [ 00000000, 00000000, 00000000, 00000000, 00000000, 00000000 ]\n"
+        "b+000000a0                     next_track_id: 00000002\n"
+        "b+000000a4                     container: \n"
+        "b+000000a4                          box_size: 00000062\n"
+        "b+000000a8                              type: 'udta'\n"
+        "b+000000ac                              meta: \n"
+        "b+000000ac                              box_size: 0000005a\n"
+        "b+000000b0                                  type: 'meta'\n"
+        "b+000000b4                               version: 00\n"
+        "b+000000b5                                 flags: 000000\n"
+        "b+000000b8                                  hdlr: \n"
+        "b+000000b8                                  box_size: 00000021\n"
+        "b+000000bc                                      type: 'hdlr'\n"
+        "b+000000c0                                   version: 00\n"
+        "b+000000c1                                     flags: 000000\n"
+        "b+000000c4                               pre_defined: 00000000\n"
+        "b+000000c8                              handler_type: MDIR\n"
+        "b+000000cc                                  reserved: [ 6170706c, 00000000, 00000000 ]\n"
+        "b+000000d8                                      name: ''\n"
+        "b+000000d9                             container: \n"
+        "b+000000d9                                  box_size: 0000002d\n"
+        "b+000000dd                                      type: 'ilst'\n"
+        "b+000000e1                                 container: \n"
+        "b+000000e1                                      box_size: 00000025\n"
+        "b+000000e5                                          type: '\\xa9too'\n"
+        "b+000000e9                                          data: \n"
+        "b+000000e9                                          box_size: 0000001d\n"
+        "b+000000ed                                              type: 'data'\n"
+        "b+000000f1                                    type_indicator: 00000001\n"
+        "b+000000f5                                            locale: 00000000\n"
+        "b+000000f9                                             value: 'Lavf57.41.100'\n";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_mp4, sizeof(sample_mp4));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/mp4.bhe", tfb) == 0);
 
     char* out = strbuilder_reset(sb);
     r         = compare_strings_ignoring_X(expected, out);

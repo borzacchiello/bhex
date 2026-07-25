@@ -24,6 +24,11 @@ typedef void (*fmt_notify_array_el_t)(void* this, u64_t n);
 typedef void (*fmt_end_array_t)(void* this);
 typedef void (*fmt_dispose_t)(void* obj);
 
+// Value of Formatter.max_array_print when a template never called
+// max_array_print(): every formatter falls back to its own default. A value of
+// 0 means "no limit", any other value is the number of elements to print.
+#define FMT_MAX_ARRAY_PRINT_UNSET ((u64_t) - 1)
+
 typedef enum fmt_t {
     FMT_UNK  = 0,
     FMT_TERM = 1,
@@ -49,6 +54,9 @@ typedef struct Formatter {
     int   quiet_mode;
     int   print_in_hex;
     u64_t max_fvar_len;
+    // How many elements of an array to print. Only the term formatter honors
+    // it: the XML output is meant to be complete, so it always prints them all
+    u64_t max_array_print;
 } Formatter;
 
 Formatter* fmt_new(fmt_t type);

@@ -28,7 +28,26 @@ typedef struct FormatterTerm {
     int skip_next;
     int last_array_type_was_builtin;
     int prev_array_type_was_builtin;
+    // truncation of arrays of structs: the elements past the limit are still
+    // parsed (the offset must advance) but printed in quiet mode. depth is the
+    // array nesting level, hidden_at_depth the level of the array that got
+    // truncated, or 0 when we are printing everything
+    u64_t depth;
+    u64_t hidden_at_depth;
+    u64_t hidden_saved_quiet_mode;
+    u64_t hidden_limit;
+    u64_t hidden_num_els;
 } FormatterTerm;
+
+// The number of elements to print, 0 meaning "all of them". A template can
+// override it with max_array_print(); by default only the arrays of a builtin
+// type are truncated, as an array of structs is usually worth printing in full
+static u64_t fmt_term_array_limit(FormatterTerm* this)
+{
+    if (this->super->max_array_print != FMT_MAX_ARRAY_PRINT_UNSET)
+        return this->super->max_array_print;
+    return this->last_array_type_was_builtin ? MAX_ARR_PRINT_SIZE : 0;
+}
 
 static void fmt_term_print_off(FormatterTerm* this)
 {
@@ -81,9 +100,14 @@ static void fmt_term_process_buffer_value(FormatterTerm* this, FileBuffer* fb,
 
 static void fmt_term_process_value(FormatterTerm* this, BHEngineValue* val)
 {
-    if (this->super->quiet_mode || this->skip_next)
+    // an element past the print limit: consume the flag, print nothing. It has
+    // to be cleared here, or every value printed afterwards would be skipped
+    if (this->skip_next) {
+        this->skip_next = 0;
         return;
-    this->skip_next = 0;
+    }
+    if (this->super->quiet_mode)
+        return;
 
     if (val->t == TENGINE_ARRAY || val->t == TENGINE_OBJ ||
         val->t == TENGINE_BUF)
@@ -97,6 +121,7 @@ static void fmt_term_process_value(FormatterTerm* this, BHEngineValue* val)
 
 static void fmt_term_start_array(FormatterTerm* this, const Type* ty)
 {
+    this->depth += 1;
     if (!this->super->quiet_mode)
         display_printf("[ ");
 
@@ -109,16 +134,36 @@ static void fmt_term_start_array(FormatterTerm* this, const Type* ty)
 
 static void fmt_term_notify_array_el(FormatterTerm* this, u64_t n)
 {
+    if (this->hidden_at_depth != 0) {
+        // an element of a truncated array, or anything nested in it: count it,
+        // print nothing
+        if (this->depth == this->hidden_at_depth)
+            this->hidden_num_els = n + 1;
+        return;
+    }
+
+    u64_t limit = fmt_term_array_limit(this);
+
     if (this->last_array_type_was_builtin) {
-        if (n >= MAX_ARR_PRINT_SIZE) {
+        if (limit != 0 && n >= limit) {
             this->skip_next = 1;
-            if (n == MAX_ARR_PRINT_SIZE && !this->super->quiet_mode)
+            if (n == limit && !this->super->quiet_mode)
                 display_printf(", ...");
             return;
         }
         if (!this->is_first_element && !this->super->quiet_mode)
             display_printf(", ");
         this->is_first_element = 0;
+        return;
+    }
+
+    if (limit != 0 && n >= limit) {
+        // stop printing, but let the interpreter parse the remaining elements
+        this->hidden_at_depth         = this->depth;
+        this->hidden_saved_quiet_mode = this->super->quiet_mode;
+        this->hidden_limit            = limit;
+        this->hidden_num_els          = n + 1;
+        this->super->quiet_mode       = 1;
         return;
     }
 
@@ -131,6 +176,20 @@ static void fmt_term_notify_array_el(FormatterTerm* this, u64_t n)
 
 static void fmt_term_end_array(FormatterTerm* this)
 {
+    if (this->hidden_at_depth == this->depth && this->hidden_at_depth != 0) {
+        this->super->quiet_mode = this->hidden_saved_quiet_mode;
+        if (!this->super->quiet_mode) {
+            display_printf("\n           ");
+            fmt_term_print_off(this);
+            u64_t hidden = this->hidden_num_els - this->hidden_limit;
+            display_printf("... %llu more element%s (%llu in total)", hidden,
+                           hidden == 1 ? "" : "s", this->hidden_num_els);
+        }
+        this->hidden_at_depth = 0;
+    }
+    if (this->depth > 0)
+        this->depth -= 1;
+
     if (!this->super->quiet_mode)
         display_printf(" ]");
     if (this->last_array_type_was_builtin) {

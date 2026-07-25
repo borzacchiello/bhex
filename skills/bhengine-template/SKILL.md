@@ -180,8 +180,11 @@ x1000 — useful to tell a compressed stream from a plain one without floating p
   hex truncated to 16 bytes with `...`. Use `char` for text fields, `u8` for binary payloads — a
   large `char[]` will dump its entire content into the output.
 - **Numeric arrays print at most 16 elements** (then `, ...`), but arrays of structs print in full.
-  A struct array over a big table produces enormous output; that is accepted behaviour (see `elf`),
-  just be aware.
+  For a big table (a symbol table, an MP4 sample table) declare the array anyway and cap the
+  *printing* with `max_array_print(n)`: every element is still parsed and still ends up in the
+  `t/x` output, the terminal listing just stops at `n` and says how many were left out. Put the
+  call inside the struct or `fn` that owns the table — like `disable_print()`, it is restored on
+  exit, so it will not truncate unrelated arrays (see `mp4.bhe`, `squashfs.bhe`).
 - **Guard every computed array size** before declaring it, or a corrupt file makes the template
   read absurd lengths: `assert(n * 18 <= remaining_size(), "...")`.
 - Zero-length arrays (`u8 body[0]`) are legal and print as empty — no need to special-case them.

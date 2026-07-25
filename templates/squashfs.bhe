@@ -128,6 +128,10 @@ struct dir_tab_item_t
 
 fn parse_directory_table(superblock, offset)
 {
+    // a directory can hold thousands of entries: print the first ones and let
+    // 't/x' dump them all. The limit is restored when the function returns
+    max_array_print(16);
+
     seek(superblock.dir_table + 2 + offset);
     dir_tab_t      dir_header;
     dir_tab_item_t dir_items[dir_header.count + 1];

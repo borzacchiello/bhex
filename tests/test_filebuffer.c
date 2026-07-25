@@ -615,10 +615,11 @@ int TEST(large_delete_then_read_no_stack_overflow)(void)
 {
     // A delete used to be split into one Modification per 4096-byte block, and
     // fb_read_internal() recurses once per overlapping modification: deleting a
-    // large range and then reading blew the stack (SIGSEGV, release builds too).
-    const size_t     size = 4 * 1024 * 1024;
-    u8_t*            blob = bhex_malloc(size);
-    DummyFilebuffer* tfb  = NULL;
+    // large range and then reading blew the stack (SIGSEGV, release builds
+    // too).
+    const size_t     size   = 4 * 1024 * 1024;
+    u8_t*            blob   = bhex_malloc(size);
+    DummyFilebuffer* tfb    = NULL;
     int              result = TEST_FAILED;
 
     for (size_t i = 0; i < size; ++i)

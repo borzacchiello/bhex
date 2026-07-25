@@ -342,7 +342,7 @@ BHEngineValue* BHEngineValue_array_sub(InterpreterContext*  ctx,
     if ((is_unum(lhs) || is_snum(lhs)) && (is_unum(rhs) || is_snum(rhs))) {    \
         s64_t sh = is_unum(rhs) ? (s64_t)get_unum_value(rhs) : rhs->snum;      \
         if (sh < 0 || sh >= 64) {                                              \
-            bhengine_raise_exception(ctx, "invalid shift amount %lld", sh);     \
+            bhengine_raise_exception(ctx, "invalid shift amount %lld", sh);    \
             return NULL;                                                       \
         }                                                                      \
         if (is_unum(lhs))                                                      \

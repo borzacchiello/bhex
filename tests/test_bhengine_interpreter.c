@@ -5075,3 +5075,136 @@ fail:
     r = TEST_FAILED;
     goto end;
 }
+
+// max_array_print(n) truncates the *printed* elements of an array of structs,
+// but every element is still parsed: `after` has to land past all five of them
+int TEST(max_array_print_truncates_struct_array)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000  entries: [ \n"
+        "               [0]\n"
+        "b+00000000          a: 30\n"
+        "b+00000001          b: 31\n"
+        "               [1]\n"
+        "b+00000002          a: 32\n"
+        "b+00000003          b: 33\n"
+        "               ... 3 more elements (5 in total) ]\n"
+        "b+0000000a  after: 41";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create((const u8_t*)"0123456789A", 11);
+    const char* prog = "struct entry_t { u8 a; u8 b; }"
+                       "proc {"
+                       "    max_array_print(2);"
+                       "    entry_t entries[5];"
+                       "    u8 after;"
+                       "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope != NULL);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+// max_array_print(0) means "no limit", and the setting is restored when the
+// struct that changed it ends, exactly like disable_print()
+int TEST(max_array_print_scope_and_no_limit)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000    capped: \n"
+        "b+00000000           els: [ \n"
+        "                   [0]\n"
+        "b+00000000                 v: 30\n"
+        "                   ... 2 more elements (3 in total) ]\n"
+        "b+00000003  uncapped: \n"
+        "b+00000003           els: [ \n"
+        "                   [0]\n"
+        "b+00000003                 v: 33\n"
+        "                   [1]\n"
+        "b+00000004                 v: 34\n"
+        "                   [2]\n"
+        "b+00000005                 v: 35 ]";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create((const u8_t*)"0123456789A", 11);
+    const char* prog = "struct el_t { u8 v; }"
+                       "struct capped_t { max_array_print(1); el_t els[3]; }"
+                       "struct uncapped_t { el_t els[3]; }"
+                       "proc {"
+                       "    capped_t capped;"
+                       "    uncapped_t uncapped;"
+                       "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope != NULL);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+// a truncated array of a builtin type must not swallow the values of the
+// variables that follow it
+int TEST(truncated_builtin_array_does_not_hide_next_var)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000   many: [ 0000, 0101, 0202, 0303, 0404, 0505, 0606, 0707, 0808, 0909, 0a0a, 0b0b, 0c0c, 0d0d, 0e0e, 0f0f, ... ]\n"
+        "b+00000028  after: 15151414";
+    // clang-format on
+
+    int  r = TEST_SUCCEEDED;
+    u8_t data[64];
+    for (u32_t i = 0; i < sizeof(data); ++i)
+        data[i] = (u8_t)(i / 2);
+    DummyFilebuffer* tfb  = dummyfilebuffer_create(data, sizeof(data));
+    const char*      prog = "proc {"
+                            "    u16 many[20];"
+                            "    u32 after;"
+                            "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope != NULL);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}

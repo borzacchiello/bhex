@@ -31,43 +31,153 @@ static void leaks_swallow_log(const char* s) { (void)s; }
 // fb_insert/fb_write without reclaiming it when the call failed).
 static const char* const leak_cmds[] = {
     // write: every input type against every way of failing to parse
-    "w 41", "w/s hello", "w/s \\q", "w/s \\", "w/x 4142", "w/x zz", "w/x 4",
-    "w/b 42", "w/b zz", "w/b 999", "w/b -999", "w/b/u -1", "w/b/i 42",
-    "w/w 4142", "w/w zz", "w/w 99999", "w/w/u -1", "w/w/be 1", "w/w/i 1",
-    "w/d 41424344", "w/d zz", "w/d 99999999999", "w/d/u -1", "w/d/be 1",
-    "w/q 1", "w/q zz", "w/q 99999999999999999999", "w/q/u -1", "w/q/be 1",
-    "w/q/i/be 1", "w", "w a b", "w/nosuch 1",
+    "w 41",
+    "w/s hello",
+    "w/s \\q",
+    "w/s \\",
+    "w/x 4142",
+    "w/x zz",
+    "w/x 4",
+    "w/b 42",
+    "w/b zz",
+    "w/b 999",
+    "w/b -999",
+    "w/b/u -1",
+    "w/b/i 42",
+    "w/w 4142",
+    "w/w zz",
+    "w/w 99999",
+    "w/w/u -1",
+    "w/w/be 1",
+    "w/w/i 1",
+    "w/d 41424344",
+    "w/d zz",
+    "w/d 99999999999",
+    "w/d/u -1",
+    "w/d/be 1",
+    "w/q 1",
+    "w/q zz",
+    "w/q 99999999999999999999",
+    "w/q/u -1",
+    "w/q/be 1",
+    "w/q/i/be 1",
+    "w",
+    "w a b",
+    "w/nosuch 1",
     "w/q zz ; w/d zz ; w/w zz ; w/b zz",
     // seek / print
-    "s 0", "s 10", "s +5", "s -5", "s -", "s zz", "s 999999999", "s",
-    "p", "p 16", "p -", "p 0", "p 999999999", "p zz", "p/x 8", "p/w 8",
-    "p/d 8", "p/q 8", "p/a 8", "p/C 8", "p/x/be 8", "p/r 8", "p/W 8",
-    "p/x/+ 8", "p/x/- 8", "p/nosuch 8",
+    "s 0",
+    "s 10",
+    "s +5",
+    "s -5",
+    "s -",
+    "s zz",
+    "s 999999999",
+    "s",
+    "p",
+    "p 16",
+    "p -",
+    "p 0",
+    "p 999999999",
+    "p zz",
+    "p/x 8",
+    "p/w 8",
+    "p/d 8",
+    "p/q 8",
+    "p/a 8",
+    "p/C 8",
+    "p/x/be 8",
+    "p/r 8",
+    "p/W 8",
+    "p/x/+ 8",
+    "p/x/- 8",
+    "p/nosuch 8",
     // search
-    "src /abc", "src abc", "src/x 4142", "src/x zz", "src/sk abc",
-    "src/p abc", "src/x/sk/p 4142", "src", "src a b",
+    "src /abc",
+    "src abc",
+    "src/x 4142",
+    "src/x zz",
+    "src/sk abc",
+    "src/p abc",
+    "src/x/sk/p 4142",
+    "src",
+    "src a b",
     // hashes / checksums / crc
-    "hh md5", "hh sha256", "hh *", "hh nosuch", "hh md5 4 0",
-    "hh md5 999999999 0", "hh/l", "hh",
-    "cs adler32", "cs *", "cs nosuch", "cs adler32 4 0", "cs/l", "cs",
-    "cr crc32_iso_hdlc", "cr *", "cr nosuch", "cr crc32_iso_hdlc 4 0", "cr/l",
+    "hh md5",
+    "hh sha256",
+    "hh *",
+    "hh nosuch",
+    "hh md5 4 0",
+    "hh md5 999999999 0",
+    "hh/l",
+    "hh",
+    "cs adler32",
+    "cs *",
+    "cs nosuch",
+    "cs adler32 4 0",
+    "cs/l",
+    "cs",
+    "cr crc32_iso_hdlc",
+    "cr *",
+    "cr nosuch",
+    "cr crc32_iso_hdlc 4 0",
+    "cr/l",
     // strings
-    "str", "str abc 3", "str * 1", "str a 0", "str a zz", "str/n", "str/a",
-    "str/w", "str/n/a", "str/n/w abc 2",
+    "str",
+    "str abc 3",
+    "str * 1",
+    "str a 0",
+    "str a zz",
+    "str/n",
+    "str/a",
+    "str/w",
+    "str/n/a",
+    "str/n/w abc 2",
     // entropy / info / setbase / echo
-    "e", "e 10 100", "e - 100", "e 0 0", "e zz", "i", "i x",
-    "sb", "sb 16", "sb 0x1000", "sb zz",
-    "ec 1", "ec 1+2", "ec `1+2`", "ec `1/0`", "ec `(((1)))`", "ec `1<<99`",
-    "ec `zz`", "ec/x 1", "ec/d 1", "ec",
+    "e",
+    "e 10 100",
+    "e - 100",
+    "e 0 0",
+    "e zz",
+    "i",
+    "i x",
+    "sb",
+    "sb 16",
+    "sb 0x1000",
+    "sb zz",
+    "ec 1",
+    "ec 1+2",
+    "ec `1+2`",
+    "ec `1/0`",
+    "ec `(((1)))`",
+    "ec `1<<99`",
+    "ec `zz`",
+    "ec/x 1",
+    "ec/d 1",
+    "ec",
     // delete / undo / commit
-    "d", "d 1", "d 0", "d 999999999", "d zz", "u", "u/a", "c/l",
+    "d",
+    "d 1",
+    "d 0",
+    "d 999999999",
+    "d zz",
+    "u",
+    "u/a",
+    "c/l",
     // templates
-    "t elf", "t nosuch", "t nosuch.struct", "t/l", "t/l elf", "t/x elf",
+    "t elf",
+    "t nosuch",
+    "t nosuch.struct",
+    "t/l",
+    "t/l elf",
+    "t/x elf",
     "t/i proc { disable_print(); }",
     "t/i proc { disable_print(); local x = 1/0; }",
     "t/i proc { disable_print(); error(\"x\"); }",
     "t/i struct A { u32 a; } proc { disable_print(); A v; }",
-    "t/i @@@", "t/i proc {", "t/i",
+    "t/i @@@",
+    "t/i proc {",
+    "t/i",
     "t/i/x struct A { u32 a; } proc { A v; }",
     // quoted inline code: the ';' must not split the command line
     "t/i \"disable_print(); u8 a; enable_print(); u8 b;\"",
@@ -98,9 +208,9 @@ static const char* const leak_cmds[] = {
 
 // Runs `cmd`, then undoes everything it may have left behind (pending
 // modifications, seek, base address, output buffers) -- all inside the tracked
-// window -- and returns the number of allocations still live. reset_global_state()
-// itself allocates a fixed amount, so the result is only meaningful against the
-// baseline of a command known to be clean.
+// window -- and returns the number of allocations still live.
+// reset_global_state() itself allocates a fixed amount, so the result is only
+// meaningful against the baseline of a command known to be clean.
 static size_t leaks_live_after(const char* cmd)
 {
     // warm-up run: one-time lazy initialisation (caches, tables) is not a leak
@@ -166,17 +276,21 @@ static const char* const leak_progs[] = {
     "proc { disable_print(); local s = \"abc\"; local c = s[99]; }",
 
     // errors raised while heap-backed values are live
-    "proc { disable_print(); local s = \"abc\"; local x = s + s; error(\"b\"); }",
+    "proc { disable_print(); local s = \"abc\"; local x = s + s; error(\"b\"); "
+    "}",
     "proc { disable_print(); local a = [1,2,3]; error(\"boom\"); }",
     "proc { disable_print(); local s = \"a\" + \"b\" + \"c\"; local x = 1/0; }",
     "proc { disable_print(); local a = [\"a\",\"b\"]; local x = 1/0; }",
     "proc { disable_print(); local a = [[1,2],[3,4]]; local x = 1/0; }",
-    "fn f() { return \"hi\"; } proc { disable_print(); local s = f(); local x = 1/0; }",
-    "fn f() { local s = \"hi\"; error(\"boom\"); return s; } proc { disable_print(); f(); }",
+    "fn f() { return \"hi\"; } proc { disable_print(); local s = f(); local x "
+    "= 1/0; }",
+    "fn f() { local s = \"hi\"; error(\"boom\"); return s; } proc { "
+    "disable_print(); f(); }",
 
     // control-flow unwinding
     "proc { disable_print(); while (1) { local s = \"x\"; error(\"boom\"); } }",
-    "proc { disable_print(); for (local i = 0; i < 10; i = i + 1) { local s = \"x\"; if (i == 5) { error(\"b\"); } } }",
+    "proc { disable_print(); for (local i = 0; i < 10; i = i + 1) { local s = "
+    "\"x\"; if (i == 5) { error(\"b\"); } } }",
     "proc { disable_print(); if (1) { local s = \"x\"; error(\"boom\"); } }",
     "proc { disable_print(); break; }",
     "proc { disable_print(); continue; }",
@@ -186,7 +300,8 @@ static const char* const leak_progs[] = {
     // struct / file reads that fail
     "struct A { u32 a[999999999]; } proc { disable_print(); A v; }",
     "struct A { u8 a; A b; } proc { disable_print(); A v; }",
-    "struct A { u32 a; } proc { disable_print(); A v; local x = v.nosuchfield; }",
+    "struct A { u32 a; } proc { disable_print(); A v; local x = v.nosuchfield; "
+    "}",
     "struct A { u32 a; } proc { disable_print(); A v; local x = 1/0; }",
     "struct A { u32 a; if (a > 0) { u32 b; } } proc { disable_print(); A v; }",
     "enum E : u8 { X = 1, Y = 2 } proc { disable_print(); local x = E.Z; }",
@@ -206,9 +321,9 @@ static const char* const leak_progs[] = {
     // through it, and are released by the %destructor rules in parser.y as
     // bison pops them. Each case below leaves a different mix of node types on
     // that stack.
-    "proc { disable_print(); ",           // unterminated block: stmts on stack
-    "struct A { u32 a",                   // partial fvar_decl: Type* + ident
-    "@@@@",                               // dies on the first token
+    "proc { disable_print(); ", // unterminated block: stmts on stack
+    "struct A { u32 a",         // partial fvar_decl: Type* + ident
+    "@@@@",                     // dies on the first token
     "proc { disable_print(); local x = ; }",
     "fn f( { }",
     "",
@@ -242,7 +357,8 @@ int TEST(bhengine_programs_do_not_leak)(void)
         DummyFilebuffer* dfb = dummyfilebuffer_create(data, sizeof(data));
 
         // warm-up run: one-time lazy initialisation is not a leak
-        Scope* warm = bhengine_interpreter_run_on_string(dfb->fb, leak_progs[i]);
+        Scope* warm =
+            bhengine_interpreter_run_on_string(dfb->fb, leak_progs[i]);
         if (warm)
             Scope_free(warm);
 

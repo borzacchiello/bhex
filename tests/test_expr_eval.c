@@ -654,7 +654,7 @@ int TEST(deep_nesting_does_not_crash)(void)
 {
     // A deeply nested expression used to blow the stack in the recursive
     // descent parser (SIGSEGV, also in release builds).
-    char expr[4096];
+    char  expr[4096];
     u32_t i, n = (sizeof(expr) - 2) / 2;
     for (i = 0; i < n; ++i)
         expr[i] = '(';
@@ -673,7 +673,7 @@ fail:
 int TEST(deep_unary_does_not_crash)(void)
 {
     // Same for the unary operator, which recurses into itself.
-    char expr[4096];
+    char  expr[4096];
     u32_t i;
     for (i = 0; i < sizeof(expr) - 2; ++i)
         expr[i] = '~';

@@ -1,0 +1,449 @@
+// Copyright (c) 2022-2026, bageyelet
+//
+// ISO Base Media File Format (ISO/IEC 14496-12), the container behind
+// .mp4/.m4a/.mov/.3gp: a tree of boxes, each one a size + a 4CC type
+// followed by a payload that is either data or more boxes.
+
+enum handler_type_t : u32
+{
+    VIDEO     = 0x76696465, // 'vide'
+    SOUND     = 0x736f756e, // 'soun'
+    HINT      = 0x68696e74, // 'hint'
+    META      = 0x6d657461, // 'meta'
+    AUXILIARY = 0x61757876, // 'auxv'
+    SUBTITLE  = 0x73756274, // 'subt'
+    TEXT      = 0x74657874, // 'text'
+    MDIR      = 0x6d646972, // 'mdir', iTunes style metadata
+    ALIS      = 0x616c6973, // 'alis', QuickTime file alias
+    URL       = 0x75726c20  // 'url '
+}
+
+// Boxes whose payload is a plain sequence of child boxes
+fn is_container(type)
+{
+    result = (type == "moov" || type == "trak" || type == "edts" ||
+              type == "mdia" || type == "minf" || type == "dinf" ||
+              type == "stbl" || type == "mvex" || type == "moof" ||
+              type == "traf" || type == "mfra" || type == "udta" ||
+              type == "sinf" || type == "schi" || type == "tref" ||
+              type == "strk" || type == "iprp" || type == "ipco" ||
+              type == "ilst" || type == "wave" || type == "mfra");
+}
+
+// Fixed point 16.16 and 8.8 values, printed as their raw encoding
+struct fixed32_t
+{
+    i16 integer;
+    u16 fraction;
+}
+
+struct fixed16_t
+{
+    i8 integer;
+    u8 fraction;
+}
+
+// The 3x3 transformation matrix shared by 'mvhd' and 'tkhd'
+struct matrix_t
+{
+    i32 values[9];
+}
+
+// 'ftyp' / 'styp': the brands the file declares conformance to
+struct ftyp_box_t
+{
+    local start = off();
+    u32   box_size;
+    char  type[4];
+    assert(box_size >= 16 && start + box_size <= size(),
+           "malformed 'ftyp' box: bad size");
+    char  major_brand[4];
+    u32   minor_version;
+    local brands_len = start + box_size - off();
+    if (brands_len > 0) {
+        char compatible_brands[brands_len];
+    }
+}
+
+// 'mvhd': movie-wide timing information
+struct mvhd_box_t
+{
+    u32  box_size;
+    char type[4];
+    u8   version;
+    u8   flags[3];
+    if (version == 1) {
+        u64 creation_time;
+        u64 modification_time;
+        u32 timescale;
+        u64 duration;
+    } else {
+        u32 creation_time;
+        u32 modification_time;
+        u32 timescale;
+        u32 duration;
+    }
+    fixed32_t rate;
+    fixed16_t volume;
+    u16       reserved;
+    u32       reserved2[2];
+    matrix_t  matrix;
+    u32       pre_defined[6];
+    u32       next_track_id;
+}
+
+// 'tkhd': per-track header, one per 'trak'
+struct tkhd_box_t
+{
+    u32  box_size;
+    char type[4];
+    u8   version;
+    u8   flags[3];
+    if (version == 1) {
+        u64 creation_time;
+        u64 modification_time;
+        u32 track_id;
+        u32 reserved;
+        u64 duration;
+    } else {
+        u32 creation_time;
+        u32 modification_time;
+        u32 track_id;
+        u32 reserved;
+        u32 duration;
+    }
+    u32       reserved2[2];
+    i16       layer;
+    i16       alternate_group;
+    fixed16_t volume;
+    u16       reserved3;
+    matrix_t  matrix;
+    fixed32_t width;
+    fixed32_t height;
+}
+
+// 'mdhd': timing information of the media of a track
+struct mdhd_box_t
+{
+    u32  box_size;
+    char type[4];
+    u8   version;
+    u8   flags[3];
+    if (version == 1) {
+        u64 creation_time;
+        u64 modification_time;
+        u32 timescale;
+        u64 duration;
+    } else {
+        u32 creation_time;
+        u32 modification_time;
+        u32 timescale;
+        u32 duration;
+    }
+    // packed ISO-639-2/T code: three 5 bit letters, each offset by 0x60
+    u16 language;
+    u16 pre_defined;
+}
+
+// 'hdlr': what kind of media the track carries
+struct hdlr_box_t
+{
+    local start = off();
+    u32   box_size;
+    char  type[4];
+    u8    version;
+    u8    flags[3];
+    u32   pre_defined;
+    handler_type_t handler_type;
+    u32   reserved[3];
+    local name_len = start + box_size - off();
+    assert(name_len >= 0 && start + box_size <= size(),
+           "malformed 'hdlr' box: bad size");
+    if (name_len > 0) {
+        char name[name_len];
+    }
+}
+
+// 'data': the value of an iTunes-style metadata item inside 'ilst'
+struct data_box_t
+{
+    local start = off();
+    u32   box_size;
+    char  type[4];
+    u32   type_indicator;
+    u32   locale;
+    local value_len = start + box_size - off();
+    assert(value_len >= 0 && start + box_size <= size(),
+           "malformed 'data' box: bad size");
+    if (value_len > 0) {
+        if (type_indicator == 1) {
+            char value[value_len];
+        } else {
+            u8 value[value_len];
+        }
+    }
+}
+
+// The sample tables of a 'stbl' hold one entry per sample or per chunk, so a
+// few minutes of video are tens of thousands of entries. They are declared in
+// full anyway: max_array_print() in the entry point keeps the output readable
+// while the parse stays complete, and 't/x' still dumps every element.
+
+// 'stts': how many samples share a duration, and which duration
+struct stts_entry_t
+{
+    u32 sample_count;
+    u32 sample_delta;
+}
+
+// 'ctts': the composition/decoding time offset of a run of samples
+struct ctts_entry_t
+{
+    u32 sample_count;
+    i32 sample_offset;
+}
+
+// 'stsc': the first chunk of each run of chunks holding the same sample count
+struct stsc_entry_t
+{
+    u32 first_chunk;
+    u32 samples_per_chunk;
+    u32 sample_description_index;
+}
+
+// 'elst': one segment of the edit list of a track. A struct does not see the
+// locals of the struct that declares it, so the two versions of the entry are
+// two types rather than an `if (version == 1)`
+struct elst_entry_t
+{
+    u32 segment_duration;
+    i32 media_time;
+    i16 media_rate_integer;
+    i16 media_rate_fraction;
+}
+
+struct elst64_entry_t
+{
+    u64 segment_duration;
+    i64 media_time;
+    i16 media_rate_integer;
+    i16 media_rate_fraction;
+}
+
+// Header shared by every table box, followed by its entries
+struct table_box_t
+{
+    // restored when the struct ends, so it only affects the table below and
+    // not, say, the 9 element matrix of a 'tkhd'
+    max_array_print(8);
+
+    local start = off();
+    u32   box_size;
+    char  type[4];
+    u8    version;
+    u8    flags[3];
+    assert(start + box_size <= size(), "malformed table box: bad size");
+    if (type == "stsz") {
+        // when it is not 0, every sample has this size and the table is empty
+        u32 sample_size;
+    }
+    u32   entry_count;
+
+    local table_len  = start + box_size - off();
+    local entry_size = 4;
+    if (type == "stts") {
+        entry_size = 8;
+    } elif (type == "ctts") {
+        entry_size = 8;
+    } elif (type == "stsc") {
+        entry_size = 12;
+    } elif (type == "co64") {
+        entry_size = 8;
+    } elif (type == "elst") {
+        entry_size = 12;
+        if (version == 1) {
+            entry_size = 20;
+        }
+    }
+    assert(table_len >= 0 && entry_count * entry_size <= table_len,
+           "malformed table box: the entries do not fit in the box");
+
+    if (entry_count > 0) {
+        if (type == "stts") {
+            stts_entry_t entries[entry_count];
+        } elif (type == "ctts") {
+            ctts_entry_t entries[entry_count];
+        } elif (type == "stsc") {
+            stsc_entry_t entries[entry_count];
+        } elif (type == "elst") {
+            if (version == 1) {
+                elst64_entry_t entries[entry_count];
+            } else {
+                elst_entry_t entries[entry_count];
+            }
+        } elif (type == "co64") {
+            u64 chunk_offsets[entry_count];
+        } elif (type == "stco") {
+            u32 chunk_offsets[entry_count];
+        } elif (type == "stss") {
+            u32 sync_samples[entry_count];
+        } elif (type == "stsz") {
+            u32 sample_sizes[entry_count];
+        }
+    }
+
+    // padding, or the entries of a table we did not decode
+    local rest = start + box_size - off();
+    if (rest > 0) {
+        fwd(rest);
+    }
+}
+
+// Generic leaf box: everything we do not decode further
+struct box_t
+{
+    local start = off();
+    u32   box_size;
+    char  type[4];
+    local total = box_size;
+    if (box_size == 1) {
+        u64 largesize;
+        total = largesize;
+    } elif (box_size == 0) {
+        // a size of 0 means "up to the end of the file"
+        total = size() - start;
+    }
+    if (type == "uuid") {
+        u8 usertype[16];
+    }
+    local payload = start + total - off();
+    assert(payload >= 0, "malformed box: size smaller than its header");
+    assert(start + total <= size(), "malformed box: extends past the end of the file");
+    if (payload > 0) {
+        // small payloads are worth showing, media data is not
+        if (payload <= 64 && type != "mdat") {
+            u8 data[payload];
+        } else {
+            fwd(payload);
+        }
+    }
+}
+
+// A box whose payload is a sequence of child boxes
+struct container_box_t
+{
+    local start = off();
+    u32   box_size;
+    char  type[4];
+    local total = box_size;
+    if (box_size == 1) {
+        u64 largesize;
+        total = largesize;
+    } elif (box_size == 0) {
+        total = size() - start;
+    }
+    assert(start + total <= size(), "malformed box: extends past the end of the file");
+    parse_boxes(start + total, type == "ilst");
+}
+
+// 'meta' is a container, but with a version/flags header before its children
+struct meta_box_t
+{
+    local start = off();
+    u32   box_size;
+    char  type[4];
+    u8    version;
+    u8    flags[3];
+    assert(start + box_size <= size(), "malformed 'meta' box: extends past the end of the file");
+    parse_boxes(start + box_size, 0);
+}
+
+// 'stsd': a count followed by sample entries, which are boxes themselves
+struct stsd_box_t
+{
+    local start = off();
+    u32   box_size;
+    char  type[4];
+    u8    version;
+    u8    flags[3];
+    u32   entry_count;
+    assert(start + box_size <= size(), "malformed 'stsd' box: extends past the end of the file");
+    parse_boxes(start + box_size, 0);
+}
+
+// Parses every box between the current offset and `end_off`. `in_ilst` marks
+// the children of an 'ilst' box, which are metadata items wrapping a 'data'
+// box and are therefore containers whatever their (arbitrary) 4CC is.
+fn parse_boxes(end_off, in_ilst)
+{
+    while (off() + 8 <= end_off) {
+        local type = peek(4, 4);
+        if (type == "ftyp" || type == "styp") {
+            ftyp_box_t ftyp;
+        } elif (type == "mvhd") {
+            mvhd_box_t mvhd;
+        } elif (type == "tkhd") {
+            tkhd_box_t tkhd;
+        } elif (type == "mdhd") {
+            mdhd_box_t mdhd;
+        } elif (type == "hdlr") {
+            hdlr_box_t hdlr;
+        } elif (type == "data") {
+            data_box_t data;
+        } elif (type == "meta") {
+            meta_box_t meta;
+        } elif (type == "stsd") {
+            stsd_box_t stsd;
+        } elif (type == "stts" || type == "stsc" || type == "stsz" ||
+                type == "stco" || type == "stss" || type == "ctts" ||
+                type == "elst" || type == "co64") {
+            table_box_t table;
+        } elif (in_ilst || is_container(type)) {
+            container_box_t container;
+        } else {
+            box_t box;
+        }
+    }
+    // a trailing run of fewer than 8 bytes cannot hold another box header
+    if (off() < end_off) {
+        warning("too few bytes for a box header at offset", off(), "-",
+                end_off - off(), "trailing bytes");
+        seek(end_off);
+    }
+}
+
+proc
+{
+    big_endian();
+    assert(size() >= 8, "file too small to hold a box");
+
+    local first = peek(4, 4);
+    if (first != "ftyp" && first != "styp") {
+        warning("the file does not start with a 'ftyp' box");
+    }
+
+    parse_boxes(size(), 0);
+}
+
+// Top level view: the box tree without the leaf details
+proc boxes
+{
+    big_endian();
+    disable_print();
+
+    while (off() + 8 <= size()) {
+        local start = off();
+        u32   box_size;
+        char  type[4];
+        local total = box_size;
+        if (box_size == 1) {
+            u64 largesize;
+            total = largesize;
+        } elif (box_size == 0) {
+            total = size() - start;
+        }
+        assert(total >= 8 && start + total <= size(), "malformed box");
+        print(start, type, total);
+        seek(start + total);
+    }
+}

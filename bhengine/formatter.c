@@ -9,7 +9,8 @@
 
 Formatter* fmt_new(fmt_t type)
 {
-    Formatter* obj = bhex_calloc(sizeof(Formatter));
+    Formatter* obj       = bhex_calloc(sizeof(Formatter));
+    obj->max_array_print = FMT_MAX_ARRAY_PRINT_UNSET;
 
     switch (type) {
         case FMT_TERM:

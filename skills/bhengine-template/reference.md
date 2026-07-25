@@ -113,18 +113,37 @@ All take `(name [, size [, off]])`, where `size` 0 or missing means "to the end 
 | Call | Effect |
 | --- | --- |
 | `print(a, b, ...)` | variadic, space separated, newline terminated; **ignores** `disable_print()` |
-| `warning(msg, ...)` | non-fatal diagnostic |
-| `error(msg, ...)` | raises a template exception and aborts the run |
+| `warning(a, b, ...)` | non-fatal diagnostic |
+| `error(a, b, ...)` | raises a template exception and aborts the run |
 | `assert(cond, msg...)` | raises unless `cond` holds |
 | `exit()` | stops the template cleanly |
 | `disable_print()` / `enable_print()` | suppress/restore printing of file variables |
+| `max_array_print(n)` | print at most `n` elements of an array, `0` meaning all of them |
 | `nums_in(base)` | number format, 10 or 16 (16 is the default) |
 | `little_endian()` / `big_endian()` | endianness for subsequent reads |
 | `u8(v)` … `u64(v)`, `i8(v)` … `i64(v)` | cast to a sized integer |
 | `wstring(v)` | ASCII string to wide string, for comparing against a `wstring` field |
 
-`disable_print()` and the endianness are saved on entry to a `fn` and restored on exit; a helper
-cannot leak its formatting state into the caller.
+`print`, `warning` and `error` are **not** printf-like: they space-join their arguments, exactly
+like `print()` does, so a `"%d"` in the message is printed verbatim. Write
+`warning("bad size at", off())`, not `warning("bad size at %d", off())`.
+
+`disable_print()`, `max_array_print()` and the endianness are saved on entry to a `fn` **and to a
+struct** and restored on exit; a helper cannot leak its formatting state into the caller. That is
+what makes `max_array_print()` usable as a per-struct setting:
+
+```
+struct table_box_t
+{
+    max_array_print(8);       // only this struct's arrays are truncated
+    u32   entry_count;
+    entry_t entries[entry_count];
+}
+```
+
+The elements past the limit are still **parsed** — the offset advances over all of them, and the
+values are still in the XML output — they are only left out of the terminal listing, which ends
+with `... N more elements (M in total)`.
 
 ## Grammar
 
@@ -167,6 +186,8 @@ and a `char[n]` field compares directly against a string literal.
   printed in full however long it is.
 - `u8[]` and other builtin-typed arrays → first 16 elements, then `...` / `, ...`.
 - Arrays of structs print every element, each preceded by `[i]`.
+- `max_array_print(n)` overrides both of those limits, for builtin and struct arrays alike. It is
+  a **term-only** setting: `t/x` always emits every element, so the XML stays complete.
 - `print()` output bypasses `disable_print()`.
 - `t/x` emits XML instead (`formatter_xml.c`).
 

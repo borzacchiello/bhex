@@ -159,9 +159,10 @@ FileBuffer* filebuffer_create(const char* path, int readonly)
 
     // fopen() succeeds on directories (and other non-regular files), and
     // whether a subsequent seek fails is libc-dependent (glibc happily seeks a
-    // directory fd), so reject anything that is not a regular file here. st_size
-    // also gives us the length without a SEEK_END round-trip, and it is a 64-bit
-    // off_t rather than the ftell() long that would cap at 2GB on 32-bit.
+    // directory fd), so reject anything that is not a regular file here.
+    // st_size also gives us the length without a SEEK_END round-trip, and it is
+    // a 64-bit off_t rather than the ftell() long that would cap at 2GB on
+    // 32-bit.
     struct stat st;
     if (fstat(fileno(fb->file), &st) < 0 || !S_ISREG(st.st_mode)) {
         error("cannot open the file, is it a regular file?");

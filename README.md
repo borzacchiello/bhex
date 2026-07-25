@@ -325,6 +325,7 @@ Available templates:
   pe
   rpm
   macho
+  mp4
 
 ...
 ```

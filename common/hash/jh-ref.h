@@ -289,8 +289,7 @@ static jh_HashReturn jh_Init(jh_hashState* state, int hashbitlen)
 }
 
 /*hash each 512-bit message block, except the last partial block*/
-static jh_HashReturn jh_Update(jh_hashState* state,
-                               const jh_BitSequence* data,
+static jh_HashReturn jh_Update(jh_hashState* state, const jh_BitSequence* data,
                                jh_DataLength databitlen)
 {
     jh_DataLength index; /*the starting address of the data to be compressed*/
@@ -309,8 +308,9 @@ static jh_HashReturn jh_Update(jh_hashState* state,
         ((state->datasize_in_buffer + databitlen) < 512)) {
         /* copy only the bytes the caller actually supplied: reading up to the
          * end of the 64-byte block would over-read `data` */
-        jh_DataLength nbytes = ((databitlen & 7) == 0) ? (databitlen >> 3)
-                                                  : ((databitlen >> 3) + 1);
+        jh_DataLength nbytes = ((databitlen & 7) == 0)
+                                   ? (databitlen >> 3)
+                                   : ((databitlen >> 3) + 1);
         memcpy(state->buffer + (state->datasize_in_buffer >> 3), data, nbytes);
         state->datasize_in_buffer += databitlen;
         databitlen = 0;

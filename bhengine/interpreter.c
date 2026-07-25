@@ -86,10 +86,11 @@ static map* process_struct_type(InterpreterContext* ctx, Type* type)
     }
     ctx->call_depth += 1;
 
-    ASTCtx* saved_ast          = ctx->ast;
-    u64_t   saved_max_fvar_len = ctx->fmt->max_fvar_len;
-    int     saved_endianess    = ctx->endianess;
-    int     saved_quiet_mode   = ctx->fmt->quiet_mode;
+    ASTCtx* saved_ast             = ctx->ast;
+    u64_t   saved_max_fvar_len    = ctx->fmt->max_fvar_len;
+    int     saved_endianess       = ctx->endianess;
+    int     saved_quiet_mode      = ctx->fmt->quiet_mode;
+    u64_t   saved_max_array_print = ctx->fmt->max_array_print;
 
     map* result = NULL;
     if (type->bhe_name != NULL) {
@@ -120,10 +121,11 @@ static map* process_struct_type(InterpreterContext* ctx, Type* type)
 
 end:
     ctx->call_depth -= 1;
-    ctx->endianess         = saved_endianess;
-    ctx->fmt->quiet_mode   = saved_quiet_mode;
-    ctx->ast               = saved_ast;
-    ctx->fmt->max_fvar_len = saved_max_fvar_len;
+    ctx->endianess            = saved_endianess;
+    ctx->fmt->quiet_mode      = saved_quiet_mode;
+    ctx->ast                  = saved_ast;
+    ctx->fmt->max_fvar_len    = saved_max_fvar_len;
+    ctx->fmt->max_array_print = saved_max_array_print;
     return result;
 }
 
@@ -218,20 +220,21 @@ static BHEngineValue* handle_function_call(InterpreterContext* ctx,
     }
     ctx->call_depth += 1;
 
-    BHEngineValue* result               = NULL;
-    Scope*         fn_scope             = NULL;
-    int            saved_quiet_mode     = ctx->fmt->quiet_mode;
-    int            saved_endianess      = ctx->endianess;
-    int saved_break_or_continue_allowed = ctx->break_or_continue_allowed;
-    int saved_return_allowed            = ctx->return_allowed;
-    int saved_breaked                   = ctx->breaked;
-    int saved_continued                 = ctx->continued;
-    int saved_returned                  = ctx->returned;
-    ctx->break_or_continue_allowed      = 0;
-    ctx->return_allowed                 = 1;
-    ctx->breaked                        = 0;
-    ctx->continued                      = 0;
-    ctx->returned                       = 0;
+    BHEngineValue* result                = NULL;
+    Scope*         fn_scope              = NULL;
+    int            saved_quiet_mode      = ctx->fmt->quiet_mode;
+    int            saved_endianess       = ctx->endianess;
+    u64_t          saved_max_array_print = ctx->fmt->max_array_print;
+    int saved_break_or_continue_allowed  = ctx->break_or_continue_allowed;
+    int saved_return_allowed             = ctx->return_allowed;
+    int saved_breaked                    = ctx->breaked;
+    int saved_continued                  = ctx->continued;
+    int saved_returned                   = ctx->returned;
+    ctx->break_or_continue_allowed       = 0;
+    ctx->return_allowed                  = 1;
+    ctx->breaked                         = 0;
+    ctx->continued                       = 0;
+    ctx->returned                        = 0;
 
     u64_t nparams         = params_exprs ? params_exprs->size : 0;
     u64_t expected_params = fn->params ? fn->params->size : 0;
@@ -266,8 +269,9 @@ end:
     ctx->returned                  = saved_returned;
     if (fn_scope)
         Scope_free(fn_scope);
-    ctx->fmt->quiet_mode = saved_quiet_mode;
-    ctx->endianess       = saved_endianess;
+    ctx->fmt->quiet_mode      = saved_quiet_mode;
+    ctx->endianess            = saved_endianess;
+    ctx->fmt->max_array_print = saved_max_array_print;
     return result;
 }
 
