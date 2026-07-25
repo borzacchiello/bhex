@@ -137,7 +137,7 @@ static const char* bytes_str(const cs_insn* insn, size_t max_size)
         panic("invalid max_size");
 
     while (off < insn->size) {
-        if (i + 3 >= max_size - 2 && off != insn->size - 1) {
+        if (i + 3 >= max_size - 2 && off != (size_t)insn->size - 1) {
             disas[i]     = '.';
             disas[i + 1] = '.';
             disas[i + 2] = '.';

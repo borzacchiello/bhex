@@ -75,11 +75,6 @@ static jh_HashReturn jh_Init(jh_hashState* state, int hashbitlen);
 static jh_HashReturn jh_Update(jh_hashState* state, const jh_BitSequence* data,
                                jh_DataLength databitlen);
 static jh_HashReturn jh_Final(jh_hashState* state, jh_BitSequence* hashval);
-/* not used by bhex, kept for reference/completeness */
-__attribute__((unused)) static jh_HashReturn jh_Hash(int hashbitlen,
-                                                     const jh_BitSequence* data,
-                                                     jh_DataLength databitlen,
-                                                     jh_BitSequence* hashval);
 
 /*the round function of E8 */
 static void R8(jh_hashState* state)
@@ -420,36 +415,30 @@ static jh_HashReturn jh_Final(jh_hashState* state, jh_BitSequence* hashval)
     return (JH_SUCCESS);
 }
 
-/* hash a message,
-   three inputs: message digest size in bits (hashbitlen); message (data);
-   message length in bits (databitlen) one output:   message digest (hashval)
-*/
-static jh_HashReturn jh_Hash(int hashbitlen, const jh_BitSequence* data,
-                             jh_DataLength databitlen,
-                             jh_BitSequence* hashval)
-{
-    jh_hashState state;
-
-    if (hashbitlen == 224 || hashbitlen == 256 || hashbitlen == 384 ||
-        hashbitlen == 512) {
-        jh_Init(&state, hashbitlen);
-        jh_Update(&state, data, databitlen);
-        jh_Final(&state, hashval);
-        return JH_SUCCESS;
-    } else
-        return (JH_BAD_HASHLEN);
-}
-
 /*
  * Wrappers for GEN_HANDLE_FUNC macro compatibility.
  * These adapt the NIST-style API (Init with hashbitlen, Update with bits,
  * Final with (ctx, out) order) to the macro's calling convention.
  */
 
-static void jh_224_init(jh_hashState* state) { jh_Init(state, 224); }
-static void jh_256_init(jh_hashState* state) { jh_Init(state, 256); }
-static void jh_384_init(jh_hashState* state) { jh_Init(state, 384); }
-static void jh_512_init(jh_hashState* state) { jh_Init(state, 512); }
+/* marked unused: a TU including this header (e.g. a test) may need only one
+ * of the variants */
+__attribute__((unused)) static void jh_224_init(jh_hashState* state)
+{
+    jh_Init(state, 224);
+}
+__attribute__((unused)) static void jh_256_init(jh_hashState* state)
+{
+    jh_Init(state, 256);
+}
+__attribute__((unused)) static void jh_384_init(jh_hashState* state)
+{
+    jh_Init(state, 384);
+}
+__attribute__((unused)) static void jh_512_init(jh_hashState* state)
+{
+    jh_Init(state, 512);
+}
 
 static void jh_update_bytes(jh_hashState* state, const unsigned char* data,
                             unsigned long long len)

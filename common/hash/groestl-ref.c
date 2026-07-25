@@ -181,8 +181,8 @@ static void Transform(GroestlState* ctx, const BitSequence* input, u32 msglen)
     u8  temp1[ROWS][COLS1024], temp2[ROWS][COLS1024];
 
     /* digest one message block at the time */
-    for (; msglen >= ctx->statesize;
-         msglen -= ctx->statesize, input += ctx->statesize) {
+    for (; msglen >= (u32)ctx->statesize;
+         msglen -= (u32)ctx->statesize, input += ctx->statesize) {
         /* store message block (m) in temp2, and xor of chaining (h) and
            message block in temp1 */
         for (i = 0; i < ROWS; i++) {
@@ -284,7 +284,8 @@ static HashReturn Update(GroestlState* ctx, const BitSequence* input,
     if (ctx->buf_ptr) {
         /* copy data into buffer until buffer is full, or there is no more
            data */
-        for (index = 0; ctx->buf_ptr < ctx->statesize && index < msglen;
+        for (index = 0;
+             ctx->buf_ptr < ctx->statesize && (DataLength)index < msglen;
              index++, ctx->buf_ptr++) {
             ctx->buffer[ctx->buf_ptr] = input[index];
         }
@@ -309,7 +310,7 @@ static HashReturn Update(GroestlState* ctx, const BitSequence* input,
     index += ((msglen - index) / ctx->statesize) * ctx->statesize;
 
     /* copy remaining data to buffer */
-    for (; index < msglen; index++, ctx->buf_ptr++) {
+    for (; (DataLength)index < msglen; index++, ctx->buf_ptr++) {
         ctx->buffer[ctx->buf_ptr] = input[index];
     }
 

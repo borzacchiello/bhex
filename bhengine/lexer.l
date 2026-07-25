@@ -60,6 +60,7 @@ __attribute__((destructor)) static void delete_yy_bufs(void)
 %}
 
 %option noyywrap
+%option noinput nounput
 
 %%
 
@@ -250,7 +251,7 @@ __attribute__((destructor)) static void delete_yy_bufs(void)
                         }
 [a-zA-Z_][a-zA-Z0-9_]*  {
                             handle_token;
-                            yy_size_t l = min(yyleng, sizeof(yystrval)-1);
+                            yy_size_t l = min((size_t)yyleng, sizeof(yystrval)-1);
                             memset(yystrval, 0, sizeof(yystrval));
                             memcpy(yystrval, yytext, l);
                             return TIDENTIFIER;
