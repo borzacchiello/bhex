@@ -84,15 +84,25 @@ static int is_printable_ascii(u16_t v) { return v >= 0x20 && v <= 0x7e; }
         }                                                                      \
     } while (0)
 
+// Returns the byte at the current address, or 0 if the current block could not
+// be read (e.g. the file shrank under us). Returning 0 makes every scanning
+// loop below terminate on its own, since 0 is not a printable ascii char.
+static inline u8_t ctx_cur_byte(const ProcessingCtx* ctx)
+{
+    if (ctx->buf == NULL || ctx->buf_size == 0)
+        return 0;
+    return ctx->buf[ctx->addr % ctx->buf_size];
+}
+
 static int print_ascii_string(ProcessingCtx* ctx)
 {
     u64_t begin_addr = ctx->addr;
     u32_t app_off    = 0;
     while (ctx->addr < ctx->fb->size &&
-           is_printable_ascii(ctx->buf[ctx->addr % ctx->buf_size])) {
+           is_printable_ascii(ctx_cur_byte(ctx))) {
 
         enlarge_app_if_needed(ctx, app_off + 1);
-        ctx->app[app_off++] = ctx->buf[ctx->addr % ctx->buf_size];
+        ctx->app[app_off++] = ctx_cur_byte(ctx);
 
         advance_by_one(ctx);
     }
@@ -100,7 +110,7 @@ static int print_ascii_string(ProcessingCtx* ctx)
         ctx->app[app_off] = 0;
         if (!ctx->null_terminated ||
             (ctx->null_terminated && ctx->addr < ctx->fb->size &&
-             ctx->buf[ctx->addr % ctx->buf_size] == 0)) {
+             ctx_cur_byte(ctx) == 0)) {
             if (ctx->pattern != NULL &&
                 strstr((char*)ctx->app, ctx->pattern) == NULL) {
                 return 0;
@@ -118,13 +128,13 @@ static int print_wide_ascii_string(ProcessingCtx* ctx)
     u64_t begin_addr = ctx->addr;
     u32_t app_off    = 0;
     while (ctx->addr + 1 < ctx->fb->size) {
-        u16_t v = ctx->buf[ctx->addr % ctx->buf_size];
+        u16_t v = ctx_cur_byte(ctx);
         if (!is_printable_ascii(v)) {
             break;
         }
 
         advance_by_one(ctx);
-        v |= ctx->buf[ctx->addr % ctx->buf_size] << 8;
+        v |= ctx_cur_byte(ctx) << 8;
         if (!is_printable_ascii(v)) {
             retreat_by_one(ctx);
             break;
@@ -142,9 +152,9 @@ static int print_wide_ascii_string(ProcessingCtx* ctx)
             if (ctx->addr + 1 >= ctx->fb->size) {
                 return 0;
             }
-            v = ctx->buf[ctx->addr % ctx->buf_size];
+            v = ctx_cur_byte(ctx);
             advance_by_one(ctx);
-            v |= ctx->buf[ctx->addr % ctx->buf_size] << 8;
+            v |= ctx_cur_byte(ctx) << 8;
             retreat_by_one(ctx);
             if (v != 0) {
                 return 0;
@@ -185,7 +195,7 @@ static void print_strings(FileBuffer* fb, size_t min_length,
         return;
     }
 
-    while (ctx.addr < fb->size) {
+    while (ctx.addr < fb->size && ctx.buf != NULL) {
         if (mode_selector & MODE_SELECTOR_WIDE &&
             print_wide_ascii_string(&ctx)) {
             continue;

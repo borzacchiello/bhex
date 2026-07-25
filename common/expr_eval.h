@@ -15,6 +15,7 @@
 #define EXPR_EVAL_ERR_READ_OOB           6
 #define EXPR_EVAL_ERR_INVALID_ENDIAN     7
 #define EXPR_EVAL_ERR_UNKNOWN_GLOBAL_VAR 8
+#define EXPR_EVAL_ERR_TOO_DEEP           9
 
 const char* expr_eval_err_to_string(int err);
 

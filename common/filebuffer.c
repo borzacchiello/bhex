@@ -43,8 +43,13 @@ static int was_file_modified(const char* path, time_t prev_time,
 {
     struct stat file_stat;
     int         err = stat(path, &file_stat);
-    if (err != 0)
-        panic("unable to stat file %s", path);
+    if (err != 0) {
+        // the file was deleted/renamed/unmounted under us: keep working on the
+        // in-memory view instead of killing the process (and losing every
+        // uncommitted modification)
+        *new_time = prev_time;
+        return 0;
+    }
 
     *new_time = file_stat.st_mtime;
     return file_stat.st_mtime != prev_time;
@@ -67,6 +72,11 @@ static int fb_reload(FileBuffer* fb)
     }
     fb->size = filelen;
 
+    // the file may have shrunk: keep the current offset inside it, otherwise
+    // every "size - off" computation below underflows
+    if (fb->off > fb->size)
+        fb->off = fb->size;
+
     was_file_modified(fb->path, 0, &fb->mod_time);
     return 1;
 }
@@ -82,7 +92,7 @@ static void fb_modified_check(FileBuffer* fb)
                 "the uncommitted modifications (sorry)");
         fb->version += 1 + fb->modifications.size;
         if (!fb_reload(fb))
-            panic("unable to reload the file");
+            error("unable to reload the file");
         fb->mod_time = new_time;
     }
 }
@@ -125,7 +135,8 @@ FileBuffer* filebuffer_create(const char* path, int readonly)
     if (pthread_mutexattr_destroy(&attr) != 0)
         panic("pthread_mutexattr_destroy failed");
 
-    FILE* f = NULL;
+    long  filelen = 0;
+    FILE* f       = NULL;
     if (!readonly) {
         f = fopen(path, "rb+");
         if (f == NULL && (errno == EACCES || errno == EROFS)) {
@@ -147,12 +158,17 @@ FileBuffer* filebuffer_create(const char* path, int readonly)
     }
     fb->file = f;
 
-    if (fseek(fb->file, 0, SEEK_END) < 0)
-        panic("fseek failed");
-
-    long filelen = ftell(fb->file);
-    if (filelen < 0)
-        panic("ftell failed");
+    // fopen() succeeds on directories (and other non-regular files), but the
+    // seek below fails: report it as a normal error instead of dying
+    if (fseek(fb->file, 0, SEEK_END) < 0 || (filelen = ftell(fb->file)) < 0) {
+        error("cannot open the file, is it a regular file?");
+        fclose(fb->file);
+        pthread_mutex_destroy(&fb->lock);
+        bhex_free(fb->search_index);
+        bhex_free(fb->path);
+        bhex_free(fb);
+        return NULL;
+    }
     fb->size = filelen;
 
     was_file_modified(fb->path, 0, &fb->mod_time);
@@ -243,30 +259,21 @@ int fb_delete(FileBuffer* fb, size_t size)
         warning("the file was opened in read-only mode, you cannot commit this "
                 "modification");
 
-    if (fb->size - fb->off < size) {
+    // `fb->off` can be past the end if the file shrank under us: check it
+    // explicitly, otherwise the unsigned subtraction below wraps around
+    if (fb->off > fb->size || fb->size - fb->off < size) {
         error("not enough data to delete");
         goto end;
     }
 
-    u32_t num_blocks = 0;
-    while (size > fb_block_size) {
-        Modification* mod = bhex_malloc(sizeof(Modification));
-        mod->type         = MOD_TYPE_DELETE;
-        mod->chain_n      = 0;
-        mod->data         = NULL;
-        mod->off          = fb->off;
-        mod->end          = fb->size;
-        mod->size         = fb_block_size;
-        ll_add(&fb->modifications, (uptr_t)mod);
-
-        fb->size -= fb_block_size;
-        size -= fb_block_size;
-        num_blocks += 1;
-        fb->version += 1;
-    }
+    // NOTE: a delete of any size is recorded as a single modification.
+    // commit_delete() already moves the tail of the file in fb_block_size
+    // chunks, and fb_read_internal() recurses once per overlapping
+    // modification, so splitting a large delete into one modification per block
+    // used to blow the stack on the first read after e.g. "d 2000000000".
     Modification* mod = bhex_malloc(sizeof(Modification));
     mod->type         = MOD_TYPE_DELETE;
-    mod->chain_n      = num_blocks;
+    mod->chain_n      = 0;
     mod->data         = NULL;
     mod->off          = fb->off;
     mod->end          = fb->size;
@@ -366,11 +373,17 @@ static int commit_insert(FileBuffer* fb, Modification* mod)
     while (1) {
         if (size == 0)
             break;
+        // `size` is passed to fread/fwrite as a size_t: a negative value would
+        // become ~2^64 and overrun the 4096-byte tmp_block
+        if (size < 0) {
+            error("commit_insert(): invalid size %lld", size);
+            return 0;
+        }
         if (fseek(fb->file, off, SEEK_SET) < 0) {
             error("commit_insert(): fseek failed [off: %llu]", off);
             return 0;
         }
-        if (fread(fb->tmp_block, 1, size, fb->file) != size) {
+        if (fread(fb->tmp_block, 1, (size_t)size, fb->file) != (size_t)size) {
             error("commit_insert(): fread failed");
             return 0;
         }
@@ -378,7 +391,7 @@ static int commit_insert(FileBuffer* fb, Modification* mod)
             error("commit_insert(): fseek failed [off: %llu]", off + mod->size);
             return 0;
         }
-        if (fwrite(fb->tmp_block, 1, size, fb->file) != size) {
+        if (fwrite(fb->tmp_block, 1, (size_t)size, fb->file) != (size_t)size) {
             error("commit_insert(): fwrite failed");
             return 0;
         }
@@ -420,11 +433,17 @@ static int commit_delete(FileBuffer* fb, Modification* mod)
     s64_t off  = mod->off + mod->size;
     s64_t size = min(fb_block_size, fsize - off);
     while (1) {
+        // `size` is passed to fread/fwrite as a size_t: a negative value would
+        // become ~2^64 and overrun the 4096-byte tmp_block
+        if (size < 0) {
+            error("commit_delete(): invalid size %lld", size);
+            return 0;
+        }
         if (fseek(fb->file, off, SEEK_SET) < 0) {
             error("commit_delete(): fseek failed [off: %llu]", off);
             return 0;
         }
-        if (fread(fb->tmp_block, 1, size, fb->file) != size) {
+        if (fread(fb->tmp_block, 1, (size_t)size, fb->file) != (size_t)size) {
             error("commit_delete(): fread failed");
             return 0;
         }
@@ -432,7 +451,7 @@ static int commit_delete(FileBuffer* fb, Modification* mod)
             error("commit_delete(): fseek failed [off: %llu]", off - mod->size);
             return 0;
         }
-        if (fwrite(fb->tmp_block, 1, size, fb->file) != size) {
+        if (fwrite(fb->tmp_block, 1, (size_t)size, fb->file) != (size_t)size) {
             error("commit_delete(): fwrite failed");
             return 0;
         }
@@ -466,7 +485,9 @@ void fb_commit(FileBuffer* fb)
 
     ll_invert(&fb->modifications);
 
-    int        r;
+    // must be initialized: with an empty modification list the loop below never
+    // runs, and `r` is still read afterwards
+    int        r    = 1;
     ll_node_t* curr = fb->modifications.head;
     while (curr) {
         Modification* mod = (Modification*)curr->data;
@@ -493,7 +514,7 @@ void fb_commit(FileBuffer* fb)
               "output file is broken. I'll try to reload it");
         fb->version += 1 + fb->modifications.size;
         if (!fb_reload(fb))
-            panic("unable to reload the file");
+            error("unable to reload the file");
         fb_unlock(fb);
         return;
     }
@@ -512,9 +533,20 @@ static int overlaps(u64_t startA, u64_t endA, u64_t startB, u64_t endB)
     return startA <= endB && endA > startB;
 }
 
+// Maximum number of nested modifications resolved while assembling a block.
+// Each level costs a stack frame, so an unbounded chain of pending
+// inserts/deletes would otherwise overflow the stack.
+#define FB_READ_MAX_DEPTH 512
+
 static int fb_read_internal(FileBuffer* fb, u64_t addr, u64_t fsize, u64_t idx,
-                            int nmod, s8_t* block_map)
+                            int nmod, s8_t* block_map, int depth)
 {
+    if (depth >= FB_READ_MAX_DEPTH) {
+        error("too many pending modifications, commit them ('c') before "
+              "reading again");
+        return 0;
+    }
+
     size_t size = min(fb_block_size - idx, fsize - addr);
 
     int        n    = 0;
@@ -553,8 +585,9 @@ static int fb_read_internal(FileBuffer* fb, u64_t addr, u64_t fsize, u64_t idx,
                         u64_t n_addr = off - mod->size;
                         u64_t n_size = fsize - mod->size;
                         u64_t n_idx  = off - addr + idx;
-                        fb_read_internal(fb, n_addr, n_size, n_idx, n + 1,
-                                         block_map);
+                        if (!fb_read_internal(fb, n_addr, n_size, n_idx, n + 1,
+                                              block_map, depth + 1))
+                            return 0;
                         u64_t i;
                         for (i = n_idx; i < size; ++i)
                             block_map[i] = 1;
@@ -566,8 +599,9 @@ static int fb_read_internal(FileBuffer* fb, u64_t addr, u64_t fsize, u64_t idx,
                     u64_t n_addr = off + mod->size;
                     u64_t n_size = fsize + mod->size;
                     u64_t n_idx  = off - addr + idx;
-                    fb_read_internal(fb, n_addr, n_size, n_idx, n + 1,
-                                     block_map);
+                    if (!fb_read_internal(fb, n_addr, n_size, n_idx, n + 1,
+                                          block_map, depth + 1))
+                        return 0;
                     u64_t i;
                     for (i = n_idx; i < size; ++i)
                         block_map[i] = 1;
@@ -670,11 +704,11 @@ const u8_t* fb_read_ex(FileBuffer* fb, size_t size, u32_t mod_idx)
     }
 
     s8_t block_map[fb_block_size] = {0};
-    if (!fb_read_internal(fb, fb->off, fsize, 0, mod_idx, block_map)) {
+    if (!fb_read_internal(fb, fb->off, fsize, 0, mod_idx, block_map, 0)) {
         error("something went wrong while reading the file. Reloading it");
         fb->version += 1 + fb->modifications.size;
         if (!fb_reload(fb))
-            panic("unable to reload the file");
+            error("unable to reload the file");
     }
     fb->block_dirty = 0;
     if (mod_idx == 0) {

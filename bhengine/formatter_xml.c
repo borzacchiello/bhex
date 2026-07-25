@@ -57,6 +57,8 @@ static void fmt_xml_process_buffer_value(FormatterXML* this, FileBuffer* fb,
     while (off < size) {
         u64_t       to_read = min(size - off, fb_block_size);
         const u8_t* buf     = fb_read(fb, to_read);
+        if (buf == NULL)
+            break;
         for (u64_t i = 0; i < to_read; ++i) {
             display_printf("%02x", buf[i]);
         }
@@ -78,6 +80,9 @@ static void fmt_xml_process_value(FormatterXML* this, BHEngineValue* val)
             break;
         case TENGINE_CHAR:
             printf_if_not_quiet(this, "<char>%d</char>", val->c);
+            break;
+        case TENGINE_WCHAR:
+            printf_if_not_quiet(this, "<wchar>%d</wchar>", val->wc);
             break;
         case TENGINE_STRING:
             printf_if_not_quiet(this, "<buffer>");
@@ -103,7 +108,8 @@ static void fmt_xml_process_value(FormatterXML* this, BHEngineValue* val)
             break;
         }
         default:
-            panic("process value called with an unexpected type");
+            // never kill the process because of an unhandled value type
+            warning("[xml] unexpected value type %d", val->t);
             break;
     }
 }

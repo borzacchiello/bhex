@@ -53,7 +53,12 @@ static u32_t fb_calculate_checksum(const checksum_algo_t* algo, FileBuffer* fb,
 
         fb_seek(fb, off + processed);
         const u8_t* data = fb_read(fb, block_size);
-        state            = algo->step(state, data, block_size);
+        if (data == NULL) {
+            // the file shrank under us: stop here instead of crashing
+            error("unable to read the file at offset %llu", off + processed);
+            break;
+        }
+        state = algo->step(state, data, block_size);
 
         processed += block_size;
     }
@@ -116,7 +121,8 @@ static int checksumcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 
     u64_t offset = (u64_t)off + fb->off;
     if (offset >= fb->size) {
-        warning("offset is too big '%s'", offset_str);
+        // `offset_str` is NULL when the optional argument is omitted
+        warning("offset is too big (%llu)", offset);
         return COMMAND_INVALID_ARG;
     }
     if (size == 0)

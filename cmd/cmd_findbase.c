@@ -180,10 +180,12 @@ static u64_t read_ptr(const u8_t* data, size_t offset, FindbaseArch arch,
 
 static int findbase_array_delta_within_page(u64_t value, u64_t prev)
 {
-    int diff = (int)(value - prev);
-    if (diff < 0)
-        diff = -diff;
-    return diff <= (int)FINDBASE_PAGE_SIZE;
+    // NOTE: the truncation to 32 bit is intentional (deltas are compared modulo
+    // 2^32). Negating INT_MIN is undefined behavior, so take the absolute value
+    // with unsigned arithmetic, which is well defined.
+    int   diff  = (int)(value - prev);
+    u32_t adiff = diff < 0 ? -(u32_t)diff : (u32_t)diff;
+    return adiff <= (u32_t)FINDBASE_PAGE_SIZE;
 }
 
 static int base_can_fit_file(u64_t base, u64_t size, FindbaseArch arch)

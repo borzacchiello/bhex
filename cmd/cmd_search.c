@@ -45,7 +45,7 @@ static void searchcmd_help(void* obj)
         "     x:  data is a hex string\n"
         "     s:  data is a string (default)\n"
         "     sk: seek to first match\n"
-        "     c:  print context\n"
+        "     p:  print context\n"
         "\n"
         "  what: either a string or a hex string\n");
 }
@@ -85,10 +85,20 @@ static int search_cb(FileBuffer* fb, u64_t match_addr, const u8_t* match,
                                  : print_addr_end + rem;
         }
 
+        // the context window can be arbitrarily large (the match itself is
+        // user-controlled), but fb_read() fails for requests bigger than a
+        // block: clamp it, printing a truncated context is better than nothing
+        u64_t to_print = print_addr_end - print_addr_begin;
+        if (to_print > fb_block_size)
+            to_print = fb_block_size;
+
         fb_seek(fb, print_addr_begin);
-        const u8_t* data_to_print =
-            fb_read(fb, print_addr_end - print_addr_begin);
-        print_hex(data_to_print, print_addr_end - print_addr_begin, 0, 1, 1, 16,
+        const u8_t* data_to_print = fb_read(fb, to_print);
+        if (data_to_print == NULL) {
+            warning("unable to read the context of the match");
+            return 1;
+        }
+        print_hex(data_to_print, to_print, 0, 1, 1, 16,
                   print_addr_begin + fb->base_addr);
     }
     return 1;

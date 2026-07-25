@@ -46,8 +46,16 @@ void bhengine_raise_exception(InterpreterContext* ctx, const char* fmt, ...)
         ctx->exc     = bhex_calloc(sizeof(InterpreterException));
         ctx->exc->sb = strbuilder_new();
     } else {
+        // Deeply nested constructs unwind through here once per level; keep the
+        // first few messages (the informative ones) and drop the rest instead of
+        // emitting hundreds of identical lines.
+        if (ctx->exc->nmsgs >= BHENGINE_MAX_EXC_MSGS) {
+            ctx->halt = 1;
+            return;
+        }
         strbuilder_append(ctx->exc->sb, ", ");
     }
+    ctx->exc->nmsgs += 1;
 
     va_list argp;
     va_start(argp, fmt);
@@ -71,6 +79,13 @@ static Enum* get_enum(ASTCtx* ast, const char* name)
 
 static map* process_struct_type(InterpreterContext* ctx, Type* type)
 {
+    if (ctx->call_depth >= BHENGINE_MAX_CALL_DEPTH) {
+        bhengine_raise_exception(
+            ctx, "too many nested structs while processing %s", type->name);
+        return NULL;
+    }
+    ctx->call_depth += 1;
+
     ASTCtx* saved_ast          = ctx->ast;
     u64_t   saved_max_fvar_len = ctx->fmt->max_fvar_len;
     int     saved_endianess    = ctx->endianess;
@@ -80,19 +95,17 @@ static map* process_struct_type(InterpreterContext* ctx, Type* type)
     if (type->bhe_name != NULL) {
         if (imported_cb == NULL) {
             warning("imported callback not configured");
-            return NULL;
+            goto end;
         }
 
         // from now on, and while parsing this type, use this AST
         ctx->ast = imported_cb(imported_ptr, type->bhe_name);
-        if (ctx->ast == NULL) {
-            ctx->ast = saved_ast;
-            return NULL;
-        }
+        if (ctx->ast == NULL)
+            goto end;
         ctx->fmt->max_fvar_len = ctx->ast->max_fvar_len;
     }
     if (!ctx->ast)
-        return NULL;
+        goto end;
 
     Block* body = get_struct_body(ctx->ast, type->name);
     if (body == NULL)
@@ -106,6 +119,7 @@ static map* process_struct_type(InterpreterContext* ctx, Type* type)
     result = Scope_free_and_get_filevars(scope);
 
 end:
+    ctx->call_depth -= 1;
     ctx->endianess         = saved_endianess;
     ctx->fmt->quiet_mode   = saved_quiet_mode;
     ctx->ast               = saved_ast;
@@ -197,6 +211,13 @@ static BHEngineValue* handle_function_call(InterpreterContext* ctx,
                                            Function* fn, DList* params_exprs,
                                            Scope* caller_scope)
 {
+    if (ctx->call_depth >= BHENGINE_MAX_CALL_DEPTH) {
+        bhengine_raise_exception(ctx, "too many nested calls while calling %s",
+                                 fn->name);
+        return NULL;
+    }
+    ctx->call_depth += 1;
+
     BHEngineValue* result               = NULL;
     Scope*         fn_scope             = NULL;
     int            saved_quiet_mode     = ctx->fmt->quiet_mode;
@@ -237,6 +258,7 @@ static BHEngineValue* handle_function_call(InterpreterContext* ctx,
     fn_scope = NULL;
 
 end:
+    ctx->call_depth -= 1;
     ctx->break_or_continue_allowed = saved_break_or_continue_allowed;
     ctx->return_allowed            = saved_return_allowed;
     ctx->breaked                   = saved_breaked;

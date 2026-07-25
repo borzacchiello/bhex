@@ -68,6 +68,8 @@ static void fmt_term_process_buffer_value(FormatterTerm* this, FileBuffer* fb,
         return;
 
     const u8_t* buf = fb_read(fb, min(size, MAX_BUF_PRINT));
+    if (buf == NULL)
+        return;
 
     u32_t i = 0;
     for (; i < min(size, MAX_BUF_PRINT); ++i) {

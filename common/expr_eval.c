@@ -28,6 +28,8 @@ const char* expr_eval_err_to_string(int err)
             return "memory read out of bounds";
         case EXPR_EVAL_ERR_INVALID_ENDIAN:
             return "invalid endian (must be 'be' or 'le')";
+        case EXPR_EVAL_ERR_TOO_DEEP:
+            return "expression is nested too deeply";
         case EXPR_EVAL_ERR_UNKNOWN_GLOBAL_VAR:
             return "unknown global variable";
         default:
@@ -53,6 +55,13 @@ static void skip_spaces(const char** p)
     while (**p == ' ' || **p == '\t')
         (*p)++;
 }
+
+// Maximum nesting depth of an expression. The parser is a recursive descent
+// one, so without a limit an input like "((((((...1...))))))" (or "~~~~...1")
+// exhausts the stack. Reset on every public entry point.
+#define EXPR_MAX_DEPTH 128
+
+static int g_expr_depth = 0;
 
 // --- recursive descent parser ---
 
@@ -260,8 +269,13 @@ static int parse_unary(const char** p, FileBuffer* fb, u64_t* o_result)
     skip_spaces(p);
 
     if (**p == '~') {
+        if (g_expr_depth >= EXPR_MAX_DEPTH)
+            return EXPR_EVAL_ERR_TOO_DEEP;
+
         (*p)++; // consume '~'
+        g_expr_depth += 1;
         int r = parse_unary(p, fb, o_result);
+        g_expr_depth -= 1;
         if (r != EXPR_EVAL_OK)
             return r;
         *o_result = ~(*o_result);
@@ -336,14 +350,16 @@ static int parse_shift(const char** p, FileBuffer* fb, u64_t* o_result)
             r = parse_add(p, fb, &rhs);
             if (r != EXPR_EVAL_OK)
                 return r;
-            *o_result = (*o_result) << rhs;
+            // shifting by >= 64 is undefined behavior
+            *o_result = rhs >= 64 ? 0 : (*o_result) << rhs;
         } else if ((*p)[0] == '>' && (*p)[1] == '>') {
             *p += 2;
             u64_t rhs;
             r = parse_add(p, fb, &rhs);
             if (r != EXPR_EVAL_OK)
                 return r;
-            *o_result = (*o_result) >> rhs;
+            // shifting by >= 64 is undefined behavior
+            *o_result = rhs >= 64 ? 0 : (*o_result) >> rhs;
         } else {
             break;
         }
@@ -397,7 +413,13 @@ static int parse_bitwise_or(const char** p, FileBuffer* fb, u64_t* o_result)
 
 static int parse_expr(const char** p, FileBuffer* fb, u64_t* o_result)
 {
-    return parse_bitwise_or(p, fb, o_result);
+    if (g_expr_depth >= EXPR_MAX_DEPTH)
+        return EXPR_EVAL_ERR_TOO_DEEP;
+
+    g_expr_depth += 1;
+    int r = parse_bitwise_or(p, fb, o_result);
+    g_expr_depth -= 1;
+    return r;
 }
 
 // --- public API ---
@@ -408,7 +430,8 @@ int expr_eval(const char* expr, FileBuffer* fb, u64_t* o_result)
         return EXPR_EVAL_ERR_SYNTAX;
 
     const char* p = expr;
-    int         r = parse_expr(&p, fb, o_result);
+    g_expr_depth  = 0;
+    int r         = parse_expr(&p, fb, o_result);
     if (r != EXPR_EVAL_OK)
         return r;
 

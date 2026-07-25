@@ -73,10 +73,11 @@ int terminal_read_key(void)
 {
     int  nread;
     char c, seq[3];
-    while ((nread = read(STDIN_FILENO, &c, 1)) == 0)
-        ;
-    if (nread == -1)
-        exit(1);
+    // read() returning 0 means EOF (e.g. stdin was closed or redirected): busy
+    // looping here would spin at 100% CPU forever
+    nread = read(STDIN_FILENO, &c, 1);
+    if (nread <= 0)
+        return -1;
 
     while (1) {
         switch (c) {

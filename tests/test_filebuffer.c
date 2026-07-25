@@ -608,3 +608,98 @@ fail:
     dummyfilebuffer_destroy(tfb);
     return result;
 }
+
+// --- Crash-resilience regression tests ---
+
+int TEST(large_delete_then_read_no_stack_overflow)(void)
+{
+    // A delete used to be split into one Modification per 4096-byte block, and
+    // fb_read_internal() recurses once per overlapping modification: deleting a
+    // large range and then reading blew the stack (SIGSEGV, release builds too).
+    const size_t     size = 4 * 1024 * 1024;
+    u8_t*            blob = bhex_malloc(size);
+    DummyFilebuffer* tfb  = NULL;
+    int              result = TEST_FAILED;
+
+    for (size_t i = 0; i < size; ++i)
+        blob[i] = (u8_t)(i & 0xff);
+
+    tfb = dummyfilebuffer_create(blob, size);
+    ASSERT(tfb != NULL);
+
+    // delete everything but the last 16 bytes
+    ASSERT(fb_seek(tfb->fb, 0) == 0);
+    ASSERT(fb_delete(tfb->fb, size - 16) == 1);
+    ASSERT(tfb->fb->size == 16);
+
+    // the read must succeed and return the tail of the original blob
+    ASSERT(fb_seek(tfb->fb, 0) == 0);
+    const u8_t* p = fb_read(tfb->fb, 16);
+    ASSERT(p != NULL);
+    ASSERT(memcmp(p, blob + size - 16, 16) == 0);
+
+    result = TEST_SUCCEEDED;
+fail:
+    bhex_free(blob);
+    if (tfb)
+        dummyfilebuffer_destroy(tfb);
+    return result;
+}
+
+int TEST(delete_past_end_is_rejected)(void)
+{
+    // The guard used to be "fb->size - fb->off < size", which wraps around when
+    // fb->off is past the end, underflowing fb->size to ~2^64.
+    const u8_t       data[] = {1, 2, 3, 4, 5, 6, 7, 8};
+    DummyFilebuffer* tfb    = dummyfilebuffer_create(data, sizeof(data));
+    int              result = TEST_FAILED;
+
+    ASSERT(tfb != NULL);
+    ASSERT(fb_seek(tfb->fb, 4) == 0);
+
+    // asking for more bytes than are left must fail and leave size untouched
+    ASSERT(fb_delete(tfb->fb, 100) == 0);
+    ASSERT(tfb->fb->size == sizeof(data));
+
+    result = TEST_SUCCEEDED;
+fail:
+    if (tfb)
+        dummyfilebuffer_destroy(tfb);
+    return result;
+}
+
+int TEST(filebuffer_create_on_directory_returns_null)(void)
+{
+    // fopen() succeeds on a directory but the following fseek() fails; that
+    // used to reach panic() -> exit(1), killing the whole process.
+    FileBuffer* fb = filebuffer_create(".", 1);
+    if (fb != NULL) {
+        filebuffer_destroy(fb);
+        return TEST_FAILED;
+    }
+    return TEST_SUCCEEDED;
+}
+
+int TEST(commit_without_modifications_is_a_noop)(void)
+{
+    // fb_commit() read an uninitialized `int r` when the modification list was
+    // empty, and could report a bogus "file is broken" error.
+    const u8_t       data[] = {0xde, 0xad, 0xbe, 0xef};
+    DummyFilebuffer* tfb    = dummyfilebuffer_create(data, sizeof(data));
+    int              result = TEST_FAILED;
+
+    ASSERT(tfb != NULL);
+    fb_commit(tfb->fb);
+    ASSERT(tfb->fb->size == sizeof(data));
+
+    ASSERT(fb_seek(tfb->fb, 0) == 0);
+    const u8_t* p = fb_read(tfb->fb, sizeof(data));
+    ASSERT(p != NULL);
+    ASSERT(memcmp(p, data, sizeof(data)) == 0);
+
+    result = TEST_SUCCEEDED;
+fail:
+    if (tfb)
+        dummyfilebuffer_destroy(tfb);
+    return result;
+}

@@ -647,3 +647,88 @@ int TEST(var_size_in_expr)(void)
 fail:
     return TEST_FAILED;
 }
+
+// --- Crash-resilience regression tests ---
+
+int TEST(deep_nesting_does_not_crash)(void)
+{
+    // A deeply nested expression used to blow the stack in the recursive
+    // descent parser (SIGSEGV, also in release builds).
+    char expr[4096];
+    u32_t i, n = (sizeof(expr) - 2) / 2;
+    for (i = 0; i < n; ++i)
+        expr[i] = '(';
+    expr[n] = '1';
+    for (i = 0; i < n; ++i)
+        expr[n + 1 + i] = ')';
+    expr[2 * n + 1] = '\0';
+
+    u64_t r;
+    ASSERT(eval(expr, &r) == EXPR_EVAL_ERR_TOO_DEEP);
+    return TEST_SUCCEEDED;
+fail:
+    return TEST_FAILED;
+}
+
+int TEST(deep_unary_does_not_crash)(void)
+{
+    // Same for the unary operator, which recurses into itself.
+    char expr[4096];
+    u32_t i;
+    for (i = 0; i < sizeof(expr) - 2; ++i)
+        expr[i] = '~';
+    expr[sizeof(expr) - 2] = '1';
+    expr[sizeof(expr) - 1] = '\0';
+
+    u64_t r;
+    ASSERT(eval(expr, &r) == EXPR_EVAL_ERR_TOO_DEEP);
+    return TEST_SUCCEEDED;
+fail:
+    return TEST_FAILED;
+}
+
+int TEST(nesting_within_limit_still_works)(void)
+{
+    // The depth limit must not reject reasonable expressions.
+    u64_t r;
+    ASSERT(eval("((((((((((1+1))))))))))", &r) == EXPR_EVAL_OK);
+    ASSERT(r == 2);
+    return TEST_SUCCEEDED;
+fail:
+    return TEST_FAILED;
+}
+
+int TEST(shift_left_out_of_range)(void)
+{
+    // Shifting by >= 64 is undefined behavior; it must be well defined here.
+    u64_t r;
+    ASSERT(eval("1<<64", &r) == EXPR_EVAL_OK);
+    ASSERT(r == 0);
+    ASSERT(eval("1<<200", &r) == EXPR_EVAL_OK);
+    ASSERT(r == 0);
+    return TEST_SUCCEEDED;
+fail:
+    return TEST_FAILED;
+}
+
+int TEST(shift_right_out_of_range)(void)
+{
+    u64_t r;
+    ASSERT(eval("0xffffffffffffffff>>64", &r) == EXPR_EVAL_OK);
+    ASSERT(r == 0);
+    return TEST_SUCCEEDED;
+fail:
+    return TEST_FAILED;
+}
+
+int TEST(shift_within_range_still_works)(void)
+{
+    u64_t r;
+    ASSERT(eval("1<<63", &r) == EXPR_EVAL_OK);
+    ASSERT(r == 0x8000000000000000ULL);
+    ASSERT(eval("1<<8", &r) == EXPR_EVAL_OK);
+    ASSERT(r == 256);
+    return TEST_SUCCEEDED;
+fail:
+    return TEST_FAILED;
+}

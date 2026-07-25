@@ -47,6 +47,11 @@ static float calc_entropy(FileBuffer* fb, u64_t addr, u64_t size)
 
         size_t      len = min(fb_block_size, max_addr - curr_off);
         const u8_t* buf = fb_read(fb, len);
+        if (buf == NULL) {
+            // the file shrank under us: use the bytes gathered so far
+            error("unable to read the file at offset %llu", curr_off);
+            break;
+        }
 
         size_t i;
         for (i = 0; i < len; ++i)

@@ -71,10 +71,13 @@ static const char* type_to_string(BHEngineValueType t)
             return "wstring";
         case TENGINE_OBJ:
             return "custom_type";
+        case TENGINE_BUF:
+            return "buf";
+        case TENGINE_ARRAY:
+            return "array";
         default:
-            panic("invalid type in BHEngineValue_get_num");
+            return "unknown";
     }
-    return NULL;
 }
 
 BHEngineValue* BHEngineValue_SNUM_new(s64_t v, u32_t size)
@@ -277,6 +280,12 @@ BHEngineValue* BHEngineValue_array_sub(InterpreterContext*  ctx,
         bhengine_raise_exception(ctx, "div by zero");                          \
         return NULL;                                                           \
     }                                                                          \
+    /* INT64_MIN / -1 (and % -1) overflows and traps with SIGFPE */            \
+    if (check_zero && is_snum(lhs) && lhs->snum == INT64_MIN &&                \
+        is_snum(rhs) && rhs->snum == -1) {                                     \
+        bhengine_raise_exception(ctx, "div overflow");                         \
+        return NULL;                                                           \
+    }                                                                          \
     if (is_unum(lhs) && is_unum(rhs)) {                                        \
         return BHEngineValue_UNUM_new(                                         \
             get_unum_value(lhs) op get_unum_value(rhs),                        \
@@ -299,11 +308,57 @@ BHEngineValue* BHEngineValue_array_sub(InterpreterContext*  ctx,
 
 #define binop_num(ctx, op) binop_num_ext(ctx, op, 0)
 
+/* Signed overflow is undefined behavior: compute in unsigned (which has
+   well-defined wraparound) and reinterpret the result. */
+#define swrap(a, op, b) ((s64_t)((u64_t)(a)op(u64_t)(b)))
+
+#define binop_num_wrap(ctx, op)                                                \
+    if (lhs == NULL || rhs == NULL)                                            \
+        return NULL;                                                           \
+    if (is_unum(lhs) && is_unum(rhs)) {                                        \
+        return BHEngineValue_UNUM_new(                                         \
+            get_unum_value(lhs) op get_unum_value(rhs),                        \
+            max(get_unum_size(lhs), get_unum_size(rhs)));                      \
+    }                                                                          \
+    if (is_snum(lhs) && is_unum(rhs)) {                                        \
+        return BHEngineValue_SNUM_new(                                         \
+            swrap(lhs->snum, op, (s64_t)get_unum_value(rhs)),                  \
+            max(lhs->snum_size, get_unum_size(rhs)));                          \
+    }                                                                          \
+    if (is_unum(lhs) && is_snum(rhs)) {                                        \
+        return BHEngineValue_SNUM_new(                                         \
+            swrap((s64_t)get_unum_value(lhs), op, rhs->snum),                  \
+            max(get_unum_size(lhs), rhs->snum_size));                          \
+    }                                                                          \
+    if (is_snum(lhs) && is_snum(rhs)) {                                        \
+        return BHEngineValue_SNUM_new(swrap(lhs->snum, op, rhs->snum),         \
+                                      max(lhs->snum_size, rhs->snum_size));    \
+    }
+
+/* Shifting by a negative amount or by >= 64 is undefined behavior. */
+#define binop_shift(ctx, op, logical)                                          \
+    if (lhs == NULL || rhs == NULL)                                            \
+        return NULL;                                                           \
+    if ((is_unum(lhs) || is_snum(lhs)) && (is_unum(rhs) || is_snum(rhs))) {    \
+        s64_t sh = is_unum(rhs) ? (s64_t)get_unum_value(rhs) : rhs->snum;      \
+        if (sh < 0 || sh >= 64) {                                              \
+            bhengine_raise_exception(ctx, "invalid shift amount %lld", sh);     \
+            return NULL;                                                       \
+        }                                                                      \
+        if (is_unum(lhs))                                                      \
+            return BHEngineValue_UNUM_new(get_unum_value(lhs) op(u64_t) sh,    \
+                                          get_unum_size(lhs));                 \
+        if (logical)                                                           \
+            return BHEngineValue_SNUM_new(                                     \
+                (s64_t)((u64_t)lhs->snum op(u64_t) sh), lhs->snum_size);       \
+        return BHEngineValue_SNUM_new(lhs->snum op sh, lhs->snum_size);        \
+    }
+
 BHEngineValue* BHEngineValue_add(InterpreterContext*  ctx,
                                  const BHEngineValue* lhs,
                                  const BHEngineValue* rhs)
 {
-    binop_num(ctx, +);
+    binop_num_wrap(ctx, +);
 
     bhengine_raise_exception(ctx, "add undefined for types %s and %s",
                              type_to_string(lhs->t), type_to_string(rhs->t));
@@ -314,7 +369,7 @@ BHEngineValue* BHEngineValue_sub(InterpreterContext*  ctx,
                                  const BHEngineValue* lhs,
                                  const BHEngineValue* rhs)
 {
-    binop_num(ctx, -);
+    binop_num_wrap(ctx, -);
 
     bhengine_raise_exception(ctx, "sub undefined for types %s and %s",
                              type_to_string(lhs->t), type_to_string(rhs->t));
@@ -325,7 +380,7 @@ BHEngineValue* BHEngineValue_mul(InterpreterContext*  ctx,
                                  const BHEngineValue* lhs,
                                  const BHEngineValue* rhs)
 {
-    binop_num(ctx, *);
+    binop_num_wrap(ctx, *);
 
     bhengine_raise_exception(ctx, "mul undefined for types %s and %s",
                              type_to_string(lhs->t), type_to_string(rhs->t));
@@ -391,7 +446,7 @@ BHEngineValue* BHEngineValue_shr(InterpreterContext*  ctx,
                                  const BHEngineValue* lhs,
                                  const BHEngineValue* rhs)
 {
-    binop_num(ctx, >>);
+    binop_shift(ctx, >>, 0);
 
     bhengine_raise_exception(ctx, "shr undefined for types %s and %s",
                              type_to_string(lhs->t), type_to_string(rhs->t));
@@ -402,7 +457,7 @@ BHEngineValue* BHEngineValue_shl(InterpreterContext*  ctx,
                                  const BHEngineValue* lhs,
                                  const BHEngineValue* rhs)
 {
-    binop_num(ctx, <<);
+    binop_shift(ctx, <<, 1);
 
     bhengine_raise_exception(ctx, "shl undefined for types %s and %s",
                              type_to_string(lhs->t), type_to_string(rhs->t));
@@ -587,13 +642,11 @@ int BHEngineValue_as_u64(InterpreterContext* ctx, const BHEngineValue* v,
         case TENGINE_WSTRING:
         case TENGINE_STRING:
         case TENGINE_OBJ:
+        default:
             bhengine_raise_exception(ctx, "%s is not a numeric type",
                                      type_to_string(v->t));
             return 1;
-        default:
-            panic("invalid type in BHEngineValue_as_u64");
     }
-    return 1;
 }
 
 int BHEngineValue_as_string(InterpreterContext* ctx, const BHEngineValue* v,
@@ -639,13 +692,11 @@ int BHEngineValue_as_s64(InterpreterContext* ctx, const BHEngineValue* v,
         case TENGINE_STRING:
         case TENGINE_WSTRING:
         case TENGINE_OBJ:
+        default:
             bhengine_raise_exception(ctx, "%s is not a numeric type",
                                      type_to_string(v->t));
             return 1;
-        default:
-            panic("invalid type in BHEngineValue_as_s64");
     }
-    return 1;
 }
 
 BHEngineValue* BHEngineValue_retain(BHEngineValue* v)

@@ -558,6 +558,14 @@ static BHEngineValue* builtin_error(InterpreterContext* ctx, DList* params)
         return NULL;
     }
     BHEngineValue* p = params->data[0];
+    if (p->t != TENGINE_STRING) {
+        // the parameter is not a string: printing it as one would dereference
+        // whatever the union happens to hold (e.g. an integer as a char*)
+        char* str = BHEngineValue_tostring(p, 0, 0);
+        bhengine_raise_exception(ctx, "RUNTIME ERROR: %s", str);
+        bhex_free(str);
+        return NULL;
+    }
     bhengine_raise_exception(ctx, "RUNTIME ERROR: %.*s", p->str_size, p->str);
     return NULL;
 }
@@ -628,6 +636,14 @@ static BHEngineValue* builtin_find(InterpreterContext* ctx, DList* params)
         return NULL;
     }
     bhex_free(what_str);
+
+    // an empty needle would make `what_len - 1` underflow below (it happens
+    // whenever the string starts with an escaped NUL byte)
+    if (what_len == 0) {
+        bhengine_raise_exception(ctx, "find: the string to find is empty");
+        bhex_free(what_bytes);
+        return NULL;
+    }
 
     u64_t orig_off = ctx->fb->off;
     if (direction_forward) {

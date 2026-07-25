@@ -277,9 +277,16 @@ void tui_write_key(TuiState* ts, int k)
     if (b < 0)
         goto end;
 
-    u8_t byte = (u8_t)b;
-    u8_t curr_byte =
-        (ts->insert_mode && !ts->second_nibble) ? 0 : *fb_read(ts->fb, 1);
+    u8_t byte      = (u8_t)b;
+    u8_t curr_byte = 0;
+    if (!(ts->insert_mode && !ts->second_nibble)) {
+        // `selected` can sit at/after EOF (e.g. after a DEL in insert mode),
+        // in which case there is no current byte to read
+        const u8_t* p = fb_read(ts->fb, 1);
+        if (p == NULL)
+            goto end;
+        curr_byte = *p;
+    }
     if (!ts->second_nibble)
         byte = (byte << 4) | (curr_byte & 0xf);
     else
@@ -394,6 +401,11 @@ int tui_process_key(TuiState* ts, int k, int rows)
             fb_seek(ts->fb, ts->selected);
             fb_delete(ts->fb, 1);
             fb_seek(ts->fb, tmp);
+            // the file just shrank: any half-typed byte no longer applies, and
+            // `selected` may now sit past the end
+            ts->second_nibble = 0;
+            if (ts->selected > ts->fb->size)
+                ts->selected = ts->fb->size;
             break;
         }
         default:
@@ -453,6 +465,8 @@ int tui_enter_loop(FileBuffer* fb)
 
         memset(ts.msg, 0, sizeof(ts.msg));
         int k = terminal_read_key();
+        if (k < 0) // stdin was closed (EOF or read error): leave the TUI
+            break;
         if (tui_process_key(&ts, k, rows))
             break;
     }

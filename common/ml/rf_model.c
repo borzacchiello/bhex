@@ -325,9 +325,15 @@ int bhex_rf_model_predict_proba(const bhex_rf_model_t* model,
     for (tree_idx = 0; tree_idx < model->num_trees; ++tree_idx) {
         const bhex_rf_tree_t* tree = &model->trees[tree_idx];
         int32_t               node = 0;
+        // a corrupt model can contain a cycle in left/right: bound the descent
+        // by the number of nodes so we can never loop forever
+        uint32_t steps = 0;
 
         while (node >= 0 && (uint32_t)node < tree->node_count &&
                tree->feature[node] >= 0) {
+            if (++steps > tree->node_count) {
+                return BHEX_ML_ERR_FORMAT;
+            }
             int16_t feature = tree->feature[node];
             if ((uint32_t)feature >= model->num_features) {
                 return BHEX_ML_ERR_FORMAT;

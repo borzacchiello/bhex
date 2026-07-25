@@ -68,12 +68,18 @@ static void E8(jh_hashState* state); /* The bijective function E8 */
 static void F8(jh_hashState* state); /* The compression function F8 */
 
 /*The API functions*/
-jh_HashReturn jh_Init(jh_hashState* state, int hashbitlen);
-jh_HashReturn jh_Update(jh_hashState* state, const jh_BitSequence* data,
-                        jh_DataLength databitlen);
-jh_HashReturn jh_Final(jh_hashState* state, jh_BitSequence* hashval);
-jh_HashReturn jh_Hash(int hashbitlen, const jh_BitSequence* data,
-                      jh_DataLength databitlen, jh_BitSequence* hashval);
+/* NOTE: this is a header-only implementation, so the API functions must have
+   internal linkage: without `static` any second translation unit including
+   this header fails to link with a multiple-definition error. */
+static jh_HashReturn jh_Init(jh_hashState* state, int hashbitlen);
+static jh_HashReturn jh_Update(jh_hashState* state, const jh_BitSequence* data,
+                               jh_DataLength databitlen);
+static jh_HashReturn jh_Final(jh_hashState* state, jh_BitSequence* hashval);
+/* not used by bhex, kept for reference/completeness */
+__attribute__((unused)) static jh_HashReturn jh_Hash(int hashbitlen,
+                                                     const jh_BitSequence* data,
+                                                     jh_DataLength databitlen,
+                                                     jh_BitSequence* hashval);
 
 /*the round function of E8 */
 static void R8(jh_hashState* state)
@@ -263,7 +269,7 @@ static void F8(jh_hashState* state)
 }
 
 /*before hashing a message, initialize the hash state as H0 */
-jh_HashReturn jh_Init(jh_hashState* state, int hashbitlen)
+static jh_HashReturn jh_Init(jh_hashState* state, int hashbitlen)
 {
     unsigned int i;
 
@@ -288,8 +294,9 @@ jh_HashReturn jh_Init(jh_hashState* state, int hashbitlen)
 }
 
 /*hash each 512-bit message block, except the last partial block*/
-jh_HashReturn jh_Update(jh_hashState* state, const jh_BitSequence* data,
-                        jh_DataLength databitlen)
+static jh_HashReturn jh_Update(jh_hashState* state,
+                               const jh_BitSequence* data,
+                               jh_DataLength databitlen)
 {
     jh_DataLength index; /*the starting address of the data to be compressed*/
 
@@ -305,12 +312,11 @@ jh_HashReturn jh_Update(jh_hashState* state, const jh_BitSequence* data,
      * full block*/
     if ((state->datasize_in_buffer > 0) &&
         ((state->datasize_in_buffer + databitlen) < 512)) {
-        if ((databitlen & 7) == 0) {
-            memcpy(state->buffer + (state->datasize_in_buffer >> 3), data,
-                   64 - (state->datasize_in_buffer >> 3));
-        } else
-            memcpy(state->buffer + (state->datasize_in_buffer >> 3), data,
-                   64 - (state->datasize_in_buffer >> 3) + 1);
+        /* copy only the bytes the caller actually supplied: reading up to the
+         * end of the 64-byte block would over-read `data` */
+        jh_DataLength nbytes = ((databitlen & 7) == 0) ? (databitlen >> 3)
+                                                  : ((databitlen >> 3) + 1);
+        memcpy(state->buffer + (state->datasize_in_buffer >> 3), data, nbytes);
         state->datasize_in_buffer += databitlen;
         databitlen = 0;
     }
@@ -349,7 +355,7 @@ jh_HashReturn jh_Update(jh_hashState* state, const jh_BitSequence* data,
 }
 
 /*padding the message, truncate the hash value H and obtain the message digest*/
-jh_HashReturn jh_Final(jh_hashState* state, jh_BitSequence* hashval)
+static jh_HashReturn jh_Final(jh_hashState* state, jh_BitSequence* hashval)
 {
     unsigned int i;
 
@@ -418,8 +424,9 @@ jh_HashReturn jh_Final(jh_hashState* state, jh_BitSequence* hashval)
    three inputs: message digest size in bits (hashbitlen); message (data);
    message length in bits (databitlen) one output:   message digest (hashval)
 */
-jh_HashReturn jh_Hash(int hashbitlen, const jh_BitSequence* data,
-                      jh_DataLength databitlen, jh_BitSequence* hashval)
+static jh_HashReturn jh_Hash(int hashbitlen, const jh_BitSequence* data,
+                             jh_DataLength databitlen,
+                             jh_BitSequence* hashval)
 {
     jh_hashState state;
 

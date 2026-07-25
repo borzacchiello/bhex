@@ -71,8 +71,14 @@ static void hashcmd_help(void* obj) { display_printf(HELP_STR); }
             if (block_size > size - processed)                                 \
                 block_size = size - processed;                                 \
             const u8_t* data = fb_read(fb, block_size);                        \
-            if (!data)                                                         \
-                break;                                                         \
+            if (!data) {                                                       \
+                /* do not silently return a digest computed over partial data:  \
+                   the caller reports an error when o_hash is NULL */           \
+                error("unable to read the file at offset %llu", off);           \
+                fb_seek(fb, original_off);                                     \
+                *o_hash = NULL;                                                \
+                return;                                                        \
+            }                                                                  \
             update_func(&ctx, data, block_size);                               \
             processed += block_size;                                           \
             off += block_size;                                                 \

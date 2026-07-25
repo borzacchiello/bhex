@@ -683,6 +683,9 @@ static shash_ret shash_Update(SpectralHashCtx* state, const u8_t* data,
                               u64_t databitlen)
 {
     int   numchunks = (databitlen + state->remainderbitlen) / 512;
+    /* remainderbitlen is overwritten below, but the append path needs the
+     * number of bits that were already buffered on entry */
+    u64_t old_remainderbitlen = state->remainderbitlen;
     chunk currentbitsequence;
     int   i;
     int   n = 0;
@@ -718,10 +721,22 @@ static shash_ret shash_Update(SpectralHashCtx* state, const u8_t* data,
         compress(&state->sPrism, &state->pPrism, &state->hPrism);
     }
     /* sets up the state for use with update again or final */
-    state->remainderbitlen = (databitlen + state->remainderbitlen) % 512;
-    memcpy(&state->remainder, &data[currentbyte],
-           (state->remainderbitlen / 8) +
-               (((state->remainderbitlen % 8) != 0) ? 1 : 0));
+    state->remainderbitlen = (databitlen + old_remainderbitlen) % 512;
+    if (numchunks == 0) {
+        /* the new data did not complete a chunk: nothing was consumed, so
+         * APPEND it to the bytes already buffered instead of overwriting them,
+         * and only read the bytes the caller actually supplied */
+        u64_t old_bytes = old_remainderbitlen / 8;
+        u64_t new_bytes =
+            (databitlen / 8) + (((databitlen % 8) != 0) ? 1 : 0);
+        if (old_bytes + new_bytes > sizeof(state->remainder))
+            return SH_BAD_HASHBITLEN;
+        memcpy(state->remainder + old_bytes, data, new_bytes);
+    } else {
+        memcpy(state->remainder, &data[currentbyte],
+               (state->remainderbitlen / 8) +
+                   (((state->remainderbitlen % 8) != 0) ? 1 : 0));
+    }
     return SH_SUCCESS;
 }
 

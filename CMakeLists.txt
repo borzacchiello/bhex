@@ -158,10 +158,14 @@ set(bhengine_src
     bhengine/formatter_term.c
     bhengine/formatter_xml.c)
 
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -Wall -ffunction-sections")
+# Warnings that catch the classes of bug that caused real crashes: unchecked
+# NULL returns, signed/unsigned mix-ups in size computations, and bad formats.
+set(BHEX_WARNINGS "-Wall -Wsign-compare -Wnull-dereference -Wformat -Wformat-security")
+
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} ${BHEX_WARNINGS} -ffunction-sections")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wall -ffunction-sections")
 set(CMAKE_LINKER_FLAGS_RELEASE "${CMAKE_LINKER_FLAGS_RELEASE} -Wl,--gc-sections")
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fno-omit-frame-pointer -Wall")
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fno-omit-frame-pointer ${BHEX_WARNINGS}")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-omit-frame-pointer -Wall")
 
 if(ASAN)

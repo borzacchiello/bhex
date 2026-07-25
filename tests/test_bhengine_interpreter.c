@@ -4268,3 +4268,129 @@ end:
     dummyfilebuffer_destroy(tfb);
     return r;
 }
+
+// --- Crash-resilience regression tests ---
+//
+// Each of these used to abort the process (SEGV / SIGFPE / stack overflow /
+// panic()); they must now fail cleanly, i.e. return a NULL scope after raising
+// an exception, without taking the whole program down.
+
+int TEST(crash_error_with_non_string_arg)(void)
+{
+    // error() used to format an integer as a char*, dereferencing it.
+    const char* prog = "proc { error(1); }";
+
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    ASSERT(scope == NULL);
+    return TEST_SUCCEEDED;
+fail:
+    if (scope)
+        Scope_free(scope);
+    return TEST_FAILED;
+}
+
+int TEST(crash_find_empty_needle)(void)
+{
+    // A needle starting with an escaped NUL byte made what_len 0, so
+    // "what_len - 1" underflowed to 0xFFFFFFFF and read out of bounds.
+    const char* prog = "proc { local r = find(\"\\x00abc\", 1); }";
+
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    ASSERT(scope == NULL);
+    return TEST_SUCCEEDED;
+fail:
+    if (scope)
+        Scope_free(scope);
+    return TEST_FAILED;
+}
+
+int TEST(crash_div_int64_min_by_minus_one)(void)
+{
+    // INT64_MIN / -1 overflows and raises SIGFPE on x86.
+    const char* prog = "proc { local a = 0s8 - 9223372036854775808; "
+                       "local b = 0s8 - 1; local x = a / b; }";
+
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    // either a clean exception or a well-defined result, but never a crash
+    if (scope)
+        Scope_free(scope);
+    return TEST_SUCCEEDED;
+}
+
+int TEST(crash_shift_out_of_range)(void)
+{
+    // Shifting by >= 64 is undefined behavior.
+    const char* prog = "proc { local x = 1 << 200; }";
+
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    ASSERT(scope == NULL);
+    return TEST_SUCCEEDED;
+fail:
+    if (scope)
+        Scope_free(scope);
+    return TEST_FAILED;
+}
+
+int TEST(crash_array_used_as_number)(void)
+{
+    // as_u64() used to panic() (exit(1)) on a buf/array value.
+    const char* prog = "proc { u8 b[2]; if (b) { local x = 1; } }";
+
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    ASSERT(scope == NULL);
+    return TEST_SUCCEEDED;
+fail:
+    if (scope)
+        Scope_free(scope);
+    return TEST_FAILED;
+}
+
+int TEST(crash_infinite_recursion)(void)
+{
+    // Unbounded call depth used to exhaust the stack.
+    const char* prog = "fn f() { f(); } proc { f(); }";
+
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    ASSERT(scope == NULL);
+    return TEST_SUCCEEDED;
+fail:
+    if (scope)
+        Scope_free(scope);
+    return TEST_FAILED;
+}
+
+int TEST(crash_self_referential_struct)(void)
+{
+    // A struct containing itself consumes no bytes and never terminates.
+    const char* prog = "struct A { A x; } proc { A a; }";
+
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    ASSERT(scope == NULL);
+    return TEST_SUCCEEDED;
+fail:
+    if (scope)
+        Scope_free(scope);
+    return TEST_FAILED;
+}
+
+int TEST(recursion_within_limit_still_works)(void)
+{
+    // The depth limit must not break legitimate recursion.
+    const char* prog = "fn fact(n) {"
+                       "  if (n <= 1) { result = 1; return; }"
+                       "  result = n * fact(n - 1);"
+                       "}"
+                       "proc { local a = fact(10); }";
+
+    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
+    if (scope == NULL)
+        return TEST_FAILED;
+
+    int            r = 0;
+    BHEngineValue* v = Scope_get_local(scope, "a");
+    IS_TENGINE_SNUM_EQ(r, v, 3628800);
+
+end:
+    Scope_free(scope);
+    return r;
+}

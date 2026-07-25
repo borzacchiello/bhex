@@ -8,6 +8,7 @@
 #include <display.h>
 #include <string.h>
 #include <alloc.h>
+#include <log.h>
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 
@@ -51,6 +52,11 @@ static void calc_values(FileBuffer* fb, char** md5, float* entropy)
 
         size_t      len = min(fb_block_size, fb->size - curr_off);
         const u8_t* buf = fb_read(fb, len);
+        if (buf == NULL) {
+            // the file shrank under us: report what we have so far
+            error("unable to read the file at offset %llu", curr_off);
+            break;
+        }
 
         // MD5
         MD5Update(&ctx, buf, len);

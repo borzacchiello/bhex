@@ -8,6 +8,7 @@
 #include <string.h>
 #include <alloc.h>
 #include <defs.h>
+#include <log.h>
 
 #define HINT_STR "[/p/w] <file>"
 
@@ -58,7 +59,7 @@ static void print_diffs(FileBuffer* self, FileBuffer* other, int print_diffs,
 
     u64_t     ndiffs      = 0;
     u64_t     addr        = 0;
-    const int linelen     = wide ? 16 : 8;
+    const u64_t linelen   = wide ? 16 : 8;
     int       was_skipped = 0;
     while (1) {
         if (addr >= self->size || addr >= other->size)
@@ -68,6 +69,11 @@ static void print_diffs(FileBuffer* self, FileBuffer* other, int print_diffs,
             min(min(fb_block_size, self->size - addr), other->size - addr);
         const u8_t* self_block  = fb_read(self, size);
         const u8_t* other_block = fb_read(other, size);
+        if (self_block == NULL || other_block == NULL) {
+            // one of the two files shrank under us
+            error("unable to read the files at offset %llu", addr);
+            break;
+        }
 
         u64_t off = 0;
         while (1) {

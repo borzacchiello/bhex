@@ -14,8 +14,15 @@ typedef ASTCtx* (*imported_cb_t)(void* ptr, const char* bhe);
 
 struct Scope;
 
+// Maximum nesting depth for function calls and struct expansions.
+#define BHENGINE_MAX_CALL_DEPTH 256
+
+// Maximum number of chained messages in a single exception.
+#define BHENGINE_MAX_EXC_MSGS 8
+
 typedef struct InterpreterException {
     StringBuilder* sb;
+    int            nmsgs;
 } InterpreterException;
 
 typedef struct InterpreterContext {
@@ -28,6 +35,11 @@ typedef struct InterpreterContext {
     Endianess             endianess;
     Stmt*                 curr_stmt;
     InterpreterException* exc;
+
+    // Nesting depth of function calls / struct expansions. Guards against
+    // unbounded recursion (e.g. "fn f() { f(); }" or "struct A { A x; }")
+    // exhausting the stack.
+    int call_depth;
 
     int break_or_continue_allowed, return_allowed;
     int breaked, continued, returned;
