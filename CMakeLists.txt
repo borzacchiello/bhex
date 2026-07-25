@@ -193,12 +193,16 @@ if (ENABLE_TESTS)
     include(CTest)
     find_package(Python COMPONENTS Interpreter Development)
     file(GLOB TEST_SOURCE_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/tests/test_*.c)
+    # The sample files in tests/data (any extension but .h) are turned into
+    # headers by gen_tests.py
+    file(GLOB TEST_DATA_FILES CONFIGURE_DEPENDS LIST_DIRECTORIES false ${CMAKE_SOURCE_DIR}/tests/data/*)
+    list(FILTER TEST_DATA_FILES EXCLUDE REGEX "\\.h$")
 
     add_custom_command(
             OUTPUT ${CMAKE_SOURCE_DIR}/tests/main.c
             COMMAND ${CMAKE_COMMAND} -E remove -f ${CMAKE_SOURCE_DIR}/tests/main.c
             COMMAND python ${CMAKE_SOURCE_DIR}/tests/gen_tests.py
-            DEPENDS ${TEST_SOURCE_FILES} ${CMAKE_SOURCE_DIR}/tests/gen_tests.py ${CMAKE_SOURCE_DIR}/tests/t.h
+            DEPENDS ${TEST_SOURCE_FILES} ${TEST_DATA_FILES} ${CMAKE_SOURCE_DIR}/tests/gen_tests.py ${CMAKE_SOURCE_DIR}/tests/t.h
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
             COMMENT "Generating test main")
 

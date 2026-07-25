@@ -10,7 +10,8 @@
 #include <log.h>
 
 #include "data/elf_not_kitty.h"
-#include "data/elf_truncated.h"
+#include "data/elf_truncated_1.h"
+#include "data/elf_truncated_2.h"
 #include "data/pe_tiny.h"
 
 #include "dummy_filebuffer.h"

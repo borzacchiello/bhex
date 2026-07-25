@@ -4,7 +4,7 @@
 #include "t_cmd_common.h"
 #include "t.h"
 
-#include "data/wide_strings.h"
+#include "data/wide_strings_data.h"
 #include "data/big_buffers.h"
 
 #ifndef TEST

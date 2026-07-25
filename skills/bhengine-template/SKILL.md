@@ -220,9 +220,10 @@ x1000 — useful to tell a compressed stream from a plain one without floating p
 The template itself needs no build step — `CMakeLists.txt` copies the whole `templates/`
 directory — but a template that ships with bhex is expected to come with a test:
 
-- [ ] `tests/data/sample_myfmt.h` — the smallest real sample as a `static u8_t sample_myfmt[]`
-      array, `clang-format -i` afterwards. Generate it with a Python one-liner over the file bytes;
-      copy the include-guard shape from `tests/data/sample_png.h`.
+- [ ] `tests/data/sample_myfmt.myfmt` — the smallest real sample, dropped in as-is with its own
+      extension. At build time `tests/gen_tests.py` turns every sample file in `tests/data` into a
+      `tests/data/<name>.h` exposing it as `static u8_t <name>[]`; the generated headers are
+      gitignored, so only the sample is committed.
 - [ ] `tests/test_cmd_templates.c` — add the `#include` in alphabetical position and a
       `int TEST(template_myfmt_1)(void)` following the existing pattern (`dummyfilebuffer_create`,
       `exec_commands_on("t ./templates/myfmt.bhe", tfb)`, `compare_strings_ignoring_X`). Wrap the

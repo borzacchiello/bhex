@@ -7,7 +7,7 @@
 #include "t.h"
 
 #include "../bhengine/vm.h"
-#include "data/net.h"
+#include "data/tcp_pkt.h"
 #include "data/sample_zip.h"
 
 #ifndef TEST
