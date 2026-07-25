@@ -56,21 +56,11 @@ struct gzip_header_t
     }
 
     if (flags & gzip_flags_t::FNAME) {
-        while (1) {
-            u8 filename_char;
-            if (filename_char == 0) {
-                break;
-            }
-        }
+        string filename;
     }
 
     if (flags & gzip_flags_t::FCOMMENT) {
-        while (1) {
-            u8 comment_char;
-            if (comment_char == 0) {
-                break;
-            }
-        }
+        string comment;
     }
 
     if (flags & gzip_flags_t::FHCRC) {

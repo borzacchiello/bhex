@@ -47,8 +47,8 @@ void bhengine_raise_exception(InterpreterContext* ctx, const char* fmt, ...)
         ctx->exc->sb = strbuilder_new();
     } else {
         // Deeply nested constructs unwind through here once per level; keep the
-        // first few messages (the informative ones) and drop the rest instead of
-        // emitting hundreds of identical lines.
+        // first few messages (the informative ones) and drop the rest instead
+        // of emitting hundreds of identical lines.
         if (ctx->exc->nmsgs >= BHENGINE_MAX_EXC_MSGS) {
             ctx->halt = 1;
             return;
@@ -379,11 +379,19 @@ static BHEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
                     if (params_vals == NULL)
                         return NULL;
                 }
+                if (check_builtin_arity(ctx, builtin_func, params_vals) != 0) {
+                    if (params_vals)
+                        DList_destroy(params_vals,
+                                      (void (*)(void*))BHEngineValue_free);
+                    return NULL;
+                }
+
                 BHEngineValue* r = builtin_func->process(ctx, params_vals);
                 if (params_vals)
                     DList_destroy(params_vals,
                                   (void (*)(void*))BHEngineValue_free);
-                if (r == NULL)
+                // a builtin that already raised has a better message than ours
+                if (r == NULL && ctx->exc == NULL)
                     bhengine_raise_exception(ctx, "call to '%s' failed",
                                              e->fname);
                 return r;
@@ -820,6 +828,12 @@ static int process_VOID_FUNC_CALL(InterpreterContext* ctx, Stmt* stmt,
             if (params_vals == NULL)
                 return 1;
         }
+        if (check_builtin_arity(ctx, builtin_func, params_vals) != 0) {
+            if (params_vals)
+                DList_destroy(params_vals, (void (*)(void*))BHEngineValue_free);
+            return 1;
+        }
+
         BHEngineValue* r = builtin_func->process(ctx, params_vals);
         if (params_vals)
             DList_destroy(params_vals, (void (*)(void*))BHEngineValue_free);

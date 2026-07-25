@@ -1,0 +1,155 @@
+// Copyright (c) 2022-2026, bageyelet
+
+// PDF is a text-oriented format: tokens are separated by whitespace and have
+// no fixed size, so most of the parsing is done by measuring the next token
+// (scan_while/scan_until, which do not move the offset) before reading it.
+
+// "%PDF-1.7"
+struct pdf_header_t
+{
+    char magic[5];
+    char version[3];
+}
+
+// A comment line, e.g. the binary marker that usually follows the header
+struct pdf_comment_t
+{
+    u8 text[scan_until("\r\n")];
+}
+
+// "12 0 obj ... endobj"
+struct pdf_object_t
+{
+    local id_len = scan_while("0123456789");
+    assert(id_len > 0, "malformed indirect object: missing object number");
+    char id[id_len];
+    skip_while(" \t\r\n\x0c\x00");
+
+    local gen_len = scan_while("0123456789");
+    assert(gen_len > 0, "malformed indirect object: missing generation number");
+    char generation[gen_len];
+    skip_while(" \t\r\n\x0c\x00");
+
+    char keyword[3];
+    assert(keyword == "obj", "malformed indirect object: 'obj' keyword not found");
+
+    local body_end = find_next("endobj");
+    assert(body_end >= 0, "malformed indirect object: 'endobj' keyword not found");
+
+    u8   body[body_end - off()];
+    char keyword_end[6];
+}
+
+// A single entry of a cross-reference table. It should always be 20 bytes
+// long, but some producers emit 19 bytes entries (i.e., no space before the
+// end of line), so the end of line is parsed byte by byte.
+struct pdf_xref_entry_t
+{
+    char offset[10];
+    u8   sep_0;
+    char generation[5];
+    u8   sep_1;
+    char type;
+
+    u8 eol_0;
+    if (eol_0 == 0x20) {
+        u8 eol_1;
+        if (eol_1 == 0x0d) {
+            u8 eol_2;
+        }
+    } elif (eol_0 == 0x0d) {
+        u8 eol_1;
+    }
+}
+
+// "<first object id> <number of entries>" followed by the entries themselves
+struct pdf_xref_subsection_t
+{
+    local first_id_len = scan_while("0123456789");
+    assert(first_id_len > 0, "malformed xref subsection: missing first object id");
+    char first_id[first_id_len];
+    skip_while(" \t\r\n\x0c\x00");
+
+    local count_len = scan_while("0123456789");
+    assert(count_len > 0, "malformed xref subsection: missing number of entries");
+    char count[count_len];
+    skip_while(" \t\r\n\x0c\x00");
+
+    local n = to_int(count);
+    assert(n * 18 <= remaining_size(),
+           "malformed xref subsection: number of entries is too big");
+    pdf_xref_entry_t entries[n];
+}
+
+// "xref" followed by one or more subsections
+struct pdf_xref_t
+{
+    char keyword[4];
+    skip_while(" \t\r\n\x0c\x00");
+
+    while (scan_while("0123456789") > 0) {
+        pdf_xref_subsection_t subsection;
+        skip_while(" \t\r\n\x0c\x00");
+    }
+}
+
+// "trailer" followed by the trailer dictionary
+struct pdf_trailer_t
+{
+    char keyword[7];
+    skip_while(" \t\r\n\x0c\x00");
+
+    local dict_end = find_next("startxref");
+    assert(dict_end >= 0, "malformed trailer: 'startxref' keyword not found");
+    char dict[dict_end - off()];
+}
+
+// "startxref" followed by the offset of the last cross-reference table
+struct pdf_startxref_t
+{
+    char keyword[9];
+    skip_while(" \t\r\n\x0c\x00");
+
+    local n = scan_while("0123456789");
+    assert(n > 0, "malformed startxref: missing offset");
+    char offset[n];
+}
+
+// "%%EOF"
+struct pdf_eof_t
+{
+    char marker[5];
+}
+
+// Parse the section at the current offset. PDF files can contain more than one
+// body/xref/trailer group (incremental updates), hence the dispatch on the
+// next keyword instead of a fixed sequence of sections.
+fn parse_section()
+{
+    local kw = peek(4);
+    if (kw == "xref") {
+        pdf_xref_t xref;
+    } elif (kw == "trai") {
+        pdf_trailer_t trailer;
+    } elif (kw == "star") {
+        pdf_startxref_t startxref;
+    } elif (kw == "%%EO") {
+        pdf_eof_t eof;
+    } elif (peek_u8() == 0x25) {
+        pdf_comment_t comment;
+    } else {
+        pdf_object_t object;
+    }
+}
+
+proc
+{
+    pdf_header_t header;
+    assert(header.magic == "%PDF-", "not a PDF file");
+    skip_while(" \t\r\n\x0c\x00");
+
+    while (off() + 4 <= size()) {
+        parse_section();
+        skip_while(" \t\r\n\x0c\x00");
+    }
+}

@@ -18,9 +18,11 @@
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define printf_if_not_quiet(this, ...)                                         \
-    if (!this->super->quiet_mode) {                                            \
-        display_printf(__VA_ARGS__);                                           \
-    }
+    do {                                                                       \
+        if (!this->super->quiet_mode) {                                        \
+            display_printf(__VA_ARGS__);                                       \
+        }                                                                      \
+    } while (0)
 
 typedef struct FormatterXML {
     Formatter* super;
@@ -69,6 +71,11 @@ static void fmt_xml_process_buffer_value(FormatterXML* this, FileBuffer* fb,
 
 static void fmt_xml_process_value(FormatterXML* this, BHEngineValue* val)
 {
+    // the loops below print outside of printf_if_not_quiet, so the quiet mode
+    // has to be honored here, once, for the whole function
+    if (this->super->quiet_mode)
+        return;
+
     switch (val->t) {
         case TENGINE_UNUM:
             printf_if_not_quiet(this, "<unum size=\"%d\">%llu</unum>",

@@ -298,8 +298,9 @@ proc list_files
     rpm_header sig_hdr;
     u8         sig_index[16 * sig_hdr.index_count];
     u8         sig_data[sig_hdr.store_size];
-    if (off() % 8 != 0) {
-        u8 padding[8 - off() % 8];
+    local pad = align_up(off(), 8) - off();
+    if (pad != 0) {
+        u8 padding[pad];
     }
 
     rpm_header main_hdr;
@@ -334,8 +335,9 @@ proc
     rpmlead    lead;
     rpm_header sig_hdr;
     process_rpm_block(sig_hdr);
-    if (off() % 8 != 0) {
-        u8 padding[8 - off() % 8];
+    local pad = align_up(off(), 8) - off();
+    if (pad != 0) {
+        u8 padding[pad];
     }
 
     rpm_header main_hdr;

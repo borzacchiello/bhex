@@ -6,10 +6,12 @@
 
 #include "data/sample_squashfs.h"
 #include "data/sample_gzip.h"
+#include "data/sample_gzip_named.h"
 #include "data/sample_jpeg.h"
 #include "data/sample_lzo.h"
 #include "data/sample_fat_macho.h"
 #include "data/sample_macho.h"
+#include "data/sample_pdf.h"
 #include "data/sample_png.h"
 #include "data/sample_rpm.h"
 #include "data/sample_zip.h"
@@ -399,7 +401,7 @@ int TEST(template_pe)(void)
         "b+000000bc              NumberOfRelocations: 0045\n"
         "b+000000be              NumberOfLinenumbers: 0046\n"
         "b+000000c0                  Characteristics: CNT_INITIALIZED_DATA\n"
-        "[!] section size [ 258 ] is greater than remaining size [ 120 ], trimming \n"
+        "[!] section size [ 258 ] is greater than remaining size [ 120 ], trimming\n"
         "b+00000094                  SectionData: f4000000180000002e004c8d42c8ebe8...\n";
     // clang-format on
 
@@ -428,7 +430,7 @@ int TEST(template_zip)(void)
         "b+00000363         central_dir_size: 000001bd\n"
         "b+00000367       central_dir_offset: 0000019a\n"
         "b+0000036b           comment_length: 0000\n"
-        " \n"
+        "\n"
         "b+0000019a           dirElement: \n"
         "b+0000019a                signature: 'PK\\x01\\x02'\n"
         "b+0000019e          version_made_by: 031e\n"
@@ -497,7 +499,7 @@ int TEST(template_zip)(void)
         "b+0000003d                                 size: 04\n"
         "b+0000003e                                value: 00000014\n"
         "b+00000042                 data: 6369616f0a\n"
-        " \n"
+        "\n"
         "b+000001e8           dirElement: \n"
         "b+000001e8                signature: 'PK\\x01\\x02'\n"
         "b+000001ec          version_made_by: 031e\n"
@@ -565,7 +567,7 @@ int TEST(template_zip)(void)
         "b+00000083                              gid: \n"
         "b+00000083                                 size: 04\n"
         "b+00000084                                value: 00000014\n"
-        " \n"
+        "\n"
         "b+00000235           dirElement: \n"
         "b+00000235                signature: 'PK\\x01\\x02'\n"
         "b+00000239          version_made_by: 031e\n"
@@ -633,7 +635,7 @@ int TEST(template_zip)(void)
         "b+000000ce                              gid: \n"
         "b+000000ce                                 size: 04\n"
         "b+000000cf                                value: 00000014\n"
-        " \n"
+        "\n"
         "b+0000028c           dirElement: \n"
         "b+0000028c                signature: 'PK\\x01\\x02'\n"
         "b+00000290          version_made_by: 031e\n"
@@ -702,7 +704,7 @@ int TEST(template_zip)(void)
         "b+0000012e                                 size: 04\n"
         "b+0000012f                                value: 00000014\n"
         "b+00000133                 data: 636f6e74656e740a\n"
-        " \n"
+        "\n"
         "b+000002f8           dirElement: \n"
         "b+000002f8                signature: 'PK\\x01\\x02'\n"
         "b+000002fc          version_made_by: 031e\n"
@@ -1247,6 +1249,189 @@ int TEST(template_rpm_1)(void)
         dummyfilebuffer_create(sample_rpm, sizeof(sample_rpm));
     ASSERT(tfb != NULL);
     ASSERT(exec_commands_on("t ./templates/rpm.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_pdf_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000      header: \n"
+        "b+00000000           magic: '%PDF-'\n"
+        "b+00000005         version: '1.4'\n"
+        "b+00000009      object: \n"
+        "b+00000009              id: '1'\n"
+        "b+0000000b      generation: '0'\n"
+        "b+0000000d         keyword: 'obj'\n"
+        "b+00000010            body: 0a3c3c2f54797065202f436174616c6f...\n"
+        "b+00000032      keyword_end: 'endobj'\n"
+        "b+00000039      object: \n"
+        "b+00000039              id: '2'\n"
+        "b+0000003b      generation: '0'\n"
+        "b+0000003d         keyword: 'obj'\n"
+        "b+00000040            body: 0a3c3c2f54797065202f50616765730a...\n"
+        "b+0000006a      keyword_end: 'endobj'\n"
+        "b+00000071      object: \n"
+        "b+00000071              id: '3'\n"
+        "b+00000073      generation: '0'\n"
+        "b+00000075         keyword: 'obj'\n"
+        "b+00000078            body: 0a3c3c2f54797065202f506167650a2f...\n"
+        "b+000000fa      keyword_end: 'endobj'\n"
+        "b+00000101      object: \n"
+        "b+00000101              id: '4'\n"
+        "b+00000103      generation: '0'\n"
+        "b+00000105         keyword: 'obj'\n"
+        "b+00000108            body: 0a3c3c2f54797065202f466f6e740a2f...\n"
+        "b+00000165      keyword_end: 'endobj'\n"
+        "b+0000016c      object: \n"
+        "b+0000016c              id: '5'\n"
+        "b+0000016e      generation: '0'\n"
+        "b+00000170         keyword: 'obj'\n"
+        "b+00000173            body: 0a3c3c2f4c656e6774682035330a3e3e...\n"
+        "b+000001bf      keyword_end: 'endobj'\n"
+        "b+000001c6        xref: \n"
+        "b+000001c6         keyword: 'xref'\n"
+        "b+000001cb      subsection: \n"
+        "b+000001cb            first_id: '0'\n"
+        "b+000001cd               count: '6'\n"
+        "b+000001cf             entries: [ \n"
+        "                       [0]\n"
+        "b+000001cf                  offset: '0000000000'\n"
+        "b+000001d9                   sep_0: 20\n"
+        "b+000001da              generation: '65535'\n"
+        "b+000001df                   sep_1: 20\n"
+        "b+000001e0                    type: f\n"
+        "b+000001e1                   eol_0: 0a\n"
+        "                       [1]\n"
+        "b+000001e2                  offset: '0000000009'\n"
+        "b+000001ec                   sep_0: 20\n"
+        "b+000001ed              generation: '00000'\n"
+        "b+000001f2                   sep_1: 20\n"
+        "b+000001f3                    type: n\n"
+        "b+000001f4                   eol_0: 0a\n"
+        "                       [2]\n"
+        "b+000001f5                  offset: '0000000063'\n"
+        "b+000001ff                   sep_0: 20\n"
+        "b+00000200              generation: '00000'\n"
+        "b+00000205                   sep_1: 20\n"
+        "b+00000206                    type: n\n"
+        "b+00000207                   eol_0: 0a\n"
+        "                       [3]\n"
+        "b+00000208                  offset: '0000000124'\n"
+        "b+00000212                   sep_0: 20\n"
+        "b+00000213              generation: '00000'\n"
+        "b+00000218                   sep_1: 20\n"
+        "b+00000219                    type: n\n"
+        "b+0000021a                   eol_0: 0a\n"
+        "                       [4]\n"
+        "b+0000021b                  offset: '0000000277'\n"
+        "b+00000225                   sep_0: 20\n"
+        "b+00000226              generation: '00000'\n"
+        "b+0000022b                   sep_1: 20\n"
+        "b+0000022c                    type: n\n"
+        "b+0000022d                   eol_0: 0a\n"
+        "                       [5]\n"
+        "b+0000022e                  offset: '0000000392'\n"
+        "b+00000238                   sep_0: 20\n"
+        "b+00000239              generation: '00000'\n"
+        "b+0000023e                   sep_1: 20\n"
+        "b+0000023f                    type: n\n"
+        "b+00000240                   eol_0: 0a ]\n"
+        "b+00000241     trailer: \n"
+        "b+00000241         keyword: 'trailer'\n"
+        "b+00000249            dict: '<</Size 6\\x0a/Root 1 0 R\\x0a>>\\x0a'\n"
+        "b+00000262   startxref: \n"
+        "b+00000262         keyword: 'startxref'\n"
+        "b+0000026c          offset: '495'\n"
+        "b+00000270         eof: \n"
+        "b+00000270          marker: '%%EOF'\n";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_pdf, sizeof(sample_pdf));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/pdf.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_xml_quiet_mode)(void)
+{
+    // a string read while the print is disabled must not leak its bytes in the
+    // XML output: only 'b' is expected
+    const char* expected =
+        "<root><var name=\"b\" type=\"u8\" "
+        "off=\"3\"><unum size=\"1\">70</unum></var></root>\n";
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_pdf, sizeof(sample_pdf));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on(
+               "t/i/x \"disable_print(); char s[3]; enable_print(); u8 b;\"",
+               tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_gzip_named)(void)
+{
+    // the FNAME path: the header name is read with the 'string' type, so it
+    // shows up as one field instead of one line per character
+    // clang-format off
+    const char* expected =
+        "b+00000000              member: \n"
+        "b+00000000                  header: \n"
+        "b+00000000                         id1: 1f\n"
+        "b+00000001                         id2: 8b\n"
+        "b+00000002          compression_method: DEFLATE\n"
+        "b+00000003                       flags: FNAME\n"
+        "b+00000004                       mtime: 00000000\n"
+        "b+00000008                 extra_flags: DEFAULT_COMPRESSION\n"
+        "b+00000009                          os: UNIX\n"
+        "b+0000000a                    filename: 'hi.txt'\n"
+        "b+00000011         compressed_data: cb48cdc9c95748afca2ce00200\n"
+        "b+0000001e                   crc32: 56637c39\n"
+        "b+00000022              input_size: 0000000b\n";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_gzip_named, sizeof(sample_gzip_named));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/gzip.bhe", tfb) == 0);
 
     char* out = strbuilder_reset(sb);
     r         = compare_strings_ignoring_X(expected, out);

@@ -73,6 +73,7 @@ set(common_src
     common/alloc.c
     common/crc.c
     common/checksums.c
+    common/entropy.c
     common/dlist.c
     common/ll.c
     common/log.c
@@ -89,6 +90,7 @@ set(common_src
     common/util/print.c
     common/util/str.c
     common/util/math.c
+    common/hash/hash_registry.c
     common/hash/md2.c
     common/hash/md4.c
     common/hash/md5.c

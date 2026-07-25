@@ -10,10 +10,11 @@
 #include <display.h>
 #include <expr_eval.h>
 
-static const char* space_tokens   = " \t\n";
-static const char  quotation_char = '"';
-static const char  backslash_char = '\\';
-static const char  backtick_char  = '`';
+static const char* space_tokens     = " \t\n";
+static const char  quotation_char   = '"';
+static const char  backslash_char   = '\\';
+static const char  backtick_char    = '`';
+static const char  command_sep_char = ';';
 
 const char* parser_err_to_string(int err)
 {
@@ -213,6 +214,61 @@ int tokenize(const char* str, ll_t* o_result)
 
     ll_invert(o_result);
     return PARSER_OK;
+}
+
+char* cmdline_next_command(const char** str)
+{
+    if (!str || !*str)
+        return NULL;
+
+    const char* curr = *str;
+    while (*curr &&
+           (*curr == command_sep_char || is_token(*curr, space_tokens)))
+        curr += 1;
+    if (!*curr) {
+        *str = curr;
+        return NULL;
+    }
+
+    const char* begin              = curr;
+    int         in_quotation       = 0;
+    int         in_expression      = 0;
+    int         prev_was_backslash = 0;
+    while (*curr) {
+        if (in_quotation) {
+            if (*curr == quotation_char && !prev_was_backslash) {
+                in_quotation       = 0;
+                prev_was_backslash = 0;
+            } else {
+                prev_was_backslash =
+                    (*curr == backslash_char && !prev_was_backslash);
+            }
+        } else if (in_expression) {
+            if (*curr == backtick_char)
+                in_expression = 0;
+        } else if (*curr == command_sep_char) {
+            break;
+        } else if (*curr == quotation_char) {
+            in_quotation = 1;
+        } else if (*curr == backtick_char) {
+            in_expression = 1;
+        }
+        curr += 1;
+    }
+    // an unterminated quotation is left to cmdline_parse, which reports it
+
+    u64_t len = (u64_t)(curr - begin);
+    // drop the spaces before the separator: the last character of a command is
+    // never a space unless it is inside a quotation, which ends with a quote
+    while (len > 0 && is_token(begin[len - 1], space_tokens))
+        len -= 1;
+
+    char* cmd = bhex_malloc(len + 1);
+    memcpy(cmd, begin, len);
+    cmd[len] = 0;
+
+    *str = curr;
+    return cmd;
 }
 
 int cmdline_parse(const char* str, ParsedCommand** o_cmd)

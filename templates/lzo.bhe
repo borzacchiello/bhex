@@ -116,9 +116,9 @@ proc
 {
     while (off() < size()) {
         lzop_block_t block;
-        local        rem = off() % 4;
-        if (rem != 0) {
-            u8 padding[4 - rem];
+        local pad = align_up(off(), 4) - off();
+        if (pad != 0) {
+            u8 padding[pad];
         }
     }
 }

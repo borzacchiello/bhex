@@ -321,6 +321,7 @@ Available templates:
   gzip
   lzo
   png
+  pdf
   pe
   rpm
   macho

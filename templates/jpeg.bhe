@@ -134,33 +134,25 @@ fn is_zero_len_marker(id)
     }
 }
 
-fn get_chunk_id()
-{
-    disable_print();
-    u16 chunk_id;
-
-    seek(off() - 2);
-    result = chunk_id;
-}
-
 fn calc_SOS_size()
 {
     // https://stackoverflow.com/questions/26715684/parsing-jpeg-sos-marker
+    // the scan ends at the first 0xff that is not a stuffed byte (0xff 0x00)
+    // nor a restart marker (0xff 0xd0 - 0xff 0xd7)
 
     disable_print();
 
     local begin = off();
     while (1) {
-        if (!find("\xff")) {
-            error("invalid SOS chunk");
-        }
+        local marker = find_next("\xff");
+        assert(marker >= 0, "invalid SOS chunk");
 
-        u8 ff;
-        u8 c;
-        if (c != 0 && !(c >= 0xd0 && c <= 0xd7)) {
-            result = off() - begin - 2;
+        local next = peek_u8(marker + 1 - off());
+        if (next != 0 && !(next >= 0xd0 && next <= 0xd7)) {
+            result = marker - begin;
             break;
         }
+        seek(marker + 2);
     }
 
     seek(begin);
@@ -168,7 +160,7 @@ fn calc_SOS_size()
 
 fn parse_chunk()
 {
-    local id = get_chunk_id();
+    local id = peek_u16();
 
     if (id == JPEG_Marker::APP0) {
         APP0 app0_chunk;
@@ -185,7 +177,7 @@ fn parse_chunk()
 
 proc
 {
-    nums_in_dec();
+    nums_in(10);
     big_endian();
 
     while (off() < size()) {

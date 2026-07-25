@@ -77,13 +77,20 @@ int str_to_uint8(const char* str, u8_t* o_num)
 
 int str_to_int64(const char* str, s64_t* o_num)
 {
+    // base 0 lets the string pick its own base: "0x10" is 16, and a leading
+    // zero means octal
+    return str_to_int64_base(str, 0, o_num);
+}
+
+int str_to_int64_base(const char* str, int base, s64_t* o_num)
+{
     if (!str)
         return 0;
 
     errno = 0;
 
     char* endptr = NULL;
-    s64_t r      = strtoll(str, &endptr, 0);
+    s64_t r      = strtoll(str, &endptr, base);
     *o_num       = 0;
 
     if (!endptr)

@@ -1777,7 +1777,7 @@ int TEST(while_with_error_1)(void)
     const char* expected =
     "[  ERROR  ] 001: struct A { u8 v; break; }proc {   local i = 0;  while (i < 10) {    error(\"an error\");  }}\n"
     "[  ERROR  ]      ____________________________________________________________________________________^\n"
-    "[  ERROR  ] Exception @ line 1, col 85 > RUNTIME ERROR: an error\n";
+    "[  ERROR  ] Exception @ line 1, col 85 > an error\n";
     // clang-format on
 
     const char* prog = "struct A { u8 v; break; }"
@@ -2420,7 +2420,7 @@ int TEST(strip)(void)
     DummyFilebuffer* tfb  = dummyfilebuffer_create((const u8_t*)"ABCDEF", 6);
     const char*      prog = "proc {"
                             "    disable_print();"
-                            "    local a = strip(\"  ciao  \t\n\");"
+                            "    local a = printable(\"  ciao  \t\n\");"
                             "}";
 
     Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
@@ -2443,7 +2443,7 @@ int TEST(strip_nonascii)(void)
     DummyFilebuffer* tfb  = dummyfilebuffer_create((const u8_t*)"ABCDEF", 6);
     const char*      prog = "proc {"
                             "    disable_print();"
-                            "    local a = strip(\"  cia\x01o  \t\n\");"
+                            "    local a = printable(\"  cia\x01o  \t\n\");"
                             "}";
 
     Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
@@ -3072,7 +3072,7 @@ int TEST(wstrings_eq)(void)
         "b+00000000  str1: 'AB'\n"
         "b+00000006  str2: 'AB'\n"
         "b+0000000c  str3: 'AD'\n"
-        "yes 1 \n";
+        "yes 1\n";
     // clang-format on
 
     int              r      = TEST_SUCCEEDED;
@@ -3178,10 +3178,10 @@ fail:
     goto end;
 }
 
-int TEST(atoi)(void)
+int TEST(to_int)(void)
 {
     const char* prog = "proc { "
-                       "    local a = atoi(\"1234\");"
+                       "    local a = to_int(\"1234\");"
                        "}";
 
     int    r     = TEST_SUCCEEDED;
@@ -3284,7 +3284,7 @@ int TEST(fwd_3)(void)
     const char* expected =
     "[  ERROR  ] 001: proc {     fwd(\"abc\");}\n"
     "[  ERROR  ]      ____________________^\n"
-    "[  ERROR  ] Exception @ line 1, col 21 > string is not a numeric type, fwd: expected an uint parameter\n";
+    "[  ERROR  ] Exception @ line 1, col 21 > string is not a numeric type, fwd: parameter 1 is not a number\n";
     // clang-format on
 
     const char* prog = "proc { "
@@ -3316,7 +3316,7 @@ int TEST(fwd_4)(void)
     const char* expected =
     "[  ERROR  ] 001: proc {     fwd();}\n"
     "[  ERROR  ]      _______________^\n"
-    "[  ERROR  ] Exception @ line 1, col 16 > fwd: expected a parameter\n";
+    "[  ERROR  ] Exception @ line 1, col 16 > fwd: expected 1 parameter, got 0\n";
     // clang-format on
 
     const char* prog = "proc { "
@@ -3405,7 +3405,7 @@ int TEST(bwd_2)(void)
     const char* expected =
     "[  ERROR  ] 001: proc {     bwd();}\n"
     "[  ERROR  ]      _______________^\n"
-    "[  ERROR  ] Exception @ line 1, col 16 > bwd: expected a parameter\n";
+    "[  ERROR  ] Exception @ line 1, col 16 > bwd: expected 1 parameter, got 0\n";
     // clang-format on
 
     const char* prog = "proc { "
@@ -3437,7 +3437,7 @@ int TEST(bwd_3)(void)
     const char* expected =
     "[  ERROR  ] 001: proc {     bwd(\"\");}\n"
     "[  ERROR  ]      _________________^\n"
-    "[  ERROR  ] Exception @ line 1, col 18 > string is not a numeric type, bwd: expected an uint parameter\n";
+    "[  ERROR  ] Exception @ line 1, col 18 > string is not a numeric type, bwd: parameter 1 is not a number\n";
     // clang-format on
 
     const char* prog = "proc { "
@@ -4114,7 +4114,7 @@ int TEST(scope_if_no_access_after)(void)
 int TEST(tostring_unum)(void)
 {
     const char* prog = "proc {"
-                       "  nums_in_dec();"
+                       "  nums_in(10);"
                        "  local a = 42u8;"
                        "  local b = tostring(a);"
                        "}";
@@ -4135,7 +4135,7 @@ end:
 int TEST(tostring_snum)(void)
 {
     const char* prog = "proc {"
-                       "  nums_in_dec();"
+                       "  nums_in(10);"
                        "  local a = -123;"
                        "  local b = tostring(a);"
                        "}";
@@ -4226,7 +4226,7 @@ end:
 int TEST(tostring_hex)(void)
 {
     const char* prog = "proc {"
-                       "  nums_in_hex();"
+                       "  nums_in(16);"
                        "  local a = 255u8;"
                        "  local b = tostring(a);"
                        "}";
@@ -4292,16 +4292,153 @@ fail:
 int TEST(crash_find_empty_needle)(void)
 {
     // A needle starting with an escaped NUL byte made what_len 0, so
-    // "what_len - 1" underflowed to 0xFFFFFFFF and read out of bounds.
-    const char* prog = "proc { local r = find(\"\\x00abc\", 1); }";
+    // "what_len - 1" underflowed to 0xFFFFFFFF and read out of bounds. The
+    // needle is now used as the lexer decoded it, so this is a plain 4 byte
+    // search that finds nothing.
+    int              r    = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb  = dummyfilebuffer_create((const u8_t*)"ABCD", 4);
+    const char*      prog = "proc { local r = find(\"\\x00abc\", 1); }";
 
-    Scope* scope = bhengine_interpreter_run_on_string(elf_fb->fb, prog);
-    ASSERT(scope == NULL);
-    return TEST_SUCCEEDED;
-fail:
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope != NULL);
+    ASSERT_TENGINE_UNUM_EQ(Scope_get_local(scope, "r"), 0);
+
+end:
     if (scope)
         Scope_free(scope);
-    return TEST_FAILED;
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+// An empty literal is still rejected: it would match everywhere and nowhere
+int TEST(find_empty_needle_raises)(void)
+{
+    int              r    = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb  = dummyfilebuffer_create((const u8_t*)"ABCD", 4);
+    const char*      prog = "proc { local r = find(\"\"); }";
+
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope == NULL);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+// The matcher used to reset its state to zero on a mismatch, so it missed any
+// needle whose prefix repeats inside itself: "aab" was not found in "aaab".
+int TEST(find_repeated_prefix_forward)(void)
+{
+    int              r    = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb  = dummyfilebuffer_create((const u8_t*)"aaab", 4);
+    const char*      prog = "proc { local a = find(\"aab\"); }";
+
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope != NULL);
+    ASSERT_TENGINE_UNUM_EQ(Scope_get_local(scope, "a"), 1);
+    ASSERT(tfb->fb->off == 1);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+// The backward search declared a match one byte too early, so it reported a
+// hit at an offset where the needle is not: "baa" "found" at "aaa".
+int TEST(find_repeated_suffix_backward)(void)
+{
+    int              r   = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb = dummyfilebuffer_create((const u8_t*)"zbaaa", 5);
+    fb_seek(tfb->fb, 5);
+    const char* prog = "proc { local a = find(\"baa\", 1); }";
+
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope != NULL);
+    ASSERT_TENGINE_UNUM_EQ(Scope_get_local(scope, "a"), 1);
+    ASSERT(tfb->fb->off == 1);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+// A match must be found even when it straddles two read blocks
+int TEST(find_across_block_boundary)(void)
+{
+    int    r    = TEST_SUCCEEDED;
+    size_t size = fb_block_size + 16;
+    u8_t*  data = bhex_malloc(size);
+    memset(data, 'x', size);
+    memcpy(data + fb_block_size - 2, "MARK", 4);
+
+    DummyFilebuffer* tfb  = dummyfilebuffer_create(data, size);
+    const char*      prog = "proc { local a = find(\"MARK\"); }";
+
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope != NULL);
+    ASSERT_TENGINE_UNUM_EQ(Scope_get_local(scope, "a"), 1);
+    ASSERT(tfb->fb->off == fb_block_size - 2);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    bhex_free(data);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+// find_next() reports the offset and leaves the cursor alone
+int TEST(find_next_does_not_move)(void)
+{
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create((const u8_t*)"AAAAciaoBBBB", 12);
+    const char* prog = "proc {"
+                       "    local a = find_next(\"ciao\");"
+                       "    local b = find_next(\"nope\");"
+                       "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope != NULL);
+    ASSERT_TENGINE_SNUM_EQ(Scope_get_local(scope, "a"), 4);
+    ASSERT_TENGINE_SNUM_EQ(Scope_get_local(scope, "b"), -1);
+    ASSERT(tfb->fb->off == 0);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
 }
 
 int TEST(crash_div_int64_min_by_minus_one)(void)
@@ -4393,4 +4530,548 @@ int TEST(recursion_within_limit_still_works)(void)
 end:
     Scope_free(scope);
     return r;
+}
+
+/*
+    Builtins added to let a template parse text-oriented formats without
+    hand-rolling a helper function for every primitive
+*/
+
+// peek() and peek_u8() read without consuming, read() consumes
+int TEST(peek_and_read)(void)
+{
+    int              r    = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb  = dummyfilebuffer_create((const u8_t*)"ABCDEFGH", 8);
+    const char*      prog = "proc {"
+                            "    local a = peek(4);"
+                            "    local b = off();"
+                            "    local c = peek_u8();"
+                            "    local d = read(4);"
+                            "    local e = off();"
+                            "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope != NULL);
+
+    int ok = 0;
+    IS_TENGINE_STRING_EQ(ok, Scope_get_local(scope, "a"), "ABCD");
+    ASSERT(ok);
+    ASSERT_TENGINE_UNUM_EQ(Scope_get_local(scope, "b"), 0);
+    ASSERT_TENGINE_SNUM_EQ(Scope_get_local(scope, "c"), 'A');
+    ok = 0;
+    IS_TENGINE_STRING_EQ(ok, Scope_get_local(scope, "d"), "ABCD");
+    ASSERT(ok);
+    ASSERT_TENGINE_UNUM_EQ(Scope_get_local(scope, "e"), 4);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+// peek() is clamped to what is left, and peek_u8() reports the end of the file
+int TEST(peek_at_end_of_file)(void)
+{
+    int              r    = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb  = dummyfilebuffer_create((const u8_t*)"AB", 2);
+    const char*      prog = "proc {"
+                            "    local a = peek(8);"
+                            "    seek(2);"
+                            "    local b = peek_u8();"
+                            "    local c = peek(4);"
+                            "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope != NULL);
+
+    int ok = 0;
+    IS_TENGINE_STRING_EQ(ok, Scope_get_local(scope, "a"), "AB");
+    ASSERT(ok);
+    ASSERT_TENGINE_SNUM_EQ(Scope_get_local(scope, "b"), -1);
+    ok = 0;
+    IS_TENGINE_STRING_EQ(ok, Scope_get_local(scope, "c"), "");
+    ASSERT(ok);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+// scan_* measure a run of bytes, skip_* consume it
+int TEST(scan_and_skip)(void)
+{
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create((const u8_t*)"1234 \t\nabc", 10);
+    const char* prog = "proc {"
+                       "    local digits = scan_while(\"0123456789\");"
+                       "    local here = off();"
+                       "    local to_space = scan_until(\" \");"
+                       "    local skipped = skip_while(\"0123456789\");"
+                       "    local after = off();"
+                       "    local ws = skip_while(\" \\t\\n\");"
+                       "    local rest = peek(3);"
+                       "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope != NULL);
+    ASSERT_TENGINE_UNUM_EQ(Scope_get_local(scope, "digits"), 4);
+    ASSERT_TENGINE_UNUM_EQ(Scope_get_local(scope, "here"), 0);
+    ASSERT_TENGINE_UNUM_EQ(Scope_get_local(scope, "to_space"), 4);
+    ASSERT_TENGINE_UNUM_EQ(Scope_get_local(scope, "skipped"), 4);
+    ASSERT_TENGINE_UNUM_EQ(Scope_get_local(scope, "after"), 4);
+    ASSERT_TENGINE_UNUM_EQ(Scope_get_local(scope, "ws"), 3);
+
+    int ok = 0;
+    IS_TENGINE_STRING_EQ(ok, Scope_get_local(scope, "rest"), "abc");
+    ASSERT(ok);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+// A zero-padded decimal is not octal: str_to_int64 used base 0, so
+// to_int("0000000063") used to be 51, and "0000000009" an error
+int TEST(to_int_bases)(void)
+{
+    int              r    = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb  = dummyfilebuffer_create((const u8_t*)"AB", 2);
+    const char*      prog = "proc {"
+                            "    local a = to_int(\"0000000063\");"
+                            "    local b = to_int(\"0000000009\");"
+                            "    local c = to_int(\"0755\", 8);"
+                            "    local d = to_int(\"ff\", 16);"
+                            "    local e = to_int(\"-42\");"
+                            "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope != NULL);
+    ASSERT_TENGINE_SNUM_EQ(Scope_get_local(scope, "a"), 63);
+    ASSERT_TENGINE_SNUM_EQ(Scope_get_local(scope, "b"), 9);
+    ASSERT_TENGINE_SNUM_EQ(Scope_get_local(scope, "c"), 493);
+    ASSERT_TENGINE_SNUM_EQ(Scope_get_local(scope, "d"), 255);
+    ASSERT_TENGINE_SNUM_EQ(Scope_get_local(scope, "e"), -42);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+// to_int() returned a value declaring a size of 64 *bytes*, which printed as
+// 128 hex digits
+int TEST(to_int_result_size)(void)
+{
+    int              r    = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb  = dummyfilebuffer_create((const u8_t*)"AB", 2);
+    const char*      prog = "proc { local a = to_int(\"42\"); }";
+
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope != NULL);
+
+    BHEngineValue* v = Scope_get_local(scope, "a");
+    ASSERT(v != NULL);
+    ASSERT(v->t == TENGINE_SNUM);
+    ASSERT(v->snum_size == 8);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(string_builtins)(void)
+{
+    int              r    = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb  = dummyfilebuffer_create((const u8_t*)"AB", 2);
+    const char*      prog = "proc {"
+                            "    local a = trim(\"  hi \\t\\r\\n\");"
+                            "    local b = printable(\" a b\\tc \");"
+                            "    local c = substr(\"hello world\", 6);"
+                            "    local d = substr(\"hello world\", 0, 5);"
+                            "    local e = starts_with(\"hello\", \"he\");"
+                            "    local f = starts_with(\"hello\", \"xx\");"
+                            "    local g = index_of(\"hello world\", \"world\");"
+                            "    local h = index_of(\"hello\", \"z\");"
+                            "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope != NULL);
+
+    int ok = 0;
+    IS_TENGINE_STRING_EQ(ok, Scope_get_local(scope, "a"), "hi");
+    ASSERT(ok);
+    ok = 0;
+    IS_TENGINE_STRING_EQ(ok, Scope_get_local(scope, "b"), "abc");
+    ASSERT(ok);
+    ok = 0;
+    IS_TENGINE_STRING_EQ(ok, Scope_get_local(scope, "c"), "world");
+    ASSERT(ok);
+    ok = 0;
+    IS_TENGINE_STRING_EQ(ok, Scope_get_local(scope, "d"), "hello");
+    ASSERT(ok);
+    ASSERT_TENGINE_UNUM_EQ(Scope_get_local(scope, "e"), 1);
+    ASSERT_TENGINE_UNUM_EQ(Scope_get_local(scope, "f"), 0);
+    ASSERT_TENGINE_SNUM_EQ(Scope_get_local(scope, "g"), 6);
+    ASSERT_TENGINE_SNUM_EQ(Scope_get_local(scope, "h"), -1);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(math_builtins)(void)
+{
+    int              r    = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb  = dummyfilebuffer_create((const u8_t*)"AB", 2);
+    const char*      prog = "proc {"
+                            "    local a = min(3, 1, 2);"
+                            "    local b = max(3, 1, 2);"
+                            "    local c = abs(-7);"
+                            "    local d = align_up(13, 8);"
+                            "    local e = align_up(16, 8);"
+                            "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope != NULL);
+    ASSERT_TENGINE_SNUM_EQ(Scope_get_local(scope, "a"), 1);
+    ASSERT_TENGINE_SNUM_EQ(Scope_get_local(scope, "b"), 3);
+    ASSERT_TENGINE_SNUM_EQ(Scope_get_local(scope, "c"), 7);
+    ASSERT_TENGINE_UNUM_EQ(Scope_get_local(scope, "d"), 16);
+    ASSERT_TENGINE_UNUM_EQ(Scope_get_local(scope, "e"), 16);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(align_up_zero_alignment)(void)
+{
+    int              r    = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb  = dummyfilebuffer_create((const u8_t*)"AB", 2);
+    const char*      prog = "proc { local a = align_up(13, 0); }";
+
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope == NULL);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+// assert() lets a template state a format invariant in one statement
+int TEST(assert_passes)(void)
+{
+    int              r    = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb  = dummyfilebuffer_create((const u8_t*)"AB", 2);
+    const char*      prog = "proc { assert(1 == 1, \"never\"); local a = 7; }";
+
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope != NULL);
+    ASSERT_TENGINE_SNUM_EQ(Scope_get_local(scope, "a"), 7);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(assert_fails)(void)
+{
+    int              r    = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb  = dummyfilebuffer_create((const u8_t*)"AB", 2);
+    const char*      prog = "proc { assert(0, \"bad magic\"); }";
+
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope == NULL);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+// fwd() with a negative value wrapped around and seeked *backwards*
+int TEST(fwd_negative_is_rejected)(void)
+{
+    int              r    = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb  = dummyfilebuffer_create((const u8_t*)"ABCDEFGH", 8);
+    const char*      prog = "proc { seek(4); fwd(-2); }";
+
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope == NULL);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+// The arity of every builtin is checked in one place, before it runs
+int TEST(builtin_arity_is_checked)(void)
+{
+    int              r   = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb = dummyfilebuffer_create((const u8_t*)"AB", 2);
+
+    const char* bad_progs[] = {
+        "proc { off(1); }",            // 0 parameters expected
+        "proc { seek(); }",            // 1 expected, none given
+        "proc { seek(0, 1); }",        // 1 expected, two given
+        "proc { find(\"a\", 1, 2); }", // at most 2
+        "proc { print(); }",           // at least 1
+        "proc { min(1); }",            // at least 2
+    };
+
+    for (size_t i = 0; i < sizeof(bad_progs) / sizeof(bad_progs[0]); ++i) {
+        Scope* scope =
+            bhengine_interpreter_run_on_string(tfb->fb, bad_progs[i]);
+        if (scope != NULL) {
+            printf("[!] no exception for: %s\n", bad_progs[i]);
+            Scope_free(scope);
+            goto fail;
+        }
+    }
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+// The same engines used by the 'cr', 'cs' and 'hh' commands
+int TEST(integrity_builtins)(void)
+{
+    int              r    = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb  = dummyfilebuffer_create((const u8_t*)"123456789", 9);
+    const char*      prog = "proc {"
+                            "    local a = crc(\"CRC-32/ISO-HDLC\");"
+                            "    local b = checksum(\"ADLER-32\");"
+                            "    local c = hash(\"md5\");"
+                            "    local d = entropy();"
+                            "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope != NULL);
+
+    // the check value every CRC catalogue lists for the "123456789" string
+    ASSERT_TENGINE_UNUM_EQ(Scope_get_local(scope, "a"), 0xcbf43926);
+    ASSERT_TENGINE_UNUM_EQ(Scope_get_local(scope, "b"), 0x091e01de);
+
+    int ok = 0;
+    IS_TENGINE_STRING_EQ(ok, Scope_get_local(scope, "c"),
+                         "25f9e794323b453885f5181f1b624d0b");
+    ASSERT(ok);
+    // 9 distinct bytes out of 9, i.e. the 3.165 that the 'e' command prints
+    // for the same data (_log2 is an approximation, the exact value is 3.1699)
+    ASSERT_TENGINE_UNUM_EQ(Scope_get_local(scope, "d"), 3165);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(integrity_builtins_unknown_name)(void)
+{
+    int              r   = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb = dummyfilebuffer_create((const u8_t*)"AB", 2);
+
+    const char* bad_progs[] = {
+        "proc { local a = crc(\"nosuch\"); }",
+        "proc { local a = checksum(\"nosuch\"); }",
+        "proc { local a = hash(\"nosuch\"); }",
+        "proc { local a = crc(\"CRC-32/ISO-HDLC\", 99); }",
+    };
+
+    for (size_t i = 0; i < sizeof(bad_progs) / sizeof(bad_progs[0]); ++i) {
+        Scope* scope =
+            bhengine_interpreter_run_on_string(tfb->fb, bad_progs[i]);
+        if (scope != NULL) {
+            printf("[!] no exception for: %s\n", bad_progs[i]);
+            Scope_free(scope);
+            goto fail;
+        }
+    }
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+// peek_uN reads a number without consuming it, honoring the endianness, and
+// takes an optional relative offset (which may be negative)
+int TEST(peek_numbers)(void)
+{
+    int              r   = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb = dummyfilebuffer_create(
+        (const u8_t*)"\x01\x02\x03\x04\x05\x06\x07\x08", 8);
+    const char* prog = "proc {"
+                       "    local a = peek_u8();"
+                       "    local b = peek_u16();"
+                       "    local c = peek_u32();"
+                       "    big_endian();"
+                       "    local d = peek_u16();"
+                       "    local e = peek_u16(2);"
+                       "    seek(4);"
+                       "    local f = peek_u16(-4);"
+                       "    local g = off();"
+                       "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope != NULL);
+    ASSERT_TENGINE_SNUM_EQ(Scope_get_local(scope, "a"), 0x01);
+    ASSERT_TENGINE_SNUM_EQ(Scope_get_local(scope, "b"), 0x0201);
+    ASSERT_TENGINE_SNUM_EQ(Scope_get_local(scope, "c"), 0x04030201);
+    ASSERT_TENGINE_SNUM_EQ(Scope_get_local(scope, "d"), 0x0102);
+    ASSERT_TENGINE_SNUM_EQ(Scope_get_local(scope, "e"), 0x0304);
+    ASSERT_TENGINE_SNUM_EQ(Scope_get_local(scope, "f"), 0x0102);
+    ASSERT_TENGINE_UNUM_EQ(Scope_get_local(scope, "g"), 4);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(peek_numbers_past_the_end)(void)
+{
+    int              r    = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb  = dummyfilebuffer_create((const u8_t*)"\x01\x02", 2);
+    const char*      prog = "proc {"
+                            "    local a = peek_u16();"
+                            "    local b = peek_u32();"
+                            "    seek(2);"
+                            "    local c = peek_u8();"
+                            "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope != NULL);
+    ASSERT_TENGINE_SNUM_EQ(Scope_get_local(scope, "a"), 0x0201);
+    ASSERT_TENGINE_SNUM_EQ(Scope_get_local(scope, "b"), -1);
+    ASSERT_TENGINE_SNUM_EQ(Scope_get_local(scope, "c"), -1);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+// peek(n, off) and the byte-oriented string builtins must survive NUL bytes,
+// which is what binary data read with peek() is full of
+int TEST(peek_and_slice_binary_data)(void)
+{
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create((const u8_t*)"\x00\x00\x00\x0dIHDR", 8);
+    const char* prog = "proc {"
+                       "    local a = peek(4, 4);"
+                       "    local b = substr(peek(8), 4, 4);"
+                       "    local c = index_of(peek(8), \"IHDR\");"
+                       "    local d = starts_with(peek(8), \"\\x00\\x00\");"
+                       "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope != NULL);
+
+    int ok = 0;
+    IS_TENGINE_STRING_EQ(ok, Scope_get_local(scope, "a"), "IHDR");
+    ASSERT(ok);
+    ok = 0;
+    IS_TENGINE_STRING_EQ(ok, Scope_get_local(scope, "b"), "IHDR");
+    ASSERT(ok);
+    ASSERT_TENGINE_SNUM_EQ(Scope_get_local(scope, "c"), 4);
+    ASSERT_TENGINE_UNUM_EQ(Scope_get_local(scope, "d"), 1);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
 }

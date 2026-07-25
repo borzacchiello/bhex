@@ -26,6 +26,13 @@ typedef struct ParsedCommand {
 int  cmdline_parse(const char* str, ParsedCommand** o_cmd);
 void parsed_command_destroy(ParsedCommand* cmd);
 
+// Extract the next ';'-separated command from *str, advancing *str past it.
+// Semicolons inside a "quoted string" or a `backtick expression` do not split,
+// so that commands taking code as an argument (e.g. t/i) survive the split.
+// Empty commands are skipped. Returns a heap allocated string that the caller
+// owns, or NULL when there is nothing left to run.
+char* cmdline_next_command(const char** str);
+
 // Resolve expression tokens (prefixed with \x01) in a ParsedCommand.
 // Returns 0 on success, non-zero if any expression failed to evaluate.
 // Requires a FileBuffer* for memory read operations in expressions.

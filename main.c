@@ -165,18 +165,21 @@ static void main_loop(FileBuffer* fb, CmdContext* cc)
     }
 }
 
-static void command_loop(FileBuffer* fb, CmdContext* cc, char* commands)
+static void command_loop(FileBuffer* fb, CmdContext* cc, const char* commands)
 {
     int            r;
     ParsedCommand* pc;
 
-    char* strtok_ctx;
-    char* token = strtok_r(commands, ";", &strtok_ctx);
+    const char* curr  = commands;
+    char*       token = cmdline_next_command(&curr);
     while (token) {
         if ((r = cmdline_parse(token, &pc)) != PARSER_OK) {
             error("%s", parser_err_to_string(r));
+            bhex_free(token);
             return;
         }
+        bhex_free(token);
+
         int expr_r = parsed_command_resolve_expressions(pc, fb);
         if (expr_r != EXPR_EVAL_OK) {
             parsed_command_destroy(pc);
@@ -188,7 +191,7 @@ static void command_loop(FileBuffer* fb, CmdContext* cc, char* commands)
             parsed_command_destroy(pc);
             return;
         }
-        token = strtok_r(NULL, ";", &strtok_ctx);
+        token = cmdline_next_command(&curr);
         parsed_command_destroy(pc);
     }
 }

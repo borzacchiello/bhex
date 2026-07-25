@@ -14,6 +14,15 @@ struct RGB
     u8 b;
 }
 
+// The CRC of a chunk covers its type and its data, i.e. the `length + 4`
+// bytes that end right before the crc field we have just read
+fn check_crc(length)
+{
+    disable_print();
+    local expected = crc("CRC-32/ISO-HDLC", length + 4, -(length + 8));
+    result = expected;
+}
+
 // Generic PNG chunk
 struct Chunk
 {
@@ -23,6 +32,9 @@ struct Chunk
         u8 data[length];
     }
     u32 crc;
+    if (crc != check_crc(length)) {
+        warning("chunk CRC mismatch");
+    }
 }
 
 struct IHDRChunk
@@ -37,6 +49,9 @@ struct IHDRChunk
     u8   filter_method;
     u8   interlace_method;
     u32  crc;
+    if (crc != check_crc(length)) {
+        warning("chunk CRC mismatch");
+    }
 }
 
 struct PLTEChunk
@@ -45,6 +60,9 @@ struct PLTEChunk
     char type[4];
     RGB  entries[length / 3];
     u32  crc;
+    if (crc != check_crc(length)) {
+        warning("chunk CRC mismatch");
+    }
 }
 
 struct IDATChunk
@@ -53,6 +71,9 @@ struct IDATChunk
     char type[4];
     u8   compressed_data[length];
     u32  crc;
+    if (crc != check_crc(length)) {
+        warning("chunk CRC mismatch");
+    }
 }
 
 struct IENDChunk
@@ -60,16 +81,9 @@ struct IENDChunk
     u32  length;
     char type[4];
     u32  crc;
-}
-
-fn get_chunk_type()
-{
-    disable_print();
-    u32  length;
-    char type[4];
-
-    seek(off() - 8);
-    result = type;
+    if (crc != check_crc(length)) {
+        warning("chunk CRC mismatch");
+    }
 }
 
 proc
@@ -78,7 +92,8 @@ proc
 
     Signature signature;
     while (off() < size()) {
-        local type = get_chunk_type();
+        // the chunk type is the 4 bytes that follow the length
+        local type = peek(4, 4);
         if (type == "IHDR") {
             IHDRChunk ihdr;
         } elif (type == "PLTE") {

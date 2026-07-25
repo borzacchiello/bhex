@@ -4,6 +4,8 @@
 #include "cmd.h"
 #include "cmd_arg_handler.h"
 
+#include <entropy.h>
+
 #include <util/byte_to_num.h>
 #include <util/math.h>
 #include <hash/md5.h>
@@ -30,47 +32,6 @@ static void entropycmd_help(void* obj)
         "  rows: number of points in the graph (if omitted or '-', auto mode)\n"
         "  len:  number of bytes to include starting from the current offset "
         "(if omitted, use the whole file)\n");
-}
-
-static float calc_entropy(FileBuffer* fb, u64_t addr, u64_t size)
-{
-    if (fb->size - addr < size)
-        panic("calc_entropy: invalid parameters");
-
-    u64_t orig_off    = fb->off;
-    u32_t counts[256] = {0};
-
-    u64_t curr_off = addr;
-    u64_t max_addr = addr + size;
-    while (curr_off < max_addr) {
-        fb_seek(fb, curr_off);
-
-        size_t      len = min(fb_block_size, max_addr - curr_off);
-        const u8_t* buf = fb_read(fb, len);
-        if (buf == NULL) {
-            // the file shrank under us: use the bytes gathered so far
-            error("unable to read the file at offset %llu", curr_off);
-            break;
-        }
-
-        size_t i;
-        for (i = 0; i < len; ++i)
-            counts[buf[i]] += 1;
-        curr_off += len;
-    }
-
-    float entropy = 0;
-    u32_t i;
-    for (i = 0; i < 256; ++i) {
-        float px = (float)counts[i] / size;
-        if (px > 0)
-            entropy += -px * _log2(px);
-    }
-    if (entropy < 0.0f)
-        entropy = 0.0f;
-
-    fb_seek(fb, orig_off);
-    return entropy;
 }
 
 static int entropycmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
@@ -124,7 +85,7 @@ static int entropycmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
             // if we have remaining bytes, include them in the last point
             bytes_per_raw = last_addr - addr;
 
-        float entropy = calc_entropy(fb, addr, bytes_per_raw);
+        float entropy = calculate_entropy(fb, addr, bytes_per_raw);
 
         display_printf("[ %08llx - %08llx ] (%.03f) ", addr + fb->base_addr,
                        addr + bytes_per_raw + fb->base_addr, entropy);

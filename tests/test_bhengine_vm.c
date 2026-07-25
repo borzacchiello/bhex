@@ -404,11 +404,11 @@ int TEST(zip_list_files)(void)
 {
     // clang-format off
     const char* expected = 
-        "file.txt [ 5 bytes ] \n"
-        "folder/ [ 0 bytes ] \n"
-        "folder/subfolder/ [ 0 bytes ] \n"
-        "folder/subfolder/file_in_subfolder.txt [ 8 bytes ] \n"
-        "folder/file_in_folder.txt [ 12 bytes ] \n";
+        "file.txt [ 5 bytes ]\n"
+        "folder/ [ 0 bytes ]\n"
+        "folder/subfolder/ [ 0 bytes ]\n"
+        "folder/subfolder/file_in_subfolder.txt [ 8 bytes ]\n"
+        "folder/file_in_folder.txt [ 12 bytes ]\n";
     // clang-format on
 
     int r = TEST_SUCCEEDED;

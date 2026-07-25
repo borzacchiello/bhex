@@ -251,12 +251,23 @@ proc
         LocalFileHeader localElement;
         if (dirElement.compressed_size > 0) {
             u8 data[dirElement.compressed_size];
+
+            // a stored entry is its own uncompressed data, so the CRC in the
+            // header covers exactly the bytes we have just read
+            if (localElement.compression == CompressionMethod::NO_COMPRESSION) {
+                local actual = crc("CRC-32/ISO-HDLC",
+                                   dirElement.compressed_size,
+                                   -dirElement.compressed_size);
+                if (localElement.crc32 != actual) {
+                    warning("CRC mismatch for", localElement.filename);
+                }
+            }
         }
         seek(off);
         i = i + 1;
     }
 
-    if (off() - endOfCentralDir.central_dir_offset != endOfCentralDir.central_dir_size) {
-        error("invalid central_dir_size");
-    }
+    assert(off() - endOfCentralDir.central_dir_offset ==
+               endOfCentralDir.central_dir_size,
+           "invalid central_dir_size");
 }

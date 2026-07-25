@@ -363,13 +363,9 @@ fn processLoadCommands(ncmds, is64)
 {
     local i = 0;
     while (i < ncmds) {
-        local cmd_off = off();
-
-        disable_print();
-        u32 cmd_type;
-        u32 cmd_size;
-        seek(cmd_off);
-        enable_print();
+        local cmd_off  = off();
+        local cmd_type = peek_u32();
+        local cmd_size = peek_u32(4);
 
         if (cmd_type == MachoLoadCommandType::LC_SEGMENT) {
             MachoSegmentCmd LoadCommand;
@@ -448,10 +444,7 @@ fn processEmbeddedMacho(arch_offset)
     little_endian();
     seek(arch_offset);
 
-    disable_print();
-    u32 embed_magic;
-    seek(arch_offset);
-    enable_print();
+    local embed_magic = peek_u32();
 
     if (embed_magic == MachoMagic::MH_MAGIC_64) {
         MachoHeader64 EmbeddedHeader;
@@ -468,16 +461,13 @@ fn processEmbeddedMacho(arch_offset)
         MachoHeader32 EmbeddedHeader;
         processLoadCommands(EmbeddedHeader.ncmds, 0);
     } else {
-        error("invalid embedded Mach-O");
+        error("invalid embedded Mach-O magic");
     }
 }
 
 proc
 {
-    disable_print();
-    u32 magic;
-    bwd(4);
-    enable_print();
+    local magic = peek_u32();
 
     if (magic == MachoMagic::MH_MAGIC_64) {
         little_endian();

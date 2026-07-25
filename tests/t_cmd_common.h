@@ -116,23 +116,20 @@ __attribute__((unused)) static void reset_global_state()
 __attribute__((unused)) static int
 exec_commands_on_ex(const char* s, DummyFilebuffer* dummyfb, int split)
 {
-    char tmp[512] = {0};
-    if (strlen(s) > sizeof(tmp) - 1)
-        panic("exec_commands: s is too long");
-    strcpy(tmp, s);
-
     fb_seek(dummyfb->fb, 0);
     fb_undo_all(dummyfb->fb);
     reset_global_state();
 
-    char* cmd = tmp;
-    char* strtok_ctx;
-    if (split)
-        cmd = strtok_r(tmp, ";", &strtok_ctx);
+    // mirror what the '-c' switch does in main.c, quotations included
+    const char* curr = s;
+    char*       cmd  = split ? cmdline_next_command(&curr) : bhex_strdup(s);
     while (cmd) {
         ParsedCommand* pc;
-        if (cmdline_parse(cmd, &pc) != 0)
+        if (cmdline_parse(cmd, &pc) != 0) {
+            bhex_free(cmd);
             panic("parse failed");
+        }
+        bhex_free(cmd);
         int expr_r = parsed_command_resolve_expressions(pc, dummyfb->fb);
         if (expr_r != 0) {
             parsed_command_destroy(pc);
@@ -144,10 +141,9 @@ exec_commands_on_ex(const char* s, DummyFilebuffer* dummyfb, int split)
             return 1;
         }
         parsed_command_destroy(pc);
-        if (split)
-            cmd = strtok_r(NULL, ";", &strtok_ctx);
-        else
+        if (!split)
             break;
+        cmd = cmdline_next_command(&curr);
     }
     return 0;
 }

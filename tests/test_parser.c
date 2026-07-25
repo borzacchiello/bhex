@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include <cmdline_parser.h>
+#include <alloc.h>
 #include <ll.h>
 
 #ifndef TEST
@@ -347,4 +348,75 @@ int TEST(parser_err_cmdmod_before_cmd)()
 
     int r = cmdline_parse("/w", &pc);
     return r == PARSER_ERR_CMDMOD_BEFORE_CMD;
+}
+
+static int check_split(const char* cmdline, const char** expected, size_t size)
+{
+    const char* curr = cmdline;
+    size_t      i    = 0;
+    char*       cmd;
+    while ((cmd = cmdline_next_command(&curr)) != NULL) {
+        if (i >= size || strcmp(cmd, expected[i]) != 0) {
+            bhex_free(cmd);
+            return 0;
+        }
+        bhex_free(cmd);
+        i++;
+    }
+    return i == size;
+}
+
+int TEST(split_simple)()
+{
+    const char* arr[] = {"s 4", "p/r 2", "u"};
+    return check_split("s 4; p/r 2; u", (const char**)&arr,
+                       sizeof(arr) / sizeof(char*));
+}
+
+int TEST(split_empty_commands)()
+{
+    const char* arr[] = {"s 4", "u"};
+    return check_split(" ;; s 4 ;;; u ;; ", (const char**)&arr,
+                       sizeof(arr) / sizeof(char*));
+}
+
+int TEST(split_no_separator)()
+{
+    const char* arr[] = {"p/r 2"};
+    return check_split("p/r 2", (const char**)&arr,
+                       sizeof(arr) / sizeof(char*));
+}
+
+int TEST(split_nothing)() { return check_split("   ;; ", NULL, 0); }
+
+// a ';' inside a quoted argument does not split the command line: it is what
+// makes `t/i "local x = 1; print(x);"` usable from the '-c' switch
+int TEST(split_semicolon_in_quotation)()
+{
+    const char* arr[] = {"t/i \"local x = 1; print(x);\"", "ec ok"};
+    return check_split("t/i \"local x = 1; print(x);\"; ec ok",
+                       (const char**)&arr, sizeof(arr) / sizeof(char*));
+}
+
+int TEST(split_escaped_quote_in_quotation)()
+{
+    const char* arr[] = {"ec \"a\\\";b\"", "ec ok"};
+    return check_split("ec \"a\\\";b\"; ec ok", (const char**)&arr,
+                       sizeof(arr) / sizeof(char*));
+}
+
+int TEST(split_semicolon_in_expression)()
+{
+    const char* arr[] = {"ec `1;2`", "ec ok"};
+    return check_split("ec `1;2`; ec ok", (const char**)&arr,
+                       sizeof(arr) / sizeof(char*));
+}
+
+// an unterminated quotation is not swallowed: the whole rest of the line is
+// returned, so that cmdline_parse can report the error
+int TEST(split_unclosed_quotation)()
+{
+    const char* arr[] = {"ec \"a; b"};
+    return check_split("ec \"a; b", (const char**)&arr,
+                       sizeof(arr) / sizeof(char*));
 }
