@@ -200,7 +200,14 @@ x1000 — useful to tell a compressed stream from a plain one without floating p
 - **Numbers print in hex by default** (`nums_in(10)` switches globally). `printable()` drops
   everything outside printable ASCII, so `to_int(printable(field))` is the safe ASCII-number
   idiom — and pass the base explicitly when the format is not decimal (tar's fields are octal).
-- `&&`/`||` are the boolean operators; `&`/`|` are bitwise. Both exist and both parse.
+- `&&`/`||` are the boolean operators; `&`/`|` are bitwise. Both exist and both parse. The
+  boolean ones **short-circuit**, so a bound check can guard a call that would otherwise raise:
+  `if (off() + 4 <= size() && peek_u32(4) == 0)` never evaluates the `peek_u32` when the file is
+  too short.
+- **A `peek`/`crc`/`hash` offset that lands outside the file is an exception**, not a short read.
+  Reading *fewer bytes than asked* at a valid offset is fine (`peek()` returns a shorter string,
+  `peek_u32()` returns -1), but `peek(4, 100)` with 10 bytes left aborts the template. Guard the
+  offset, not just the size.
 - `break`/`continue` are rejected outside a `while`, including at the top of a `fn` body.
 - Check your template in both formatters: `t myfmt` and `t/x myfmt`. The XML output should parse
   (`python3 -c "import xml.etree.ElementTree as ET; ET.parse('out.xml')"`) — anything appearing

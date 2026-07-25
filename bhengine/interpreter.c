@@ -554,25 +554,41 @@ static BHEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
             BHEngineValue_free(rhs);
             return res;
         }
+        // '&&' and '||' short circuit: the right hand side is evaluated only
+        // when it can still change the result. Templates rely on it to guard a
+        // call that would raise on the very values the left hand side is
+        // checking for, e.g. `off() + 4 <= size() && peek_u32(4) == 0`.
         case EXPR_BAND: {
             BHEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
-            BHEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
-            evaluate_check_null;
-
-            BHEngineValue* res = BHEngineValue_band(ctx, lhs, rhs);
+            int            l   = BHEngineValue_truth(ctx, lhs, "band");
             BHEngineValue_free(lhs);
+            if (l < 0)
+                return NULL;
+            if (l == 0)
+                return BHEngineValue_UNUM_new(0, 1);
+
+            BHEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
+            int            r   = BHEngineValue_truth(ctx, rhs, "band");
             BHEngineValue_free(rhs);
-            return res;
+            if (r < 0)
+                return NULL;
+            return BHEngineValue_UNUM_new(r, 1);
         }
         case EXPR_BOR: {
             BHEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);
-            BHEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
-            evaluate_check_null;
-
-            BHEngineValue* res = BHEngineValue_bor(ctx, lhs, rhs);
+            int            l   = BHEngineValue_truth(ctx, lhs, "bor");
             BHEngineValue_free(lhs);
+            if (l < 0)
+                return NULL;
+            if (l == 1)
+                return BHEngineValue_UNUM_new(1, 1);
+
+            BHEngineValue* rhs = evaluate_expr(ctx, scope, e->rhs);
+            int            r   = BHEngineValue_truth(ctx, rhs, "bor");
             BHEngineValue_free(rhs);
-            return res;
+            if (r < 0)
+                return NULL;
+            return BHEngineValue_UNUM_new(r, 1);
         }
         case EXPR_SHR: {
             BHEngineValue* lhs = evaluate_expr(ctx, scope, e->lhs);

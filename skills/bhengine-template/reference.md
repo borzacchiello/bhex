@@ -48,6 +48,11 @@ call, so a wrong number of arguments always fails the same way.
 after the next four" and `peek_u32(-4)` re-reads the field just consumed. A `u64` with its top bit
 set is indistinguishable from the -1 sentinel: read those into a file variable instead.
 
+The two ways of running out of file are not the same: asking for **more bytes than are left** at a
+valid offset is fine (a shorter string, or -1), but an `off` that lands **outside the file** raises
+`peek: offset N is outside of the file`. Since `&&` and `||` short-circuit,
+`off() + 4 <= size() && peek_u32(4) == 0` is the way to guard it.
+
 ### Scanning runs of bytes
 
 Each takes a string used as a *byte set*. `scan_*` measure without moving, `skip_*` consume.
@@ -164,7 +169,7 @@ Comments are `//`. Enum constants are referenced as `name_t::CONST`.
 Operators, loosest to tightest binding:
 
 ```
-&& ||                       boolean
+&& ||                       boolean, short-circuiting
 == != < <= > >=             comparison
 & | ^                       bitwise
 + -

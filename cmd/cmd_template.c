@@ -140,15 +140,16 @@ static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
         goto end;
     }
 
-    // Pre-loaded struct or named proc
-    char* strtok_ctx;
-    char* tname = strtok_r(bhe, ".", &strtok_ctx);
-    if (tname == NULL)
+    // Pre-loaded struct or named proc, i.e. 'template.name'. The dot is
+    // overwritten to split the two, and put back before reporting an error, so
+    // that the message shows the argument as the user typed it
+    char* dot = strchr(bhe, '.');
+    if (dot == NULL || dot[1] == '\0')
         goto err;
 
-    char* sname = strtok_r(NULL, ".", &strtok_ctx);
-    if (sname == NULL)
-        goto err;
+    *dot        = '\0';
+    char* tname = bhe;
+    char* sname = dot + 1;
 
     if (bhengine_vm_has_bhe_struct(ctx->vm, tname, sname)) {
         if (bhengine_vm_process_bhe_struct(ctx->vm, fb, tname, sname) != 0) {
@@ -159,6 +160,7 @@ static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
             goto end;
         }
     } else {
+        *dot = '.';
         goto err;
     }
 

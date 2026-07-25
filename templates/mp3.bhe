@@ -1,0 +1,588 @@
+// Copyright (c) 2022-2026, bageyelet
+//
+// MPEG audio (ISO/IEC 11172-3 and 13818-3), the .mp3 file: an optional ID3v2
+// tag, a bare stream of MPEG audio frames whose length has to be computed from
+// each 4 byte header, and optional ID3v1/APE tags at the end. The first frame
+// often carries a Xing/Info or VBRI header describing the whole stream.
+
+// ---------------------------------------------------------------------------
+// MPEG frame header decoding
+//
+// The header is 4 big endian bytes:
+//   31..21 frame sync (all ones)   20..19 version   18..17 layer
+//   16     protection             15..12 bitrate    11..10 sampling rate
+//   9      padding                 8     private     7..6  channel mode
+//   5..4   mode extension          3     copyright   2     original
+//   1..0   emphasis
+// The bitrate and sampling rate tables are written as fixed width decimal
+// fields, indexed with substr(): the language has no constant arrays.
+// ---------------------------------------------------------------------------
+
+fn version_bits(h)   { result = (h >> 19) & 3; }   // 0: MPEG 2.5, 2: MPEG 2, 3: MPEG 1
+fn layer_bits(h)     { result = (h >> 17) & 3; }   // 1: Layer III, 2: Layer II, 3: Layer I
+fn bitrate_index(h)  { result = (h >> 12) & 0xf; }
+fn sampling_index(h) { result = (h >> 10) & 3; }
+fn padding_bit(h)    { result = (h >> 9) & 1; }
+fn channel_mode(h)   { result = (h >> 6) & 3; }    // 3: single channel
+
+fn bitrate_kbps(h)
+{
+    local table = "";
+    if (version_bits(h) == 3) {
+        if (layer_bits(h) == 3) {
+            table = "032064096128160192224256288320352384416448";
+        } elif (layer_bits(h) == 2) {
+            table = "032048056064080096112128160192224256320384";
+        } else {
+            table = "032040048056064080096112128160192224256320";
+        }
+    } else {
+        if (layer_bits(h) == 3) {
+            table = "032048056064080096112128144160176192224256";
+        } else {
+            table = "008016024032040048056064080096112128144160";
+        }
+    }
+    result = to_int(substr(table, (bitrate_index(h) - 1) * 3, 3), 10);
+}
+
+fn sampling_rate(h)
+{
+    local table = "110251200008000";           // MPEG 2.5
+    if (version_bits(h) == 3) {
+        table = "441004800032000";             // MPEG 1
+    } elif (version_bits(h) == 2) {
+        table = "220502400016000";             // MPEG 2
+    }
+    result = to_int(substr(table, sampling_index(h) * 5, 5), 10);
+}
+
+// A header with a free format bitrate (index 0), a reserved value or a broken
+// sync is not something we can compute a frame length from
+fn is_frame_header(h)
+{
+    result = (((h >> 21) & 0x7ff) == 0x7ff) && (version_bits(h) != 1) &&
+             (layer_bits(h) != 0) && (bitrate_index(h) != 0) &&
+             (bitrate_index(h) != 0xf) && (sampling_index(h) != 3);
+}
+
+fn frame_length(h)
+{
+    if (!is_frame_header(h)) {
+        result = 0;
+        return;
+    }
+    local bits = bitrate_kbps(h) * 1000;
+    if (layer_bits(h) == 3) {
+        // Layer I is made of 4 byte slots and carries 384 samples per frame
+        result = (12 * bits / sampling_rate(h) + padding_bit(h)) * 4;
+    } else {
+        // 1152 samples per frame, halved for Layer III of MPEG 2 and 2.5
+        local samples = 144;
+        if (layer_bits(h) == 1 && version_bits(h) != 3) {
+            samples = 72;
+        }
+        result = samples * bits / sampling_rate(h) + padding_bit(h);
+    }
+}
+
+// Bytes of Layer III side information, i.e. where a Xing/Info header sits
+fn side_info_size(h)
+{
+    if (version_bits(h) == 3) {
+        result = 32;
+        if (channel_mode(h) == 3) {
+            result = 17;
+        }
+    } else {
+        result = 17;
+        if (channel_mode(h) == 3) {
+            result = 9;
+        }
+    }
+}
+
+fn describe_frame(h)
+{
+    local version = "MPEG 2.5";
+    if (version_bits(h) == 3) {
+        version = "MPEG 1";
+    } elif (version_bits(h) == 2) {
+        version = "MPEG 2";
+    }
+    local channels = "stereo";
+    if (channel_mode(h) == 1) {
+        channels = "joint stereo";
+    } elif (channel_mode(h) == 2) {
+        channels = "dual channel";
+    } elif (channel_mode(h) == 3) {
+        channels = "mono";
+    }
+    print(version, "Layer", tostring(4 - layer_bits(h), 10), "-",
+          tostring(bitrate_kbps(h), 10), "kbps,",
+          tostring(sampling_rate(h), 10), "Hz,", channels);
+}
+
+// ---------------------------------------------------------------------------
+// The audio stream
+// ---------------------------------------------------------------------------
+
+// The 36 bytes LAME/Lavc tag that follows a Xing/Info header
+struct lame_tag_t
+{
+    char encoder[9];
+    u8   revision_and_vbr_method;
+    u8   lowpass;
+    u32  replay_gain_peak;
+    u16  radio_replay_gain;
+    u16  audiophile_replay_gain;
+    u8   encoding_flags_and_ath;
+    u8   abr_bitrate;
+    u8   delay_and_padding[3];      // 12 bits of encoder delay, 12 of padding
+    u8   misc;
+    u8   mp3_gain;
+    u16  preset_and_surround;
+    u32  music_length;
+    u16  music_crc;
+    u16  tag_crc;
+}
+
+// 'Xing' (VBR) or 'Info' (CBR): the stream wide header written in the side
+// information of the first frame
+struct xing_header_t
+{
+    char id[4];
+    u32  flags;
+    if (flags & 1) {
+        u32 frames;
+    }
+    if (flags & 2) {
+        u32 bytes;
+    }
+    if (flags & 4) {
+        u8 toc[100];                // seek table, 100 entries of 1/256th
+    }
+    if (flags & 8) {
+        u32 quality;
+    }
+    if (peek(4) == "LAME" || peek(4) == "Lavc" || peek(4) == "Lavf") {
+        lame_tag_t lame;
+    }
+}
+
+// 'VBRI': the Fraunhofer alternative to Xing, always 32 bytes after the header
+struct vbri_header_t
+{
+    char id[4];
+    u16  version;
+    u16  delay;
+    u16  quality;
+    u32  bytes;
+    u32  frames;
+    u16  toc_entries;
+    u16  toc_scale;
+    u16  toc_entry_size;
+    u16  toc_frames;
+    local toc_size = toc_entries * toc_entry_size;
+    assert(toc_size <= remaining_size(), "malformed 'VBRI' header: bad seek table size");
+    if (toc_size > 0) {
+        u8 toc[toc_size];
+    }
+}
+
+// One MPEG audio frame: the header, an optional CRC, and the encoded payload,
+// which is skipped over rather than dumped
+struct mpeg_frame_t
+{
+    local start = off();
+    u32   header;
+    local len = frame_length(header);
+    assert(len >= 4, "malformed MPEG frame: unusable header");
+    assert(start + len <= size(), "MPEG frame extends past the end of the file");
+
+    // the protection bit is 0 when a CRC is present
+    if (((header >> 16) & 1) == 0) {
+        u16 crc16;
+    }
+
+    seek(start + len);
+}
+
+// The first frame of the stream, the only one that carries a stream wide
+// header. Later frames can hold the same byte patterns in their audio data,
+// which is why they are never looked at.
+struct first_frame_t
+{
+    local start = off();
+    u32   header;
+    local len = frame_length(header);
+    assert(len >= 4, "malformed MPEG frame: unusable header");
+    assert(start + len <= size(), "MPEG frame extends past the end of the file");
+
+    if (((header >> 16) & 1) == 0) {
+        u16 crc16;
+    }
+
+    // Xing/Info sits right after the Layer III side information, VBRI always
+    // 32 bytes after the header. Both are read only once it is known that they
+    // fit in the frame: an out of range offset is an exception, not a short
+    // read.
+    local xing_off = start + 4 + side_info_size(header);
+    local vbri_off = start + 36;
+    local xing_tag = "";
+    local vbri_tag = "";
+    if (xing_off + 8 <= start + len) {
+        xing_tag = peek(4, xing_off - off());
+    }
+    if (vbri_off + 26 <= start + len) {
+        vbri_tag = peek(4, vbri_off - off());
+    }
+
+    if (xing_tag == "Xing" || xing_tag == "Info") {
+        seek(xing_off);
+        xing_header_t xing;
+    } elif ((xing_tag == "LAME" || xing_tag == "Lavc") &&
+            xing_off + 36 <= start + len) {
+        // a LAME tag written without its Xing header
+        seek(xing_off);
+        lame_tag_t lame;
+    } elif (vbri_tag == "VBRI") {
+        seek(vbri_off);
+        vbri_header_t vbri;
+    }
+
+    seek(start + len);
+}
+
+// Walks the frames from `start` without reading anything, so that the stream
+// can be declared as an array and printing capped with max_array_print()
+fn count_frames(start)
+{
+    local o = start;
+    local n = 0;
+    while (o + 4 <= size()) {
+        seek(o);
+        local h = peek_u32();
+        if (!is_frame_header(h)) {
+            break;
+        }
+        local len = frame_length(h);
+        if (len < 4 || o + len > size()) {
+            break;
+        }
+        o = o + len;
+        n = n + 1;
+    }
+    seek(start);
+    result = n;
+}
+
+// The first frame is not always at the current offset: encoders leave padding
+// or junk after a tag. A sync is accepted only when what follows the frame it
+// describes is another frame, a trailing tag or the end of the file, so that a
+// sync pattern in the middle of some other format does not look like audio.
+fn seek_first_frame()
+{
+    local o = off();
+    // the audio starts right after the tags: a sync found megabytes away is
+    // some other format's data, not a stream we lost track of
+    local limit = min(o + 0x20000, size() - 4);
+    result = -1;
+    while (o <= limit) {
+        seek(o);
+        local h = peek_u32();
+        if (is_frame_header(h)) {
+            local len = frame_length(h);
+            if (o + len <= size()) {
+                // peeking at o + len is safe: the frame fits in the file, and
+                // a peek that runs past the end simply reads fewer bytes
+                local next = peek(8, len);
+                if (o + len + 4 > size() || is_frame_header(peek_u32(len)) ||
+                    starts_with(next, "TAG") || starts_with(next, "ID3") ||
+                    starts_with(next, "APETAGEX")) {
+                    result = o;
+                    break;
+                }
+            }
+        }
+        o = o + 1;
+    }
+    seek(o);
+}
+
+struct audio_stream_t
+{
+    // the frames are all parsed, only the listing stops early
+    max_array_print(8);
+
+    local start = off();
+    local count = count_frames(start);
+    assert(count > 0, "no MPEG audio frame at offset", start);
+    describe_frame(peek_u32());
+    first_frame_t first;
+    if (count > 1) {
+        mpeg_frame_t frames[count - 1];
+    }
+}
+
+// ---------------------------------------------------------------------------
+// ID3v2 (the tag at the beginning of the file)
+// ---------------------------------------------------------------------------
+
+// Sizes are stored as four 7 bit values, so that a size can never contain a
+// byte that looks like a frame sync
+fn unsyncsafe(v)
+{
+    result = (((v >> 24) & 0x7f) << 21) | (((v >> 16) & 0x7f) << 14) |
+             (((v >> 8) & 0x7f) << 7) | (v & 0x7f);
+}
+
+fn frame_body(id, end)
+{
+    local len = end - off();
+    if (len <= 0) {
+        return;
+    }
+    if (starts_with(id, "T") || id == "COMM" || id == "USLT" ||
+        id == "WXXX" || id == "APIC") {
+        u8 encoding;                // 0: latin1, 1: UTF-16, 2: UTF-16BE, 3: UTF-8
+        if (id == "COMM" || id == "USLT") {
+            char language[3];
+        }
+        if (encoding == 0 || encoding == 3) {
+            if (id == "APIC") {
+                string mime_type;
+                u8     picture_type;
+            }
+            // TXXX/WXXX/COMM/USLT/APIC start with a NUL terminated description
+            if (id == "TXXX" || id == "WXXX" || id == "COMM" ||
+                id == "USLT" || id == "APIC") {
+                string description;
+            }
+            local rest = end - off();
+            if (rest > 0) {
+                if (id == "APIC") {
+                    u8 picture_data[rest];
+                } else {
+                    char value[rest];
+                }
+            }
+        } else {
+            // UTF-16 text is left as bytes: it is not a char[] string
+            u8 value[end - off()];
+        }
+    } elif (starts_with(id, "W")) {
+        char url[len];
+    } else {
+        u8 data[len];
+    }
+    if (off() < end) {
+        fwd(end - off());
+    }
+}
+
+// ID3v2.3 frame: a 4 character id, a plain size and two flag bytes
+struct id3v23_frame_t
+{
+    char id[4];
+    u32  frame_size;
+    u16  frame_flags;
+    assert(frame_size <= remaining_size(), "malformed ID3v2.3 frame: bad size");
+    frame_body(id, off() + frame_size);
+}
+
+// ID3v2.4 frame: same layout, but the size is syncsafe
+struct id3v24_frame_t
+{
+    char id[4];
+    u32  frame_size;
+    u16  frame_flags;
+    local len = unsyncsafe(frame_size);
+    assert(len <= remaining_size(), "malformed ID3v2.4 frame: bad size");
+    frame_body(id, off() + len);
+}
+
+// ID3v2.2 frame: a 3 character id and a 3 byte size, no flags
+struct id3v22_frame_t
+{
+    char id[3];
+    u8   frame_size[3];
+    local len = (frame_size[0] << 16) | (frame_size[1] << 8) | frame_size[2];
+    assert(len <= remaining_size(), "malformed ID3v2.2 frame: bad size");
+    if (len > 0) {
+        u8 data[len];
+    }
+}
+
+struct id3v23_ext_header_t
+{
+    u32 ext_size;
+    u16 ext_flags;
+    u32 padding_size;
+    if (ext_size == 10) {
+        u32 crc32;
+    }
+}
+
+struct id3v24_ext_header_t
+{
+    local start = off();
+    u32   ext_size;
+    local len = unsyncsafe(ext_size);
+    assert(len >= 6 && len <= remaining_size() + 4,
+           "malformed ID3v2.4 extended header: bad size");
+    u8    flag_bytes;
+    u8    ext_flags[len - 6];
+    seek(start + len);
+}
+
+fn parse_id3v2_frames(end, major)
+{
+    local header_size = 10;
+    if (major <= 2) {
+        header_size = 6;
+    }
+    while (off() + header_size <= end) {
+        // the tag is padded with zeroes, and an id never starts with one
+        if (peek_u8() == 0) {
+            break;
+        }
+        if (major <= 2) {
+            id3v22_frame_t frame;
+        } elif (major == 3) {
+            id3v23_frame_t frame;
+        } else {
+            id3v24_frame_t frame;
+        }
+    }
+    if (off() < end) {
+        u8 padding[end - off()];
+    }
+}
+
+struct id3v2_tag_t
+{
+    local start = off();
+    char  id[3];
+    u8    version_major;
+    u8    version_minor;
+    u8    flags;                    // 0x80 unsync, 0x40 extended header,
+                                    // 0x20 experimental, 0x10 footer
+    u32   tag_size;
+    local len = unsyncsafe(tag_size);
+    assert(len > 0 && start + 10 + len <= size(),
+           "malformed ID3v2 tag: it does not fit in the file");
+    if (flags & 0x80) {
+        warning("the ID3v2 tag is unsynchronised, frame sizes may be off");
+    }
+    if (flags & 0x40) {
+        if (version_major >= 4) {
+            id3v24_ext_header_t ext_header;
+        } else {
+            id3v23_ext_header_t ext_header;
+        }
+    }
+    parse_id3v2_frames(start + 10 + len, version_major);
+    seek(start + 10 + len);
+    if (flags & 0x10) {
+        // the 2.4 footer repeats the header, with '3DI' as its id
+        u8 footer[10];
+    }
+}
+
+// ---------------------------------------------------------------------------
+// The tags that live at the end of the file
+// ---------------------------------------------------------------------------
+
+// The original 128 bytes tag, fixed size fields padded with NULs or spaces
+struct id3v1_tag_t
+{
+    char id[3];                     // 'TAG'
+    char title[30];
+    char artist[30];
+    char album[30];
+    char year[4];
+    char comment[30];
+    u8   genre;
+}
+
+// APEv2 header/footer, 32 bytes followed by the items it announces
+struct ape_tag_t
+{
+    char id[8];                     // 'APETAGEX'
+    u32  ape_version;
+    u32  ape_size;                  // items and footer, header excluded
+    u32  item_count;
+    u32  ape_flags;
+    u8   reserved[8];
+    assert(ape_size <= remaining_size(), "malformed APE tag: bad size");
+    if (ape_size > 0) {
+        u8 items[ape_size];
+    }
+}
+
+fn parse_trailing_tags()
+{
+    while (remaining_size() > 0) {
+        if (remaining_size() >= 128 && peek(3) == "TAG") {
+            id3v1_tag_t id3v1;
+        } elif (remaining_size() >= 32 && peek(8) == "APETAGEX") {
+            ape_tag_t ape;
+        } elif (remaining_size() >= 10 && peek(3) == "ID3") {
+            // a second ID3v2 tag, appended rather than prepended
+            id3v2_tag_t id3v2;
+        } else {
+            warning("unparsed trailing data:", remaining_size(),
+                    "bytes at offset", off());
+            break;
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+
+proc
+{
+    big_endian();
+    assert(size() >= 4, "file too small to hold an MPEG frame header");
+
+    if (peek(3) == "ID3") {
+        id3v2_tag_t id3v2;
+    }
+
+    // seek_first_frame() leaves the offset on the frame it found
+    assert(seek_first_frame() >= 0, "no MPEG audio frame found");
+    audio_stream_t audio;
+
+    parse_trailing_tags();
+}
+
+// The frame listing on its own: one line per frame, no field decoding
+proc frames
+{
+    big_endian();
+    disable_print();
+    nums_in(10);
+
+    if (peek(3) == "ID3") {
+        id3v2_tag_t id3v2;
+    }
+    assert(seek_first_frame() >= 0, "no MPEG audio frame found");
+
+    local n = 0;
+    while (off() + 4 <= size()) {
+        local h = peek_u32();
+        if (!is_frame_header(h)) {
+            break;
+        }
+        local len = frame_length(h);
+        if (len < 4 || off() + len > size()) {
+            break;
+        }
+        print(off(), tostring(len, 10), "bytes,", tostring(bitrate_kbps(h), 10),
+              "kbps,", tostring(sampling_rate(h), 10), "Hz");
+        fwd(len);
+        n = n + 1;
+    }
+    print(tostring(n, 10), "frames");
+}

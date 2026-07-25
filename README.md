@@ -326,6 +326,7 @@ Available templates:
   rpm
   macho
   mp4
+  mp3
 
 ...
 ```

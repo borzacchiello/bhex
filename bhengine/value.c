@@ -591,26 +591,21 @@ BHEngineValue* BHEngineValue_bnot(InterpreterContext*  ctx,
     return NULL;
 }
 
-BHEngineValue* BHEngineValue_band(InterpreterContext*  ctx,
-                                  const BHEngineValue* lhs,
-                                  const BHEngineValue* rhs)
+// '&&' and '||' evaluate one operand at a time, so they need the truth value
+// of a single value rather than a binary operation on two of them
+int BHEngineValue_truth(InterpreterContext* ctx, const BHEngineValue* v,
+                        const char* opname)
 {
-    binop_bool(&&);
+    if (v == NULL)
+        return -1;
+    if (is_unum(v))
+        return get_unum_value(v) != 0;
+    if (is_snum(v))
+        return v->snum != 0;
 
-    bhengine_raise_exception(ctx, "band undefined for types %s and %s",
-                             type_to_string(lhs->t), type_to_string(rhs->t));
-    return NULL;
-}
-
-BHEngineValue* BHEngineValue_bor(InterpreterContext*  ctx,
-                                 const BHEngineValue* lhs,
-                                 const BHEngineValue* rhs)
-{
-    binop_bool(||);
-
-    bhengine_raise_exception(ctx, "bor undefined for types %s and %s",
-                             type_to_string(lhs->t), type_to_string(rhs->t));
-    return NULL;
+    bhengine_raise_exception(ctx, "%s undefined for type %s", opname,
+                             type_to_string(v->t));
+    return -1;
 }
 
 int BHEngineValue_as_u64(InterpreterContext* ctx, const BHEngineValue* v,

@@ -141,12 +141,11 @@ BHEngineValue* BHEngineValue_ble(struct InterpreterContext* ctx,
 BHEngineValue* BHEngineValue_beq(struct InterpreterContext* ctx,
                                  const BHEngineValue*       lhs,
                                  const BHEngineValue*       rhs);
-BHEngineValue* BHEngineValue_band(struct InterpreterContext* ctx,
-                                  const BHEngineValue*       lhs,
-                                  const BHEngineValue*       rhs);
-BHEngineValue* BHEngineValue_bor(struct InterpreterContext* ctx,
-                                 const BHEngineValue*       lhs,
-                                 const BHEngineValue*       rhs);
+// truth value of a single value, for the short circuiting '&&' and '||':
+// 1 when it is a non zero number, 0 when it is zero, -1 (with an exception
+// raised, using `opname`) when it is not a number
+int BHEngineValue_truth(struct InterpreterContext* ctx, const BHEngineValue* v,
+                        const char* opname);
 BHEngineValue* BHEngineValue_bnot(struct InterpreterContext* ctx,
                                   const BHEngineValue*       child);
 

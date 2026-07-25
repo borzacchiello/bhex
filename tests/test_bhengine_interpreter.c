@@ -4847,6 +4847,64 @@ fail:
     goto end;
 }
 
+// '&&' and '||' evaluate their right hand side only when it can change the
+// result, so that a bound check can guard a call that would raise
+int TEST(boolean_operators_short_circuit)(void)
+{
+    int              r    = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb  = dummyfilebuffer_create((const u8_t*)"AB", 2);
+    const char*      prog = "proc {"
+                            "    local a = 0 && peek_u32(1000) == 0;"
+                            "    local b = 1 || peek_u32(1000) == 0;"
+                            "    local c = 2 && 3;"
+                            "    local d = 0 || 0;"
+                            "    local e = 0;"
+                            "    if (remaining_size() >= 4 && peek(4, 4) == \"\") {"
+                            "        e = 1;"
+                            "    }"
+                            "}";
+
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope != NULL);
+    ASSERT_TENGINE_UNUM_EQ(Scope_get_local(scope, "a"), 0);
+    ASSERT_TENGINE_UNUM_EQ(Scope_get_local(scope, "b"), 1);
+    ASSERT_TENGINE_UNUM_EQ(Scope_get_local(scope, "c"), 1);
+    ASSERT_TENGINE_UNUM_EQ(Scope_get_local(scope, "d"), 0);
+    ASSERT_TENGINE_SNUM_EQ(Scope_get_local(scope, "e"), 0);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+// the right hand side is still evaluated, and can still raise, when the left
+// one does not decide the result on its own
+int TEST(boolean_operators_evaluate_rhs_when_needed)(void)
+{
+    int              r    = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb  = dummyfilebuffer_create((const u8_t*)"AB", 2);
+    const char*      prog = "proc { local a = 1 && peek_u32(1000) == 0; }";
+
+    Scope* scope = bhengine_interpreter_run_on_string(tfb->fb, prog);
+    ASSERT(scope == NULL);
+
+end:
+    if (scope)
+        Scope_free(scope);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
 // fwd() with a negative value wrapped around and seeked *backwards*
 int TEST(fwd_negative_is_rejected)(void)
 {
