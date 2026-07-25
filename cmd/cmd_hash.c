@@ -12,9 +12,12 @@
 #include <hash/gost.h>
 #include <hash/blake3.h>
 #include <hash/groestl-ref.h>
+#include <hash/haval.h>
 #include <hash/jh-ref.h>
 #include <hash/shash.h>
 #include <hash/snefru.h>
+#include <hash/tiger.h>
+#include <hash/whirlpool.h>
 
 #include <util/byte_to_str.h>
 #include <util/byte_to_num.h>
@@ -154,6 +157,42 @@ GEN_HANDLE_FUNC(shash_256, SpectralHashCtx, shash_256_init, shash_update,
                 shash_final, SHASH_256_DIGEST_LENGTH)
 GEN_HANDLE_FUNC(shash_512, SpectralHashCtx, shash_512_init, shash_update,
                 shash_final, SHASH_512_DIGEST_LENGTH)
+GEN_HANDLE_FUNC(haval_128_3, HavalCtx, haval_128_3_init, haval_update,
+                haval_final, HAVAL_128_DIGEST_LENGTH)
+GEN_HANDLE_FUNC(haval_128_4, HavalCtx, haval_128_4_init, haval_update,
+                haval_final, HAVAL_128_DIGEST_LENGTH)
+GEN_HANDLE_FUNC(haval_128_5, HavalCtx, haval_128_5_init, haval_update,
+                haval_final, HAVAL_128_DIGEST_LENGTH)
+GEN_HANDLE_FUNC(haval_160_3, HavalCtx, haval_160_3_init, haval_update,
+                haval_final, HAVAL_160_DIGEST_LENGTH)
+GEN_HANDLE_FUNC(haval_160_4, HavalCtx, haval_160_4_init, haval_update,
+                haval_final, HAVAL_160_DIGEST_LENGTH)
+GEN_HANDLE_FUNC(haval_160_5, HavalCtx, haval_160_5_init, haval_update,
+                haval_final, HAVAL_160_DIGEST_LENGTH)
+GEN_HANDLE_FUNC(haval_192_3, HavalCtx, haval_192_3_init, haval_update,
+                haval_final, HAVAL_192_DIGEST_LENGTH)
+GEN_HANDLE_FUNC(haval_192_4, HavalCtx, haval_192_4_init, haval_update,
+                haval_final, HAVAL_192_DIGEST_LENGTH)
+GEN_HANDLE_FUNC(haval_192_5, HavalCtx, haval_192_5_init, haval_update,
+                haval_final, HAVAL_192_DIGEST_LENGTH)
+GEN_HANDLE_FUNC(haval_224_3, HavalCtx, haval_224_3_init, haval_update,
+                haval_final, HAVAL_224_DIGEST_LENGTH)
+GEN_HANDLE_FUNC(haval_224_4, HavalCtx, haval_224_4_init, haval_update,
+                haval_final, HAVAL_224_DIGEST_LENGTH)
+GEN_HANDLE_FUNC(haval_224_5, HavalCtx, haval_224_5_init, haval_update,
+                haval_final, HAVAL_224_DIGEST_LENGTH)
+GEN_HANDLE_FUNC(haval_256_3, HavalCtx, haval_256_3_init, haval_update,
+                haval_final, HAVAL_256_DIGEST_LENGTH)
+GEN_HANDLE_FUNC(haval_256_4, HavalCtx, haval_256_4_init, haval_update,
+                haval_final, HAVAL_256_DIGEST_LENGTH)
+GEN_HANDLE_FUNC(haval_256_5, HavalCtx, haval_256_5_init, haval_update,
+                haval_final, HAVAL_256_DIGEST_LENGTH)
+GEN_HANDLE_FUNC(tiger, TigerCtx, tiger_init, tiger_update, tiger_final,
+                TIGER_DIGEST_LENGTH)
+GEN_HANDLE_FUNC(tiger2, TigerCtx, tiger2_init, tiger_update, tiger_final,
+                TIGER_DIGEST_LENGTH)
+GEN_HANDLE_FUNC(whirlpool, WhirlpoolCtx, whirlpool_init, whirlpool_update,
+                whirlpool_final, WHIRLPOOL_DIGEST_LENGTH)
 
 static hash_handler_t hash_handlers[] = {{"md2", handle_md2},
                                          {"md4", handle_md4},
@@ -192,7 +231,25 @@ static hash_handler_t hash_handlers[] = {{"md2", handle_md2},
                                          {"snefru-128", handle_snefru_128},
                                          {"snefru-256", handle_snefru_256},
                                          {"spectral-256", handle_shash_256},
-                                         {"spectral-512", handle_shash_512}};
+                                         {"spectral-512", handle_shash_512},
+                                         {"haval-128-3", handle_haval_128_3},
+                                         {"haval-128-4", handle_haval_128_4},
+                                         {"haval-128-5", handle_haval_128_5},
+                                         {"haval-160-3", handle_haval_160_3},
+                                         {"haval-160-4", handle_haval_160_4},
+                                         {"haval-160-5", handle_haval_160_5},
+                                         {"haval-192-3", handle_haval_192_3},
+                                         {"haval-192-4", handle_haval_192_4},
+                                         {"haval-192-5", handle_haval_192_5},
+                                         {"haval-224-3", handle_haval_224_3},
+                                         {"haval-224-4", handle_haval_224_4},
+                                         {"haval-224-5", handle_haval_224_5},
+                                         {"haval-256-3", handle_haval_256_3},
+                                         {"haval-256-4", handle_haval_256_4},
+                                         {"haval-256-5", handle_haval_256_5},
+                                         {"tiger", handle_tiger},
+                                         {"tiger2", handle_tiger2},
+                                         {"whirlpool", handle_whirlpool}};
 #define NUM_HASH_HANDLERS (sizeof(hash_handlers) / sizeof(hash_handlers[0]))
 
 static int hashcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)

@@ -105,8 +105,11 @@ set(common_src
     common/hash/blake3_impl.c
     common/hash/gost.c
     common/hash/groestl-ref.c
+    common/hash/haval.c
     common/hash/shash.c
     common/hash/snefru.c
+    common/hash/tiger.c
+    common/hash/whirlpool.c
     common/ml/rf_model.c
     common/ml/model_locator.c
     common/ml/isadetect_features.c

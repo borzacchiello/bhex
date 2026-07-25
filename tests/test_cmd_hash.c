@@ -49,7 +49,25 @@ int TEST(notkitty_all_hashes)(void)
     "    snefru-128 : 73a1f2c464a449f06e0fce691d6ef2f4\n"
     "    snefru-256 : dd083bd7cf0a464f42f6bdc3890758216ef4d883ac354259a561411cb78326fd\n"
     "  spectral-256 : f5d93f497472d8b3c7087a8e069b155927500a8bf17316f96973b1cd3aa42604\n"
-    "  spectral-512 : c7394bab4293f6a46eace4f316ac054babe1bfe1517d8b83e3c2cbe4af42bbba9da2adf59006aa443ed25c5114f7dcaab279f1f88fbd2f3e746973e8a98614d4\n";
+    "  spectral-512 : c7394bab4293f6a46eace4f316ac054babe1bfe1517d8b83e3c2cbe4af42bbba9da2adf59006aa443ed25c5114f7dcaab279f1f88fbd2f3e746973e8a98614d4\n"
+    "   haval-128-3 : d693ec0defd29aad37bd5d914bb5200a\n"
+    "   haval-128-4 : 7c87d57d64426e90b357df6af0ea6619\n"
+    "   haval-128-5 : 3f93f058bd947a1b246ee143fb165336\n"
+    "   haval-160-3 : 95bb3d499a2cad8fa80024caa7b72fbdb0d3b861\n"
+    "   haval-160-4 : d68a953e84620c10d2a4ce3d09e68b6199f39f3d\n"
+    "   haval-160-5 : bbb96f4db9e8ac01baecf0b82824e3eea515dea8\n"
+    "   haval-192-3 : 8b75a23e60ea541b284dbbc25183d179054ee2058b4e2129\n"
+    "   haval-192-4 : 547c4e9c13d955b78046e19146e4e67350532d6cac7d1090\n"
+    "   haval-192-5 : 688b2e6b6282da51b2e6130fb01eeac07357278d9f85cea7\n"
+    "   haval-224-3 : dbdc08bc4c67ccec28904374e35089598733c0f1d9663312e6c7652c\n"
+    "   haval-224-4 : a361ac7122af72eaec62786f9a5b5fe70da5501b0b68fa0d51e0981b\n"
+    "   haval-224-5 : 70b036df41310b36c41c4eb1804e8e178ab39123242919a5f1c6c067\n"
+    "   haval-256-3 : 8276dae33378cf79e22309c993d9f0c5e88dc508422a0c3e14dd7df5d155b169\n"
+    "   haval-256-4 : da53b3a5f8c9a120e61a9983471b348aaab390803afa22faaf31be901f41860f\n"
+    "   haval-256-5 : ea0006d570f7abf643224d21d0d20fe8f9a67fe0f5876f44ece4fa9b19dc7166\n"
+    "         tiger : 2548abf82405228ef4124ea25697930ff0d411c3600f4930\n"
+    "        tiger2 : 83a9dbaa6f616eeba92960ecc0f1fe5bd0e206410b659d27\n"
+    "     whirlpool : 8ff340018588ebb0603e53b187e42ff4d5e516bc45c0d7e12f84259fa4ce58be28119286fa189e1219d231eff0c638c0c5f3b8508a9885e92bcacb4d2cfec472\n";
     // clang-format on
 
     int r = TEST_FAILED;
@@ -105,11 +123,109 @@ int TEST(answer_to_universe_all_hashes)(void)
     "    snefru-128 : f10f2db5f64a712070a93d205afe7dad\n"
     "    snefru-256 : 91eb5cbd94ed38f0f7e7e083d3e54a7c7db6627a0008ca241dfa05187c8dd7fb\n"
     "  spectral-256 : 802af7a44b4db4b55b46ae40aa4c6dbb8b373ef9e1f3ed019824e32111933c67\n"
-    "  spectral-512 : ee308caae1eae4a4850a630cfcf4d0cd128dfa83a9af473145655478d56b2fc6a467099e473fd3f8bba03bb7f8e442370f9011b7ac49a0644d360f2cd199113f\n";
+    "  spectral-512 : ee308caae1eae4a4850a630cfcf4d0cd128dfa83a9af473145655478d56b2fc6a467099e473fd3f8bba03bb7f8e442370f9011b7ac49a0644d360f2cd199113f\n"
+    "   haval-128-3 : 4b5543812fe25f6a66fdcba7298effc4\n"
+    "   haval-128-4 : 73c617874367c18a8558938a95b1c122\n"
+    "   haval-128-5 : 3370d314b69ce1f655b1d47817192c24\n"
+    "   haval-160-3 : db90dbdb9170827ffad2a6f52a56ec465c7eedde\n"
+    "   haval-160-4 : 9643be3fb5a7b2588fbf2fff58748c3b4c2798fd\n"
+    "   haval-160-5 : dc90db1672d6bd5b324b8827e3594c44862a9246\n"
+    "   haval-192-3 : cb32ca5db92be492c7fb64cd3753c6de2c086232700bb6f2\n"
+    "   haval-192-4 : 6f13962178f7f0586f7567cd53ef5e9091f52c5147b8f874\n"
+    "   haval-192-5 : 5a161efaefe3dfc63b136bedb32e335e32317e8d1f8f9397\n"
+    "   haval-224-3 : 5eb851e96bb20d613b4604fb455bd50981cf6f2373ce86beab8d8774\n"
+    "   haval-224-4 : 85c58513605ab1da0e24d8d8f244b15fed37a6696020d295b8cc1557\n"
+    "   haval-224-5 : faf374aca9a752206f437541f222fb4c8b1fe52727b66d33def5af25\n"
+    "   haval-256-3 : a60fcb4f1b700b573eb0fef7da149447fe0bc718573f59b3964e38bfbef9f829\n"
+    "   haval-256-4 : d5f97825d89f090a0389de899b39f356637eb7d427a9025c7aeaceb518df69be\n"
+    "   haval-256-5 : 875aeea0a5421e5e2a661756e242623192f6e349e4ba3a8e10aec4b0a8baf60a\n"
+    "         tiger : 7371d6b382eebdb56131de1c4a0694fe8aa3dc71f948eb03\n"
+    "        tiger2 : d088a34c5da520e3920f767fb892337db5f373daa951e726\n"
+    "     whirlpool : 639273f566b49e8329bddb349a6218d9895be2b24e185b060dd0415a919c721636b86438495c72bd4c60659dbf4892b2b570c644beaee05df8764547cedca015\n";
     // clang-format on
 
     DummyFilebuffer* tfb =
         dummyfilebuffer_create(answer_to_universe, sizeof(answer_to_universe));
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("hh *", tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+}
+
+int TEST(quick_brown_fox_all_hashes)(void)
+{
+    static const char fox[] = "The quick brown fox jumps over the lazy dog";
+
+    // clang-format off
+    const char* expected =
+    "           md2 : 03d85a0d629d2c442e987525319fc471\n"
+    "           md4 : 1bee69a46ba811185c194762abaeae90\n"
+    "           md5 : 9e107d9d372bb6826bd81d3542a419d6\n"
+    "       md6-128 : 7b428f5ec47e0174faf31dc7c89590c6\n"
+    "       md6-256 : 977592608c45c9923340338450fdcccc21a68888e1e6350e133c5186cd9736ee\n"
+    "       md6-384 : d850fdde986e16df19d65c50788afd0a8953914a4bc65831f5283c3016b79ddfa4a0bc00694e472f4a0bed7da601bb90\n"
+    "       md6-512 : dcba0c6593fbd83a0f5f148588baa79530579c1f5e7f19d500fe282d137bff465106f25c9f0619b4082a730683d5f58311c0c1913068e91b0ebdf9ace3ff5b9e\n"
+    "           sm3 : 5fdfe814b8573ca021983970fc79b2218c9570369b4859684e2e4c3fc76cb8ea\n"
+    "          sha1 : 2fd4e1c67a2d28fced849ee1bb76e7391b93eb12\n"
+    "        sha224 : 730e109bd7a8a32b1cb9d9a09aa2325d2430587ddbc0c38bad911525\n"
+    "        sha256 : d7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592\n"
+    "        sha384 : ca737f1014a48f4c0b6dd43cb177b0afd9e5169367544c494011e3317dbf9a509cb1e5dc1e85a941bbee3d7f2afbc9b1\n"
+    "        sha512 : 07e547d9586f6a73f73fbac0435ed76951218fb7d0c8d788a309d785436bbb642e93a252a954f23912547d1e8a3b5ed6e1bfd7097821233fa0538f3db854fee6\n"
+    "      sha3-128 : 4d7869754147b578b50c0b658399212f\n"
+    "      sha3-224 : d15dadceaa4d5d7bb3b48f446421d542e08ad8887305e28d58335795\n"
+    "      sha3-256 : 69070dda01975c8c120c3aada1b282394e7f032fa9cf32f4cb2259a0897dfc04\n"
+    "      sha3-384 : 7063465e08a93bce31cd89d2e3ca8f602498696e253592ed26f07bf7e703cf328581e1471a7ba7ab119b1a9ebdf8be41\n"
+    "      sha3-512 : 01dedd5de4ef14642445ba5f5b97c15e47b9ad931326e4b0727cd94cefc44fff23f07bf543139939b49128caf436dc1bdee54fcb24023a08d9403f9b4bf0d450\n"
+    "    RipeMD-128 : 3fa9b57f053c053fbe2735b2380db596\n"
+    "    RipeMD-160 : 37f332f68db77bd9d7edd4969571ad671cf9dd3b\n"
+    "    RipeMD-256 : c3b0c2f764ac6d576a6c430fb61a6f2255b4fa833e094b1ba8c1e29b6353036f\n"
+    "    RipeMD-320 : e7660e67549435c62141e51c9ab1dcc3b1ee9f65c0b3e561ae8f58c5dba3d21997781cd1cc6fbc34\n"
+    "       blake2s : 606beeec743ccbeff6cbcdf5d5302aa855c256c29b88c8ed331ea1a6bf3c8812\n"
+    "       blake2b : a8add4bdddfd93e4877d2746e62817b116364a1fa7bc148d95090bc7333b3673f82401cf7aa2e4cb1ecd90296e3f14cb5413f8ed77be73045b13914cdcd6a918\n"
+    "        blake3 : 2f1514181aadccd913abd94cfa592701a5686ab23f8df1dff1b74710febc6d4a\n"
+    "          gost : 77b7fa410c9ac58a25f49bca7d0468c9296529315eaca76bd1a10f376d1f4294\n"
+    "   groestl-224 : 8ce3ce0f7092cada755be8f614fd6d5e5738ff1f6cd5dabe42404c46\n"
+    "   groestl-256 : 8c7ad62eb26a21297bc39c2d7293b4bd4d3399fa8afab29e970471739e28b301\n"
+    "   groestl-384 : 9330aeb62a1fc0a464dd70ac27b57075e00ae5d627f9bd6ff72952b3857aba2cfbcc4345af9a04fcc13eb346829e4088\n"
+    "   groestl-512 : badc1f70ccd69e0cf3760c3f93884289da84ec13c70b3d12a53a7a8a4a513f99715d46288f55e1dbf926e6d084a0538e4eebfc91cf2b21452921ccde9131718d\n"
+    "        jh-224 : bb21255e4a6bcbd3ddbf8694df2e7f41b74a69c1a7e1c2d36a3fd405\n"
+    "        jh-256 : 6a049fed5fc6874acfdc4a08b568a4f8cbac27de933496f031015b38961608a0\n"
+    "        jh-384 : de44fe5f835f5518c603aec9d67363466d9f3a5b54d4cfbd4083b055f95a21a2562abaa59b830b3bc4e023d0b52a1268\n"
+    "        jh-512 : 043f14e7c0775e7b1ef5ad657b1e858250b21e2e61fd699783f8634cb86f3ff938451cabd0c8cdae91d4f659d3f9f6f654f1bfedca117ffba735c15fedda47a3\n"
+    "    snefru-128 : 59d9539d0dd96d635b5bdbd1395bb86c\n"
+    "    snefru-256 : 674caa75f9d8fd2089856b95e93a4fb42fa6c8702f8980e11d97a142d76cb358\n"
+    "  spectral-256 : 201a3eb9c76eb403bad609bdc421591ad8922c9bd55d94be5719902cf8714b72\n"
+    "  spectral-512 : 4822278b3bba55fa6f1f39b36eb95003b9f46745e88549fbd86160436f3f0da4c19918e86ac44f457ab4acdb0b32f3217d2c7cd06240a3251b923fa4b9276322\n"
+    "   haval-128-3 : 713502673d67e5fa557629a71d331945\n"
+    "   haval-128-4 : 6eece560a2e8d6b919e81fe91b0e7156\n"
+    "   haval-128-5 : 696f02111f2e1da5c21d50eb782b7e8f\n"
+    "   haval-160-3 : b338ac397e8bccadcccd96549cadd4882d834107\n"
+    "   haval-160-4 : 6e739d01f5739ceed94da1a115b52d5951280560\n"
+    "   haval-160-5 : ecce9fa8a428866304ff082af2f9062637d36b23\n"
+    "   haval-192-3 : 58e6ced002e311172483d434ba738ad033e7fa950e431503\n"
+    "   haval-192-4 : 228ee09bc7e36151c6f285f558e6aede66ad38c8341592b9\n"
+    "   haval-192-5 : 023d045f75d4bf051fd6e50f7b7417bf9949c4b5d2b4b7ef\n"
+    "   haval-224-3 : e1d5792306f56b22419662b06d1885a66dca3eba01f53274c89aeaeb\n"
+    "   haval-224-4 : dddd6689885f6db4ad91e35a35e1f4498446510df798d4fd54b8654f\n"
+    "   haval-224-5 : 03d953298c8e56b46385c6761cd4b2e377889a75c97eaea475421c73\n"
+    "   haval-256-3 : 9446028f42b3768a41bd873ca69b0c006341d986613567f39eb61f96ca683300\n"
+    "   haval-256-4 : c0d4c6ea514105fd1a9c38a238553fb7fa21d4127eb1a3035a75ce9d06a83d96\n"
+    "   haval-256-5 : b89c551cdfe2e06dbd4cea2be1bc7d557416c58ebb4d07cbc94e49f710c55be4\n"
+    "         tiger : 6d12a41e72e644f017b6f0e2f7b44c6285f06dd5d2c5b075\n"
+    "        tiger2 : 976abff8062a2e9dcea3a1ace966ed9c19cb85558b4976d8\n"
+    "     whirlpool : b97de512e91e3828b40d2b0fdce9ceb3c4a71f9bea8d88e75c4fa854df36725fd2b52eb6544edcacd6f8beddfea403cb55ae31f03ad62a5ef54e42ee82c3fb35\n";
+    // clang-format on
+
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create((const u8_t*)fox, sizeof(fox) - 1);
 
     int r = TEST_FAILED;
     if (exec_commands_on("hh *", tfb) != 0)
@@ -165,7 +281,25 @@ int TEST(empty)(void)
     "    snefru-128 : 8617f366566a011837f4fb4ba5bedea2\n"
     "    snefru-256 : 8617f366566a011837f4fb4ba5bedea2b892f3ed8b894023d16ae344b2be5881\n"
     "  spectral-256 : ec7c8524cdfabab3f4447d06464409f5420274f6b755fe0c45ee16ad64eaf47f\n"
-    "  spectral-512 : fac1e798195e8d353f77f2a4c2a6fcf5d90b210df742a0d880d8a89a253bc6a0bc54345ac683dec96ef9495b3bf11862162edb7f0cbd71669324574743b01ee1\n";
+    "  spectral-512 : fac1e798195e8d353f77f2a4c2a6fcf5d90b210df742a0d880d8a89a253bc6a0bc54345ac683dec96ef9495b3bf11862162edb7f0cbd71669324574743b01ee1\n"
+    "   haval-128-3 : c68f39913f901f3ddf44c707357a7d70\n"
+    "   haval-128-4 : ee6bbf4d6a46a679b3a856c88538bb98\n"
+    "   haval-128-5 : 184b8482a0c050dca54b59c7f05bf5dd\n"
+    "   haval-160-3 : d353c3ae22a25401d257643836d7231a9a95f953\n"
+    "   haval-160-4 : 1d33aae1be4146dbaaca0b6e70d7a11f10801525\n"
+    "   haval-160-5 : 255158cfc1eed1a7be7c55ddd64d9790415b933b\n"
+    "   haval-192-3 : e9c48d7903eaf2a91c5b350151efcb175c0fc82de2289a4e\n"
+    "   haval-192-4 : 4a8372945afa55c7dead800311272523ca19d42ea47b72da\n"
+    "   haval-192-5 : 4839d0626f95935e17ee2fc4509387bbe2cc46cb382ffe85\n"
+    "   haval-224-3 : c5aae9d47bffcaaf84a8c6e7ccacd60a0dd1932be7b1a192b9214b6d\n"
+    "   haval-224-4 : 3e56243275b3b81561750550e36fcd676ad2f5dd9e15f2e89e6ed78e\n"
+    "   haval-224-5 : 4a0513c032754f5582a758d35917ac9adf3854219b39e3ac77d1837e\n"
+    "   haval-256-3 : 4f6938531f0bc8991f62da7bbd6f7de3fad44562b8c6f4ebf146d5b4e46f7c17\n"
+    "   haval-256-4 : c92b2e23091e80e375dadce26982482d197b1a2521be82da819f8ca2c579b99b\n"
+    "   haval-256-5 : be417bb4dd5cfb76c7126f4f8eeb1553a449039307b1a3cd451dbfdc0fbbe330\n"
+    "         tiger : 3293ac630c13f0245f92bbb1766e16167a4e58492dde73f3\n"
+    "        tiger2 : 4441be75f6018773c206c22745374b924aa8313fef919f41\n"
+    "     whirlpool : 19fa61d75522a4669b44e39c1d2e1726c530232130d407f89afee0964997f7a73e83be698b288febcf88e3e03c4f0757ea8964e59b63d93708b138cc42a66eb3\n";
     // clang-format on
 
     int r = TEST_FAILED;
@@ -307,7 +441,25 @@ int TEST(notkitty_with_size_1)(void)
     "    snefru-128 : 10c620c639d64e3bc344018ad733e518\n"
     "    snefru-256 : 1a9418857290b8d1b6236da9debd629b0a26ef5909da567ec038d84503bc31cc\n"
     "  spectral-256 : 277b289836fdc825b4060dd23b17d61f98754b4a8c38e3027e0fac8766b600e0\n"
-    "  spectral-512 : 167b47a13e8a958c137ecfdfa118b97af50a259e0b6d748ae2d255e366d60bf51b18dea4b99770acb0dc179cea3734205bfc38e196c2ac6956629dc40404de1c\n";
+    "  spectral-512 : 167b47a13e8a958c137ecfdfa118b97af50a259e0b6d748ae2d255e366d60bf51b18dea4b99770acb0dc179cea3734205bfc38e196c2ac6956629dc40404de1c\n"
+    "   haval-128-3 : e78c7fc90ba51af3fe4dd13ed92912fb\n"
+    "   haval-128-4 : f368bb4f672d70da20528c9c0fe3ba21\n"
+    "   haval-128-5 : e822c7bf9d14f4752bc32294cb045e0a\n"
+    "   haval-160-3 : fdada81938ea696e049f8d5f055b70f8df657780\n"
+    "   haval-160-4 : 1b113941d07975edd28a1cf2260880b52b869274\n"
+    "   haval-160-5 : 6fb053d5e512ba26c6447b69b462aac74a0b5fd0\n"
+    "   haval-192-3 : dbe73369c3728b3318dd6e3391846e8e22f6e2af98be4219\n"
+    "   haval-192-4 : eb774826efaac676bebc92261ef4cf674a60c804ca7707d6\n"
+    "   haval-192-5 : a346ce8c3e5069a92b3e70aaa574e85c705ffb1bb3fc5582\n"
+    "   haval-224-3 : cfa2ba02be5254affcd6bc88c79e12caeaeef05d4d9359d365b7fe9d\n"
+    "   haval-224-4 : 1bbe99df4b34b66e9c979d9de7a3322b7137d71fc9cecc563b101482\n"
+    "   haval-224-5 : 316965b67da840337350f6d901f71b7fc28cf6523208db350ffee992\n"
+    "   haval-256-3 : 52fdb97f18e2427391ddeeca993ce388258dd77b10fbed1912c1db4c5865edd1\n"
+    "   haval-256-4 : c2e2b160889136dfb9b76c2010dfeca83423df0b89850dfbfa632ae148516236\n"
+    "   haval-256-5 : dd62dab91725b66fc264bed5ba7c4abeae67ebb2b786ae093d89fc17220c437d\n"
+    "         tiger : debf58dbd60c818b2151176f8223c2f5bccf57861870675d\n"
+    "        tiger2 : ed0eaa6a8af698084708f561dc9f8e2481514f48966ff5d1\n"
+    "     whirlpool : 88bf39ce7a2c404a9e07967c238c4c1fb7aa721b60c31bc2dbd0958bb6d019cd3c5c1c7ec267e3e51792b9379cf55cc781f3b8fa0af530d07a37e291815a9923\n";
     // clang-format on
 
     int r = TEST_FAILED;

@@ -270,40 +270,26 @@ hash: calculate the hash of <size> bytes at current offset + <off>
   md4
   md5
   md6-128
-  md6-256
-  md6-384
-  md6-512
   sm3
   sha1
-  sha224
   sha256
-  sha384
   sha512
-  sha3-128
-  sha3-224
   sha3-256
-  sha3-384
-  sha3-512
-  RipeMD-128
   RipeMD-160
-  RipeMD-256
-  RipeMD-320
   blake2s
   blake2b
   blake3
   gost
-  groestl-224
   groestl-256
-  groestl-384
-  groestl-512
-  jh-224
   jh-256
-  jh-384
-  jh-512
   snefru-128
-  snefru-256
   spectral-256
-  spectral-512
+  haval-128-5
+  haval-256-5
+  tiger
+  tiger2
+  whirlpool
+  ...
 ```
 
 ### Template
