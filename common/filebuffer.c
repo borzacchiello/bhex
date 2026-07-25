@@ -135,8 +135,7 @@ FileBuffer* filebuffer_create(const char* path, int readonly)
     if (pthread_mutexattr_destroy(&attr) != 0)
         panic("pthread_mutexattr_destroy failed");
 
-    long  filelen = 0;
-    FILE* f       = NULL;
+    FILE* f = NULL;
     if (!readonly) {
         f = fopen(path, "rb+");
         if (f == NULL && (errno == EACCES || errno == EROFS)) {
@@ -158,9 +157,13 @@ FileBuffer* filebuffer_create(const char* path, int readonly)
     }
     fb->file = f;
 
-    // fopen() succeeds on directories (and other non-regular files), but the
-    // seek below fails: report it as a normal error instead of dying
-    if (fseek(fb->file, 0, SEEK_END) < 0 || (filelen = ftell(fb->file)) < 0) {
+    // fopen() succeeds on directories (and other non-regular files), and
+    // whether a subsequent seek fails is libc-dependent (glibc happily seeks a
+    // directory fd), so reject anything that is not a regular file here. st_size
+    // also gives us the length without a SEEK_END round-trip, and it is a 64-bit
+    // off_t rather than the ftell() long that would cap at 2GB on 32-bit.
+    struct stat st;
+    if (fstat(fileno(fb->file), &st) < 0 || !S_ISREG(st.st_mode)) {
         error("cannot open the file, is it a regular file?");
         fclose(fb->file);
         pthread_mutex_destroy(&fb->lock);
@@ -169,7 +172,7 @@ FileBuffer* filebuffer_create(const char* path, int readonly)
         bhex_free(fb);
         return NULL;
     }
-    fb->size = filelen;
+    fb->size = (u64_t)st.st_size;
 
     was_file_modified(fb->path, 0, &fb->mod_time);
     return fb;
