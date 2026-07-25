@@ -2202,11 +2202,11 @@ int TEST(array_4)(void)
     // clang-format off
     const char* expected =
         "b+00000000  data: [ \n"
-        "               [0]\n"
+        "                [0]\n"
         "b+00000000      n1: 41\n"
         "b+00000001      n2: 42\n"
         "b+00000002      n3: 43\n"
-        "               [1]\n"
+        "                [1]\n"
         "b+00000003      n1: 44\n"
         "b+00000004      n2: 45\n"
         "b+00000005      n3: 46 ]";
@@ -5141,13 +5141,13 @@ int TEST(max_array_print_truncates_struct_array)(void)
     // clang-format off
     const char* expected =
         "b+00000000  entries: [ \n"
-        "               [0]\n"
+        "                  [0]\n"
         "b+00000000          a: 30\n"
         "b+00000001          b: 31\n"
-        "               [1]\n"
+        "                  [1]\n"
         "b+00000002          a: 32\n"
         "b+00000003          b: 33\n"
-        "               ... 3 more elements (5 in total) ]\n"
+        "                ... 3 more elements (5 in total) ]\n"
         "b+0000000a  after: 41";
     // clang-format on
 
@@ -5187,16 +5187,16 @@ int TEST(max_array_print_scope_and_no_limit)(void)
     const char* expected =
         "b+00000000    capped: \n"
         "b+00000000           els: [ \n"
-        "                   [0]\n"
+        "                         [0]\n"
         "b+00000000                 v: 30\n"
-        "                   ... 2 more elements (3 in total) ]\n"
+        "                    ... 2 more elements (3 in total) ]\n"
         "b+00000003  uncapped: \n"
         "b+00000003           els: [ \n"
-        "                   [0]\n"
+        "                         [0]\n"
         "b+00000003                 v: 33\n"
-        "                   [1]\n"
+        "                         [1]\n"
         "b+00000004                 v: 34\n"
-        "                   [2]\n"
+        "                         [2]\n"
         "b+00000005                 v: 35 ]";
     // clang-format on
 

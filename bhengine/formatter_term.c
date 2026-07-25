@@ -132,6 +132,18 @@ static void fmt_term_start_array(FormatterTerm* this, const Type* ty)
         this->print_off += PRINT_OFF_STEP;
 }
 
+// The '[i]' marker of an array of structs, and the '... N more' line closing a
+// truncated one, sit on a line of their own. They are laid out like a field
+// name -- the offset column is left blank, and the text is right adjusted on
+// the same column -- so that the marker lines up with the element it labels
+// instead of floating to the left of it
+static void fmt_term_print_el_label(FormatterTerm* this, const char* label)
+{
+    display_printf("\n           ");
+    fmt_term_print_off(this);
+    display_printf(" %*s", (int)this->super->max_fvar_len, label);
+}
+
 static void fmt_term_notify_array_el(FormatterTerm* this, u64_t n)
 {
     if (this->hidden_at_depth != 0) {
@@ -168,9 +180,9 @@ static void fmt_term_notify_array_el(FormatterTerm* this, u64_t n)
     }
 
     if (!this->super->quiet_mode) {
-        display_printf("\n           ");
-        fmt_term_print_off(this);
-        display_printf("[%llu]", n);
+        char idx[32];
+        snprintf(idx, sizeof(idx), "[%llu]", n);
+        fmt_term_print_el_label(this, idx);
     }
 }
 
@@ -179,11 +191,12 @@ static void fmt_term_end_array(FormatterTerm* this)
     if (this->hidden_at_depth == this->depth && this->hidden_at_depth != 0) {
         this->super->quiet_mode = this->hidden_saved_quiet_mode;
         if (!this->super->quiet_mode) {
-            display_printf("\n           ");
-            fmt_term_print_off(this);
+            char  summary[128];
             u64_t hidden = this->hidden_num_els - this->hidden_limit;
-            display_printf("... %llu more element%s (%llu in total)", hidden,
-                           hidden == 1 ? "" : "s", this->hidden_num_els);
+            snprintf(summary, sizeof(summary),
+                     "... %llu more element%s (%llu in total)", hidden,
+                     hidden == 1 ? "" : "s", this->hidden_num_els);
+            fmt_term_print_el_label(this, summary);
         }
         this->hidden_at_depth = 0;
     }
