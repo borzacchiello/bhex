@@ -94,12 +94,12 @@ static int parse_write_arg(ParsedCommand* pc, WriteArg* o_arg)
             if (unsign) {
                 u8_t b;
                 if (!str_to_uint8(data_str, &b))
-                    return COMMAND_INVALID_ARG;
+                    goto invalid_arg;
                 write8(o_arg->data, b);
             } else {
                 s8_t b;
                 if (!str_to_int8(data_str, &b))
-                    return COMMAND_INVALID_ARG;
+                    goto invalid_arg;
                 write8(o_arg->data, b);
             }
             break;
@@ -109,7 +109,7 @@ static int parse_write_arg(ParsedCommand* pc, WriteArg* o_arg)
             if (unsign) {
                 u16_t w;
                 if (!str_to_uint16(data_str, &w))
-                    return COMMAND_INVALID_ARG;
+                    goto invalid_arg;
                 if (endianess == ENDIANESS_LITTLE)
                     write_le16(o_arg->data, w);
                 else
@@ -117,7 +117,7 @@ static int parse_write_arg(ParsedCommand* pc, WriteArg* o_arg)
             } else {
                 s16_t w;
                 if (!str_to_int16(data_str, &w))
-                    return COMMAND_INVALID_ARG;
+                    goto invalid_arg;
                 if (endianess == ENDIANESS_LITTLE)
                     write_le16(o_arg->data, w);
                 else
@@ -130,7 +130,7 @@ static int parse_write_arg(ParsedCommand* pc, WriteArg* o_arg)
             if (unsign) {
                 u32_t d;
                 if (!str_to_uint32(data_str, &d))
-                    return COMMAND_INVALID_ARG;
+                    goto invalid_arg;
                 if (endianess == ENDIANESS_LITTLE)
                     write_le32(o_arg->data, d);
                 else
@@ -138,7 +138,7 @@ static int parse_write_arg(ParsedCommand* pc, WriteArg* o_arg)
             } else {
                 s32_t d;
                 if (!str_to_int32(data_str, &d))
-                    return COMMAND_INVALID_ARG;
+                    goto invalid_arg;
                 if (endianess == ENDIANESS_LITTLE)
                     write_le32(o_arg->data, d);
                 else
@@ -151,7 +151,7 @@ static int parse_write_arg(ParsedCommand* pc, WriteArg* o_arg)
             if (unsign) {
                 u64_t q;
                 if (!str_to_uint64(data_str, &q))
-                    return COMMAND_INVALID_ARG;
+                    goto invalid_arg;
                 if (endianess == ENDIANESS_LITTLE)
                     write_le64(o_arg->data, q);
                 else
@@ -159,7 +159,7 @@ static int parse_write_arg(ParsedCommand* pc, WriteArg* o_arg)
             } else {
                 s64_t q;
                 if (!str_to_int64(data_str, &q))
-                    return COMMAND_INVALID_ARG;
+                    goto invalid_arg;
                 if (endianess == ENDIANESS_LITTLE)
                     write_le64(o_arg->data, q);
                 else
@@ -170,6 +170,14 @@ static int parse_write_arg(ParsedCommand* pc, WriteArg* o_arg)
 
     o_arg->insert = insert;
     return COMMAND_OK;
+
+invalid_arg:
+    // the numeric cases allocate the destination buffer before parsing, so a
+    // parse failure must release it
+    bhex_free(o_arg->data);
+    o_arg->data = NULL;
+    o_arg->size = 0;
+    return COMMAND_INVALID_ARG;
 }
 
 static void writecmd_dispose(void* obj) { return; }
@@ -181,12 +189,17 @@ static int writecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     if (r != COMMAND_OK)
         return r;
 
+    // fb_insert/fb_write take ownership of the buffer only when they succeed
     if (arg.insert) {
-        if (!fb_insert(fb, arg.data, arg.size))
+        if (!fb_insert(fb, arg.data, arg.size)) {
+            bhex_free(arg.data);
             return COMMAND_INVALID_ARG;
+        }
     } else {
-        if (!fb_write(fb, arg.data, arg.size))
+        if (!fb_write(fb, arg.data, arg.size)) {
+            bhex_free(arg.data);
             return COMMAND_INVALID_ARG;
+        }
     }
     return COMMAND_OK;
 }

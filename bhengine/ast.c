@@ -590,6 +590,8 @@ Type* Type_new(const char* name, const char* bhe_name)
 
 void Type_free(Type* t)
 {
+    if (!t)
+        return;
     bhex_free(t->name);
     bhex_free(t->bhe_name);
     bhex_free(t);
@@ -1072,9 +1074,10 @@ static void read_whole_source(ASTCtx* ast, FILE* f)
 
 ASTCtx* bhengine_parse_file(FILE* f)
 {
-    // Register all the allocations, so that we can free them in case of errors.
-    // I did not find any other way to handle this scenario...
-    bhex_alloc_track_start();
+    // A failed parse leaves a partially built tree behind: the nodes bison had
+    // already reduced into `ast`, plus the ones still sitting on the parser
+    // stack. The %destructor rules in parser.y release the latter as bison pops
+    // them, so ASTCtx_delete() is enough to reclaim the rest.
     ASTCtx* ast = ASTCtx_new();
     read_whole_source(ast, f);
     yyrestart(f);
@@ -1084,24 +1087,20 @@ ASTCtx* bhengine_parse_file(FILE* f)
 
     if (yyparse() != 0) {
         error("parsing failed");
-        bhex_alloc_track_free_all();
-        bhex_alloc_track_stop();
         yylex_destroy();
+        ASTCtx_delete(ast);
         return NULL;
     }
     ast->max_fvar_len   = yymax_fvar_name_len;
     yymax_fvar_name_len = 0;
 
-    bhex_alloc_track_stop();
     yylex_destroy();
     return ast;
 }
 
 ASTCtx* bhengine_parse_string(const char* str)
 {
-    // Register all the allocations, so that we can free them in case of errors.
-    // I did not find any other way to handle this scenario...
-    bhex_alloc_track_start();
+    // see bhengine_parse_file() above for how a failed parse is cleaned up
     ASTCtx* ast = ASTCtx_new();
     ast->source = bhex_strdup(str);
 
@@ -1110,15 +1109,13 @@ ASTCtx* bhengine_parse_string(const char* str)
 
     if (yyparse() != 0) {
         error("parsing failed");
-        bhex_alloc_track_free_all();
-        bhex_alloc_track_stop();
         yy_delete_buffer(state);
+        ASTCtx_delete(ast);
         return NULL;
     }
     ast->max_fvar_len   = yymax_fvar_name_len;
     yymax_fvar_name_len = 0;
 
     yy_delete_buffer(state);
-    bhex_alloc_track_stop();
     return ast;
 }

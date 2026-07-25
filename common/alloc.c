@@ -10,9 +10,28 @@
 
 #define likely(x) __builtin_expect(!!(x), 1)
 
+// Allocation tracker.
+//
+// A leak-accounting facility for the tests (see tests/test_leaks.c): it counts
+// the allocations still live at the end of a scope. No production code uses it
+// -- the bhengine parser used to, to drop a half-built AST on a syntax error,
+// but that is now handled precisely by the %destructor rules in parser.y.
+//
+// Scopes nest, and are isolated: an inner track_free_all() frees only what the
+// inner scope allocated, never what its caller is still holding.
+//
+// Pointers are kept in one array in allocation order. `g_track_marks[k]` is
+// the index at which scope `k` begins, so scope k owns
+// [g_track_marks[k], g_track_marks[k+1]) and the innermost scope owns
+// [g_track_marks[depth-1], g_track_size). Removal preserves that order by
+// shifting the tail down, and adjusts the marks of the scopes above it.
+#define TRACK_MAX_DEPTH 8
+
 static void** g_track_ptr;
 static u64_t  g_track_capacity;
 static u64_t  g_track_size;
+static u64_t  g_track_marks[TRACK_MAX_DEPTH];
+static u32_t  g_track_depth;
 int           g_bhex_alloc_tracking;
 
 static inline void track_add(void* ptr)
@@ -34,33 +53,48 @@ static inline int track_remove(void* ptr)
     if (likely(!g_bhex_alloc_tracking))
         return 0;
 
-    for (u64_t i = 0; i < g_track_size; ++i) {
-        if (g_track_ptr[i] == ptr) {
-            if (i != g_track_size - 1)
-                g_track_ptr[i] = g_track_ptr[g_track_size - 1];
-            g_track_size--;
-            return 1;
-        }
+    // scan from the newest: short-lived allocations dominate
+    for (u64_t i = g_track_size; i-- > 0;) {
+        if (g_track_ptr[i] != ptr)
+            continue;
+
+        memmove(&g_track_ptr[i], &g_track_ptr[i + 1],
+                (size_t)(g_track_size - i - 1) * sizeof(void*));
+        g_track_size--;
+        for (u32_t k = 0; k < g_track_depth; ++k)
+            if (g_track_marks[k] > i)
+                g_track_marks[k]--;
+        return 1;
     }
     return 0;
 }
 
 static inline void track_start()
 {
-    if (g_bhex_alloc_tracking)
-        return;
+    if (g_track_depth == TRACK_MAX_DEPTH)
+        panic("allocation tracker nested too deeply");
 
-    g_bhex_alloc_tracking = 1;
-    g_track_capacity      = 16;
-    g_track_size          = 0;
-    g_track_ptr           = malloc(sizeof(void*) * g_track_capacity);
-    if (!g_track_ptr)
-        panic("unable to allocate buffer for tracker");
+    if (!g_bhex_alloc_tracking) {
+        g_track_capacity = 16;
+        g_track_size     = 0;
+        g_track_ptr      = malloc(sizeof(void*) * g_track_capacity);
+        if (!g_track_ptr)
+            panic("unable to allocate buffer for tracker");
+    }
+
+    g_track_marks[g_track_depth++] = g_track_size;
+    g_bhex_alloc_tracking          = 1;
 }
 
 static inline void track_stop()
 {
     if (!g_bhex_alloc_tracking)
+        return;
+
+    // anything the inner scope allocated and did not free is still live, and
+    // becomes the enclosing scope's responsibility: leave it in the array
+    g_track_depth--;
+    if (g_track_depth > 0)
         return;
 
     free(g_track_ptr);
@@ -75,9 +109,10 @@ static inline void track_free_all()
     if (!g_bhex_alloc_tracking)
         return;
 
-    for (u64_t i = 0; i < g_track_size; ++i)
+    u64_t start = g_track_marks[g_track_depth - 1];
+    for (u64_t i = start; i < g_track_size; ++i)
         free(g_track_ptr[i]);
-    g_track_size = 0;
+    g_track_size = start;
 }
 
 void* bhex_malloc(size_t n)
@@ -144,13 +179,7 @@ char* bhex_getline(void)
     return line;
 }
 
-void bhex_alloc_track_start()
-{
-    if (g_bhex_alloc_tracking)
-        return;
-
-    track_start();
-}
+void bhex_alloc_track_start() { track_start(); }
 
 void bhex_alloc_track_stop()
 {
@@ -168,4 +197,10 @@ void bhex_alloc_track_free_all()
     track_free_all();
 }
 
-size_t bhex_alloc_live_count() { return g_track_size; }
+// live allocations of the innermost scope only
+size_t bhex_alloc_live_count()
+{
+    if (!g_bhex_alloc_tracking)
+        return 0;
+    return (size_t)(g_track_size - g_track_marks[g_track_depth - 1]);
+}

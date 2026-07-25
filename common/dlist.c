@@ -16,6 +16,8 @@ DList* DList_new(void)
 
 void DList_destroy(DList* l, void (*dispose)(void*))
 {
+    if (!l)
+        return;
     if (dispose)
         DList_foreach(l, dispose);
     DList_deinit(l);

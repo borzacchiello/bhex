@@ -205,18 +205,18 @@ static void stdin_loop(FileBuffer* fb, CmdContext* cc)
     while ((nread = getline(&lineptr, &len, stdin)) != -1) {
         if ((r = cmdline_parse(lineptr, &pc)) != PARSER_OK) {
             error("%s", parser_err_to_string(r));
-            return;
+            break;
         }
         int expr_r = parsed_command_resolve_expressions(pc, fb);
         if (expr_r != EXPR_EVAL_OK) {
             parsed_command_destroy(pc);
-            return;
+            break;
         }
         if ((r = cmdctx_run(cc, pc, fb)) != COMMAND_OK &&
             r != COMMAND_SILENT_ERROR) {
             error("%s", cmdctx_err_to_string(r));
             parsed_command_destroy(pc);
-            return;
+            break;
         }
         parsed_command_destroy(pc);
     }

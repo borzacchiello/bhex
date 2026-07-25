@@ -100,10 +100,14 @@ void yyerror(const char *s)
 %}
 
 // Represents the many different ways we can access our data
+// `params` and `name_params` are both DList*, but they hold different element
+// types (Expr* vs char*). They need separate tags so that each can name the
+// right %destructor below.
 %union {
     Stmt*    stmt;
     DList*   stmts;
     DList*   params;
+    DList*   name_params;
     DList*   enum_list;
     Expr*    expr;
     Type*    fvar_type;
@@ -124,7 +128,24 @@ void yyerror(const char *s)
 %type <enum_list> enum_list
 %type <ident>     ident
 %type <expr>      expr num
-%type <params>    params name_params
+%type <params>    params
+%type <name_params> name_params
+
+// On a syntax error bison pops every symbol still on the parser stack, plus the
+// lookahead; these run as each one is discarded, so a half-built AST is
+// released node by node by its own destructor. Without them the partial tree
+// would be unreachable the moment yyparse() returns.
+//
+// Bison does not run a destructor on the right-hand side of a rule that reduced
+// successfully -- the action owns those values -- so this cannot double-free.
+%destructor { bhex_free($$); }                                             <ident>
+%destructor { Expr_free($$); }                                             <expr>
+%destructor { Stmt_free($$); }                                             <stmt>
+%destructor { Type_free($$); }                                             <fvar_type>
+%destructor { DList_destroy($$, (void (*)(void*))Stmt_free); }             <stmts>
+%destructor { DList_destroy($$, (void (*)(void*))EnumEntry_free); }        <enum_list>
+%destructor { DList_destroy($$, (void (*)(void*))Expr_free); }             <params>
+%destructor { DList_destroy($$, (void (*)(void*))bhex_free); }             <name_params>
 
 // Operator precedence
 %left TBAND TBOR
@@ -145,9 +166,14 @@ void yyerror(const char *s)
 
 program     :
             | program TPROC TLBRACE stmts TRBRACE   {
-                                                        if (g_ctx->proc != NULL)
-                                                            // You can only have one proc
+                                                        if (g_ctx->proc != NULL) {
+                                                            // You can only have one proc.
+                                                            // Bison does not run destructors for the
+                                                            // rule whose action aborts the parse, so
+                                                            // $4 is ours to release.
+                                                            DList_destroy($4, (void (*)(void*))Stmt_free);
                                                             YYABORT;
+                                                        }
                                                         g_ctx->proc = Block_new($4);
                                                     }
             | program TPROC ident TLBRACE stmts TRBRACE 
@@ -192,6 +218,7 @@ enum_list  : ident TEQUAL TSNUM64                   {
            | enum_list TCOMMA ident TEQUAL TSNUM64  {
                                                         DList_add($1, EnumEntry_new($3, yysnumval));
                                                         bhex_free($3);
+                                                        $$ = $1;
                                                     }
     ;
 
@@ -201,6 +228,7 @@ stmts       : stmt                                 {
                                                     }
             | stmts stmt                            {
                                                         DList_add($1, $2);
+                                                        $$ = $1;
                                                     }
     ;
 
@@ -426,7 +454,8 @@ name_params : ident                                 {
                                                         DList_add($$, $1);
                                                     }
             | name_params TCOMMA ident              {
-                                                        DList_add($$, $3);
+                                                        DList_add($1, $3);
+                                                        $$ = $1;
                                                     }
 
 params      : expr                                  {
@@ -434,7 +463,8 @@ params      : expr                                  {
                                                         DList_add($$, $1);
                                                     }
             | params TCOMMA expr                    {
-                                                        DList_add($$, $3);
+                                                        DList_add($1, $3);
+                                                        $$ = $1;
                                                     }
     ;
 

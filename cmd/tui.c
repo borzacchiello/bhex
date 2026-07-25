@@ -265,10 +265,11 @@ void tui_write_key(TuiState* ts, int k)
         u8_t  byte = (u8_t)k;
         u8_t* data = bhex_malloc(1);
         data[0]    = byte;
-        if (!ts->insert_mode)
-            fb_write(ts->fb, data, 1);
-        else
-            fb_insert(ts->fb, data, 1);
+        // the buffer is owned by the filebuffer only if the call succeeds
+        // (it can fail if the file shrank underneath us)
+        if (!(ts->insert_mode ? fb_insert(ts->fb, data, 1)
+                              : fb_write(ts->fb, data, 1)))
+            bhex_free(data);
         ts->selected += 1;
         goto end;
     }
@@ -294,10 +295,11 @@ void tui_write_key(TuiState* ts, int k)
 
     u8_t* data = bhex_malloc(1);
     data[0]    = byte;
-    if (ts->insert_mode && !ts->second_nibble)
-        fb_insert(ts->fb, data, 1);
-    else
-        fb_write(ts->fb, data, 1);
+    // as above: on failure the buffer stays ours
+    if (!((ts->insert_mode && !ts->second_nibble)
+              ? fb_insert(ts->fb, data, 1)
+              : fb_write(ts->fb, data, 1)))
+        bhex_free(data);
 
     if (ts->second_nibble) {
         ts->second_nibble = 0;

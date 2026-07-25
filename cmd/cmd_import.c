@@ -73,8 +73,14 @@ static int read_file(const char* fname, u32_t off, u32_t size, u8_t** o_data,
 
     *o_size = size;
     *o_data = bhex_calloc(size);
-    if (fread(*o_data, 1, size, f) != (unsigned long)size)
+    if (fread(*o_data, 1, size, f) != (unsigned long)size) {
+        // the file shrank (or is unreadable) between the size probe and the
+        // read: nothing is handed back to the caller, so free it here
+        bhex_free(*o_data);
+        *o_data = NULL;
+        *o_size = 0;
         goto end;
+    }
     r = 0;
 
 end:
@@ -115,13 +121,18 @@ static int importcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     if (read_file(infile, offset, size, &data, &data_size) != 0)
         return COMMAND_INVALID_ARG;
 
+    // fb_insert/fb_write take ownership of `data` only when they succeed
     int result = COMMAND_OK;
     if (write_type == WRITE_TYPE_INSERT) {
-        if (!fb_insert(fb, data, data_size))
+        if (!fb_insert(fb, data, data_size)) {
+            bhex_free(data);
             result = COMMAND_FILE_WRITE_ERROR;
+        }
     } else if (write_type == WRITE_TYPE_OVERWRITE) {
-        if (!fb_write(fb, data, data_size))
+        if (!fb_write(fb, data, data_size)) {
+            bhex_free(data);
             result = COMMAND_FILE_WRITE_ERROR;
+        }
     } else
         panic("invalid write_type");
     return result;

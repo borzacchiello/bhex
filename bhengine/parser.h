@@ -117,17 +117,18 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 102 "parser.y"
+#line 106 "parser.y"
 
     Stmt*    stmt;
     DList*   stmts;
     DList*   params;
+    DList*   name_params;
     DList*   enum_list;
     Expr*    expr;
     Type*    fvar_type;
     char*    ident;
 
-#line 131 "parser.h"
+#line 132 "parser.h"
 
 };
 typedef union YYSTYPE YYSTYPE;
