@@ -27,8 +27,6 @@ extern FILE*   yyin;
 extern char*   yy_string_to_parse;
 extern ASTCtx* g_ctx;
 
-u64_t yymax_fvar_name_len;
-
 static void print_error_from_file(int yylineno, int yy_column)
 {
     rewind(yyin);
@@ -257,10 +255,6 @@ fvar_type   : ident                                 {
     ;
 
 fvar_decl   : fvar_type ident                       {
-                                                        size_t fvar_name_len = strlen($2);
-                                                        if ((u64_t)fvar_name_len > yymax_fvar_name_len)
-                                                            yymax_fvar_name_len = (u64_t)fvar_name_len;
-
                                                         $$ = Stmt_FILE_VAR_DECL_new($1, $2, NULL);
                                                         Stmt_set_source_info($$, yy_line, yy_column);
                                                         bhex_free($2);

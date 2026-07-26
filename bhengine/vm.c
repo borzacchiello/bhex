@@ -26,24 +26,32 @@ static void TemplateEntry_delete(TemplateEntry* te)
     bhex_free(te);
 }
 
-static ASTCtx* vm_ensure_parsed(const char* name, TemplateEntry* te)
+static ASTCtx* vm_ensure_parsed_ex(const char* name, TemplateEntry* te,
+                                   int quiet)
 {
     if (te->ast == NULL) {
         te->ast = bhengine_parse_filename(te->path);
-        if (te->ast == NULL)
+        if (te->ast == NULL && !quiet)
             warning("template '%s' failed to parse (%s)", name, te->path);
     }
     return te->ast;
 }
 
-static ASTCtx* bhengine_vm_process_imported(BHEngineVM* vm, const char* bhe)
+static ASTCtx* vm_ensure_parsed(const char* name, TemplateEntry* te)
+{
+    return vm_ensure_parsed_ex(name, te, 0);
+}
+
+static ASTCtx* bhengine_vm_process_imported(BHEngineVM* vm, const char* bhe,
+                                            int quiet)
 {
     if (!map_contains(vm->templates, bhe)) {
-        error("no such template file '%s'", bhe);
+        if (!quiet)
+            error("no such template file '%s'", bhe);
         return NULL;
     }
     TemplateEntry* te = map_get(vm->templates, bhe);
-    return vm_ensure_parsed(bhe, te);
+    return vm_ensure_parsed_ex(bhe, te, quiet);
 }
 
 BHEngineVM* bhengine_vm_create(const char** dirs)

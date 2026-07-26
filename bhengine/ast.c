@@ -22,7 +22,6 @@ extern void                     yy_switch_to_buffer(YY_BUFFER_STATE new_buffer);
 extern int                      yyparse(void);
 extern void                     yyset_in(FILE*);
 extern void                     yy_custom_init(ASTCtx* ctx, const char* str);
-extern u64_t                    yymax_fvar_name_len;
 
 Expr* Expr_SCONST_new(s64_t v, u8_t size)
 {
@@ -994,7 +993,6 @@ ASTCtx* ASTCtx_new(void)
     map_set_dispose(ctx->enums, (void (*)(void*))Enum_free);
     ctx->functions = map_create();
     map_set_dispose(ctx->functions, (void (*)(void*))Function_free);
-    ctx->max_fvar_len = 0;
     return ctx;
 }
 
@@ -1091,9 +1089,6 @@ ASTCtx* bhengine_parse_file(FILE* f)
         ASTCtx_delete(ast);
         return NULL;
     }
-    ast->max_fvar_len   = yymax_fvar_name_len;
-    yymax_fvar_name_len = 0;
-
     yylex_destroy();
     return ast;
 }
@@ -1113,9 +1108,6 @@ ASTCtx* bhengine_parse_string(const char* str)
         ASTCtx_delete(ast);
         return NULL;
     }
-    ast->max_fvar_len   = yymax_fvar_name_len;
-    yymax_fvar_name_len = 0;
-
     yy_delete_buffer(state);
     return ast;
 }

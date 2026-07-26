@@ -14,7 +14,6 @@
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 
-#define PRINT_OFF_STEP     4
 #define MAX_ARR_PRINT_SIZE 16
 #define MAX_BUF_PRINT      16
 
@@ -49,10 +48,13 @@ static u64_t fmt_term_array_limit(FormatterTerm* this)
     return this->last_array_type_was_builtin ? MAX_ARR_PRINT_SIZE : 0;
 }
 
-static void fmt_term_print_off(FormatterTerm* this)
+// The name of a field is right adjusted on a column that is the same for every
+// field of a nesting level, and that moves right by FMT_PRINT_OFF_STEP at each
+// level: the indentation is part of the padding, so that a name longer than the
+// column of its level eats into it instead of pushing the whole line right
+static u32_t fmt_term_name_width(FormatterTerm* this)
 {
-    for (u32_t i = 0; i < this->print_off; ++i)
-        display_printf(" ");
+    return (u32_t)this->super->max_fvar_len + this->print_off;
 }
 
 static void fmt_term_dispose(FormatterTerm* fmt) { bhex_free(fmt); }
@@ -66,18 +68,17 @@ static void fmt_term_start_var(FormatterTerm* this, const char* name,
         else
             this->on_a_new_line = 0;
         display_printf("b+%08llx ", off);
-        fmt_term_print_off(this);
-        display_printf(" %*s: ", (int)this->super->max_fvar_len, name);
+        display_printf(" %*s: ", (int)fmt_term_name_width(this), name);
     }
-    this->print_off += PRINT_OFF_STEP;
+    this->print_off += FMT_PRINT_OFF_STEP;
 }
 
 static void fmt_term_end_var(FormatterTerm* this, const char* name)
 {
-    if (this->print_off < PRINT_OFF_STEP)
+    if (this->print_off < FMT_PRINT_OFF_STEP)
         panic("no var to end");
 
-    this->print_off -= PRINT_OFF_STEP;
+    this->print_off -= FMT_PRINT_OFF_STEP;
 }
 
 static void fmt_term_process_buffer_value(FormatterTerm* this, FileBuffer* fb,
@@ -129,7 +130,7 @@ static void fmt_term_start_array(FormatterTerm* this, const Type* ty)
     this->prev_array_type_was_builtin = this->last_array_type_was_builtin;
     this->last_array_type_was_builtin = is_builtin_type(ty->name);
     if (this->last_array_type_was_builtin)
-        this->print_off += PRINT_OFF_STEP;
+        this->print_off += FMT_PRINT_OFF_STEP;
 }
 
 // The '[i]' marker of an array of structs, and the '... N more' line closing a
@@ -140,8 +141,7 @@ static void fmt_term_start_array(FormatterTerm* this, const Type* ty)
 static void fmt_term_print_el_label(FormatterTerm* this, const char* label)
 {
     display_printf("\n           ");
-    fmt_term_print_off(this);
-    display_printf(" %*s", (int)this->super->max_fvar_len, label);
+    display_printf(" %*s", (int)fmt_term_name_width(this), label);
 }
 
 static void fmt_term_notify_array_el(FormatterTerm* this, u64_t n)
@@ -206,9 +206,9 @@ static void fmt_term_end_array(FormatterTerm* this)
     if (!this->super->quiet_mode)
         display_printf(" ]");
     if (this->last_array_type_was_builtin) {
-        if (this->print_off < PRINT_OFF_STEP)
+        if (this->print_off < FMT_PRINT_OFF_STEP)
             panic("no array to end");
-        this->print_off -= PRINT_OFF_STEP;
+        this->print_off -= FMT_PRINT_OFF_STEP;
     }
     this->last_array_type_was_builtin = this->prev_array_type_was_builtin;
 }

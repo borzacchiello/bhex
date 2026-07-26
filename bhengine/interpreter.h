@@ -10,7 +10,10 @@
 #include "ast.h"
 
 typedef enum Endianess { TE_LITTLE_ENDIAN = 40, TE_BIG_ENDIAN } Endianess;
-typedef ASTCtx* (*imported_cb_t)(void* ptr, const char* bhe);
+// Resolves the AST of an imported template. When 'quiet' is set, a template
+// that cannot be found (or parsed) must be reported as NULL without logging:
+// the caller is only inspecting the types, not running them
+typedef ASTCtx* (*imported_cb_t)(void* ptr, const char* bhe, int quiet);
 
 struct Scope;
 

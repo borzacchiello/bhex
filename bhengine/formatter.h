@@ -29,6 +29,9 @@ typedef void (*fmt_dispose_t)(void* obj);
 // 0 means "no limit", any other value is the number of elements to print.
 #define FMT_MAX_ARRAY_PRINT_UNSET ((u64_t) - 1)
 
+// How much the output of the term formatter is indented at each nesting level
+#define FMT_PRINT_OFF_STEP 4
+
 typedef enum fmt_t {
     FMT_UNK  = 0,
     FMT_TERM = 1,

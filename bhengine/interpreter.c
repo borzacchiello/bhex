@@ -77,6 +77,164 @@ static Enum* get_enum(ASTCtx* ast, const char* name)
     return map_get_or_null(ast->enums, name);
 }
 
+// The file var names are right adjusted on a column that is the same for all
+// the fields of a nesting level, and that moves right by FMT_PRINT_OFF_STEP at
+// every level. The base width of that column is computed here, once, before
+// running the template: the column of a name at level N is already N *
+// FMT_PRINT_OFF_STEP characters wider, so what that name asks of the base width
+// is its length minus the indentation of its level. The maximum over all the
+// file vars of the template (the imported ones included) is then the narrowest
+// column that fits every name
+#define NAME_COL_MAX_DEPTH 32
+
+typedef struct NameColCtx {
+    // the blocks already visited, mapped to the shallowest level they were
+    // visited at: recursive structs would loop forever otherwise
+    map*  visited;
+    u64_t width;
+} NameColCtx;
+
+static void name_col_block(NameColCtx* nc, ASTCtx* ast, Block* b, u32_t level);
+
+static void name_col_call(NameColCtx* nc, ASTCtx* ast, const char* fname,
+                          DList* params, u32_t level);
+
+static void name_col_expr(NameColCtx* nc, ASTCtx* ast, Expr* e, u32_t level)
+{
+    if (e == NULL)
+        return;
+
+    switch (e->t) {
+        case EXPR_FUN_CALL:
+            name_col_call(nc, ast, e->fname, e->params, level);
+            break;
+        case EXPR_BNOT:
+            name_col_expr(nc, ast, e->child, level);
+            break;
+        case EXPR_SUBSCR:
+            name_col_expr(nc, ast, e->subscr_e, level);
+            break;
+        case EXPR_ARRAY_SUB:
+            name_col_expr(nc, ast, e->array_sub_e, level);
+            name_col_expr(nc, ast, e->array_sub_n, level);
+            break;
+        case EXPR_ADD:
+        case EXPR_SUB:
+        case EXPR_MUL:
+        case EXPR_DIV:
+        case EXPR_MOD:
+        case EXPR_AND:
+        case EXPR_OR:
+        case EXPR_XOR:
+        case EXPR_BEQ:
+        case EXPR_BLT:
+        case EXPR_BLE:
+        case EXPR_BGT:
+        case EXPR_BGE:
+        case EXPR_BAND:
+        case EXPR_BOR:
+        case EXPR_SHL:
+        case EXPR_SHR:
+            name_col_expr(nc, ast, e->lhs, level);
+            name_col_expr(nc, ast, e->rhs, level);
+            break;
+        default:
+            // a leaf: nothing to visit
+            break;
+    }
+}
+
+// A function prints its file vars at the level of its caller
+static void name_col_call(NameColCtx* nc, ASTCtx* ast, const char* fname,
+                          DList* params, u32_t level)
+{
+    if (params != NULL)
+        for (u64_t i = 0; i < params->size; ++i)
+            name_col_expr(nc, ast, (Expr*)params->data[i], level);
+
+    Function* fn = map_get_or_null(ast->functions, fname);
+    if (fn != NULL)
+        name_col_block(nc, ast, fn->block, level);
+}
+
+static void name_col_fvar(NameColCtx* nc, ASTCtx* ast, Stmt* stmt, u32_t level)
+{
+    u64_t indent = (u64_t)level * FMT_PRINT_OFF_STEP;
+    u64_t len    = strlen(stmt->name);
+    if (len > indent && len - indent > nc->width)
+        nc->width = len - indent;
+
+    name_col_expr(nc, ast, stmt->arr_size, level);
+
+    // the fields of the struct, if this is one, are printed one level deeper
+    ASTCtx* ty_ast = ast;
+    if (stmt->type->bhe_name != NULL) {
+        if (imported_cb == NULL)
+            return;
+        ty_ast = imported_cb(imported_ptr, stmt->type->bhe_name, 1);
+        if (ty_ast == NULL)
+            return;
+    }
+    Block* body = get_struct_body(ty_ast, stmt->type->name);
+    if (body != NULL)
+        name_col_block(nc, ty_ast, body, level + 1);
+}
+
+static void name_col_block(NameColCtx* nc, ASTCtx* ast, Block* b, u32_t level)
+{
+    if (b == NULL || level >= NAME_COL_MAX_DEPTH)
+        return;
+
+    // a block visited at a shallower level has already contributed everything
+    // it could: at this level its names would need a narrower column
+    char key[32];
+    snprintf(key, sizeof(key), "%p", (void*)b);
+    void* seen = map_get_or_null(nc->visited, key);
+    if (seen != NULL && (u32_t)((uptr_t)seen - 1) <= level)
+        return;
+    map_set(nc->visited, key, (void*)((uptr_t)level + 1));
+
+    for (u64_t i = 0; i < b->stmts->size; ++i) {
+        Stmt* stmt = (Stmt*)b->stmts->data[i];
+        switch (stmt->t) {
+            case FILE_VAR_DECL:
+                name_col_fvar(nc, ast, stmt, level);
+                break;
+            case LOCAL_VAR_DECL:
+            case LOCAL_VAR_ASS:
+                name_col_expr(nc, ast, stmt->local_value, level);
+                break;
+            case VOID_FUNC_CALL:
+                name_col_call(nc, ast, stmt->fname, stmt->params, level);
+                break;
+            case STMT_IF_ELIF_ELSE: {
+                // the branches print at the level of the block holding them
+                for (u64_t j = 0; j < stmt->if_conditions->size; ++j) {
+                    IfCond* ic = (IfCond*)stmt->if_conditions->data[j];
+                    name_col_expr(nc, ast, ic->cond, level);
+                    name_col_block(nc, ast, ic->block, level);
+                }
+                name_col_block(nc, ast, stmt->else_block, level);
+                break;
+            }
+            case STMT_WHILE:
+                name_col_expr(nc, ast, stmt->cond, level);
+                name_col_block(nc, ast, stmt->body, level);
+                break;
+            default:
+                break;
+        }
+    }
+}
+
+static u64_t compute_name_col_width(ASTCtx* ast, Block* entry)
+{
+    NameColCtx nc = {.visited = map_create(), .width = 0};
+    name_col_block(&nc, ast, entry, 0);
+    map_destroy(nc.visited);
+    return nc.width;
+}
+
 static map* process_struct_type(InterpreterContext* ctx, Type* type)
 {
     if (ctx->call_depth >= BHENGINE_MAX_CALL_DEPTH) {
@@ -87,7 +245,6 @@ static map* process_struct_type(InterpreterContext* ctx, Type* type)
     ctx->call_depth += 1;
 
     ASTCtx* saved_ast             = ctx->ast;
-    u64_t   saved_max_fvar_len    = ctx->fmt->max_fvar_len;
     int     saved_endianess       = ctx->endianess;
     int     saved_quiet_mode      = ctx->fmt->quiet_mode;
     u64_t   saved_max_array_print = ctx->fmt->max_array_print;
@@ -100,10 +257,9 @@ static map* process_struct_type(InterpreterContext* ctx, Type* type)
         }
 
         // from now on, and while parsing this type, use this AST
-        ctx->ast = imported_cb(imported_ptr, type->bhe_name);
+        ctx->ast = imported_cb(imported_ptr, type->bhe_name, 0);
         if (ctx->ast == NULL)
             goto end;
-        ctx->fmt->max_fvar_len = ctx->ast->max_fvar_len;
     }
     if (!ctx->ast)
         goto end;
@@ -124,7 +280,6 @@ end:
     ctx->endianess            = saved_endianess;
     ctx->fmt->quiet_mode      = saved_quiet_mode;
     ctx->ast                  = saved_ast;
-    ctx->fmt->max_fvar_len    = saved_max_fvar_len;
     ctx->fmt->max_array_print = saved_max_array_print;
     return result;
 }
@@ -138,7 +293,7 @@ static char* process_enum_type(InterpreterContext* ctx, Type* type,
             warning("imported callback not configured");
             return NULL;
         }
-        ast = imported_cb(imported_ptr, type->bhe_name);
+        ast = imported_cb(imported_ptr, type->bhe_name, 0);
     } else {
         ast = ctx->ast;
     }
@@ -1102,7 +1257,7 @@ static void interpreter_context_init(InterpreterContext* ctx, ASTCtx* ast,
     ctx->proc_scope        = Scope_new();
     ctx->endianess         = TE_LITTLE_ENDIAN;
     ctx->fmt               = fmt_new(format_type);
-    ctx->fmt->max_fvar_len = ast->max_fvar_len;
+    ctx->fmt->max_fvar_len = compute_name_col_width(ast, ast->proc);
     ctx->fmt->print_in_hex = 1;
 }
 
@@ -1219,7 +1374,8 @@ int bhengine_interpreter_process_ast_struct(FileBuffer* fb, ASTCtx* ast,
         goto end;
     }
 
-    r = process_stmts(&ctx, b->stmts, ctx.proc_scope);
+    ctx.fmt->max_fvar_len = compute_name_col_width(ast, b);
+    r                     = process_stmts(&ctx, b->stmts, ctx.proc_scope);
 
 end:
     interpreter_context_deinit(&ctx);
@@ -1240,7 +1396,8 @@ int bhengine_interpreter_process_ast_named_proc(FileBuffer* fb, ASTCtx* ast,
         goto end;
     }
 
-    r = process_stmts(&ctx, b->stmts, ctx.proc_scope);
+    ctx.fmt->max_fvar_len = compute_name_col_width(ast, b);
+    r                     = process_stmts(&ctx, b->stmts, ctx.proc_scope);
 
 end:
     interpreter_context_deinit(&ctx);
