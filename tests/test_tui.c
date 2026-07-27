@@ -4,6 +4,7 @@
 #include "t.h"
 
 #include <terminal.h>
+#include <string.h>
 #include <alloc.h>
 #include <log.h>
 
@@ -140,6 +141,59 @@ int TEST(sw_respects_row_limit)(void)
     ASSERT(sw_add_line(&sw, "row 1") == 0);
     ASSERT(sw_add_line(&sw, "row 2") == 0);
     ASSERT(sw_add_line(&sw, "row 3") == 1);
+
+end:
+    bhex_free(sw.lines);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(sw_style_is_not_repeated)(void)
+{
+    int          r = TEST_SUCCEEDED;
+    ScreenWriter sw;
+    sw_init_with_size(&sw, 10, 80);
+
+    int len = sw.len;
+    // the writer starts in STYLE_RESET, so re-setting it emits nothing
+    sw_style(&sw, STYLE_RESET);
+    ASSERT(sw.len == len);
+
+    sw_style(&sw, STYLE_BYTE_ZERO);
+    ASSERT(sw.len > len);
+
+    // ...and neither does repeating the style currently in effect
+    len = sw.len;
+    sw_style(&sw, STYLE_BYTE_ZERO);
+    ASSERT(sw.len == len);
+
+end:
+    bhex_free(sw.lines);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(sw_style_no_colors)(void)
+{
+    int          r = TEST_SUCCEEDED;
+    ScreenWriter sw;
+    sw_init_with_size(&sw, 10, 80);
+    sw.no_colors = 1;
+
+    // in colorless mode the bytes are not styled at all, while the selection
+    // must remain visible
+    sw_style(&sw, STYLE_BYTE_FF);
+    ASSERT(memcmp(sw.lines + 3, "\x1b[0m", 4) == 0);
+
+    int len = sw.len;
+    sw_start_highlight(&sw, 1);
+    ASSERT(memcmp(sw.lines + len, "\x1b[0;7m", 6) == 0);
 
 end:
     bhex_free(sw.lines);

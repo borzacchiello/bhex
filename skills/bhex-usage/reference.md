@@ -67,7 +67,10 @@ Modifiers are alternatives within `{}`, independent otherwise. All offsets/sizes
 | assemble | `as` | `as[/l/i/s] <arch> '<code>'` | Keystone; writes at the cursor, `i` insert, `s` seek to the end |
 | isa_identify | `ii` | `ii[/g] [<size>]` | bundled models; `g` = per-1024-byte-chunk code ranges |
 | findbase | `fba` | `fba[/{32,64}/{le,be}]` | binbloom base-address guess for raw firmware |
-| interactive | `int` | `int` | full-screen editor, see below |
+
+`help` also lists `interactive` (`tui`), a full-screen editor driven by keystrokes. It is for humans
+at a terminal only: do not use it — every inspection and edit it offers is available through the
+commands above, which is what you want when driving bhex.
 
 ## Parsing rules
 
@@ -103,19 +106,3 @@ address+width exceeds the file size fails with `memory read out of bounds`.
 Dereference addresses are **absolute file offsets**, unaffected by `sb`; with a base set, the
 cursor-relative read is `[8 $off - $base]`. The result of the whole expression is substituted into
 the command line as a decimal string, so it can also be used where a name is expected.
-
-## Interactive TUI (`int`)
-
-| Key | Action |
-| --- | --- |
-| arrows | move the cursor one byte / one row |
-| PgUp / PgDn, Ctrl-B / Ctrl-F | one screen back / forward |
-| Home / Ctrl-A, End / Ctrl-E | start / end of file |
-| Tab | switch between the hex and the ASCII panel |
-| hex digits (or any printable char in the ASCII panel) | edit the byte under the cursor |
-| Ctrl-L | toggle insert mode (shown as `*INSERT*`) |
-| Del | delete the byte under the cursor |
-| Ctrl-U | undo the last write |
-| Ctrl-X | leave the TUI (back to the shell, cursor kept) |
-
-Edits go to the same uncommitted overlay as `w`, so `c` in the shell afterwards is what saves them.

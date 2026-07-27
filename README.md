@@ -89,7 +89,7 @@ Available commands:
     echo [ec]
     info [i]
     isa_identify [ii]
-    interactive [int]
+    interactive [tui]
     entropy [e]
     search [src]
     hash [hh]

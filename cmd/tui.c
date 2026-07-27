@@ -14,6 +14,54 @@
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define max(x, y) ((x) > (y) ? (x) : (y))
 
+/* SGR sequences used to paint the TUI, indexed by Style. They are emitted
+ * through sw_style(), so they do not consume any column. Every entry resets
+ * the previous attributes, so that styles never bleed into each other. */
+static const char* const styles_color[STYLE_COUNT] = {
+    [STYLE_RESET]         = "\x1b[0m",
+    [STYLE_SEL_PRIMARY]   = "\x1b[0;30;43m",   /* black on yellow */
+    [STYLE_SEL_SECONDARY] = "\x1b[0;30;47m",   /* black on white */
+    [STYLE_STATUSBAR]     = "\x1b[0;1;97;44m", /* bold white on blue */
+    [STYLE_INSERT]        = "\x1b[0;1;92;44m", /* bold green on blue */
+    [STYLE_UNSAVED]       = "\x1b[0;1;93;44m", /* bold yellow on blue */
+    [STYLE_LABEL]         = "\x1b[0;90m",      /* gray */
+    [STYLE_LABEL_SEL]     = "\x1b[0;1;93m",    /* bold yellow */
+    [STYLE_BYTE_ZERO]     = "\x1b[0;90m",      /* gray: 0x00 */
+    [STYLE_BYTE_FF]       = "\x1b[0;31m",      /* red: 0xff */
+    [STYLE_BYTE_ASCII]    = "\x1b[0;32m",      /* green: printable ASCII */
+    [STYLE_BYTE_OTHER]    = "\x1b[0;37m",      /* white: everything else */
+};
+
+/* Colorless rendition of the same styles: the selection and the status bar
+ * still need to be distinguishable, so they use reverse/bold/underline. */
+static const char* const styles_mono[STYLE_COUNT] = {
+    [STYLE_RESET]         = "\x1b[0m",
+    [STYLE_SEL_PRIMARY]   = "\x1b[0;7m",   /* reverse */
+    [STYLE_SEL_SECONDARY] = "\x1b[0;4m",   /* underline */
+    [STYLE_STATUSBAR]     = "\x1b[0;7m",   /* reverse */
+    [STYLE_INSERT]        = "\x1b[0;1;7m", /* bold reverse */
+    [STYLE_UNSAVED]       = "\x1b[0;1;7m", /* bold reverse */
+    [STYLE_LABEL]         = "\x1b[0m",
+    [STYLE_LABEL_SEL]     = "\x1b[0;1m", /* bold */
+    [STYLE_BYTE_ZERO]     = "\x1b[0m",
+    [STYLE_BYTE_FF]       = "\x1b[0m",
+    [STYLE_BYTE_ASCII]    = "\x1b[0m",
+    [STYLE_BYTE_OTHER]    = "\x1b[0m",
+};
+
+/* Color a byte depending on its "kind", so that runs of zeroes fade in the
+ * background and text/0xff filler stand out at a glance. */
+static Style byte_style(u8_t b)
+{
+    if (b == 0x00)
+        return STYLE_BYTE_ZERO;
+    if (b == 0xff)
+        return STYLE_BYTE_FF;
+    if (is_printable_ascii((char)b))
+        return STYLE_BYTE_ASCII;
+    return STYLE_BYTE_OTHER;
+}
+
 static int refresh_screen(TuiState* ts);
 
 // only for log_callback and signal handler
@@ -35,10 +83,12 @@ void sw_init_with_size(ScreenWriter* sw, int rows, int cols)
     sw->lines = NULL;
     sw->len   = 0;
 
-    sw->rows     = rows;
-    sw->cols     = cols;
-    sw->curr_row = 0;
-    sw->curr_col = 0;
+    sw->rows      = rows;
+    sw->cols      = cols;
+    sw->curr_row  = 0;
+    sw->curr_col  = 0;
+    sw->no_colors = 0;
+    sw->style     = STYLE_RESET;
 
     sw_append_raw(sw, "\x1b[H", 3); /* Go home. */
 }
@@ -61,15 +111,22 @@ void sw_append_raw(ScreenWriter* sw, const char* raw, size_t raw_len)
     sw->len += raw_len;
 }
 
-void sw_start_highlight(ScreenWriter* sw, int primary)
+void sw_style(ScreenWriter* sw, Style style)
 {
-    if (primary)
-        sw_append_raw(sw, "\x1b[30;43m", 8);
-    else
-        sw_append_raw(sw, "\x1b[30;47m", 8);
+    if (sw->style == style)
+        return;
+
+    const char* sgr = sw->no_colors ? styles_mono[style] : styles_color[style];
+    sw_append_raw(sw, sgr, strlen(sgr));
+    sw->style = style;
 }
 
-void sw_end_highlight(ScreenWriter* sw) { sw_append_raw(sw, "\x1b[0m", 4); }
+void sw_start_highlight(ScreenWriter* sw, int primary)
+{
+    sw_style(sw, primary ? STYLE_SEL_PRIMARY : STYLE_SEL_SECONDARY);
+}
+
+void sw_end_highlight(ScreenWriter* sw) { sw_style(sw, STYLE_RESET); }
 
 int sw_append(ScreenWriter* sw, const char* line)
 {
@@ -97,7 +154,7 @@ int sw_end_line(ScreenWriter* sw)
         return 1;
 
     size_t row_len = sw->cols - sw->curr_col;
-    char* new      = bhex_realloc(sw->lines, sw->len + row_len + 2);
+    char*  new     = bhex_realloc(sw->lines, sw->len + row_len + 2);
 
     for (size_t i = 0; i < row_len; ++i)
         new[sw->len++] = ' ';
@@ -136,6 +193,7 @@ static int refresh_screen(TuiState* ts)
     char         buf[2048] = {0};
 
     sw_init(&sw);
+    sw.no_colors = ts->no_colors;
     if (sw.cols <= 0 || sw.rows <= 0) {
         sw_add_line(&sw, "");
         sw_add_line(&sw, " unable to fetch cols and rows");
@@ -169,7 +227,7 @@ static int refresh_screen(TuiState* ts)
                            min(ts->chunk_size * (sw.rows - 5), fb_block_size) -
                            1;
 
-    sw_start_highlight(&sw, 0);
+    sw_style(&sw, STYLE_STATUSBAR);
     sw_append(
         &sw, " CTRL-X [Exit] CTRL-U [Undo] CTRL-L [Insert] TAB [Toggle ASCII]");
     sw_end_line(&sw);
@@ -177,30 +235,49 @@ static int refresh_screen(TuiState* ts)
     sw_end_line(&sw);
     sw_append(&sw, " ");
     sw_append(&sw, ts->msg);
-    if (ts->insert_mode)
+    if (ts->insert_mode) {
+        sw_style(&sw, STYLE_INSERT);
         sw_append(&sw, " *INSERT* ");
-    if (ts->fb->modifications.size > 0)
+        sw_style(&sw, STYLE_STATUSBAR);
+    }
+    if (ts->fb->modifications.size > 0) {
+        sw_style(&sw, STYLE_UNSAVED);
         sw_append(&sw, " *UNSAVED* ");
+        sw_style(&sw, STYLE_STATUSBAR);
+    }
     sw_end_line(&sw);
-    sw_end_highlight(&sw);
+    sw_style(&sw, STYLE_RESET);
     sw_end_line(&sw);
-    sw_append(&sw,
-              "           00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F");
-    if (ts->chunk_size > 16)
-        sw_append(&sw, " 10 11 12 13 14 15 16 17 18 19 1A 1B 1C 1D 1E 1F");
 
+    u64_t sel_col = ts->selected % ts->chunk_size;
+    sw_style(&sw, STYLE_LABEL);
+    sw_append(&sw, "           ");
+    for (u64_t j = 0; j < ts->chunk_size; ++j) {
+        if (j == sel_col)
+            sw_style(&sw, STYLE_LABEL_SEL);
+        snprintf(buf, sizeof(buf) - 1, "%02llX ", (unsigned long long)j);
+        sw_append(&sw, buf);
+        if (j == sel_col)
+            sw_style(&sw, STYLE_LABEL);
+    }
     sw_end_line(&sw);
     sw_append(&sw,
               "           -----------------------------------------------");
     if (ts->chunk_size > 16)
         sw_append(&sw, "------------------------------------------------");
+    sw_style(&sw, STYLE_RESET);
     sw_end_line(&sw);
 
     u64_t off = 0;
     for (int i = 0; i < sw.rows - 5; ++i) {
+        int on_curr_row = ts->selected >= ts->fb->off + off &&
+                          ts->selected < ts->fb->off + off + ts->chunk_size;
+
+        sw_style(&sw, on_curr_row ? STYLE_LABEL_SEL : STYLE_LABEL);
         snprintf(buf, sizeof(buf) - 1,
                  " %08llx: ", (u64_t)off + ts->fb->off + ts->fb->base_addr);
         sw_append(&sw, buf);
+        sw_style(&sw, STYLE_RESET);
 
         for (u64_t j = 0; j < ts->chunk_size; ++j) {
             if (off + j >= read_size) {
@@ -216,6 +293,8 @@ static int refresh_screen(TuiState* ts)
             }
             if (off + j + ts->fb->off == ts->selected)
                 sw_start_highlight(&sw, ts->in_ascii_panel == 0);
+            else
+                sw_style(&sw, byte_style(bytes[off + j]));
             snprintf(buf, sizeof(buf) - 1, "%02X", bytes[off + j]);
             sw_append(&sw, buf);
             if (off + j + ts->fb->off == ts->selected)
@@ -236,12 +315,15 @@ static int refresh_screen(TuiState* ts)
             }
             if (off + j + ts->fb->off == ts->selected)
                 sw_start_highlight(&sw, ts->in_ascii_panel != 0);
+            else
+                sw_style(&sw, byte_style(bytes[off + j]));
             snprintf(buf, sizeof(buf) - 1, "%c",
                      get_printable_ascii_or_dot((u8_t)bytes[off + j]));
             sw_append(&sw, buf);
             if (off + j + ts->fb->off == ts->selected)
                 sw_end_highlight(&sw);
         }
+        sw_style(&sw, STYLE_RESET);
         sw_end_line(&sw);
         off += ts->chunk_size;
     }
@@ -426,7 +508,7 @@ int tui_process_key(TuiState* ts, int k, int rows)
     return 0;
 }
 
-int tui_enter_loop(FileBuffer* fb)
+int tui_enter_loop(FileBuffer* fb, int no_colors)
 {
     if (g_ts != NULL)
         panic("tui_enter_loop called while another TUI session is active");
@@ -438,6 +520,7 @@ int tui_enter_loop(FileBuffer* fb)
     ts.fb         = fb;
     ts.selected   = fb->off;
     ts.chunk_size = 16;
+    ts.no_colors  = no_colors;
 
     g_ts = &ts;
 

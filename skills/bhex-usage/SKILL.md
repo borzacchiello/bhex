@@ -11,17 +11,16 @@ description: Drive the bhex hex editor from the shell — inspect, search, hash,
 For writing `.bhe` templates (the `t` command's input language) see the sibling
 `bhengine-template` skill — this one is about driving the editor.
 
-`reference.md` in this skill folder has the full command/modifier/argument table, the expression
-grammar and the TUI keys. Live, always-correct help is one keystroke away: `?` after any command
+`reference.md` in this skill folder has the full command/modifier/argument table and the expression
+grammar. Live, always-correct help is one keystroke away: `?` after any command
 name (`p?`, `w?`, `src?`), and `h` lists the commands.
 
-## Four ways to run it
+## Three ways to run it
 
 ```sh
 bhex file                       # interactive shell
 bhex -2nc "s 0x40; p 64" file   # run commands, print, exit   <- default for automation
 printf 's 0x40\np 64\n' | bhex -2ns file   # one command per line from stdin
-bhex file   # then: int         # full-screen hex editor (arrows/Tab/Ctrl-X, see reference.md)
 ```
 
 `-w` opens for writing (and **creates the file if it does not exist** — that is how you build one
@@ -47,7 +46,7 @@ name/mod1/mod2 arg1 "arg with spaces" `expression`
 ```
 
 - **Aliases are the normal form**: `p`, `s`, `src`, `str`, `hh`, `cr`, `cs`, `t`, `w`, `c`, `u`,
-  `df`, `ex`, `im`, `ds`, `e`, `i`, `sb`, `ec`, `int`, `ii`, `fba`.
+  `df`, `ex`, `im`, `ds`, `e`, `i`, `sb`, `ec`, `ii`, `fba`.
 - **Modifiers must come before the first space.** After it, `/` is an ordinary character — which is
   why `t ./myfmt.bhe` and `df ../other.bin` parse fine.
 - Quote any argument containing spaces: `w/x "00 01 02 03"`. Inside quotes only `\"` and `\\` are
