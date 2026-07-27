@@ -73,10 +73,15 @@ int terminal_read_key(void)
 {
     int  nread;
     char c, seq[3];
-    // read() returning 0 means EOF (e.g. stdin was closed or redirected): busy
-    // looping here would spin at 100% CPU forever
-    nread = read(STDIN_FILENO, &c, 1);
-    if (nread <= 0)
+    // In raw mode VMIN=0/VTIME=1, so read() returns 0 on a timeout (no key
+    // pressed yet), not on EOF: keep waiting for a key. If stdin is not a tty
+    // there is no timeout and a 0 means real EOF, so bail out instead of
+    // busy-looping at 100% CPU forever.
+    while ((nread = read(STDIN_FILENO, &c, 1)) == 0) {
+        if (!isatty(STDIN_FILENO))
+            return -1;
+    }
+    if (nread < 0)
         return -1;
 
     while (1) {
