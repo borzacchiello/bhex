@@ -19,17 +19,17 @@
  * the previous attributes, so that styles never bleed into each other. */
 static const char* const styles_color[STYLE_COUNT] = {
     [STYLE_RESET]         = "\x1b[0m",
-    [STYLE_SEL_PRIMARY]   = "\x1b[0;30;43m",   /* black on yellow */
-    [STYLE_SEL_SECONDARY] = "\x1b[0;30;47m",   /* black on white */
-    [STYLE_STATUSBAR]     = "\x1b[0;1;97;44m", /* bold white on blue */
-    [STYLE_INSERT]        = "\x1b[0;1;92;44m", /* bold green on blue */
-    [STYLE_UNSAVED]       = "\x1b[0;1;93;44m", /* bold yellow on blue */
-    [STYLE_LABEL]         = "\x1b[0;90m",      /* gray */
-    [STYLE_LABEL_SEL]     = "\x1b[0;1;93m",    /* bold yellow */
-    [STYLE_BYTE_ZERO]     = "\x1b[0;90m",      /* gray: 0x00 */
-    [STYLE_BYTE_FF]       = "\x1b[0;31m",      /* red: 0xff */
-    [STYLE_BYTE_ASCII]    = "\x1b[0;32m",      /* green: printable ASCII */
-    [STYLE_BYTE_OTHER]    = "\x1b[0;37m",      /* white: everything else */
+    [STYLE_SEL_PRIMARY]   = "\x1b[0;30;103m",   /* black on bright yellow */
+    [STYLE_SEL_SECONDARY] = "\x1b[0;4m",        /* underline */
+    [STYLE_STATUSBAR]     = "\x1b[0;1;30;107m", /* bold black on white */
+    [STYLE_INSERT]        = "\x1b[0;1;32;107m", /* bold green on white */
+    [STYLE_UNSAVED]       = "\x1b[0;1;31;107m", /* bold red on white */
+    [STYLE_LABEL]         = "\x1b[0;90m",       /* gray */
+    [STYLE_LABEL_SEL]     = "\x1b[0;1;93m",     /* bold bright yellow */
+    [STYLE_BYTE_ZERO]     = "\x1b[0;90m",       /* gray: 0x00 */
+    [STYLE_BYTE_FF]       = "\x1b[0;31m",       /* red: 0xff */
+    [STYLE_BYTE_ASCII]    = "\x1b[0;32m",       /* green: printable ASCII */
+    [STYLE_BYTE_OTHER]    = "\x1b[0;37m",       /* white: everything else */
 };
 
 /* Colorless rendition of the same styles: the selection and the status bar
@@ -60,6 +60,96 @@ static Style byte_style(u8_t b)
     if (is_printable_ascii((char)b))
         return STYLE_BYTE_ASCII;
     return STYLE_BYTE_OTHER;
+}
+
+/* Every key binding of the TUI: the status bar only advertises a handful of
+ * them, the rest lives here (CTRL-H). */
+static const char* const help_entries[] = {
+    "arrows         move the cursor",
+    "PGUP/CTRL-B    page up",
+    "PGDN/CTRL-F    page down",
+    "HOME/CTRL-A    go to the beginning of the file",
+    "END/CTRL-E     go to the end of the file",
+    "TAB            switch between the hex and the ASCII panel",
+    "0-9 a-f        overwrite the selected byte (hex panel)",
+    "any character  overwrite the selected byte (ASCII panel)",
+    "DEL            delete the selected byte",
+    "CTRL-N         toggle insert mode",
+    "CTRL-U         undo the last change",
+    "CTRL-S         save (commit the changes to the file)",
+    "CTRL-H         show/hide this panel",
+    "CTRL-X         exit",
+};
+
+#define HELP_TITLE   "Key bindings"
+#define HELP_FOOTER  "press any key to close"
+#define HELP_NENTRY  (int)(sizeof(help_entries) / sizeof(help_entries[0]))
+#define HELP_PADDING 2
+#define HELP_MAXCOLS 256
+
+/* Emit one line of the help box: `left_pad` spaces, a vertical border, `text`
+ * padded to `inner` columns and the closing border. When `fill` is not a space
+ * the text is ignored and the line becomes a horizontal border. */
+static void help_add_line(ScreenWriter* sw, int left_pad, int inner,
+                          const char* text, char border, char fill)
+{
+    char   buf[2 * HELP_MAXCOLS + 8];
+    size_t i = 0;
+
+    left_pad = min(left_pad, HELP_MAXCOLS);
+    inner    = min(inner, HELP_MAXCOLS);
+
+    while (i < (size_t)left_pad)
+        buf[i++] = ' ';
+    buf[i++] = border;
+
+    int written = 0;
+    for (; written < HELP_PADDING; ++written)
+        buf[i++] = fill;
+    if (fill == ' ' && text != NULL)
+        for (; *text != '\0' && written < inner; ++text, ++written)
+            buf[i++] = *text;
+    for (; written < inner; ++written)
+        buf[i++] = fill;
+
+    buf[i++] = border;
+    buf[i]   = '\0';
+    sw_add_line(sw, buf);
+}
+
+/* Draw the key bindings panel, centered in the `nrows` lines left below the
+ * status bar. */
+static void draw_help(ScreenWriter* sw, int nrows)
+{
+    // borders, title, separator, entries and footer
+    const int box_rows = HELP_NENTRY + 6;
+
+    int inner = (int)strlen(HELP_TITLE);
+    for (int i = 0; i < HELP_NENTRY; ++i)
+        inner = max(inner, (int)strlen(help_entries[i]));
+    inner += 2 * HELP_PADDING;
+
+    int top_pad  = max((nrows - box_rows) / 2, 0);
+    int left_pad = max((sw->cols - inner - 2) / 2, 0);
+
+    for (int i = 0; i < top_pad; ++i)
+        sw_add_line(sw, "");
+
+    sw_style(sw, STYLE_LABEL_SEL);
+    help_add_line(sw, left_pad, inner, NULL, '+', '-');
+    help_add_line(sw, left_pad, inner, HELP_TITLE, '|', ' ');
+    help_add_line(sw, left_pad, inner, NULL, '|', ' ');
+    sw_style(sw, STYLE_RESET);
+
+    for (int i = 0; i < HELP_NENTRY; ++i)
+        help_add_line(sw, left_pad, inner, help_entries[i], '|', ' ');
+
+    sw_style(sw, STYLE_LABEL);
+    help_add_line(sw, left_pad, inner, NULL, '|', ' ');
+    help_add_line(sw, left_pad, inner, HELP_FOOTER, '|', ' ');
+    sw_style(sw, STYLE_LABEL_SEL);
+    help_add_line(sw, left_pad, inner, NULL, '+', '-');
+    sw_style(sw, STYLE_RESET);
 }
 
 static int refresh_screen(TuiState* ts);
@@ -212,7 +302,7 @@ static int refresh_screen(TuiState* ts)
     else
         ts->chunk_size = 16;
 
-    size_t read_size  = min(ts->chunk_size * (sw.rows - 5), fb_block_size);
+    size_t read_size  = min(ts->chunk_size * (sw.rows - 4), fb_block_size);
     read_size         = min(ts->fb->size - ts->fb->off, read_size);
     const u8_t* bytes = fb_read(ts->fb, read_size);
     if (!bytes) {
@@ -224,14 +314,12 @@ static int refresh_screen(TuiState* ts)
 
     ts->min_visible_addr = ts->fb->off;
     ts->max_visible_addr = ts->min_visible_addr +
-                           min(ts->chunk_size * (sw.rows - 5), fb_block_size) -
+                           min(ts->chunk_size * (sw.rows - 4), fb_block_size) -
                            1;
 
     sw_style(&sw, STYLE_STATUSBAR);
-    sw_append(
-        &sw, " CTRL-X [Exit] CTRL-U [Undo] CTRL-L [Insert] TAB [Toggle ASCII]");
-    sw_end_line(&sw);
-    sw_append(&sw, " CTRL-F/B [Page Up/Down] CTRL-A/E [Go to Beginning/End] ");
+    sw_append(&sw, " CTRL-X [Exit] CTRL-U [Undo] CTRL-N [Insert] "
+                   "CTRL-S [Save] CTRL-H [Help]");
     sw_end_line(&sw);
     sw_append(&sw, " ");
     sw_append(&sw, ts->msg);
@@ -248,6 +336,13 @@ static int refresh_screen(TuiState* ts)
     sw_end_line(&sw);
     sw_style(&sw, STYLE_RESET);
     sw_end_line(&sw);
+
+    if (ts->show_help) {
+        // the panel takes over everything below the status bar
+        draw_help(&sw, sw.rows - 3);
+        sw_flush(&sw);
+        return 0;
+    }
 
     u64_t sel_col = ts->selected % ts->chunk_size;
     sw_style(&sw, STYLE_LABEL);
@@ -269,7 +364,7 @@ static int refresh_screen(TuiState* ts)
     sw_end_line(&sw);
 
     u64_t off = 0;
-    for (int i = 0; i < sw.rows - 5; ++i) {
+    for (int i = 0; i < sw.rows - 4; ++i) {
         int on_curr_row = ts->selected >= ts->fb->off + off &&
                           ts->selected < ts->fb->off + off + ts->chunk_size;
 
@@ -398,6 +493,13 @@ int tui_process_key(TuiState* ts, int k, int rows)
 {
     FileBuffer* fb = ts->fb;
 
+    if (ts->show_help) {
+        // any key closes the panel: a keystroke meant for the help must not
+        // end up editing the file hidden behind it
+        ts->show_help = 0;
+        return k == CTRL_X;
+    }
+
     switch (k) {
         case ARROW_RIGHT:
             ts->second_nibble = 0;
@@ -427,7 +529,7 @@ int tui_process_key(TuiState* ts, int k, int rows)
         case CTRL_B:
         case PAGE_UP: {
             ts->second_nibble = 0;
-            u64_t tosub       = (rows - 5) * ts->chunk_size;
+            u64_t tosub       = (rows - 4) * ts->chunk_size;
             if (tosub < ts->selected && tosub < ts->fb->off) {
                 ts->selected -= tosub;
                 fb_seek(fb, ts->fb->off - tosub);
@@ -440,7 +542,7 @@ int tui_process_key(TuiState* ts, int k, int rows)
         case CTRL_F:
         case PAGE_DOWN: {
             ts->second_nibble = 0;
-            u64_t toadd       = (rows - 5) * ts->chunk_size;
+            u64_t toadd       = (rows - 4) * ts->chunk_size;
             if (ts->selected + toadd < ts->fb->size) {
                 ts->selected += toadd;
                 fb_seek(fb, ts->fb->off + toadd);
@@ -471,8 +573,22 @@ int tui_process_key(TuiState* ts, int k, int rows)
             ts->second_nibble  = 0;
             ts->in_ascii_panel = !ts->in_ascii_panel;
             break;
-        case CTRL_L:
+        case CTRL_N:
             ts->insert_mode = !ts->insert_mode;
+            break;
+        case CTRL_S:
+            ts->second_nibble = 0;
+            if (fb->modifications.size == 0) {
+                info("no change to save");
+                break;
+            }
+            // errors (e.g. a read-only file) are reported in the status bar
+            fb_commit(fb);
+            if (fb->modifications.size == 0)
+                info("changes saved");
+            break;
+        case CTRL_H:
+            ts->show_help = 1;
             break;
         case CTRL_U:
             fb_undo_last(ts->fb);

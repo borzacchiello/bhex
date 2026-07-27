@@ -62,7 +62,9 @@ typedef struct TuiState {
     int         insert_mode;
     int         in_ascii_panel;
     int         no_colors;
-    char        msg[2048];
+    // when set, the key bindings panel is drawn in place of the hex view
+    int  show_help;
+    char msg[2048];
 } TuiState;
 
 void tui_write_key(TuiState* ts, int k);

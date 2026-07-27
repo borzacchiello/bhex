@@ -18,7 +18,9 @@ static void interactivecmd_help(void* obj)
     display_printf("interactive: run an interactive session\n"
                    "\n"
                    "  tui" HINT_STR "\n"
-                   "     n: do not use colors\n");
+                   "     n: do not use colors\n"
+                   "\n"
+                   "  press CTRL-H in the editor to list the key bindings\n");
 }
 
 static int interactivecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)

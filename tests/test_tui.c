@@ -379,16 +379,16 @@ fail:
     goto end;
 }
 
-int TEST(nav_ctrl_l_toggles_insert)(void)
+int TEST(nav_ctrl_n_toggles_insert)(void)
 {
     int      r  = TEST_SUCCEEDED;
     TuiState ts = tui_test_reset();
     ASSERT(ts.insert_mode == 0);
 
-    tui_process_key(&ts, CTRL_L, 30);
+    tui_process_key(&ts, CTRL_N, 30);
     ASSERT(ts.insert_mode == 1);
 
-    tui_process_key(&ts, CTRL_L, 30);
+    tui_process_key(&ts, CTRL_N, 30);
     ASSERT(ts.insert_mode == 0);
 
 end:
@@ -407,6 +407,72 @@ int TEST(nav_ctrl_x_quits)(void)
     ASSERT(tui_process_key(&ts, CTRL_X, 30) == 1);
 
 end:
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(nav_ctrl_h_toggles_help)(void)
+{
+    int      r  = TEST_SUCCEEDED;
+    TuiState ts = tui_test_reset();
+    ASSERT(ts.show_help == 0);
+
+    tui_process_key(&ts, CTRL_H, 30);
+    ASSERT(ts.show_help == 1);
+
+    // while the panel is up any key just closes it, without moving the cursor
+    // or editing the file
+    ASSERT(tui_process_key(&ts, ARROW_RIGHT, 30) == 0);
+    ASSERT(ts.show_help == 0);
+    ASSERT(ts.selected == 0);
+
+    // ... but CTRL-X still quits
+    tui_process_key(&ts, CTRL_H, 30);
+    ASSERT(tui_process_key(&ts, CTRL_X, 30) == 1);
+    ASSERT(ts.show_help == 0);
+
+end:
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(nav_ctrl_s_saves)(void)
+{
+    int r = TEST_SUCCEEDED;
+
+    // a dedicated file buffer: unlike the other tests this one writes to the
+    // file for real, so it must not touch the shared one
+    DummyFilebuffer* dfb =
+        dummyfilebuffer_create((const u8_t*)"\x00\x01\x02\x03", 4);
+    if (!dfb)
+        panic("unable to create the dummy fb");
+
+    TuiState ts         = {0};
+    ts.fb               = dfb->fb;
+    ts.chunk_size       = 16;
+    ts.max_visible_addr = 3;
+
+    tui_process_key(&ts, 'f', 30);
+    tui_process_key(&ts, 'f', 30);
+    // one modification per nibble
+    ASSERT(ts.fb->modifications.size == 2);
+
+    tui_process_key(&ts, CTRL_S, 30);
+    ASSERT(ts.fb->modifications.size == 0);
+    ASSERT(ts.second_nibble == 0);
+
+    fb_seek(ts.fb, 0);
+    const u8_t* data = fb_read(ts.fb, 1);
+    ASSERT(data[0] == 0xFF);
+
+end:
+    dummyfilebuffer_destroy(dfb);
     return r;
 
 fail:
