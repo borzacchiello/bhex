@@ -1,0 +1,148 @@
+---
+name: bhex-usage
+description: Drive the bhex hex editor from the shell — inspect, search, hash, diff, disassemble and patch a binary file, interactively or from a script. Use when answering "what is in this file", carving or extracting bytes, applying a binary patch, or automating any of that with `bhex -c` / `bhex -s`. Covers the command grammar, the current-offset model, backtick expressions and the write/commit workflow.
+---
+
+# Using bhex
+
+`bhex <file>` opens a shell on a file; every command acts at a **current offset** you move with
+`s`. Nothing is written back to disk until you `c` (commit).
+
+For writing `.bhe` templates (the `t` command's input language) see the sibling
+`bhengine-template` skill — this one is about driving the editor.
+
+`reference.md` in this skill folder has the full command/modifier/argument table, the expression
+grammar and the TUI keys. Live, always-correct help is one keystroke away: `?` after any command
+name (`p?`, `w?`, `src?`), and `h` lists the commands.
+
+## Four ways to run it
+
+```sh
+bhex file                       # interactive shell
+bhex -2nc "s 0x40; p 64" file   # run commands, print, exit   <- default for automation
+printf 's 0x40\np 64\n' | bhex -2ns file   # one command per line from stdin
+bhex file   # then: int         # full-screen hex editor (arrows/Tab/Ctrl-X, see reference.md)
+```
+
+`-w` opens for writing (and **creates the file if it does not exist** — that is how you build one
+from scratch), `-b` first copies it to `file.bk`, `-2` silences warnings, `-n` skips the history
+file. `-c` and `-s` are mutually exclusive.
+
+For scripting always pass `-2 -n`: without them every run emits the read-only warning and appends
+to `~/.bhex_history` (`$BHEX_HISTORY_FILE` overrides; `-c` runs never save history anyway).
+
+Short flags cluster, so that pair is usually written `-2n`, and the whole invocation `-2nc "..."`
+or `-2nwbc "..."`. Two rules make clustering safe:
+
+- **`-c` (or `-s`) has to be last in the cluster**, since `-c` swallows the next word: `-2cn "p 4"`
+  runs the command string `n` and then chokes on the two leftover arguments.
+- **Every option has to come before the filename.** `bhex file -2n` fails with
+  `missing input file` — the argument loop stops looking for a path once getopt has permuted the
+  command line. This bites when you edit a previous shell line to add a flag at the end.
+
+## Command grammar
+
+```
+name/mod1/mod2 arg1 "arg with spaces" `expression`
+```
+
+- **Aliases are the normal form**: `p`, `s`, `src`, `str`, `hh`, `cr`, `cs`, `t`, `w`, `c`, `u`,
+  `df`, `ex`, `im`, `ds`, `e`, `i`, `sb`, `ec`, `int`, `ii`, `fba`.
+- **Modifiers must come before the first space.** After it, `/` is an ordinary character — which is
+  why `t ./myfmt.bhe` and `df ../other.bin` parse fine.
+- Quote any argument containing spaces: `w/x "00 01 02 03"`. Inside quotes only `\"` and `\\` are
+  unescaped by the parser; `\xNN` survives and is decoded by the commands that take binary data
+  (`src "\x00\x01"`).
+- `;` separates commands in `-c`. **The batch stops at the first failing command**, and the process
+  still exits 0 — `$?` tells you nothing, you must look at the output for `[ ERROR ]`.
+- `?` prints a command's help, but only bare: `p?` works, `p/x?` and `p? 4` are parse errors.
+
+## Everything happens at the current offset
+
+| | |
+| --- | --- |
+| `s 0x40` / `s/+ 16` / `s/- 16` | seek absolute / forward / backward |
+| `s -` | back to the offset before the last seek |
+| `s` | print the current offset |
+| `sb 0x400000` | set a base address: displayed addresses and `s` arguments become base-relative |
+
+`p`, `str`, `hh`, `cr`, `cs`, `e`, `ds`, `ii`, `t`, `w`, `d`, `ex`, `im` all start from there.
+The size/offset pairs taken by `hh`/`cr`/`cs` are *relative to it*: `hh md5 0x20 4` hashes 0x20
+bytes starting 4 bytes ahead.
+
+## Backtick expressions
+
+Any argument in backticks is evaluated against the file before the command runs, and substituted
+as a decimal number:
+
+```sh
+bhex -2nc 's `$size - 8`; p 8' file            # last 8 bytes
+bhex -2nc 's `[32le 0x18]`; p 64' file         # follow a 32-bit LE pointer stored at 0x18
+bhex -2nc 'ec `[8 $off] * 4`' file             # byte at the cursor, times 4
+```
+
+`$off`/`$o`, `$base`/`$b`, `$size`/`$s`; `[expr]` reads 32-bit LE at that address, `[8 a]`,
+`[16be a]`, `[64le a]` pick width and endianness. Operators: `+ - * << >> & | ~ ()` on u64 — there
+is **no division and no modulo**.
+
+**`[...]` addresses are raw file offsets while `$off`/`$base` are base-relative.** With a base set,
+`[8 $off]` reads at the wrong place (or fails as out-of-bounds); write `[8 $off - $base]`.
+
+## Inspecting a file
+
+```sh
+bhex -2nc "i"                    file   # size, entropy, md5
+bhex -2nc "p 64"                 file   # hex+ascii; p/d/be 8 = 8 big-endian dwords
+bhex -2nc "p/a -"                file   # /- = whole file (default: 256 bytes)
+bhex -2nc "str/n VERSION 4"      file   # NUL-terminated strings containing VERSION, len >= 4
+bhex -2nc "src/x/p 89504e47"     file   # find hex bytes, print context around each match
+bhex -2nc "e 16"                 file   # entropy graph, 16 rows
+bhex -2nc 'hh sha256; cr "*"'    file   # a hash, then every known CRC
+bhex -2nc "t png"                file   # decode with a shipped template (t/l lists them)
+bhex -2nc "ds x64 20"            file   # disassemble 20 instructions at the cursor
+```
+
+`src` scans the **whole file** regardless of the current offset (it is multithreaded, so match
+order is not guaranteed); `src/sk` leaves you on the last match it reported, not necessarily the
+first. `hh`, `cs`, `cr` accept a partial name or `*` (`cr crc32` matches nothing — the names are
+`CRC-32/ISO-HDLC` and friends, list them with `cr/l`).
+
+`t` also runs one struct or one named proc of a template: `t elf.Elf_Ehdr`, `t zip.list_files`
+(`t/l <filter>` lists both). `t/x` emits XML for machine consumption, `t/i "stmts"` runs inline
+bhengine code — the fastest way to compute something the commands do not cover.
+
+## Editing: nothing is saved until `c`
+
+```sh
+bhex -2nwbc 's 0x10; w/x "90 90"; c' file   # patch two bytes, keeping file.bk
+```
+
+- **`c` is not optional.** Writes live in an in-memory overlay; exiting without `c` silently
+  discards them. `c/l` shows what is pending, `u` undoes the last write, `u/a` all of them.
+- Without `-w` writes still *appear* to work in the buffer — you only get a warning and a refusal
+  at commit time. If a patch seems to have done nothing, check for `-w`.
+- **`w` does not advance the offset.** Writing several fields means seeking between them, or the
+  second write lands on top of the first.
+- `w` overwrites and **fails past the end of the file** ("not enough space to write the data"); to
+  grow a file use `w/i` (insert) or `im` (import, insert by default, `im/ovw` to overwrite).
+  Building a file from nothing is a sequence of `w/i` at explicit offsets.
+- `d <n>` deletes n bytes at the cursor (all the remaining ones if omitted), `ex out.bin <n>`
+  carves n bytes out to another file.
+
+## Gotchas
+
+- Exit status only reports startup problems (unusable command line, missing/unopenable file). Any
+  error from a *command* — `no such command`, a bad argument, a template exception — still exits 0,
+  so grep the output for `[  ERROR  ]` if you need to detect failure.
+- A failing backtick expression (`expr error: ...`) aborts the rest of a `-c` batch too.
+- `e <rows> <len>` takes the **row count first** — `e 8` is an 8-row graph of the whole file,
+  `e - 8` is a one-row graph of 8 bytes.
+- `p <n>` counts *elements*, not bytes: `p/q 4` prints 32 bytes.
+- `ds`/`as`/`ii`/`fba` are build-time optional. `no such command` for `as` means this build has no
+  Keystone, not that you mistyped.
+- Some output (the `df` byte diff) contains ANSI colour even when piped; strip it before parsing.
+- The `t` search path for template *names* is `/usr/local/share/bhex/templates`, `../templates`,
+  `.` — the first match wins. Use an explicit `t ./x.bhe` when it matters.
+
+To make this skill discoverable by Claude Code, put it (or a symlink to it) in `.claude/skills/`
+of the project you are working in, or in `~/.claude/skills/` to have it everywhere.
