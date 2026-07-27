@@ -139,7 +139,8 @@ bhex -2nwbc 's 0x10; w/x "90 90"; c' file   # patch two bytes, keeping file.bk
 - `p <n>` counts *elements*, not bytes: `p/q 4` prints 32 bytes.
 - `ds`/`as`/`ii`/`fba` are build-time optional. `no such command` for `as` means this build has no
   Keystone, not that you mistyped.
-- Some output (the `df` byte diff) contains ANSI colour even when piped; strip it before parsing.
+- Some output (the `df` byte diff) contains ANSI colour even when piped; use `df/p/n` to get plain
+  text instead of stripping the escapes (differing bytes are then not marked in any way).
 - The `t` search path for template *names* is `/usr/local/share/bhex/templates`, `../templates`,
   `.` — the first match wins. Use an explicit `t ./x.bhe` when it matters.
 

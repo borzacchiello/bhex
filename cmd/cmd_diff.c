@@ -10,11 +10,14 @@
 #include <defs.h>
 #include <log.h>
 
-#define HINT_STR "[/p/w] <file>"
+#define HINT_STR "[/p/w/n] <file>"
 
-#define min(x, y)       ((x) < (y) ? (x) : (y))
-#define highlight_begin display_printf("\x1b[31;49;1m")
-#define highlight_end   display_printf("\x1b[0m")
+#define min(x, y) ((x) < (y) ? (x) : (y))
+
+/* SGR sequences marking the differing bytes. With `n` no escape at all is
+ * emitted, so that the output can be piped and parsed as plain text. */
+#define HL_COLOR "\x1b[31;49;1m"
+#define HL_END   "\x1b[0m"
 
 static void diffcmd_dispose(void* obj) {}
 
@@ -25,13 +28,17 @@ static void diffcmd_help(void* obj)
                    "  df" HINT_STR "\n"
                    "     p:  print different bytes\n"
                    "     w:  wide print (rows are 16 bytes)\n"
+                   "     n:  do not use colors\n"
                    "\n"
                    "  file: path to the file to compare\n");
 }
 
 static void print_diffs(FileBuffer* self, FileBuffer* other, int print_diffs,
-                        int wide)
+                        int wide, int no_colors)
 {
+    const char* hl_begin = no_colors ? "" : HL_COLOR;
+    const char* hl_end   = no_colors ? "" : HL_END;
+
     fb_seek(self, 0);
     fb_seek(other, 0);
 
@@ -101,19 +108,19 @@ static void print_diffs(FileBuffer* self, FileBuffer* other, int print_diffs,
                         continue;
                     }
                     if (self_block[off + i] != other_block[off + i])
-                        highlight_begin;
+                        display_printf("%s", hl_begin);
                     display_printf("%02X", self_block[off + i]);
                     if (self_block[off + i] != other_block[off + i])
-                        highlight_end;
+                        display_printf("%s", hl_end);
                     display_printf(" ");
                 }
                 display_printf(" ");
                 for (u64_t i = 0; i < nbytes; ++i) {
                     if (self_block[off + i] != other_block[off + i])
-                        highlight_begin;
+                        display_printf("%s", hl_begin);
                     display_printf("%02X", other_block[off + i]);
                     if (self_block[off + i] != other_block[off + i])
-                        highlight_end;
+                        display_printf("%s", hl_end);
                     display_printf(" ");
                 }
                 display_printf("\n");
@@ -154,11 +161,13 @@ static int diffcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 
     int print_bytes = -1;
     int wide        = -1;
-    if (handle_mods(pc, "p|w", &print_bytes, &wide) != 0)
+    int no_colors   = -1;
+    if (handle_mods(pc, "p|w|n", &print_bytes, &wide, &no_colors) != 0)
         return COMMAND_INVALID_MOD;
 
     print_bytes = print_bytes == 0;
     wide        = wide == 0;
+    no_colors   = no_colors == 0;
 
     const char* other    = (const char*)pc->args.head->data;
     FileBuffer* other_fb = filebuffer_create(other, 1);
@@ -166,7 +175,7 @@ static int diffcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
         return COMMAND_INVALID_ARG;
 
     u64_t soff = fb->off;
-    print_diffs(fb, other_fb, print_bytes, wide);
+    print_diffs(fb, other_fb, print_bytes, wide, no_colors);
     fb_seek(fb, soff);
 
     filebuffer_destroy(other_fb);

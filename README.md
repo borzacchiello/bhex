@@ -441,9 +441,10 @@ print: display the data at current offset in various formats
 
 diff: prints the differences with another file
 
-  df[/p/w] <file>
+  df[/p/w/n] <file>
      p:  print different bytes
      w:  wide print (rows are 16 bytes)
+     n:  do not use colors
 
   file: path to the file to compare
 ```

@@ -90,6 +90,38 @@ end:
     return r;
 }
 
+int TEST(different_smaller_print_no_colors)(void)
+{
+    // clang-format off
+    const char* expected =
+        "            00 01 02 03 04 05 06 07  00 01 02 03 04 05 06 07\n"
+        "            -----------------------  -----------------------\n"
+        "     *\n"
+        "0000000008  00 00 00 00 00 00 00 00"
+        "  "
+        "00 00 00 00 00 00 00 FF \n"
+        "     *\n"
+        "\n"
+        "current file is bigger\n"
+        "common size is different [ difference 4.167% ]\n";
+    // clang-format on
+
+    char cmd[128] = {0};
+    if (snprintf(cmd, sizeof(cmd) - 1, "df/p/n %s", dfb_alt_2->fname) < 0)
+        panic("snprintf failed");
+
+    int r = TEST_FAILED;
+    if (exec_commands(cmd) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    return r;
+}
+
 int TEST(different_smaller_print_wide)(void)
 {
     // clang-format off
