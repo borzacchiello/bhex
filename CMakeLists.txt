@@ -146,6 +146,7 @@ set(command_src
     cmd/cmd_setbase.c
     cmd/cmd_interactive.c
     cmd/cmd_isa_identify.c
+    cmd/cmd_identify.c
     cmd/tui.c)
 
 set(bhengine_src

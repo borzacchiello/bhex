@@ -541,6 +541,97 @@ fn parse_trailing_tags()
 
 // ---------------------------------------------------------------------------
 
+
+// Both paths "_identify" takes. The tagless one keys off the 11 bit frame
+// sync, which is not byte aligned: it enumerates as 0xff followed by any of
+// these 18 second bytes (sync, a version that is not the reserved one, and a
+// layer that is not the reserved one). Listing them keeps the declaration a
+// necessary condition, which a single 0xff\xe0 pattern would not be
+proc _identify_magic
+{
+    magic("ID3", 0);
+    magic("\xff\xe2", 0);
+    magic("\xff\xe3", 0);
+    magic("\xff\xe4", 0);
+    magic("\xff\xe5", 0);
+    magic("\xff\xe6", 0);
+    magic("\xff\xe7", 0);
+    magic("\xff\xf2", 0);
+    magic("\xff\xf3", 0);
+    magic("\xff\xf4", 0);
+    magic("\xff\xf5", 0);
+    magic("\xff\xf6", 0);
+    magic("\xff\xf7", 0);
+    magic("\xff\xfa", 0);
+    magic("\xff\xfb", 0);
+    magic("\xff\xfc", 0);
+    magic("\xff\xfd", 0);
+    magic("\xff\xfe", 0);
+    magic("\xff\xff", 0);
+}
+
+// An ID3v2 tag. The MPEG frame sync an audio stream starts with is only 11
+// bits and matches padding and compressed data all over the place, so it is
+// not used on its own here: the tag has a version byte pair that is never
+// 0xff and a synchsafe size, where every byte has its top bit clear
+proc _identify
+{
+    big_endian();
+
+    if (peek(3) == "ID3" &&
+        peek_u8(3) != 0xff && peek_u8(4) != 0xff &&
+        (peek_u8(6) & 0x80) == 0 && (peek_u8(7) & 0x80) == 0 &&
+        (peek_u8(8) & 0x80) == 0 && (peek_u8(9) & 0x80) == 0) {
+        // the synchsafe size covers the tag, not the audio that follows it:
+        // the scan resumes on the first frame, which is the right place for it
+        result = 10 + (peek_u8(6) << 21) + (peek_u8(7) << 14) +
+                 (peek_u8(8) << 7) + peek_u8(9);
+        if (result > remaining_size()) {
+            result = 10;
+        }
+        return;
+    }
+
+    // A stream with no tag on it, starting on a bare frame. The sync is only
+    // 11 bits, and every other field of the header is a small enum, so a lone
+    // header proves very little: in m68k firmware, where a negative
+    // displacement makes 0xffe_/0xfff_ words ordinary, one turns up every ~160
+    // bytes. Two in a row is not enough either. What does hold up is a run of
+    // frames that all agree on version, layer and sampling rate -- a real
+    // stream never changes those mid-file, only the bitrate may vary
+    local h = peek_u32();
+    if (h == -1 || !is_frame_header(h)) {
+        return;
+    }
+
+    // sync, version, layer and sampling bits, with the bitrate left out so
+    // that a VBR stream still chains
+    local want = h & 0xfffe0c00;
+    local o    = 0;
+    local n    = 0;
+    while (n < 4) {
+        if (o + 4 > remaining_size()) {
+            break;
+        }
+        local hh = peek_u32(o);
+        if (!is_frame_header(hh) || (hh & 0xfffe0c00) != want) {
+            break;
+        }
+        local flen = frame_length(hh);
+        if (flen < 4 || o + flen > remaining_size()) {
+            break;
+        }
+        o = o + flen;
+        n = n + 1;
+    }
+
+    // four chained frames, or a file that ended before there could be four --
+    // which is what a bare single frame sample is
+    if (n >= 4 || (n >= 1 && o + 4 > remaining_size())) {
+        result = o;
+    }
+}
+
 proc
 {
     big_endian();

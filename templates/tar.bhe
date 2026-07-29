@@ -36,6 +36,47 @@ proc list_files
     }
 }
 
+// The checksum a header block carries over itself: the sum of all 512 of its
+// bytes, with the 8 byte checksum field counted as spaces rather than as its
+// own content. Unsigned, which is what every writer since the historical
+// signed-char implementations produces
+fn header_checksum()
+{
+    disable_print();
+    result = checksum("SUM-32", 148, 0) + 8 * 0x20 +
+             checksum("SUM-32", 0x200 - 156, 156);
+}
+
+
+// The ustar magic, 257 bytes into the header block: a match at X means a
+// header may start at X - 257
+proc _identify_magic
+{
+    magic("ustar", 257);
+}
+
+// The ustar magic sits 257 bytes into the 512 byte header block, so there has
+// to be a whole block here; a header whose name field is empty is padding, not
+// an entry. Five ASCII bytes would match the word wherever it appears in a
+// payload, so the block's own checksum is what makes a hit mean something
+proc _identify
+{
+    if (remaining_size() < 0x200 || peek(5, 257) != "ustar" ||
+        peek_u8() == 0) {
+        return;
+    }
+
+    // the stored value is octal ASCII, padded with NULs and/or spaces
+    local stored = to_int(trim(printable(peek(8, 148))), 8);
+    if (stored != header_checksum()) {
+        return;
+    }
+
+    // one header block: the scan then lands on the next member, so every
+    // entry of an archive gets reported
+    result = 0x200;
+}
+
 proc
 {
     while (off() + 0x200 < size()) {

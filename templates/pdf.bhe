@@ -142,6 +142,26 @@ fn parse_section()
     }
 }
 
+
+// "%PDF-", which every accepted header starts with
+proc _identify_magic
+{
+    magic("%PDF-", 0);
+}
+
+// "%PDF-" followed by a version of the shape <digit>.<digit>
+proc _identify
+{
+    if (peek(5) == "%PDF-" &&
+        peek_u8(5) >= 0x31 && peek_u8(5) <= 0x32 &&
+        peek_u8(6) == 0x2e &&
+        peek_u8(7) >= 0x30 && peek_u8(7) <= 0x39) {
+        // the end of a PDF is the last "%%EOF" of the trailer chain, which
+        // takes the parse to find: the hit covers the header only
+        result = 8;
+    }
+}
+
 proc
 {
     pdf_header_t header;

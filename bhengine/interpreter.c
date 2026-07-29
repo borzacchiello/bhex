@@ -430,6 +430,95 @@ end:
     return result;
 }
 
+// Arguments of a builtin call. A heap DList costs two allocations and two
+// frees per call, and a template is mostly builtin calls with one or two
+// arguments, so the list is built in the caller's frame whenever it fits. The
+// builtin only ever reads size/data, and the list dies with the call.
+#define BUILTIN_STACK_PARAMS 8
+
+typedef struct BuiltinParams {
+    DList list;
+    void* slots[BUILTIN_STACK_PARAMS];
+    int   on_heap;
+} BuiltinParams;
+
+static DList* evaluate_list_of_exprs(InterpreterContext* ctx, Scope* scope,
+                                     DList* l);
+
+// Returns the list to hand to the builtin: NULL both when the call takes no
+// argument and when evaluating one failed, which *o_err tells apart.
+static DList* builtin_params_eval(InterpreterContext* ctx, Scope* scope,
+                                  DList* exprs, BuiltinParams* p, int* o_err)
+{
+    *o_err     = 0;
+    p->on_heap = 0;
+    if (exprs == NULL)
+        return NULL;
+
+    if (exprs->size > BUILTIN_STACK_PARAMS) {
+        p->on_heap  = 1;
+        DList* heap = evaluate_list_of_exprs(ctx, scope, exprs);
+        if (heap == NULL)
+            *o_err = 1;
+        return heap;
+    }
+
+    // DList_add only grows when size reaches capacity, and it cannot here
+    p->list.data     = p->slots;
+    p->list.size     = 0;
+    p->list.capacity = BUILTIN_STACK_PARAMS;
+    for (u64_t i = 0; i < exprs->size; ++i) {
+        BHEngineValue* el = evaluate_expr(ctx, scope, exprs->data[i]);
+        if (el == NULL) {
+            for (u64_t j = 0; j < p->list.size; ++j)
+                BHEngineValue_free(p->list.data[j]);
+            *o_err = 1;
+            return NULL;
+        }
+        DList_add(&p->list, el);
+    }
+    return &p->list;
+}
+
+static void builtin_params_release(BuiltinParams* p, DList* params)
+{
+    if (params == NULL)
+        return;
+    if (p->on_heap) {
+        DList_destroy(params, (void (*)(void*))BHEngineValue_free);
+        return;
+    }
+    for (u64_t i = 0; i < params->size; ++i)
+        BHEngineValue_free(params->data[i]);
+}
+
+// Kept out of evaluate_expr(), which is recursive and hot: the argument slots
+// would otherwise sit in its frame on every call, builtin or not, and that
+// costs more than it saves.
+static BHEngineValue* call_builtin(InterpreterContext* ctx, Scope* scope,
+                                   const BHEngineBuiltinFunc* bf,
+                                   DList* param_exprs, int* o_failed)
+{
+    int           err = 0;
+    BuiltinParams p;
+    DList* params = builtin_params_eval(ctx, scope, param_exprs, &p, &err);
+    if (err) {
+        *o_failed = 1;
+        return NULL;
+    }
+
+    if (check_builtin_arity(ctx, bf, params) != 0) {
+        builtin_params_release(&p, params);
+        *o_failed = 1;
+        return NULL;
+    }
+
+    BHEngineValue* r = bf->process(ctx, params);
+    builtin_params_release(&p, params);
+    *o_failed = 0;
+    return r;
+}
+
 static DList* evaluate_list_of_exprs(InterpreterContext* ctx, Scope* scope,
                                      DList* l)
 {
@@ -459,11 +548,28 @@ static BHEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
     }
 
     switch (e->t) {
+        // A literal builds the same value on every evaluation, and values are
+        // immutable once constructed, so the node builds one and hands out
+        // references to it. Templates are full of magic numbers and masks, and
+        // each of them used to be an allocation per pass
         case EXPR_SCONST:
-            return BHEngineValue_SNUM_new(e->sconst_value, e->sconst_size);
+            if (e->res_ptr == NULL)
+                e->res_ptr =
+                    BHEngineValue_SNUM_new(e->sconst_value, e->sconst_size);
+            return BHEngineValue_retain((BHEngineValue*)e->res_ptr);
         case EXPR_UCONST:
-            return BHEngineValue_UNUM_new(e->uconst_value, e->uconst_size);
+            if (e->res_ptr == NULL)
+                e->res_ptr =
+                    BHEngineValue_UNUM_new(e->uconst_value, e->uconst_size);
+            return BHEngineValue_retain((BHEngineValue*)e->res_ptr);
         case EXPR_ENUM_CONST: {
+            // Resolving this means a map lookup plus a linear scan of the
+            // enum's constants, for a value that is fixed at parse time. Cache
+            // it against the AST it came from: the same node evaluated while
+            // another AST is current (an imported type) has to resolve again
+            if (e->res_ptr == ctx->ast)
+                return BHEngineValue_UNUM_new(e->res_val, 8);
+
             Enum* enumptr = map_get_or_null(ctx->ast->enums, e->enum_name);
             if (!enumptr) {
                 bhengine_raise_exception(ctx, "no such enum '%s'",
@@ -477,20 +583,32 @@ static BHEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
                                          e->enum_name, e->enum_field);
                 return NULL;
             }
+            e->res_ptr = ctx->ast;
+            e->res_val = v;
             return BHEngineValue_UNUM_new(v, 8);
         }
         case EXPR_STRING:
-            return BHEngineValue_STRING_new(e->str, e->str_len);
+            if (e->res_ptr == NULL)
+                e->res_ptr = BHEngineValue_STRING_new(e->str, e->str_len);
+            return BHEngineValue_retain((BHEngineValue*)e->res_ptr);
         case EXPR_VAR: {
-            BHEngineValue* value = Scope_get_filevar(scope, e->name);
+            if (e->name_hash == 0)
+                e->name_hash = map_hash(e->name);
+            BHEngineValue* value =
+                Scope_get_filevar_h(scope, e->name, e->name_hash);
             if (value)
                 return BHEngineValue_retain(value);
-            value = Scope_get_local(scope, e->name);
+            value = Scope_get_local_h(scope, e->name, e->name_hash);
             if (!value) {
                 bhengine_raise_exception(ctx, "no such variable '%s'", e->name);
                 return NULL;
             }
-            return BHEngineValue_dup(value);
+            // A reference, not a copy: values are immutable once built (an
+            // array is only ever appended to while it is still being built,
+            // before anything can name it), so reading a local no longer
+            // deep-copies it. This is the same thing the file var branch above
+            // has always done
+            return BHEngineValue_retain(value);
         }
         case EXPR_SUBSCR: {
             BHEngineValue* lhs = evaluate_expr(ctx, scope, e->subscr_e);
@@ -529,28 +647,21 @@ static BHEngineValue* evaluate_expr(InterpreterContext* ctx, Scope* scope,
             return res;
         }
         case EXPR_FUN_CALL: {
+            // The builtin table is immutable, so the answer is cached for good
+            // -- including the "not a builtin" one, which sends the call down
+            // to the fn lookup below
+            if (!e->res_done) {
+                e->res_ptr  = get_builtin_func(e->fname);
+                e->res_done = 1;
+            }
             const BHEngineBuiltinFunc* builtin_func =
-                get_builtin_func(e->fname);
+                (const BHEngineBuiltinFunc*)e->res_ptr;
             if (builtin_func != NULL) {
-                DList* params_vals = NULL;
-                if (e->params) {
-                    params_vals = evaluate_list_of_exprs(ctx, scope, e->params);
-                    if (params_vals == NULL)
-                        return NULL;
-                }
-                if (check_builtin_arity(ctx, builtin_func, params_vals) != 0) {
-                    if (params_vals)
-                        DList_destroy(params_vals,
-                                      (void (*)(void*))BHEngineValue_free);
-                    return NULL;
-                }
-
-                BHEngineValue* r = builtin_func->process(ctx, params_vals);
-                if (params_vals)
-                    DList_destroy(params_vals,
-                                  (void (*)(void*))BHEngineValue_free);
+                int            failed = 0;
+                BHEngineValue* r =
+                    call_builtin(ctx, scope, builtin_func, e->params, &failed);
                 // a builtin that already raised has a better message than ours
-                if (r == NULL && ctx->exc == NULL)
+                if (!failed && r == NULL && ctx->exc == NULL)
                     bhengine_raise_exception(ctx, "call to '%s' failed",
                                              e->fname);
                 return r;
@@ -881,8 +992,13 @@ static int process_array_type(InterpreterContext* ctx, const char* varname,
 
             for (u64_t i = 0; i < size; ++i) {
                 BHEngineValue* val = t->process(ctx);
-                if (val == NULL)
+                if (val == NULL) {
+                    // the elements read so far go with it, the same way the
+                    // custom type loop below discards a partial array
+                    BHEngineValue_free(*oval);
+                    *oval = NULL;
                     return 1;
+                }
                 fmt_notify_array_el(ctx->fmt, i);
                 fmt_process_value(ctx->fmt, val);
                 BHEngineValue_ARRAY_append(*oval, val);
@@ -972,7 +1088,9 @@ static int process_LOCAL_VAR_DECL(InterpreterContext* ctx, Stmt* stmt,
     if (v == NULL)
         return 1;
 
-    Scope_add_local(scope, stmt->local_name, v);
+    if (stmt->name_hash == 0)
+        stmt->name_hash = map_hash(stmt->local_name);
+    Scope_add_local_h(scope, stmt->local_name, v, stmt->name_hash);
     return 0;
 }
 
@@ -983,7 +1101,9 @@ static int process_LOCAL_VAR_ASS(InterpreterContext* ctx, Stmt* stmt,
     if (v == NULL)
         return 1;
 
-    if (!Scope_update_local(scope, stmt->local_name, v)) {
+    if (stmt->name_hash == 0)
+        stmt->name_hash = map_hash(stmt->local_name);
+    if (!Scope_update_local_h(scope, stmt->local_name, v, stmt->name_hash)) {
         bhengine_raise_exception(ctx, "no such local variable '%s",
                                  stmt->local_name);
         BHEngineValue_free(v);
@@ -995,25 +1115,19 @@ static int process_LOCAL_VAR_ASS(InterpreterContext* ctx, Stmt* stmt,
 static int process_VOID_FUNC_CALL(InterpreterContext* ctx, Stmt* stmt,
                                   Scope* scope)
 {
-    const BHEngineBuiltinFunc* builtin_func = get_builtin_func(stmt->fname);
+    // Cached like the expression form, see EXPR_FUN_CALL
+    if (!stmt->res_done) {
+        stmt->res_ptr  = get_builtin_func(stmt->fname);
+        stmt->res_done = 1;
+    }
+    const BHEngineBuiltinFunc* builtin_func =
+        (const BHEngineBuiltinFunc*)stmt->res_ptr;
     if (builtin_func != NULL) {
-        DList* params_vals = NULL;
-        if (stmt->params) {
-            params_vals = evaluate_list_of_exprs(ctx, scope, stmt->params);
-            if (params_vals == NULL)
-                return 1;
-        }
-        if (check_builtin_arity(ctx, builtin_func, params_vals) != 0) {
-            if (params_vals)
-                DList_destroy(params_vals, (void (*)(void*))BHEngineValue_free);
-            return 1;
-        }
-
-        BHEngineValue* r = builtin_func->process(ctx, params_vals);
-        if (params_vals)
-            DList_destroy(params_vals, (void (*)(void*))BHEngineValue_free);
+        int            failed = 0;
+        BHEngineValue* r =
+            call_builtin(ctx, scope, builtin_func, stmt->params, &failed);
         BHEngineValue_free(r);
-        return 0;
+        return failed;
     }
     Function* fn_stmt = map_get_or_null(ctx->ast->functions, stmt->fname);
     if (fn_stmt != NULL) {
@@ -1228,17 +1342,23 @@ static int process_stmts(InterpreterContext* ctx, DList* stmts, Scope* scope)
                 bhengine_raise_exception(ctx, "RUNTIME ERROR");
             goto end;
         }
-        if (ctx->halt || ctx->breaked)
+        // 'returned' can only be set where return_allowed was, which at this
+        // level means the identify proc: it is the one entry point allowed to
+        // answer early
+        if (ctx->halt || ctx->breaked || ctx->returned)
             goto end;
     }
 
 end:
     if (ctx->exc) {
-        print_exception_context(ctx, ctx->curr_stmt->line_of_code,
-                                ctx->curr_stmt->column);
         char* exc_msg = strbuilder_finalize(ctx->exc->sb);
-        error("Exception @ line %d, col %d > %s", ctx->curr_stmt->line_of_code,
-              ctx->curr_stmt->column, exc_msg);
+        if (!ctx->silent_exc) {
+            print_exception_context(ctx, ctx->curr_stmt->line_of_code,
+                                    ctx->curr_stmt->column);
+            error("Exception @ line %d, col %d > %s",
+                  ctx->curr_stmt->line_of_code, ctx->curr_stmt->column,
+                  exc_msg);
+        }
         bhex_free(exc_msg);
         bhex_free(ctx->exc);
         ctx->exc = NULL;
@@ -1382,6 +1502,140 @@ end:
     return r;
 }
 
+struct BHEngineIdentifier {
+    InterpreterContext ctx;
+    Block*             body;
+    unsigned int       result_hash;
+    DList*             magics; // of BHEngineMagic*, possibly empty
+};
+
+void BHEngineMagic_delete(BHEngineMagic* m)
+{
+    bhex_free(m->pattern);
+    bhex_free(m);
+}
+
+// Runs BHENGINE_IDENTIFY_MAGIC_PROC once, with a sink in place for magic() to
+// append to. A proc that raises leaves whatever it managed to declare before
+// the exception, which would be a subset of the truth and could hide a format,
+// so its declarations are dropped entirely -- an empty list is the safe answer
+// and only costs speed. The exception itself is printed: unlike "_identify",
+// this runs once and a broken declaration is worth knowing about.
+static DList* collect_magics(InterpreterContext* ctx, ASTCtx* ast)
+{
+    DList* magics = DList_new();
+
+    Block* body =
+        map_get_or_null(ast->named_procs, BHENGINE_IDENTIFY_MAGIC_PROC);
+    if (body == NULL)
+        return magics;
+
+    Scope_reset(ctx->proc_scope);
+    ctx->initial_off               = 0;
+    ctx->endianess                 = TE_LITTLE_ENDIAN;
+    ctx->call_depth                = 0;
+    ctx->break_or_continue_allowed = 0;
+    ctx->return_allowed            = 1;
+    ctx->breaked                   = 0;
+    ctx->continued                 = 0;
+    ctx->returned                  = 0;
+    ctx->halt                      = 0;
+
+    int saved_silent = ctx->silent_exc;
+    ctx->silent_exc  = 0;
+    ctx->magics      = magics;
+
+    int failed = process_stmts(ctx, body->stmts, ctx->proc_scope) != 0;
+
+    ctx->magics     = NULL;
+    ctx->silent_exc = saved_silent;
+
+    if (failed) {
+        warning("'" BHENGINE_IDENTIFY_MAGIC_PROC
+                "' failed, falling back to scanning every offset");
+        DList_destroy(magics, (void (*)(void*))BHEngineMagic_delete);
+        return DList_new();
+    }
+    return magics;
+}
+
+const DList* bhengine_identifier_magics(BHEngineIdentifier* id)
+{
+    return id->magics;
+}
+
+BHEngineIdentifier* bhengine_identifier_new(FileBuffer* fb, ASTCtx* ast)
+{
+    Block* body = map_get_or_null(ast->named_procs, BHENGINE_IDENTIFY_PROC);
+    if (body == NULL)
+        return NULL;
+
+    BHEngineIdentifier* id = bhex_calloc(sizeof(BHEngineIdentifier));
+    interpreter_context_init(&id->ctx, ast, fb);
+    id->ctx.fmt->quiet_mode = 1;
+    id->ctx.silent_exc      = 1;
+    id->body                = body;
+    id->result_hash         = map_hash("result");
+    id->magics              = collect_magics(&id->ctx, ast);
+    return id;
+}
+
+void bhengine_identifier_free(BHEngineIdentifier* id)
+{
+    if (id == NULL)
+        return;
+    DList_destroy(id->magics, (void (*)(void*))BHEngineMagic_delete);
+    interpreter_context_deinit(&id->ctx);
+    bhex_free(id);
+}
+
+u64_t bhengine_identifier_run(BHEngineIdentifier* id, u64_t off)
+{
+    InterpreterContext* ctx = &id->ctx;
+
+    if (fb_seek(ctx->fb, off) != 0)
+        return 0;
+
+    // Everything the previous offset may have left behind has to go, but the
+    // scope is emptied rather than freed and reallocated: this runs once per
+    // byte of the file, so the allocator is the first thing to keep out of the
+    // loop
+    Scope_reset(ctx->proc_scope);
+    Scope_add_local_h(ctx->proc_scope, "result", BHEngineValue_UNUM_new(0, 8),
+                      id->result_hash);
+
+    ctx->initial_off               = off;
+    ctx->endianess                 = TE_LITTLE_ENDIAN;
+    ctx->call_depth                = 0;
+    ctx->break_or_continue_allowed = 0;
+    ctx->return_allowed            = 1;
+    ctx->breaked                   = 0;
+    ctx->continued                 = 0;
+    ctx->returned                  = 0;
+    ctx->halt                      = 0;
+
+    // A non-zero return means an exception was raised and swallowed, which is
+    // the normal way for a template to say "not my format"
+    if (process_stmts(ctx, id->body->stmts, ctx->proc_scope) != 0)
+        return 0;
+
+    BHEngineValue* result = Scope_get_local(ctx->proc_scope, "result");
+    if (result == NULL)
+        return 0;
+
+    // A 'result' that is not a number raises an exception here; discard it the
+    // same way, the answer is just "no"
+    u64_t skip = 0;
+    if (BHEngineValue_as_u64(ctx, result, &skip) != 0)
+        skip = 0;
+    if (ctx->exc) {
+        bhex_free(strbuilder_finalize(ctx->exc->sb));
+        bhex_free(ctx->exc);
+        ctx->exc = NULL;
+    }
+    return skip;
+}
+
 int bhengine_interpreter_process_ast_named_proc(FileBuffer* fb, ASTCtx* ast,
                                                 const char* s)
 {
@@ -1396,8 +1650,52 @@ int bhengine_interpreter_process_ast_named_proc(FileBuffer* fb, ASTCtx* ast,
         goto end;
     }
 
+    // A named proc answers the same way a fn does, through 'result', and may
+    // 'return' early to do it. Nothing forces it to -- most named procs are
+    // alternative views and ignore the variable -- but it is what makes
+    // "_identify" runnable on its own, with its exceptions printed, which is
+    // the only way to debug one
+    Scope_add_local(ctx.proc_scope, "result", BHEngineValue_UNUM_new(0, 8));
+    ctx.return_allowed = 1;
+
+    // "_identify_magic" declares through magic(), which needs somewhere to
+    // append to; running it by hand is how an author sees what a template
+    // actually claims
+    DList* magics = NULL;
+    if (strcmp(s, BHENGINE_IDENTIFY_MAGIC_PROC) == 0) {
+        magics     = DList_new();
+        ctx.magics = magics;
+    }
+
     ctx.fmt->max_fvar_len = compute_name_col_width(ast, b);
     r                     = process_stmts(&ctx, b->stmts, ctx.proc_scope);
+    ctx.magics            = NULL;
+
+    if (r == 0 && magics != NULL) {
+        display_printf("%llu magic pattern(s):\n", magics->size);
+        for (u64_t i = 0; i < magics->size; ++i) {
+            BHEngineMagic* m = (BHEngineMagic*)magics->data[i];
+            display_printf("  +%-5llu ", m->offset);
+            for (u32_t j = 0; j < m->size; ++j)
+                display_printf("%02x ", m->pattern[j]);
+            display_printf(" '");
+            for (u32_t j = 0; j < m->size; ++j)
+                display_printf("%c",
+                               (m->pattern[j] >= 0x20 && m->pattern[j] < 0x7f)
+                                   ? (char)m->pattern[j]
+                                   : '.');
+            display_printf("'\n");
+        }
+    }
+    if (magics != NULL)
+        DList_destroy(magics, (void (*)(void*))BHEngineMagic_delete);
+
+    if (r == 0) {
+        BHEngineValue* result = Scope_get_local(ctx.proc_scope, "result");
+        u64_t          v      = 0;
+        if (result && BHEngineValue_as_u64(&ctx, result, &v) == 0 && v != 0)
+            display_printf("result: %llu\n", v);
+    }
 
 end:
     interpreter_context_deinit(&ctx);

@@ -101,6 +101,7 @@ Available commands:
     findbase [fba]
     strings [str]
     template [t]
+    identify [id]
     seek [s]
     print [p]
     diff [df]
@@ -333,6 +334,54 @@ Available templates:
 
 ...
 ```
+
+### Identify
+
+Walks the file looking for the formats bhex knows, the way `binwalk` does. Each template declares
+the byte patterns its format cannot appear without (`_identify_magic`), and the bytes it needs to
+see to be sure (`_identify`). One pass finds every declared pattern at once, and only where one
+matched does the template get asked; a template that recognises the bytes answers with the size of
+what it found, and the scan resumes past it.
+
+```
+[0x0000000] $ id?
+
+identify: scan the file for known formats, running the '_identify' proc of
+          every template that declares one at every offset
+
+  id[/l/v/n/e] [<len>]
+     l: list the templates that take part in the scan
+     v: report the time each template cost (measuring it is not free,
+        the scan itself gets slower)
+     n: do not skip over what was identified
+     e: exhaustive: ignore the declared magics and ask every template
+        at every offset. Comparing 'id/n' with 'id/n/e' is how a wrong
+        magic declaration gets caught
+
+  len: number of bytes to scan starting from the current offset
+       (if omitted, scan up to the end of the file)
+
+  A hit reports the size the template gave for what it recognised,
+  and the scan resumes past it -- so a format embedded in something
+  already identified is only found with '/n'
+
+[0x0000000] $ id
+  0x00100000  png          218 bytes
+  0x002000da  elf          324 bytes
+  0x0030021e  zip          71 bytes
+  0x0040058b  gzip         10 bytes
+  0x005005aa  jpeg         20 bytes
+  0x00600747  mp4          262 bytes
+  0x0070084d  squashfs     623 bytes
+  0x0080184d  rpm          96 bytes
+
+12 hits in 8395032 bytes, 14 templates
+prefilter: 41 patterns -> 157 candidates in 0.030s
+157 offsets, 157 runs in 0.034s
+```
+
+A template with no `_identify_magic` has to be tried at every offset, which puts a floor under the
+whole scan; `id/l` shows which templates are prefiltered and `id/v` what each one costs.
 
 ### Seek
 

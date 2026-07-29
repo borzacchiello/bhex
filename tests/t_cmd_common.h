@@ -25,7 +25,7 @@
         bhex_free(err);                                                        \
     } while (0)
 
-extern int template_skip_search;
+extern int bhengine_vm_skip_search;
 
 static CmdContext*      cc;
 static DummyFilebuffer *elf_fb, *pe_fb, *dfb_alt_1, *dfb_alt_2;
@@ -47,8 +47,8 @@ static void log_on_err_strbuilder(const char* str)
 
 __attribute__((constructor)) static void __init(void)
 {
-    disable_warning      = 1;
-    template_skip_search = 1;
+    disable_warning         = 1;
+    bhengine_vm_skip_search = 1;
 
     cc = cmdctx_init();
     if (!cc)

@@ -54,6 +54,47 @@ static ASTCtx* bhengine_vm_process_imported(BHEngineVM* vm, const char* bhe,
     return vm_ensure_parsed_ex(bhe, te, quiet);
 }
 
+// Registers every "*.bhe" of a directory under its bare name. A name already
+// taken keeps the file that claimed it: the caller walks the search path in
+// priority order
+static void vm_load_dir(BHEngineVM* ctx, const char* dirpath)
+{
+    DIR* dir = opendir(dirpath);
+    if (dir == NULL)
+        return;
+
+    char tmp[1024];
+
+    struct dirent* entry;
+    while ((entry = readdir(dir)) != NULL) {
+        // look for "*.bhe" files
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+            continue;
+        size_t d_namelen = strlen(entry->d_name);
+        if (d_namelen < 4 ||
+            strcmp(entry->d_name + (d_namelen - 4), ".bhe") != 0)
+            continue;
+
+        memset(tmp, 0, sizeof(tmp));
+        snprintf(tmp, sizeof(tmp) - 1, "%s/%s", dirpath, entry->d_name);
+
+        // Remove extension
+        entry->d_name[d_namelen - 4] = '\0';
+        if (map_contains(ctx->templates, entry->d_name)) {
+            warning("template '%s' already loaded, skipping file '%s'",
+                    entry->d_name, tmp);
+            continue;
+        }
+
+        TemplateEntry* te = bhex_calloc(sizeof(TemplateEntry));
+        te->path          = strdup(tmp);
+        te->ast           = NULL;
+        map_set(ctx->templates, entry->d_name, te);
+    }
+
+    closedir(dir);
+}
+
 BHEngineVM* bhengine_vm_create(const char** dirs)
 {
     bhengine_interpreter_set_fmt_type(FMT_TERM);
@@ -62,48 +103,8 @@ BHEngineVM* bhengine_vm_create(const char** dirs)
     ctx->templates  = map_create();
     map_set_dispose(ctx->templates, (void (*)(void*))TemplateEntry_delete);
 
-    char tmp[1024];
-
-    const char** curr = dirs;
-    while (*curr) {
-        const char* dirpath = *curr;
-        DIR*        dir     = opendir(dirpath);
-        if (dir == NULL) {
-            curr++;
-            continue;
-        }
-
-        struct dirent* entry;
-        while ((entry = readdir(dir)) != NULL) {
-            // look for "*.bhe" files
-            if (strcmp(entry->d_name, ".") == 0 ||
-                strcmp(entry->d_name, "..") == 0)
-                continue;
-            size_t d_namelen = strlen(entry->d_name);
-            if (d_namelen < 4 ||
-                strcmp(entry->d_name + (d_namelen - 4), ".bhe") != 0)
-                continue;
-
-            memset(tmp, 0, sizeof(tmp));
-            snprintf(tmp, sizeof(tmp) - 1, "%s/%s", dirpath, entry->d_name);
-
-            // Remove extension
-            entry->d_name[d_namelen - 4] = '\0';
-            if (map_contains(ctx->templates, entry->d_name)) {
-                warning("template '%s' already loaded, skipping file '%s'",
-                        entry->d_name, tmp);
-                continue;
-            }
-
-            TemplateEntry* te = bhex_calloc(sizeof(TemplateEntry));
-            te->path          = strdup(tmp);
-            te->ast           = NULL;
-            map_set(ctx->templates, entry->d_name, te);
-        }
-
-        closedir(dir);
-        curr++;
-    }
+    for (const char** curr = dirs; *curr; ++curr)
+        vm_load_dir(ctx, *curr);
 
     bhengine_interpreter_set_imported_types_callback(
         (imported_cb_t)bhengine_vm_process_imported, ctx);
@@ -133,11 +134,71 @@ int bhengine_vm_add_template(BHEngineVM* ctx, const char* name,
     return 0;
 }
 
+int bhengine_vm_remove_template(BHEngineVM* ctx, const char* name)
+{
+    if (!map_contains(ctx->templates, name))
+        return 0;
+
+    // map_remove hands the entry over instead of disposing it
+    TemplateEntry_delete(map_remove(ctx->templates, name));
+    return 1;
+}
+
 void bhengine_vm_destroy(BHEngineVM* ctx)
 {
     bhengine_interpreter_set_imported_types_callback(NULL, NULL);
     map_destroy(ctx->templates);
     bhex_free(ctx);
+}
+
+static const char* search_folders[]       = {"/usr/local/share/bhex/templates",
+                                             "../templates", ".", NULL};
+static const char* search_folders_empty[] = {NULL};
+
+int bhengine_vm_skip_search = 0;
+
+static BHEngineVM* g_vm = NULL;
+
+#define SEARCH_FOLDERS_N (sizeof(search_folders) / sizeof(*search_folders))
+
+// Built on first use rather than in a constructor: the tests neutralise the
+// search path from a constructor of their own, and the order those run in is
+// not something to depend on
+BHEngineVM* bhengine_vm_get(void)
+{
+    if (g_vm != NULL)
+        return g_vm;
+
+    // Note the search path is assembled here rather than inside
+    // bhengine_vm_create(): that one loads exactly the directories it is
+    // handed, so that "search nothing" really means nothing
+    if (bhengine_vm_skip_search) {
+        g_vm = bhengine_vm_create(search_folders_empty);
+        return g_vm;
+    }
+
+    // A directory named by BHEX_TEMPLATES_PATH comes first, so that a checkout
+    // can be tested without its templates being shadowed by an older copy
+    // installed system wide
+    const char* env_dir = getenv("BHEX_TEMPLATES_PATH");
+    if (env_dir == NULL) {
+        g_vm = bhengine_vm_create(search_folders);
+        return g_vm;
+    }
+
+    const char* dirs[SEARCH_FOLDERS_N + 1];
+    dirs[0] = env_dir;
+    memcpy(&dirs[1], search_folders, sizeof(search_folders));
+    g_vm = bhengine_vm_create(dirs);
+    return g_vm;
+}
+
+__attribute__((destructor)) static void bhengine_vm_singleton_destroy(void)
+{
+    if (g_vm == NULL)
+        return;
+    bhengine_vm_destroy(g_vm);
+    g_vm = NULL;
 }
 
 void bhengine_vm_iter_templates(BHEngineVM* ctx,
@@ -183,6 +244,28 @@ void bhengine_vm_iter_named_procs(BHEngineVM* ctx,
              str             = map_next(ast->named_procs, str)) {
             cb(key, str, ast);
         }
+    }
+}
+
+void bhengine_vm_iter_identifiers(BHEngineVM* ctx, FileBuffer* fb,
+                                  void (*cb)(const char*         name,
+                                             BHEngineIdentifier* id,
+                                             void*               user),
+                                  void* user)
+{
+    for (const char* key = map_first(ctx->templates); key != NULL;
+         key             = map_next(ctx->templates, key)) {
+        TemplateEntry* te = map_get(ctx->templates, key);
+        // a template that does not parse is skipped without a warning: the
+        // identify scan is opportunistic, it is not the user asking for it
+        ASTCtx* ast = vm_ensure_parsed_ex(key, te, 1);
+        if (!ast)
+            continue;
+
+        BHEngineIdentifier* id = bhengine_identifier_new(fb, ast);
+        if (id == NULL)
+            continue;
+        cb(key, id, user);
     }
 }
 

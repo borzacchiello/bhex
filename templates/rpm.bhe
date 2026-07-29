@@ -328,6 +328,26 @@ proc list_files
     }
 }
 
+
+// The rpm lead magic
+proc _identify_magic
+{
+    magic("\xed\xab\xee\xdb", 0);
+}
+
+// The lead magic, plus the two fields of it that never vary: the major
+// version has been 3 since rpm 2.0, and sig_type is always 5
+proc _identify
+{
+    big_endian();
+    if (peek_u32() == 0xedabeedb && peek_u8(4) == 3 &&
+        remaining_size() >= 96 && peek_u16(78) == 5) {
+        // the package size is the two header blocks plus a compressed payload
+        // of unknown length: the hit covers the lead
+        result = 96;
+    }
+}
+
 proc
 {
     big_endian();

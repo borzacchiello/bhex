@@ -462,35 +462,31 @@ static BHEngineValue* read_bytes(InterpreterContext* ctx, const char* fname,
     if (n == 0)
         return BHEngineValue_STRING_new((const u8_t*)"", 0);
 
-    u64_t          orig_off = ctx->fb->off;
-    StringBuilder* sb       = strbuilder_new();
-    u64_t          done     = 0;
-    while (done < n) {
-        if (fb_seek(ctx->fb, off + done) != 0)
-            goto fail;
+    // The value is filled in place: a peek used to go through a StringBuilder
+    // one byte at a time and then copy the result into the value, which is
+    // three allocations and two copies for what is usually a four byte read
+    u8_t*          out = NULL;
+    BHEngineValue* r   = BHEngineValue_STRING_new_uninit(n, &out);
 
+    u64_t done = 0;
+    while (done < n) {
         u64_t to_read = n - done;
         if (to_read > fb_block_size)
             to_read = fb_block_size;
 
-        const u8_t* buf = fb_read(ctx->fb, to_read);
+        const u8_t* buf = fb_read_at(ctx->fb, off + done, to_read);
         if (buf == NULL)
             goto fail;
-        for (u64_t i = 0; i < to_read; ++i)
-            strbuilder_append_char(sb, (char)buf[i]);
+        memcpy(out + done, buf, to_read);
         done += to_read;
     }
 
-    fb_seek(ctx->fb, advance ? off + n : orig_off);
-
-    char*          str = strbuilder_finalize(sb);
-    BHEngineValue* r   = BHEngineValue_STRING_new((const u8_t*)str, n);
-    bhex_free(str);
+    if (advance)
+        fb_seek(ctx->fb, off + n);
     return r;
 
 fail:
-    bhex_free(strbuilder_finalize(sb));
-    fb_seek(ctx->fb, orig_off);
+    BHEngineValue_free(r);
     bhengine_raise_exception(ctx, "%s: unable to read %llu bytes", fname, n);
     return NULL;
 }
@@ -530,15 +526,8 @@ static BHEngineValue* peek_num(InterpreterContext* ctx, const char* fname,
     if (off + size > ctx->fb->size)
         return BHEngineValue_SNUM_new(-1, 8);
 
-    u64_t orig_off = ctx->fb->off;
-    if (fb_seek(ctx->fb, off) != 0) {
-        bhengine_raise_exception(ctx, "%s: unable to seek to %llu", fname, off);
-        return NULL;
-    }
-
-    const u8_t* buf = fb_read(ctx->fb, size);
+    const u8_t* buf = fb_read_at(ctx->fb, off, size);
     if (buf == NULL) {
-        fb_seek(ctx->fb, orig_off);
         bhengine_raise_exception(ctx, "%s: unable to read %u bytes", fname,
                                  size);
         return NULL;
@@ -550,7 +539,6 @@ static BHEngineValue* peek_num(InterpreterContext* ctx, const char* fname,
                                    ? ((size - i - 1) * 8)
                                    : (i * 8));
 
-    fb_seek(ctx->fb, orig_off);
     return BHEngineValue_SNUM_new((s64_t)v, 8);
 }
 
@@ -939,6 +927,50 @@ static BHEngineValue* builtin_max_array_print(InterpreterContext* ctx,
     return NULL;
 }
 
+// Declares a byte pattern without which "_identify" cannot succeed, so that
+// the 'id' scan can look for the pattern instead of running the proc at every
+// offset. The optional second argument is where the pattern sits inside the
+// format: 'ustar' is 257 bytes into a tar header, so a match at X means a tar
+// header may start at X - 257.
+//
+// Declaring several is normal (a format with more than one magic, or with both
+// byte orders); the scan tries "_identify" wherever any of them matches. It is
+// the template's job to make sure that is not a lie: the scan will never find
+// what none of the patterns points at.
+static BHEngineValue* builtin_magic(InterpreterContext* ctx, DList* params)
+{
+    if (ctx->magics == NULL) {
+        bhengine_raise_exception(ctx,
+                                 "magic: only valid inside '" //
+                                 BHENGINE_IDENTIFY_MAGIC_PROC "'");
+        return NULL;
+    }
+
+    const u8_t* pattern;
+    u64_t       size;
+    if (param_as_bytes(ctx, "magic", params, 0, &pattern, &size) != 0)
+        return NULL;
+
+    u64_t off = 0;
+    if (params->size > 1 && param_as_u64(ctx, "magic", params, 1, &off) != 0)
+        return NULL;
+
+    // An empty pattern narrows nothing; a template says "I have no magic" by
+    // declaring none at all, so this is a mistake worth reporting
+    if (size == 0) {
+        bhengine_raise_exception(ctx, "magic: the pattern is empty");
+        return NULL;
+    }
+
+    BHEngineMagic* m = bhex_calloc(sizeof(BHEngineMagic));
+    m->pattern       = bhex_malloc(size);
+    memcpy(m->pattern, pattern, size);
+    m->size   = (u32_t)size;
+    m->offset = off;
+    DList_add(ctx->magics, m);
+    return NULL;
+}
+
 static BHEngineValue* builtin_disable_print(InterpreterContext* ctx,
                                             DList*              params)
 {
@@ -1205,10 +1237,10 @@ static BHEngineValue* builtin_find(InterpreterContext* ctx, DList* params)
 
     u64_t orig_off = ctx->fb->off;
     u64_t match_off;
-    int   r = backward
-                  ? search_backward(ctx, needle, needle_len, orig_off, &match_off)
-                  : search_forward(ctx, needle, needle_len, orig_off,
-                                   ctx->fb->size, &match_off);
+    int r = backward
+                ? search_backward(ctx, needle, needle_len, orig_off, &match_off)
+                : search_forward(ctx, needle, needle_len, orig_off,
+                                 ctx->fb->size, &match_off);
 
     if (r < 0) {
         fb_seek(ctx->fb, orig_off);
@@ -1235,10 +1267,10 @@ static BHEngineValue* builtin_find_next(InterpreterContext* ctx, DList* params)
 
     u64_t orig_off = ctx->fb->off;
     u64_t match_off;
-    int   r = backward
-                  ? search_backward(ctx, needle, needle_len, orig_off, &match_off)
-                  : search_forward(ctx, needle, needle_len, orig_off,
-                                   ctx->fb->size, &match_off);
+    int r = backward
+                ? search_backward(ctx, needle, needle_len, orig_off, &match_off)
+                : search_forward(ctx, needle, needle_len, orig_off,
+                                 ctx->fb->size, &match_off);
 
     if (fb_seek(ctx->fb, orig_off) != 0)
         panic("fb_seek failed in an unexpected way");
@@ -1497,6 +1529,7 @@ static BHEngineBuiltinFunc builtin_funcs[] = {
     {"big_endian", 0, 0, builtin_big_endian},
     {"nums_in", 1, 1, builtin_nums_in},
     {"max_array_print", 1, 1, builtin_max_array_print},
+    {"magic", 1, 2, builtin_magic},
     {"disable_print", 0, 0, builtin_disable_print},
     {"enable_print", 0, 0, builtin_enable_print},
     {"print", 1, BUILTIN_VARIADIC, builtin_print},

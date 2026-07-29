@@ -175,6 +175,55 @@ fn parse_chunk()
     }
 }
 
+
+// SOI plus the 0xff that has to open the marker behind it. Not the full four
+// bytes: "_identify" accepts any of ~35 markers there, so pinning the fourth
+// byte would make this stop being a necessary condition and hide files
+proc _identify_magic
+{
+    magic("\xff\xd8\xff", 0);
+}
+
+// SOI, then a marker that can legally open a file, then a second well formed
+// segment behind it. 'ff d8' on its own turns up inside any entropy-coded
+// payload and all over m68k firmware, where 0xffd8 is an ordinary negative
+// displacement; chaining two segments is what tells those apart
+proc _identify
+{
+    big_endian();
+    if (peek_u16() != 0xffd8 || peek_u8(2) != 0xff || remaining_size() < 6) {
+        return;
+    }
+
+    // Every one of these carries a length: SOFn and DHT (0xc0-0xcf), DQT, DRI,
+    // APPn and COM. RSTn, SOI and EOI carry nothing, and SOS cannot come first
+    // because the tables it uses have to be declared before it
+    local m  = peek_u8(3);
+    local ok = (m >= 0xc0 && m <= 0xcf) || m == 0xdb || m == 0xdd ||
+               (m >= 0xe0 && m <= 0xef) || m == 0xfe;
+    if (!ok) {
+        return;
+    }
+
+    local len = peek_u16(4);
+    if (len < 2 || 4 + len + 2 > remaining_size()) {
+        return;
+    }
+
+    // whatever follows that segment has to be a marker as well
+    if (peek_u8(4 + len) != 0xff) {
+        return;
+    }
+    local m2 = peek_u8(5 + len);
+    if (m2 == 0x00 || m2 == 0xff || m2 == 0xd8) {
+        return;
+    }
+
+    // finding the EOI means walking the entropy-coded segments, which is the
+    // parse itself: the hit covers the header validated here
+    result = 4 + len;
+}
+
 proc
 {
     nums_in(10);

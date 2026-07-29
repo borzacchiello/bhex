@@ -112,6 +112,26 @@ struct lzop_block_t
     }
 }
 
+
+// The 9 byte lzop magic
+proc _identify_magic
+{
+    magic("\x89LZO\x00\r\n\x1a\n", 0);
+}
+
+// Re-checked here so that "_identify" stands on its own: the declaration
+// above is only a hint about where to bother asking
+proc _identify
+{
+    big_endian();
+    if (peek_u32() == 0x894c5a4f && peek_u32(4) == 0x000d0a1a &&
+        peek_u8(8) == 0x0a) {
+        // the block list has to be walked to reach the end of the stream: the
+        // hit covers the magic
+        result = 9;
+    }
+}
+
 proc
 {
     while (off() < size()) {

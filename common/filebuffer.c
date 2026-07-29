@@ -97,15 +97,22 @@ static void fb_modified_check(FileBuffer* fb)
     }
 }
 
+// Moves the cursor with the lock already held. The public entry points below
+// are thin wrappers, so that an operation made of several steps takes the lock
+// once instead of once per step.
+static int fb_seek_locked(FileBuffer* fb, u64_t off)
+{
+    if (off > fb->size)
+        return 1;
+    fb->off         = off;
+    fb->block_dirty = 1;
+    return 0;
+}
+
 int fb_seek(FileBuffer* fb, u64_t off)
 {
-    int r = 1;
     fb_lock(fb);
-    if (off <= fb->size) {
-        fb->off         = off;
-        fb->block_dirty = 1;
-        r               = 0;
-    }
+    int r = fb_seek_locked(fb, off);
     fb_unlock(fb);
     return r;
 }
@@ -672,10 +679,10 @@ static size_t fb_get_effective_size(FileBuffer* fb, u32_t mod_idx)
     return fsize;
 }
 
-const u8_t* fb_read_ex(FileBuffer* fb, size_t size, u32_t mod_idx)
+// Reads with the lock already held; see fb_seek_locked().
+static const u8_t* fb_read_ex_locked(FileBuffer* fb, size_t size, u32_t mod_idx)
 {
     const u8_t* result = NULL;
-    fb_lock(fb);
 
     if (mod_idx > fb->modifications.size)
         goto end;
@@ -729,6 +736,13 @@ const u8_t* fb_read_ex(FileBuffer* fb, size_t size, u32_t mod_idx)
     result = (const u8_t*)fb->block;
 
 end:
+    return result;
+}
+
+const u8_t* fb_read_ex(FileBuffer* fb, size_t size, u32_t mod_idx)
+{
+    fb_lock(fb);
+    const u8_t* result = fb_read_ex_locked(fb, size, mod_idx);
     fb_unlock(fb);
     return result;
 }
@@ -736,6 +750,24 @@ end:
 const u8_t* fb_read(FileBuffer* fb, size_t size)
 {
     return fb_read_ex(fb, size, 0);
+}
+
+const u8_t* fb_read_at(FileBuffer* fb, u64_t off, size_t size)
+{
+    // Seek, read, seek back under a single acquisition of the lock rather than
+    // one per step. Templates come through here for every peek, which is the
+    // most frequent thing a template does, so the three lock round trips this
+    // used to cost were showing up in profiles.
+    fb_lock(fb);
+
+    const u8_t* result   = NULL;
+    u64_t       orig_off = fb->off;
+    if (fb_seek_locked(fb, off) == 0)
+        result = fb_read_ex_locked(fb, size, 0);
+    fb_seek_locked(fb, orig_off);
+
+    fb_unlock(fb);
+    return result;
 }
 
 u8_t* fb_read_alloc_ex(FileBuffer* fb, u64_t off, size_t size, u32_t mod_idx)
@@ -902,8 +934,8 @@ static void* search_worker(void* arg)
         if (ctx->has_index) {
             BlockInfo* binfo = get_block_at(ctx, addr);
             if (!(binfo->min <= data_min && data_max <= binfo->max)) {
-                addr = (addr / ctx->block_size) * ctx->block_size +
-                       ctx->block_size;
+                addr    = (addr / ctx->block_size) * ctx->block_size +
+                          ctx->block_size;
                 buf_off = 0;
                 buf_end = 0;
                 continue;

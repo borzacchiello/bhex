@@ -31,6 +31,15 @@ void Scope_reset(Scope* s);
 BHEngineValue* Scope_get_filevar(Scope* s, const char* name);
 BHEngineValue* Scope_get_local(Scope* s, const char* name);
 BHEngineValue* Scope_get_anyvar(Scope* s, const char* name);
+
+// Same lookups, with the name's hash supplied by the caller (see map_hash).
+// A resolution walks every scope in the chain, and the interpreter resolves
+// the same name on every evaluation, so callers that hold an AST node cache
+// the hash there and hash the name once instead of once per scope per pass.
+BHEngineValue* Scope_get_filevar_h(Scope* s, const char* name, unsigned int h);
+BHEngineValue* Scope_get_local_h(Scope* s, const char* name, unsigned int h);
+void Scope_add_local_h(Scope* s, const char* name, BHEngineValue* value,
+                       unsigned int h);
 void Scope_add_filevar(Scope* s, const char* name, BHEngineValue* value);
 
 // Declare a new local in the current scope frame.
@@ -39,6 +48,8 @@ void Scope_add_local(Scope* s, const char* name, BHEngineValue* value);
 // Update an existing local variable, searching up the parent chain.
 // Returns 1 if the variable was found and updated, 0 otherwise.
 int Scope_update_local(Scope* s, const char* name, BHEngineValue* value);
+int Scope_update_local_h(Scope* s, const char* name, BHEngineValue* value,
+                         unsigned int h);
 
 map*           Scope_free_and_get_filevars(Scope* s);
 map*           Scope_free_and_get_locals(Scope* s);

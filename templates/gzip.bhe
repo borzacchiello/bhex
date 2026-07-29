@@ -76,6 +76,29 @@ struct gzip_member_t
     u32           input_size;
 }
 
+
+// The two magic bytes plus the only compression method ever assigned, all
+// three of which "_identify" requires
+proc _identify_magic
+{
+    magic("\x1f\x8b\x08", 0);
+}
+
+// \x1f\x8b is only two bytes and shows up constantly inside compressed data,
+// so the two fields that follow it are checked as well: deflate is the only
+// compression method ever assigned, and the top three flag bits are reserved
+proc _identify
+{
+    big_endian();
+    if (peek_u16() == 0x1f8b &&
+        peek_u8(2) == gzip_compression_method_t::DEFLATE &&
+        (peek_u8(3) & 0xe0) == 0) {
+        // the length of a member is only known once it has been inflated, so
+        // the hit carries the fixed part of the header and nothing more
+        result = 10;
+    }
+}
+
 proc
 {
     gzip_member_t member;

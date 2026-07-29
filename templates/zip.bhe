@@ -237,6 +237,32 @@ proc list_files
     }
 }
 
+
+// The local file header signature
+proc _identify_magic
+{
+    magic("PK\x03\x04", 0);
+}
+
+// A local file header, which is what a zip (and every zip-derived container:
+// jar, apk, docx, epub) starts with. The signature is backed by two fields
+// that cannot hold arbitrary values: the version needed to extract, and a
+// compression method from the assigned range
+proc _identify
+{
+    little_endian();
+    if (peek_u32() == 0x04034b50 && peek_u16(4) <= 63 && peek_u16(8) <= 99) {
+        // the entry knows its own length: 30 byte header, the two variable
+        // length fields, then the payload. A streamed entry carries a zero
+        // compressed size (the real one lives in a trailing data descriptor),
+        // in which case this degrades to the header, which is fine
+        result = 30 + peek_u16(26) + peek_u16(28) + peek_u32(18);
+        if (result > remaining_size()) {
+            result = 30 + peek_u16(26) + peek_u16(28);
+        }
+    }
+}
+
 proc
 {
     local endOfCentralDir = seek_to_central_dir();

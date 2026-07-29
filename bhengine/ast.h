@@ -41,6 +41,33 @@ typedef enum ASTExprType {
 
 typedef struct Expr {
     ASTExprType t;
+
+    // Name resolution cache. What a name refers to cannot change once the AST
+    // is parsed, but resolving it used to be redone on every evaluation of the
+    // node: a hash map lookup for each builtin call, a lookup plus a linear
+    // scan for each enum constant. Both are filled in on first use.
+    //
+    //   EXPR_FUN_CALL   res_ptr is the BHEngineBuiltinFunc, NULL for a user fn
+    //   EXPR_ENUM_CONST res_val is the constant, res_ptr the ASTCtx it came
+    //                   from -- a node reached through an imported type
+    //                   resolves against that file's AST, so the cache is only
+    //                   good while that AST is the one running
+    //   EXPR_SCONST     res_ptr is the literal's BHEngineValue, built once and
+    //   EXPR_UCONST     handed out by reference. Values are immutable, so
+    //   EXPR_STRING     sharing one is safe; the node owns a reference to it
+    //                   and Expr_free() drops it.
+    //
+    // res_done tells "cached, and the answer was NULL" from "not looked up".
+    const void* res_ptr;
+    u64_t       res_val;
+    u8_t        res_done;
+
+    // EXPR_VAR: the hash of `name`, so that resolving it does not re-hash the
+    // string once per scope in the chain, on every evaluation. Zero means "not
+    // computed yet" -- a name that genuinely hashes to zero simply keeps
+    // getting rehashed, which is correct, just not faster.
+    unsigned int name_hash;
+
     union {
         struct {
             // EXPR_SCONST
@@ -147,6 +174,15 @@ typedef struct Stmt {
     ASTStmtType t;
     int         line_of_code;
     int         column;
+
+    // The same resolution cache Expr carries, for the two names a statement
+    // resolves on every execution:
+    //   VOID_FUNC_CALL              res_ptr is the builtin, NULL for a user fn
+    //   LOCAL_VAR_DECL/_ASS         name_hash is the hash of local_name
+    const void*  res_ptr;
+    u8_t         res_done;
+    unsigned int name_hash;
+
     union {
         struct {
             // FILE_VAR_DECL

@@ -86,6 +86,46 @@ struct IENDChunk
     }
 }
 
+
+// The 8 byte signature is what "_identify" starts by checking, so nothing it
+// accepts can be missing it
+proc _identify_magic
+{
+    magic("\x89PNG\r\n\x1a\n", 0);
+}
+
+// The 8 byte signature, plus the IHDR chunk the spec requires to come first.
+// The signature is re-checked here rather than assumed: the declaration above
+// only says where it is worth asking, never what the answer is
+proc _identify
+{
+    big_endian();
+    if (peek_u32() != 0x89504e47 || peek_u32(4) != 0x0d0a1a0a ||
+        peek(4, 12) != "IHDR") {
+        return;
+    }
+
+    // The chunk list is a linked walk, so the end of the image is a handful of
+    // additions away: report it, and the scan resumes past the whole PNG
+    local o = 8;
+    while (o + 8 <= remaining_size()) {
+        local len = peek_u32(o);
+        if (len > remaining_size() - o - 12) {
+            break;
+        }
+        local type = peek(4, o + 4);
+        o = o + 12 + len;
+        if (type == "IEND") {
+            result = o;
+            return;
+        }
+    }
+
+    // truncated, or a chunk length that does not add up: fall back to the
+    // signature and the IHDR chunk, the bytes actually validated
+    result = 33;
+}
+
 proc
 {
     big_endian();

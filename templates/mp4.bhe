@@ -412,6 +412,50 @@ fn parse_boxes(end_off, in_ilst)
     }
 }
 
+
+// The box type at offset 4, so a match at X means the box starts at X - 4
+proc _identify_magic
+{
+    magic("ftyp", 4);
+    magic("styp", 4);
+}
+
+// The 'ftyp' (or 'styp', for a fragment) box the file opens with, and a box
+// size that at least covers the header and the major brand without running
+// past the end of the file
+proc _identify
+{
+    big_endian();
+    if ((peek(4, 4) != "ftyp" && peek(4, 4) != "styp") ||
+        peek_u32() < 16 || peek_u32() > remaining_size()) {
+        return;
+    }
+
+    // the file is a flat list of top level boxes, each carrying its own size,
+    // so walking it to the end costs a handful of peeks and gives the scan
+    // the exact extent of the movie
+    local o = 0;
+    while (o + 8 <= remaining_size()) {
+        local bsize = peek_u32(o);
+        if (bsize == 0) {
+            // the last box, running to the end of the file
+            o = remaining_size();
+            break;
+        }
+        if (bsize == 1) {
+            if (o + 16 > remaining_size()) {
+                break;
+            }
+            bsize = peek_u64(o + 8);
+        }
+        if (bsize < 8 || o + bsize > remaining_size()) {
+            break;
+        }
+        o = o + bsize;
+    }
+    result = o;
+}
+
 proc
 {
     big_endian();

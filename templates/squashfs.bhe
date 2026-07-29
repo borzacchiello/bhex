@@ -298,6 +298,37 @@ fn parse_inode_entries(superblock)
     }
 }
 
+
+// 'hsqs' little endian, 'sqsh' big endian
+proc _identify_magic
+{
+    magic("hsqs", 0);
+    magic("sqsh", 0);
+}
+
+// Which of the two magics is present decides the byte order, and the little
+// endian one gets its fields cross-checked
+proc _identify
+{
+    little_endian();
+    if (peek(4) == "hsqs") {
+        // block_log backs the magic up: the block size is a power of two
+        // between 4 KiB and 1 MiB, and the superblock stores its logarithm
+        if (peek_u16(22) >= 12 && peek_u16(22) <= 20 &&
+            peek_u32(12) == (1 << peek_u16(22))) {
+            // the superblock records the size of the whole image, so the scan
+            // can step straight over the filesystem
+            result = peek_u64(40);
+            if (result == 0 || result > remaining_size()) {
+                result = 96;
+            }
+        }
+    } elif (peek(4) == "sqsh") {
+        // the byte swapped variant, whose fields would need the other order
+        result = 96;
+    }
+}
+
 proc
 {
     superblock_t superblock;

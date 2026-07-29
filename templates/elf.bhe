@@ -498,6 +498,54 @@ proc load_segments
     }
 }
 
+
+// \x7fELF, the first thing "_identify" checks
+proc _identify_magic
+{
+    magic("\x7fELF", 0);
+}
+
+// \x7fELF, then the rest of e_ident: the class, the data encoding and the
+// version all have exactly two (or one) legal values, which is what keeps the
+// four magic bytes from matching random data
+proc _identify
+{
+    big_endian();
+    if (peek_u32() != 0x7f454c46 ||
+        peek_u8(4) < 1 || peek_u8(4) > 2 ||
+        peek_u8(5) < 1 || peek_u8(5) > 2 ||
+        peek_u8(6) != 1) {
+        return;
+    }
+
+    local is64    = peek_u8(4) == 2;
+    local hdrsize = 0x34;
+    if (is64) {
+        hdrsize = 0x40;
+    }
+    if (peek_u8(5) == 1) {
+        little_endian();
+    }
+
+    // The section header table is normally the last thing in the file, so
+    // where it ends is where the image ends. Reading e_shoff and friends means
+    // reaching the far end of the header, which an image cut short does not
+    // have: asking for it there would abort the whole identification
+    if (remaining_size() >= hdrsize) {
+        if (is64) {
+            result = peek_u64(0x28) + peek_u16(0x3a) * peek_u16(0x3c);
+        } else {
+            result = peek_u32(0x20) + peek_u16(0x2e) * peek_u16(0x30);
+        }
+    }
+
+    // stripped of its section headers, or truncated: report the header, or
+    // however much of it is actually here
+    if (result == 0 || result > remaining_size()) {
+        result = min(hdrsize, remaining_size());
+    }
+}
+
 proc
 {
     Elf_Ehdr header;

@@ -29,6 +29,7 @@
 #include "cmd_entropy.h"
 #include "cmd_interactive.h"
 #include "cmd_isa_identify.h"
+#include "cmd_identify.h"
 #include "cmd_echo.h"
 #include "cmd_setbase.h"
 
@@ -82,6 +83,7 @@ CmdContext* cmdctx_init(void)
     ll_add(&cc->commands, (uptr_t)printcmd_create());
     ll_add(&cc->commands, (uptr_t)seekcmd_create());
     ll_add(&cc->commands, (uptr_t)templatecmd_create());
+    ll_add(&cc->commands, (uptr_t)identifycmd_create());
     ll_add(&cc->commands, (uptr_t)stringscmd_create());
     ll_add(&cc->commands, (uptr_t)findbasecmd_create());
     ll_add(&cc->commands, (uptr_t)crccmd_create());

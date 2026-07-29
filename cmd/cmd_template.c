@@ -17,15 +17,8 @@
 #define MODE_INTERPRET 1
 #define XML_SET        0
 
-static const char* search_folders[]       = {"/usr/local/share/bhex/templates",
-                                             "../templates", ".", NULL};
-static const char* search_folders_empty[] = {NULL};
-
-// just for testing purposes
-int template_skip_search = 0;
-
 typedef struct TemplateCtx {
-    BHEngineVM* vm;
+    BHEngineVM* vm; // the engine's, not ours: nothing to release
 } TemplateCtx;
 
 static void templatecmd_help(void* obj)
@@ -48,7 +41,6 @@ static void templatecmd_help(void* obj)
 
 static void templatecmd_dispose(TemplateCtx* ctx)
 {
-    bhengine_vm_destroy(ctx->vm);
     bhex_free(ctx);
     return;
 }
@@ -181,12 +173,11 @@ Cmd* templatecmd_create(void)
     Cmd* cmd = bhex_malloc(sizeof(Cmd));
 
     TemplateCtx* ctx = bhex_calloc(sizeof(TemplateCtx));
-    ctx->vm    = bhengine_vm_create(template_skip_search ? search_folders_empty
-                                                         : search_folders);
-    cmd->obj   = ctx;
-    cmd->name  = "template";
-    cmd->alias = "t";
-    cmd->hint  = HINT_STR;
+    ctx->vm          = bhengine_vm_get();
+    cmd->obj         = ctx;
+    cmd->name        = "template";
+    cmd->alias       = "t";
+    cmd->hint        = HINT_STR;
 
     cmd->dispose = (void (*)(void*))templatecmd_dispose;
     cmd->help    = templatecmd_help;

@@ -106,6 +106,22 @@ void* map_get(const map* m, const char* key);
 void* map_get_or_null(const map* m, const char* key);
 
 /**
+ * Hash of a key, as used to pick its bucket.
+ *
+ * Exposed for callers that look the same key up over and over -- the
+ * interpreter resolves a variable name on every evaluation of the expression
+ * mentioning it, and walks a chain of scopes doing so. Such a caller computes
+ * the hash once and passes it to the `_h` variants below, which are otherwise
+ * identical to their plain counterparts. Passing a hash that does not match
+ * the key looks up the wrong bucket, i.e. reports the key as missing.
+ */
+unsigned int map_hash(const char* key);
+
+void* map_get_or_null_h(const map* m, const char* key, unsigned int h);
+int   map_replace_h(map* m, const char* key, void* value, unsigned int h);
+void  map_set_h(map* m, const char* key, void* value, unsigned int h);
+
+/**
  * Remove a key and return its value from a map. This call transfers the
  * ownership of the object to the caller
  *

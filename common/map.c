@@ -87,6 +87,12 @@ void map_destroy(map* m)
  */
 void map_clear(map* m)
 {
+    // Nothing to dispose and no bucket to blank: an already empty map is worth
+    // detecting, because a scope reset clears both of its maps at every pass
+    // of a loop and one of the two is usually empty
+    if (m->size == 0)
+        return;
+
     for (int i = 0; i < m->capacity; i += 1) {
         struct cell* curr = m->elems[i];
         while (curr != NULL) {
@@ -133,10 +139,15 @@ int map_contains(const map* m, const char* key)
  */
 void map_set(map* m, const char* key, void* value)
 {
+    map_set_h(m, key, value, hash(key));
+}
+
+void map_set_h(map* m, const char* key, void* value, unsigned int h)
+{
     // First, look for an existing entry with the given key in the map. If it
     // exists, simply update its value.
     if (m->capacity > 0) {
-        int b = hash(key) & (m->capacity - 1);
+        int b = h & (m->capacity - 1);
         for (struct cell* curr = m->elems[b]; curr != NULL; curr = curr->next) {
             if (strcmp(curr->key, key) == 0) {
                 if (m->el_dispose)
@@ -148,7 +159,7 @@ void map_set(map* m, const char* key, void* value)
     }
 
     extend_if_necessary(m);
-    int b = hash(key) & (m->capacity - 1);
+    int b = h & (m->capacity - 1);
 
     // No existing key was found, so insert it as a new entry at the head of the
     // list.
@@ -171,7 +182,14 @@ int map_replace(map* m, const char* key, void* value)
 {
     if (m->capacity == 0)
         return 0;
-    int b = hash(key) & (m->capacity - 1);
+    return map_replace_h(m, key, value, hash(key));
+}
+
+int map_replace_h(map* m, const char* key, void* value, unsigned int h)
+{
+    if (m->capacity == 0)
+        return 0;
+    int b = h & (m->capacity - 1);
 
     for (struct cell* curr = m->elems[b]; curr != NULL; curr = curr->next) {
         if (strcmp(curr->key, key) == 0) {
@@ -212,7 +230,16 @@ void* map_get_or_null(const map* m, const char* key)
 {
     if (m->capacity == 0)
         return NULL;
-    int b = hash(key) & (m->capacity - 1);
+    return map_get_or_null_h(m, key, hash(key));
+}
+
+unsigned int map_hash(const char* key) { return hash(key); }
+
+void* map_get_or_null_h(const map* m, const char* key, unsigned int h)
+{
+    if (m->capacity == 0)
+        return NULL;
+    int b = h & (m->capacity - 1);
 
     for (struct cell* curr = m->elems[b]; curr != NULL; curr = curr->next) {
         if (strcmp(curr->key, key) == 0)

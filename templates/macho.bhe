@@ -465,6 +465,54 @@ fn processEmbeddedMacho(arch_offset)
     }
 }
 
+
+// The four Mach-O magics and the two fat ones, in both byte orders -- exactly
+// the set "_identify" accepts
+proc _identify_magic
+{
+    magic("\xce\xfa\xed\xfe", 0);
+    magic("\xcf\xfa\xed\xfe", 0);
+    magic("\xfe\xed\xfa\xce", 0);
+    magic("\xfe\xed\xfa\xcf", 0);
+    magic("\xca\xfe\xba\xbe", 0);
+    magic("\xca\xfe\xba\xbf", 0);
+    magic("\xbe\xba\xfe\xca", 0);
+    magic("\xbf\xba\xfe\xca", 0);
+}
+
+// The four Mach-O magics and the two fat/universal ones, in both byte orders.
+// They are 32 bits of deliberately improbable value, so the magic alone is
+// the whole check -- note that FAT_MAGIC is also the Java class file magic
+proc _identify
+{
+    little_endian();
+    local magic = peek_u32();
+
+    // the load commands follow the header, and the header says how long they
+    // are: that is as far as identification can see without parsing them
+    if (magic == MachoMagic::MH_MAGIC_64 || magic == MachoMagic::MH_CIGAM_64) {
+        if (magic == MachoMagic::MH_CIGAM_64) {
+            big_endian();
+        }
+        result = 32 + peek_u32(20);
+    } elif (magic == MachoMagic::MH_MAGIC || magic == MachoMagic::MH_CIGAM) {
+        if (magic == MachoMagic::MH_CIGAM) {
+            big_endian();
+        }
+        result = 28 + peek_u32(20);
+    } elif (magic == MachoMagic::FAT_MAGIC || magic == MachoMagic::FAT_CIGAM ||
+            magic == MachoMagic::FAT_MAGIC_64 ||
+            magic == MachoMagic::FAT_CIGAM_64) {
+        // a fat header is 8 bytes and the slices follow; note this magic is
+        // also the Java class file one
+        result = 8;
+    }
+
+    if (result > remaining_size()) {
+        result = 4;
+    }
+}
+
 proc
 {
     local magic = peek_u32();

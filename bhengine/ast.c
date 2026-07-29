@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "ast.h"
+#include "value.h"
 #include "util/byte_to_str.h"
 
 #include <strbuilder.h>
@@ -336,16 +337,21 @@ void Expr_free(Expr* e)
     if (!e)
         return;
 
+    // A literal node owns a reference to the value it hands out (see the
+    // resolution cache in ast.h). Dropping it here rather than freeing it
+    // outright is what lets a value outlive the AST it came from: an inline
+    // program hands its scope back to the caller after deleting the AST
     switch (e->t) {
         case EXPR_SCONST:
         case EXPR_UCONST:
+        case EXPR_STRING:
+            BHEngineValue_release((BHEngineValue*)e->res_ptr);
+            if (e->t == EXPR_STRING)
+                bhex_free(e->str);
             break;
         case EXPR_ENUM_CONST:
             bhex_free(e->enum_name);
             bhex_free(e->enum_field);
-            break;
-        case EXPR_STRING:
-            bhex_free(e->str);
             break;
         case EXPR_VAR:
             bhex_free(e->name);

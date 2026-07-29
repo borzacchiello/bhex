@@ -124,6 +124,7 @@ All take `(name [, size [, off]])`, where `size` 0 or missing means "to the end 
 | `exit()` | stops the template cleanly |
 | `disable_print()` / `enable_print()` | suppress/restore printing of file variables |
 | `max_array_print(n)` | print at most `n` elements of an array, `0` meaning all of them |
+| `magic(pattern [, off])` | only in `_identify_magic`: declares a pattern without which `_identify` cannot succeed, sitting `off` bytes into the format |
 | `nums_in(base)` | number format, 10 or 16 (16 is the default) |
 | `little_endian()` / `big_endian()` | endianness for subsequent reads |
 | `u8(v)` … `u64(v)`, `i8(v)` … `i64(v)` | cast to a sized integer |
@@ -160,7 +161,12 @@ fn NAME() { stmts }                        // callable; returns via `result`
 fn NAME(a, b) { stmts }
 proc { stmts }                             // entry point, at most one per file
 proc NAME { stmts }                        // alternative entry point: t myfmt.NAME
+proc _identify { stmts }                   // the id scan's probe; answers via `result`
+proc _identify_magic { stmts }             // declares its magics via magic()
 ```
+
+A named proc has a `result` local like a `fn` does, and may `return` early; `t myfmt.NAME` prints
+it when it ends up non-zero. Only `_identify` is required to set it — see the `id` command below.
 
 Statements: `TYPE name;`, `TYPE name[expr];`, `local x = expr;`, `x = expr;`, `f(args);`,
 `if (e) { } elif (e) { } else { }`, `while (e) { }`, `break;`, `continue;`, `return;`.
@@ -216,10 +222,32 @@ Accepts a path (`t ./templates/pdf.bhe`), a template name (`t pdf`), a single st
 (`cmdline_next_command()`) skips over quoted sections and `` `backtick` `` expressions, so a `;`
 inside them does not end the command.
 
-Templates are searched by name, in order, in `/usr/local/share/bhex/templates`, `../templates`
-and `.` — the first match wins, and a later file with the same template name is skipped with a
-warning. A path argument (`t ./myfmt.bhe`) bypasses the lookup entirely. Parsing always starts at
+Templates are searched by name, in order, in `$BHEX_TEMPLATES_PATH` (when set),
+`/usr/local/share/bhex/templates`, `../templates` and `.` — the first match wins, and a later file
+with the same template name is skipped with a warning. A path argument (`t ./myfmt.bhe`) bypasses the lookup entirely. Parsing always starts at
 the **current offset**, not at 0, so `s <off> ; t myfmt` parses an embedded instance.
+
+## The `id` command
+
+```
+id[/l/v/n/e] [<len>]
+  l: list the templates that take part in the scan, with their magics
+  v: per template timing
+  n: do not skip over what was identified
+  e: exhaustive; ignore the declared magics
+```
+
+Runs every template's `_identify` at every offset from the current one. The proc sets `result` to
+0 (no) or to the number of bytes to skip; the scan reports the hit and resumes past the largest
+region claimed at that offset, unless `/n`. Output and exceptions are suppressed for the duration,
+so a proc that reads past the end of the file or fails an `assert` simply answers "no".
+
+Cost is one pass over the bytes to find the declared magics, plus one interpreted run per
+candidate. A template that declares no magic falls back to every offset and dominates everything
+else. Reporting real sizes keeps the skip working on a file that is mostly known content.
+
+`id/n` vs `id/n/e` is the check that a magic declaration is not hiding files: identical hits, or
+the declaration is wrong.
 
 ## Debugging
 

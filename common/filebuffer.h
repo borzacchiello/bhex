@@ -94,6 +94,12 @@ void fb_search(FileBuffer* fb, const u8_t* data, size_t size, fb_search_cb_t cb,
 const u8_t* fb_read(FileBuffer* fb, size_t size);
 const u8_t* fb_read_ex(FileBuffer* fb, size_t size, u32_t mod_idx);
 
+// Reads `size` bytes at absolute offset `off` and leaves the cursor where it
+// was. Same buffer lifetime as fb_read(), and the same limit of one block per
+// call. Doing it in one call rather than seek/read/seek saves two thirds of
+// the locking on the path templates use to peek.
+const u8_t* fb_read_at(FileBuffer* fb, u64_t off, size_t size);
+
 // Returns a heap-allocated copy owned by the caller.
 // Safe to pass to worker threads after the call returns.
 u8_t* fb_read_alloc(FileBuffer* fb, u64_t off, size_t size);

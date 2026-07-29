@@ -135,12 +135,21 @@ BHEngineValue* BHEngineValue_WCHAR_new(u16_t c)
 
 BHEngineValue* BHEngineValue_STRING_new(const u8_t* str, u32_t size)
 {
+    u8_t*          buf = NULL;
+    BHEngineValue* r   = BHEngineValue_STRING_new_uninit(size, &buf);
+    memcpy(buf, str, size);
+    return r;
+}
+
+BHEngineValue* BHEngineValue_STRING_new_uninit(u32_t size, u8_t** o_buf)
+{
     BHEngineValue* r = value_alloc();
     r->refcount      = 1;
     r->t             = TENGINE_STRING;
-    r->str           = bhex_calloc(size + 1);
+    r->str           = bhex_malloc(size + 1);
     r->str_size      = size;
-    memcpy(r->str, str, size);
+    r->str[size]     = '\0';
+    *o_buf           = r->str;
     return r;
 }
 
@@ -266,8 +275,8 @@ BHEngineValue* BHEngineValue_array_sub(InterpreterContext*  ctx,
     return NULL;
 }
 
-#define is_snum(e)       ((e)->t == TENGINE_SNUM)
-#define is_unum(e)       ((e)->t == TENGINE_UNUM || (e)->t == TENGINE_ENUM_VALUE)
+#define is_snum(e) ((e)->t == TENGINE_SNUM)
+#define is_unum(e) ((e)->t == TENGINE_UNUM || (e)->t == TENGINE_ENUM_VALUE)
 #define get_unum_size(e) (((e)->t == TENGINE_UNUM) ? (e)->unum_size : 8)
 #define get_unum_value(e)                                                      \
     (((e)->t == TENGINE_UNUM) ? (e)->unum : (e)->enum_const)

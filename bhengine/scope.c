@@ -49,10 +49,14 @@ void Scope_free(Scope* s)
     bhex_free(s);
 }
 
-BHEngineValue* Scope_get_filevar(Scope* s, const char* name)
+// The lookups take the name's hash from the caller: resolving a variable walks
+// the whole scope chain, and the interpreter asks for the same name every time
+// it evaluates the expression naming it, so the hash is computed once (in the
+// AST node) instead of once per scope per evaluation.
+BHEngineValue* Scope_get_filevar_h(Scope* s, const char* name, unsigned int h)
 {
     while (s != NULL) {
-        BHEngineValue* v = map_get_or_null(s->filevars, name);
+        BHEngineValue* v = map_get_or_null_h(s->filevars, name, h);
         if (v != NULL)
             return v;
         s = s->parent;
@@ -60,15 +64,25 @@ BHEngineValue* Scope_get_filevar(Scope* s, const char* name)
     return NULL;
 }
 
-BHEngineValue* Scope_get_local(Scope* s, const char* name)
+BHEngineValue* Scope_get_local_h(Scope* s, const char* name, unsigned int h)
 {
     while (s != NULL) {
-        BHEngineValue* v = map_get_or_null(s->locals, name);
+        BHEngineValue* v = map_get_or_null_h(s->locals, name, h);
         if (v != NULL)
             return v;
         s = s->parent;
     }
     return NULL;
+}
+
+BHEngineValue* Scope_get_filevar(Scope* s, const char* name)
+{
+    return Scope_get_filevar_h(s, name, map_hash(name));
+}
+
+BHEngineValue* Scope_get_local(Scope* s, const char* name)
+{
+    return Scope_get_local_h(s, name, map_hash(name));
 }
 
 BHEngineValue* Scope_get_anyvar(Scope* s, const char* name)
@@ -94,16 +108,28 @@ void Scope_add_local(Scope* s, const char* name, BHEngineValue* value)
     map_set(s->locals, name, value);
 }
 
-int Scope_update_local(Scope* s, const char* name, BHEngineValue* value)
+void Scope_add_local_h(Scope* s, const char* name, BHEngineValue* value,
+                       unsigned int h)
+{
+    map_set_h(s->locals, name, value, h);
+}
+
+int Scope_update_local_h(Scope* s, const char* name, BHEngineValue* value,
+                         unsigned int h)
 {
     // Single hash+compare pass per scope: map_replace both locates and updates
     // the binding, so we no longer probe with map_contains and then map_set.
     while (s != NULL) {
-        if (map_replace(s->locals, name, value))
+        if (map_replace_h(s->locals, name, value, h))
             return 1;
         s = s->parent;
     }
     return 0;
+}
+
+int Scope_update_local(Scope* s, const char* name, BHEngineValue* value)
+{
+    return Scope_update_local_h(s, name, value, map_hash(name));
 }
 
 map* Scope_free_and_get_filevars(Scope* s)

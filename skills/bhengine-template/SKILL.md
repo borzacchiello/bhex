@@ -9,7 +9,9 @@ A template is a `.bhe` file describing a file format, which bhex's `t` command r
 file. It can live anywhere: `t ./myfmt.bhe <file>` runs a template by path. Templates are also
 looked up **by name** (`t myfmt`) in `/usr/local/share/bhex/templates`, `../templates` and `.`,
 in that order — dropping a file in the first of those makes it available everywhere, and note that
-a name found there **shadows** a same-named file later in the list.
+a name found there **shadows** a same-named file later in the list. `BHEX_TEMPLATES_PATH=<dir>`
+is searched before all of them, which is how a checkout gets tested without its templates being
+shadowed by an older system-wide install.
 
 See `reference.md` in this skill folder for the complete builtin/type/operator tables. If you have
 a bhex source checkout, `bhengine/` is the final authority (`parser.y`, `builtin.c`,
@@ -69,7 +71,9 @@ struct chunk_t
 
 Top-level constructs: `struct NAME { ... }`, `enum name_t : u8 { A = 1, B = 2 }` (`orenum` for
 bit-flags, prints as `A | B`), `fn name(args) { ... }`, `proc { ... }` (the entry point, at most
-one), and `proc name { ... }` (named alternative entry points, invoked as `t myfmt.name`).
+one), and `proc name { ... }` (named alternative entry points, invoked as `t myfmt.name`). Two
+named procs are special: `proc _identify` is what the `id` command calls, and
+`proc _identify_magic` tells it where to bother calling — see below.
 
 Statements: file/local var decls, assignment, `if`/`elif`/`else`, `while`, `break`, `continue`,
 `return`, and bare calls like `skip_while(" ");`. Structs and procs share the same statement grammar, so
@@ -153,6 +157,121 @@ fn parse_section()
 Note this must be a `fn`, not a `proc name` — named procs are only reachable from the command
 line, a bare `parse_section();` call resolves against builtins and `fn`s only.
 
+## Taking part in the `id` scan
+
+A template that declares a `proc _identify` joins the `identify` command, which runs it across the
+file to find embedded instances of the format. It answers through `result`, exactly like a `fn`:
+
+```
+// The 8 byte signature, plus the IHDR chunk the spec requires to come first
+proc _identify
+{
+    big_endian();
+    if (peek_u32() != 0x89504e47 || peek_u32(4) != 0x0d0a1a0a ||
+        peek(4, 12) != "IHDR") {
+        return;                  // result stays 0: not my format
+    }
+    result = 33;                 // identified, and this many bytes long
+}
+```
+
+`result` is **the number of bytes the scan may skip**, not a boolean: 0 is "no", anything else is
+"yes, and this is how long it is". Report the real extent when the format gives it to you cheaply
+— a size field (`squashfs`, `zip`), a box or chunk walk (`mp4`, `png`) — because that is what
+makes a scan over a large image finish. When the length is only knowable by decompressing
+(`gzip`) or by parsing the whole thing (`jpeg`), return the size of the header you just validated;
+`result = <bool expr>` also works and simply yields 1, i.e. no skip.
+
+Three things are different from a normal proc, and they all follow from being called millions of
+times:
+
+- **Nothing is printed** and **exceptions are swallowed**. A failed `assert`, a `peek` past the end
+  of the file, a bad `to_int` — all of them just mean "no". Do not rely on a diagnostic reaching
+  the user; there is nowhere to put it.
+- **`return` is allowed** at the top level, which is the readable way to bail out early.
+- **Be strict, and be cheap.** The proc runs at every single offset, so a 4 byte magic on its own
+  will find matches inside every compressed payload in the file. Back it with a field that cannot
+  hold an arbitrary value — a version, an enum, a length that has to agree with another length.
+  The shipped templates all do this: `gzip` checks the compression method and the reserved flag
+  bits, `pe` follows `e_lfanew` to the `PE\0\0` signature, `squashfs` checks `block_size` against
+  `block_log`, `jpeg` requires a second well formed segment behind the first, `mp3` requires four
+  chained frames that agree on version, layer and sampling rate.
+
+  The strongest check available is one the format computes over itself. When a header carries a
+  checksum or a CRC, verify it — `crc()` and `checksum()` are there for exactly this, and they cost
+  one call. `tar` is the clearest case: `ustar` is five ASCII bytes that appear in any binary
+  mentioning the format (`/usr/bin/tar` has four of them, `libarchive` eight), and every one of
+  those was a false positive until the header's own checksum was verified.
+
+**Random data is a weak adversary — test against real binaries.** Byte distributions in compiled
+code are nothing like uniform, and that is where a weak check falls apart. A 3 MB m68k firmware
+image turned out to contain a header passing every field check of the MPEG frame format once every
+**161 bytes** — 34x denser than random data, because `ffe4`, `fff4`, `fffc` are ordinary negative
+displacements in 68k code. The same image made `ff d8 ff` (the JPEG SOI plus a marker byte) turn
+up 7 times. A check that "obviously cannot false-positive" on `/dev/urandom` produced 265 bogus
+hits on a real file. Point the scan at a firmware image, a stripped executable, a disk image —
+anything dense in machine code — and count what comes back.
+
+Debug it on its own with `t <name>._identify`, which runs it with the exceptions printed and shows
+the answer:
+
+```sh
+$ bhex -2 -n -c "t png._identify" sample.png
+result: 218
+```
+
+### Declaring a magic, so the scan does not have to ask everywhere
+
+A second proc, `_identify_magic`, tells the scan the byte patterns without which `_identify` cannot
+possibly succeed. It runs **once**, before the scan, and declares through `magic(pattern [, off])`:
+
+```
+proc _identify_magic
+{
+    magic("\x89PNG\r\n\x1a\n", 0);
+}
+
+proc _identify_magic          // tar: the magic is 257 bytes into the header
+{
+    magic("ustar", 257);
+}
+
+proc _identify_magic          // squashfs: one per byte order
+{
+    magic("hsqs", 0);
+    magic("sqsh", 0);
+}
+```
+
+The scan then searches for every declared pattern in a single pass and runs `_identify` only where
+one matched — a match of a pattern declared at offset N means the format may start at `match - N`.
+This is the difference between 43 million interpreted calls and 43 thousand.
+
+**The contract, and it is on you:** the pattern must be a *necessary* condition for `_identify`
+returning non-zero. If `_identify` can succeed somewhere none of the declared patterns match, that
+file is **silently never found** — much worse than a slow scan. Two rules keep this honest:
+
+- **`_identify` must re-check its own magic.** It never assumes the scan matched one first. Every
+  shipped template starts by comparing the magic itself, which is what makes `_identify` correct
+  standalone and the declaration a pure hint.
+- **Diff the two modes.** `id/e` ignores the declared magics and asks every template at every
+  offset. `id/n` drops the skip. Comparing `id/n` against `id/n/e` isolates the prefilter, and they
+  must produce identical hits:
+
+  ```sh
+  diff <(bhex -2 -n -c id/n   blob) <(bhex -2 -n -c id/n/e blob)
+  ```
+
+Do not narrow a pattern past what `_identify` accepts. `jpeg` declares only `\xff\xd8\xff` and not
+binwalk's `\xff\xd8\xff\xe0\x00\x10JFIF\0`, because its `_identify` accepts any of ~35 markers in
+the fourth byte — pinning it would hide files. When the discriminating bits are not byte aligned,
+enumerate: `mp3` declares `ID3` plus the 18 two-byte prefixes a valid frame header can start with,
+and that set was checked against every offset its `_identify` accepts before being committed.
+
+**A template with no `_identify_magic` runs at every offset**, which is always correct and puts a
+floor under the whole scan — one such template can cost more than the other thirteen together.
+`id/l` shows which templates are prefiltered and with what, `id/v` shows what each one costs.
+
 ## Validate what you parse
 
 A template that only *describes* a format leaves the interesting question unanswered. The
@@ -219,6 +338,12 @@ x1000 — useful to tell a compressed stream from a plain one without floating p
       part of the format it covers.
 - [ ] Name the entry point `proc { ... }`. Add `proc <name> { ... }` for alternative views (a
       listing, a summary) — they are reachable as `t myfmt.<name>`.
+- [ ] Add a `proc _identify` so the format is found by `id`, and check it against files that do
+      **not** contain the format — a firmware image or a large stripped binary, not random bytes
+      (see above): `bhex -2 -n -c id <blob>` must not report yours.
+- [ ] Add a `proc _identify_magic` unless the format genuinely has no fixed pattern, and prove it is
+      a necessary condition by diffing the modes on your whole corpus — they must agree exactly:
+      `diff <(bhex -2 -n -c id/n f) <(bhex -2 -n -c id/n/e f)`
 - [ ] Install it where you want it found by name: copy the `.bhe` into
       `/usr/local/share/bhex/templates` (or keep it next to your data and use `t ./myfmt.bhe`).
       Check `t/l myfmt` lists it, and that the name does not collide with a shipped template —

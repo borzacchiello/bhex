@@ -81,6 +81,11 @@ BHEngineValue* BHEngineValue_SNUM_new(s64_t v, u32_t size);
 BHEngineValue* BHEngineValue_CHAR_new(char c);
 BHEngineValue* BHEngineValue_WCHAR_new(u16_t c);
 BHEngineValue* BHEngineValue_STRING_new(const u8_t* str, u32_t size);
+// A string of `size` bytes whose content the caller writes into *o_buf. The
+// terminating NUL is already in place, so filling exactly `size` bytes yields
+// a well formed value. Lets a reader fill the value in place instead of
+// assembling the bytes somewhere else and copying them in.
+BHEngineValue* BHEngineValue_STRING_new_uninit(u32_t size, u8_t** o_buf);
 BHEngineValue* BHEngineValue_WSTRING_new(const u16_t* str, u32_t size);
 BHEngineValue* BHEngineValue_ENUM_VALUE_new(const char* ename, u64_t econst);
 BHEngineValue* BHEngineValue_BUF_new(u64_t off, u64_t size);
