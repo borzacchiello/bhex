@@ -14,6 +14,7 @@ bhex [ options ] inputfile
   -b  --backup      copy the original to "inputfile.bk" before anything else
   -2  --no_warning  disable warnings
   -n  --no_history  do not save command history
+  -C  --no_color    do not use colors (--no-color is accepted too)
   -c  "c1; c2; ..." run the commands and exit (mutually exclusive with -s)
   -s  --script      read one command per line from stdin
 ```
@@ -27,6 +28,12 @@ argument attached or separated (`-2nc"p 4"`, `-2nc "p 4"`). Consequences worth k
   with `missing input file` (the loop in `main()` gives up on the path after getopt permutes argv);
 - long options never cluster: `--no_warning --no_history -c "p 4" file`;
 - `-c` together with `-s` is rejected outright.
+
+The output is colored (dumps, addresses, command names, log tags, template fields, the algorithm
+names of `hh`/`cs`/`cr`, disassembly -- where jumps, calls and returns are painted apart from the
+other mnemonics -- and the entropy graph, by band) only when the
+standard output is a terminal and `NO_COLOR` is unset: a pipe or a redirect already yields plain
+text, `-C` covers the remaining case. `df/n` and `tui/n` remain as per-command overrides.
 
 Exit code is 1 only for those startup failures (bad command line, missing/unopenable input file);
 once the file is open, every command error still exits 0.
@@ -49,24 +56,24 @@ Modifiers are alternatives within `{}`, independent otherwise. All offsets/sizes
 | echo | `ec` | `ec[/{x,d}] <arg>...` | `/x` hex (default), `/d` decimal; backticks evaluated |
 | seek | `s` | `s[/{+,-}] [<off>]` | no arg prints the offset; `s -` returns to the previous one; `/+` `/-` are relative and wrap |
 | print | `p` | `p[/{x,w,d,q,a,C}/{le,be}/r/W/{+,-}] [<nelements>]` | default 256 bytes, `-` = whole file; `r` raw, `W` 32 bytes/line, `/+` `/-` seek after printing |
-| entropy | `e` | `e [<rows> <len>]` | **rows first**; `-` or omitted = auto rows |
+| entropy | `e` | `e [<rows> <len>]` | **rows first**; `-` or omitted = auto rows; rows are colored by band (>= 7 red, >= 5 yellow) |
 | search | `src` | `src[/{s,x}/sk/p] <what>` | `s` string (default, `\xNN` accepted), `x` hex string, `sk` seek to a match, `p` print context |
 | strings | `str` | `str[/n/{a,w}] [<pattern> <num>]` | `n` NUL-terminated only, `a` 8-bit, `w` 16-bit; `pattern` may use `*`; `num` = min length (3) |
 | hash | `hh` | `hh[/l] <algo> [<size> <off>]` | `off` relative to the cursor; `size` 0/omitted = to EOF; `*` = all; `/l` lists |
 | checksum | `cs` | `cs[/l] <name> [<size> <off>]` | partial names and `*` accepted |
 | crc | `cr` | `cr[/l] <name> [<size> <off>]` | names look like `CRC-32/ISO-HDLC` |
 | template | `t` | `t[/l/i/x] <name\|path\|filter\|code>` | `l` list, `x` XML output, `i` inline bhengine statements |
-| diff | `df` | `df[/p/w/n] <file>` | `p` print differing bytes, `w` 16-byte rows, `n` no colors (plain text, no escapes) |
+| diff | `df` | `df[/p/w/n] <file>` | `p` print differing bytes, `w` 16-byte rows, `n` no colors even on a terminal |
 | export | `ex` | `ex <ofile> [<size>]` | writes from the cursor |
 | import | `im` | `im[/{i,ovw}] <file> [<size> <offset>]` | `i` insert (default), `ovw` overwrite; `offset` is into the *imported* file |
 | write | `w` | `w[/{s,x,b,w,d,q}/{le,be}/u/i] <data>` | `s` string (default), `x` hex string, `b/w/d/q` sized number, `i` insert instead of overwrite |
 | delete | `d` | `d [<nbytes>]` | omitted = to EOF |
 | undo | `u` | `u[/a]` | `a` undo everything |
-| commit | `c` | `c[/l]` | `l` lists pending changes without writing |
-| disas | `ds` | `ds[/l] <arch> [<n>]` | Capstone; `n` = instruction count (8) |
+| commit | `c` | `c[/l]` | `l` lists pending changes without writing; the bytes are colored like a diff (green added, red removed) |
+| disas | `ds` | `ds[/l] <arch> [<n>]` | Capstone; `n` = instruction count (8); control flow instructions are highlighted |
 | assemble | `as` | `as[/l/i/s] <arch> '<code>'` | Keystone; writes at the cursor, `i` insert, `s` seek to the end |
-| isa_identify | `ii` | `ii[/g] [<size>]` | bundled models; `g` = per-1024-byte-chunk code ranges |
-| findbase | `fba` | `fba[/{32,64}/{le,be}]` | binbloom base-address guess for raw firmware |
+| isa_identify | `ii` | `ii[/g] [<size>]` | bundled models; `g` = per-1024-byte-chunk code ranges; the confidence is colored by band |
+| findbase | `fba` | `fba[/{32,64}/{le,be}]` | binbloom base-address guess for raw firmware; the certainty of the guess is colored |
 
 `help` also lists `interactive` (`tui`), a full-screen editor driven by keystrokes. It is for humans
 at a terminal only: do not use it — every inspection and edit it offers is available through the

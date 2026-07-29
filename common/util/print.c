@@ -6,7 +6,33 @@
 #include "byte_to_str.h"
 
 #include <display.h>
+#include <color.h>
 #include <log.h>
+
+/* Color currently in effect, used to emit one escape per run of bytes of the
+ * same kind instead of one per byte. */
+static Color curr_color = COLOR_RESET;
+
+static void set_color(Color c)
+{
+    if (!colors_enabled() || c == curr_color)
+        return;
+    display_printf("%s", color_str(c));
+    curr_color = c;
+}
+
+/* Color a byte depending on its "kind", the same way the TUI does, so that
+ * runs of zeroes fade in the background and text/0xff filler stand out. */
+static Color byte_color(u8_t b)
+{
+    if (b == 0x00)
+        return COLOR_BYTE_ZERO;
+    if (b == 0xff)
+        return COLOR_BYTE_FF;
+    if (is_printable_ascii((char)b))
+        return COLOR_BYTE_ASCII;
+    return COLOR_BYTE_OTHER;
+}
 
 static u32_t get_addr_string_size(u64_t addr)
 {
@@ -65,6 +91,7 @@ void print_hex(const u8_t* bytes, size_t size, int raw_mode, int print_header,
         addr_off = 4;
 
     if (!raw_mode && print_header) {
+        set_color(COLOR_HEADER);
         display_printf(" %*s ", addr_off + 1, " ");
         for (int i = 0; i < block_size; i += 1) {
             display_printf("%02X ", i);
@@ -74,20 +101,25 @@ void print_hex(const u8_t* bytes, size_t size, int raw_mode, int print_header,
             display_printf("---");
         }
         display_printf("--\n");
+        set_color(COLOR_RESET);
     }
 
     size_t off = 0;
     while (off < size) {
-        if (!raw_mode)
+        if (!raw_mode) {
+            set_color(COLOR_ADDR);
             display_printf(" %.*llx: ", addr_off, (u64_t)off + addr);
+        }
         int i;
         for (i = 0; i < block_size; ++i) {
             if (!raw_mode) {
                 if (off + i >= size) {
+                    set_color(COLOR_RESET);
                     for (; i < block_size; ++i)
                         display_printf("   ");
                     break;
                 }
+                set_color(byte_color(bytes[off + i]));
                 display_printf("%02X ", bytes[off + i]);
             } else {
                 if (off + i >= size)
@@ -96,13 +128,16 @@ void print_hex(const u8_t* bytes, size_t size, int raw_mode, int print_header,
             }
         }
         if (!raw_mode) {
+            set_color(COLOR_RESET);
             display_printf("  ");
             for (i = 0; i < block_size; ++i) {
                 if (off + i >= size)
                     break;
+                set_color(byte_color(bytes[off + i]));
                 display_printf(
                     "%c", get_printable_ascii_or_dot((u8_t)bytes[off + i]));
             }
+            set_color(COLOR_RESET);
             display_printf("\n");
         }
         off += block_size;
@@ -126,6 +161,7 @@ void print_words(const u8_t* bytes, size_t size, int little_endian,
         addr_off = 4;
 
     if (!raw_mode && print_header) {
+        set_color(COLOR_HEADER);
         display_printf(" %*s ", addr_off + 1, " ");
         for (int i = 0; i < block_size; i += 2) {
             display_printf("%02X    ", i);
@@ -135,12 +171,16 @@ void print_words(const u8_t* bytes, size_t size, int little_endian,
             display_printf("------");
         }
         display_printf("-----\n");
+        set_color(COLOR_RESET);
     }
 
     size_t off = 0;
     while (off < size) {
-        if (!raw_mode)
+        if (!raw_mode) {
+            set_color(COLOR_ADDR);
             display_printf(" %.*llx: ", addr_off, (u64_t)off + addr);
+            set_color(COLOR_RESET);
+        }
         int i;
         for (i = 0; i < block_size; i += 2) {
             if (off + i + 1 >= size)
@@ -174,6 +214,7 @@ void print_dwords(const u8_t* bytes, size_t size, int little_endian,
         addr_off = 4;
 
     if (!raw_mode && print_header) {
+        set_color(COLOR_HEADER);
         display_printf(" %*s ", addr_off + 1, " ");
         for (int i = 0; i < block_size; i += 4) {
             display_printf("%02X        ", i);
@@ -183,12 +224,16 @@ void print_dwords(const u8_t* bytes, size_t size, int little_endian,
             display_printf("----------");
         }
         display_printf("---------\n");
+        set_color(COLOR_RESET);
     }
 
     size_t off = 0;
     while (off < size) {
-        if (!raw_mode)
+        if (!raw_mode) {
+            set_color(COLOR_ADDR);
             display_printf(" %.*llx: ", addr_off, (u64_t)off + addr);
+            set_color(COLOR_RESET);
+        }
         int i;
         for (i = 0; i < block_size; i += 4) {
             if (off + i + 3 >= size)
@@ -222,6 +267,7 @@ void print_qwords(const u8_t* bytes, size_t size, int little_endian,
         addr_off = 4;
 
     if (!raw_mode && print_header) {
+        set_color(COLOR_HEADER);
         display_printf(" %*s ", addr_off + 1, " ");
         for (int i = 0; i < block_size; i += 8) {
             display_printf("%02X                ", i);
@@ -231,12 +277,16 @@ void print_qwords(const u8_t* bytes, size_t size, int little_endian,
             display_printf("------------------");
         }
         display_printf("-----------------\n");
+        set_color(COLOR_RESET);
     }
 
     size_t off = 0;
     while (off < size) {
-        if (!raw_mode)
+        if (!raw_mode) {
+            set_color(COLOR_ADDR);
             display_printf(" %.*llx: ", addr_off, (u64_t)off + addr);
+            set_color(COLOR_RESET);
+        }
         int i;
         for (i = 0; i < block_size; i += 8) {
             if (off + i + 7 >= size)

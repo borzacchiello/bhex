@@ -7,6 +7,7 @@
 #include <util/byte_to_num.h>
 #include <util/byte_to_str.h>
 #include <display.h>
+#include <color.h>
 #include <string.h>
 #include <alloc.h>
 #include <log.h>
@@ -158,6 +159,25 @@ static const char* bytes_str(const cs_insn* insn, size_t max_size)
     return disas;
 }
 
+// The instructions that alter the control flow are painted differently, so
+// that the shape of the code (where it branches, calls and returns) can be
+// seen without reading every mnemonic. Capstone tells them apart only in
+// detail mode, which is why it is requested -- and only when it is of use
+static Color mnemonic_color(csh handle, const cs_insn* insn, int detail)
+{
+    static const int flow_groups[] = {CS_GRP_JUMP, CS_GRP_CALL,
+                                      CS_GRP_RET,  CS_GRP_INT,
+                                      CS_GRP_IRET, CS_GRP_BRANCH_RELATIVE};
+
+    if (!detail || insn->detail == NULL)
+        return COLOR_MNEMONIC;
+
+    for (size_t i = 0; i < sizeof(flow_groups) / sizeof(flow_groups[0]); ++i)
+        if (cs_insn_group(handle, insn, (unsigned int)flow_groups[i]))
+            return COLOR_MNEMONIC_FLOW;
+    return COLOR_MNEMONIC;
+}
+
 static void do_disas(int arch, u64_t addr, const u8_t* code, size_t code_size,
                      u64_t nopcodes)
 {
@@ -172,17 +192,27 @@ static void do_disas(int arch, u64_t addr, const u8_t* code, size_t code_size,
         return;
     }
 
+    // detail mode costs memory and time for every instruction: it is only
+    // needed to color the control flow ones
+    int detail = colors_enabled() &&
+                 cs_option(handle, CS_OPT_DETAIL, CS_OPT_ON) == CS_ERR_OK;
+
     count = cs_disasm(handle, code, code_size - 1, addr, 0, &insn);
     if (count > 0) {
         size_t j;
         for (j = 0; j < min(count, nopcodes); j++) {
-            display_printf("0x%08llx: %s %s\t\t%s\n", (u64_t)insn[j].address,
-                           bytes_str(&insn[j], 21), insn[j].mnemonic,
-                           insn[j].op_str);
+            Color mnemonic = mnemonic_color(handle, &insn[j], detail);
+            display_printf("%s0x%08llx:%s %s%s%s %s%s%s\t\t%s\n",
+                           color_str(COLOR_ADDR), (u64_t)insn[j].address,
+                           color_str(COLOR_RESET), color_str(COLOR_HEADER),
+                           bytes_str(&insn[j], 21), color_str(COLOR_RESET),
+                           color_str(mnemonic), insn[j].mnemonic,
+                           color_str(COLOR_RESET), insn[j].op_str);
         }
         cs_free(insn, count);
     } else {
-        display_printf("invalid\n");
+        display_printf("%sinvalid%s\n", color_str(COLOR_HIGHLIGHT),
+                       color_str(COLOR_RESET));
     }
 
     cs_close(&handle);
@@ -204,7 +234,8 @@ static int disascmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
         display_printf("Supported architectures:\n");
         for (size_t i = 0;
              i < sizeof(map_arch_names) / sizeof(map_arch_names[0]); ++i)
-            display_printf("    %s\n", map_arch_names[i]);
+            display_printf("    %s%s%s\n", color_str(COLOR_CMD),
+                           map_arch_names[i], color_str(COLOR_RESET));
         return COMMAND_OK;
     }
 

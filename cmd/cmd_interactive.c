@@ -6,6 +6,7 @@
 #include "tui.h"
 
 #include <display.h>
+#include <color.h>
 #include <alloc.h>
 
 #define HINT_STR      "[/n]"
@@ -32,7 +33,9 @@ static int interactivecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     if (handle_mods(pc, "n", &no_colors) != 0)
         return COMMAND_INVALID_MOD;
 
-    tui_enter_loop(fb, no_colors == NO_COLORS_SET);
+    // the modifier is an override: the colors can also be off globally
+    // (--no_color, NO_COLOR, ...)
+    tui_enter_loop(fb, no_colors == NO_COLORS_SET || !colors_enabled());
     puts("");
     return COMMAND_OK;
 }

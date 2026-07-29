@@ -7,6 +7,7 @@
 #include <util/byte_to_num.h>
 #include <filebuffer.h>
 #include <display.h>
+#include <color.h>
 #include <string.h>
 #include <alloc.h>
 #include <log.h>
@@ -114,8 +115,9 @@ static int print_ascii_string(ProcessingCtx* ctx)
                 strstr((char*)ctx->app, ctx->pattern) == NULL) {
                 return 0;
             }
-            display_printf(" [A] 0x%07llX @ %s\n",
-                           begin_addr + ctx->fb->base_addr, (char*)ctx->app);
+            display_printf(" %s[A] 0x%07llX%s @ %s\n", color_str(COLOR_ADDR),
+                           begin_addr + ctx->fb->base_addr,
+                           color_str(COLOR_RESET), (char*)ctx->app);
             return 1;
         }
     }
@@ -163,7 +165,8 @@ static int print_wide_ascii_string(ProcessingCtx* ctx)
             strstr((char*)ctx->app, ctx->pattern) == NULL) {
             return 0;
         }
-        display_printf(" [W] 0x%07llX @ %s\n", begin_addr + ctx->fb->base_addr,
+        display_printf(" %s[W] 0x%07llX%s @ %s\n", color_str(COLOR_ADDR),
+                       begin_addr + ctx->fb->base_addr, color_str(COLOR_RESET),
                        (char*)ctx->app);
         return 1;
     }

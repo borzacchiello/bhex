@@ -5,6 +5,7 @@
 
 #include <filebuffer.h>
 #include <display.h>
+#include <color.h>
 #include <alloc.h>
 #include <defs.h>
 #include <log.h>
@@ -27,10 +28,29 @@ static void commitcmd_help(void* obj)
                    "     l: list uncommitted changes\n");
 }
 
+// The header of a pending change: " ~ <kind> @ <offset> [ <size> ]". The kind
+// is left plain, the bytes below it carry the color of the change
+static void print_mod_header(const char* kind, u64_t off, u64_t size)
+{
+    display_printf(" ~ %-9s @ %s0x%07llx%s %s[ %llu ]%s\n", kind,
+                   color_str(COLOR_ADDR), off, color_str(COLOR_RESET),
+                   color_str(COLOR_HEADER), size, color_str(COLOR_RESET));
+}
+
+// The first bytes of a change, truncated with "..." when there are more
+static void print_mod_bytes(const u8_t* data, u32_t n, u64_t total, Color color)
+{
+    display_printf("%s", color_str(color));
+    for (u32_t i = 0; i < n; ++i)
+        display_printf("%02x ", data[i]);
+    if ((u64_t)n != total)
+        display_printf("... ");
+    display_printf("%s", color_str(COLOR_RESET));
+}
+
 static void print_overwrite(FileBuffer* fb, Modification* mod, u32_t nmod)
 {
-    display_printf(" ~ overwrite @ 0x%07llx [ %llu ]\n", mod->off,
-                   (u64_t)mod->size);
+    print_mod_header("overwrite", mod->off, (u64_t)mod->size);
 
     const uint8_t* data;
     u64_t          off = fb->off;
@@ -43,20 +63,15 @@ static void print_overwrite(FileBuffer* fb, Modification* mod, u32_t nmod)
         error("unable to read data while printing an overwrite");
         goto end;
     }
-    for (u32_t i = 0; i < n; ++i)
-        display_printf("%02x ", data[i]);
-    if (n != mod->size)
-        display_printf("... ");
+    // the bytes on the way out, then the ones replacing them
+    print_mod_bytes(data, n, (u64_t)mod->size, COLOR_MOD_DELETE);
     display_printf("-> ");
     data = fb_read_ex(fb, n, nmod);
     if (data == NULL) {
         error("unable to read data while printing an overwrite");
         goto end;
     }
-    for (u32_t i = 0; i < n; ++i)
-        display_printf("%02x ", data[i]);
-    if (n != mod->size)
-        display_printf("... ");
+    print_mod_bytes(data, n, (u64_t)mod->size, COLOR_MOD_INSERT);
     display_printf("\n");
 
 end:
@@ -65,22 +80,17 @@ end:
 
 static void print_insert(FileBuffer* fb, Modification* mod, u32_t nmod)
 {
-    display_printf(" ~ insert    @ 0x%07llx [ %llu ]\n", mod->off,
-                   (u64_t)mod->size);
+    print_mod_header("insert", mod->off, (u64_t)mod->size);
 
     display_printf("      ");
     u32_t n = min(mod->size, 8);
-    for (u32_t i = 0; i < n; ++i)
-        display_printf("%02x ", mod->data[i]);
-    if (n != mod->size)
-        display_printf("... ");
+    print_mod_bytes(mod->data, n, (u64_t)mod->size, COLOR_MOD_INSERT);
     display_printf("\n");
 }
 
 static void print_delete(FileBuffer* fb, Modification* mod, u32_t nmod)
 {
-    display_printf(" ~ delete    @ 0x%07llx [ %llu ]\n", mod->off,
-                   (u64_t)mod->size);
+    print_mod_header("delete", mod->off, (u64_t)mod->size);
 
     const uint8_t* data;
     u64_t          off = fb->off;
@@ -93,10 +103,7 @@ static void print_delete(FileBuffer* fb, Modification* mod, u32_t nmod)
         error("unable to read data while printing a delete");
         goto end;
     }
-    for (u32_t i = 0; i < n; ++i)
-        display_printf("%02x ", data[i]);
-    if (n != mod->size)
-        display_printf("... ");
+    print_mod_bytes(data, n, (u64_t)mod->size, COLOR_MOD_DELETE);
     display_printf("\n");
 
 end:

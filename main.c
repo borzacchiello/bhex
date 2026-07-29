@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <alloc.h>
 #include <log.h>
+#include <color.h>
 #include <cmdline_parser.h>
 #include <expr_eval.h>
 
@@ -14,7 +15,7 @@
 #include "completion.h"
 #include "cmd/cmd.h"
 
-const char* const   short_options  = "hw2bnsc:";
+const char* const   short_options  = "hw2bnsCc:";
 const struct option long_options[] = {
     {"help", no_argument, NULL, 'h'},
     {"write", no_argument, NULL, 'w'},
@@ -22,6 +23,9 @@ const struct option long_options[] = {
     {"backup", no_argument, NULL, 'b'},
     {"no_warning", no_argument, NULL, '2'},
     {"no_history", no_argument, NULL, 'n'},
+    {"no_color", no_argument, NULL, 'C'},
+    // the spelling of https://no-color.org, accepted as well
+    {"no-color", no_argument, NULL, 'C'},
     {NULL, 0, NULL, 0},
 };
 
@@ -33,7 +37,7 @@ static void print_banner(void)
                                 " |  _ <|  __  |/ _ \\ \\/ /\n"
                                 " | |_) | |  | |  __/>  < \n"
                                 " |____/|_|  |_|\\___/_/\\_\\\n";
-    puts(banner);
+    printf("%s%s%s\n", color_str(COLOR_BANNER), banner, color_str(COLOR_RESET));
 }
 
 static void usage(const char* prog, int exit_code)
@@ -45,12 +49,16 @@ static void usage(const char* prog, int exit_code)
            "\"filename.bk\"\n"
            "  -2  --no_warning  Disable warnings\n"
            "  -n  --no_history  Do not save command history\n"
+           "  -C  --no_color    Do not use colors\n"
            "  -c  \"c1; c2; ...\" Execute the commands given as "
            "argument and exit\n"
            "  -s  --script      Script mode (commands from raw stdin)\n"
            "\n"
            "command history is saved in \"$HOME/.bhex_history\", it can be "
-           "changed setting BHEX_HISTORY_FILE environment variable\n");
+           "changed setting BHEX_HISTORY_FILE environment variable\n"
+           "\n"
+           "colors are disabled automatically when the output is not a "
+           "terminal, or when the NO_COLOR environment variable is set\n");
     exit(exit_code);
 }
 
@@ -129,8 +137,12 @@ static void main_loop(FileBuffer* fb, CmdContext* cc)
     printf("Write '?' after a command to read the relative help\n\n");
 
     while (1) {
-        snprintf(prompt, sizeof(prompt), "[0x%07llX] $ ",
-                 fb->off + fb->base_addr);
+        // the escapes are zero-width for linenoise, so they do not confuse the
+        // cursor positioning of the line editor
+        snprintf(prompt, sizeof(prompt), "%s[0x%07llX]%s %s$%s ",
+                 color_str(COLOR_ADDR), fb->off + fb->base_addr,
+                 color_str(COLOR_RESET), color_str(COLOR_PROMPT),
+                 color_str(COLOR_RESET));
         char* inp = linenoise(prompt);
         if (!inp || strcmp(inp, "exit") == 0) {
             bhex_free(inp);
@@ -241,7 +253,14 @@ int main(int argc, char* argv[])
     const char* path       = NULL;
     char*       commands   = NULL;
     int         write_mode = 0, backup = 0, save_history = 1, script_mode = 0;
+    int         no_color = 0;
     int         c;
+
+    // the banner of "-h" is printed while parsing, so the colors must be
+    // ready before the loop: they are initialized again at the end of it,
+    // when we know whether "-C" was given
+    colors_init(0);
+
     while (optind < argc) {
         if ((c = getopt_long(argc, argv, short_options, long_options, NULL)) !=
             -1) {
@@ -257,6 +276,9 @@ int main(int argc, char* argv[])
                     break;
                 case 'n':
                     save_history = 0;
+                    break;
+                case 'C':
+                    no_color = 1;
                     break;
                 case 'h':
                     print_banner();
@@ -277,6 +299,8 @@ int main(int argc, char* argv[])
             path = argv[optind++];
         }
     }
+    colors_init(no_color);
+
     if (path == NULL) {
         bhex_free(commands);
 

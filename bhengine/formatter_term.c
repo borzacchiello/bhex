@@ -7,6 +7,7 @@
 
 #include <filebuffer.h>
 #include <display.h>
+#include <color.h>
 #include <alloc.h>
 #include <defs.h>
 #include <log.h>
@@ -67,8 +68,13 @@ static void fmt_term_start_var(FormatterTerm* this, const char* name,
             display_printf("\n");
         else
             this->on_a_new_line = 0;
-        display_printf("b+%08llx ", off);
+        // the escapes wrap the whole (padded) field, so that they do not
+        // eat into the width of the name column
+        display_printf("%sb+%08llx%s ", color_str(COLOR_ADDR), off,
+                       color_str(COLOR_RESET));
+        display_printf("%s", color_str(COLOR_LABEL));
         display_printf(" %*s: ", (int)fmt_term_name_width(this), name);
+        display_printf("%s", color_str(COLOR_RESET));
     }
     this->print_off += FMT_PRINT_OFF_STEP;
 }

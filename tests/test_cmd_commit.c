@@ -10,6 +10,15 @@
 #define TEST(name) test_##name
 #endif
 
+#include <color.h>
+
+/* The escapes of the colored change list, see common/color.c */
+#define c_addr "\x1b[0;1;37m"
+#define c_dim  "\x1b[0;90m"
+#define c_ins  "\x1b[0;32m"
+#define c_del  "\x1b[0;31m"
+#define c_off  "\x1b[0m"
+
 int TEST(commit_list_one_overwrite)(void)
 {
     // clang-format off
@@ -122,6 +131,40 @@ int TEST(commit_list_multiple)(void)
     bhex_free(out);
 
 end:
+    return r;
+}
+
+int TEST(commit_list_colors)(void)
+{
+    // the kind is left plain (its padding must not move the "@" column) and
+    // the bytes carry the color of the change
+    // clang-format off
+    const char* expected =
+        "\n"
+        " ~ delete    @ " c_addr "0x0000000" c_off " " c_dim "[ 2 ]" c_off "\n"
+        "      " c_del "2b 2b " c_off "\n"
+        " ~ insert    @ " c_addr "0x0000000" c_off " " c_dim "[ 7 ]" c_off "\n"
+        "      " c_ins "2b 2b 68 65 79 2c 20 " c_off "\n"
+        " ~ overwrite @ " c_addr "0x0000000" c_off " " c_dim "[ 4 ]" c_off "\n"
+        "      " c_del "7f 45 4c 46 " c_off "-> " c_ins "63 69 61 6f " c_off
+            "\n"
+        "\n";
+    // clang-format on
+
+    // the colors are off by default in the tests, as they are whenever the
+    // output is not a terminal
+    colors_set_enabled(1);
+
+    int r = TEST_FAILED;
+    if (exec_commands("w ciao ; w/i \"++hey, \" ; d 2 ; c/l") != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    colors_set_enabled(0);
     return r;
 }
 

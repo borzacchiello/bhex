@@ -23,6 +23,7 @@
 #include "cmd_arg_handler.h"
 
 #include <alloc.h>
+#include <color.h>
 #include <display.h>
 #include <dlist.h>
 #include <filebuffer.h>
@@ -1096,9 +1097,20 @@ static void compute_scores(FileBuffer* fb, u64_t file_size, FindbaseArch arch,
     for (size_t i = 0; i < candidate_count; ++i) {
         FindbaseCandidate* candidate = candidates->data[i];
         candidate->score             = (u64_t)candidate->pointer_count *
-                           (u64_t)candidate->votes *
-                           (u64_t)candidate->array_score;
+                                       (u64_t)candidate->votes *
+                                       (u64_t)candidate->array_score;
     }
+}
+
+// How good a candidate looks compared to the best one, on the same scale the
+// confidence of `ii` uses
+static Color ratio_color(float ratio)
+{
+    if (ratio >= 0.80f)
+        return COLOR_CONFIDENCE_HIGH;
+    if (ratio >= 0.50f)
+        return COLOR_CONFIDENCE_MID;
+    return COLOR_CONFIDENCE_LOW;
 }
 
 static void print_result(FindbaseArch arch, CandidateVec* candidates,
@@ -1118,22 +1130,32 @@ static void print_result(FindbaseArch arch, CandidateVec* candidates,
     u64_t              best_address = first->address;
     int                best_score   = first->score > 0;
 
+    const char* addr_col = color_str(COLOR_ADDR);
+    const char* reset    = color_str(COLOR_RESET);
+
     if (valid_array_matches == 1) {
         best_address =
             ((FindbaseCandidate*)candidates->data[valid_array_index])->address;
+        // an array of pointers that all land on a point of interest is the
+        // strongest evidence the heuristics can produce
+        display_printf("Base address found (%svalid array%s): ",
+                       color_str(COLOR_CONFIDENCE_HIGH), reset);
         if (arch == FINDBASE_ARCH_64)
-            display_printf("[i] Base address found (valid array): 0x%016llx.\n",
-                           (unsigned long long)best_address);
+            display_printf("%s0x%016llx%s.\n", addr_col,
+                           (unsigned long long)best_address, reset);
         else
-            display_printf("[i] Base address found (valid array): 0x%08llx.\n",
-                           (unsigned long long)(best_address & 0xFFFFFFFFull));
+            display_printf("%s0x%08llx%s.\n", addr_col,
+                           (unsigned long long)(best_address & 0xFFFFFFFFull),
+                           reset);
     } else if (best_score && top_vote_address == best_address) {
+        display_printf("Base address found: ");
         if (arch == FINDBASE_ARCH_64)
-            display_printf("[i] Base address found: 0x%016llx.\n",
-                           (unsigned long long)best_address);
+            display_printf("%s0x%016llx%s.\n", addr_col,
+                           (unsigned long long)best_address, reset);
         else
-            display_printf("[i] Base address found: 0x%08llx.\n",
-                           (unsigned long long)(best_address & 0xFFFFFFFFull));
+            display_printf("%s0x%08llx%s.\n", addr_col,
+                           (unsigned long long)(best_address & 0xFFFFFFFFull),
+                           reset);
     } else {
         best_address = top_vote_address;
         for (size_t i = 0; i < candidate_count; ++i) {
@@ -1144,19 +1166,23 @@ static void print_result(FindbaseArch arch, CandidateVec* candidates,
             }
         }
 
+        display_printf("Base address seems to be ");
         if (arch == FINDBASE_ARCH_64)
-            display_printf(
-                "[i] Base address seems to be 0x%016llx (not sure).\n",
-                (unsigned long long)best_address);
+            display_printf("%s0x%016llx%s", addr_col,
+                           (unsigned long long)best_address, reset);
         else
-            display_printf(
-                "[i] Base address seems to be 0x%08llx (not sure).\n",
-                (unsigned long long)(best_address & 0xFFFFFFFFull));
+            display_printf("%s0x%08llx%s", addr_col,
+                           (unsigned long long)(best_address & 0xFFFFFFFFull),
+                           reset);
+        display_printf(" (%snot sure%s).\n", color_str(COLOR_CONFIDENCE_LOW),
+                       reset);
     }
 
     if (candidate_count > 1) {
         u64_t ref_score = ((FindbaseCandidate*)candidates->data[0])->score;
-        display_printf(" More base addresses to consider (just in case):\n");
+        display_printf(" %sMore base addresses to consider (just in "
+                       "case):%s\n",
+                       color_str(COLOR_HEADER), reset);
         for (size_t i = 0; i < candidate_count; ++i) {
             FindbaseCandidate* candidate = candidates->data[i];
             if (candidate->address == best_address || candidate->score == 0)
@@ -1166,13 +1192,14 @@ static void print_result(FindbaseArch arch, CandidateVec* candidates,
                               ? 0.0f
                               : (float)candidate->score / (float)ref_score;
             if (arch == FINDBASE_ARCH_64)
-                display_printf("  0x%016llx (%.02f)\n",
-                               (unsigned long long)candidate->address, ratio);
+                display_printf("  %s0x%016llx%s (%s%.02f%s)\n", addr_col,
+                               (unsigned long long)candidate->address, reset,
+                               color_str(ratio_color(ratio)), ratio, reset);
             else
                 display_printf(
-                    "  0x%08llx (%.02f)\n",
+                    "  %s0x%08llx%s (%s%.02f%s)\n", addr_col,
                     (unsigned long long)(candidate->address & 0xFFFFFFFFull),
-                    ratio);
+                    reset, color_str(ratio_color(ratio)), ratio, reset);
         }
     }
 }
@@ -1211,7 +1238,7 @@ static int findbasecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     else if (endian_mod == 1)
         endian = FINDBASE_ENDIAN_BE;
 
-    display_printf("[i] %d-bit architecture selected.\n", (int)arch);
+    display_printf("%d-bit architecture selected.\n", (int)arch);
 
     if (fb->size < (u64_t)findbase_pointer_size(arch)) {
         error("input file must be at least %d bytes",
@@ -1226,7 +1253,7 @@ static int findbasecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
         return COMMAND_SILENT_ERROR;
     }
 
-    display_printf("[i] Endianness is %s\n", findbase_endian_to_string(endian));
+    display_printf("Endianness is %s\n", findbase_endian_to_string(endian));
 
     PoiVec pois;
     DList_init(&pois);
@@ -1235,8 +1262,7 @@ static int findbasecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     index_strings(fb, fb->size, &pois, &string_count);
     index_arrays(fb, fb->size, arch, endian, &pois, &array_count);
 
-    display_printf("[i] %llu strings indexed\n",
-                   (unsigned long long)string_count);
+    display_printf("%llu strings indexed\n", (unsigned long long)string_count);
 
     if (string_count == 0 && array_count == 0) {
         dlist_deinit_free_items(&pois);
@@ -1278,7 +1304,7 @@ static int findbasecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     size_t kept_candidates =
         select_kept_candidates(&candidates, eligible_count);
 
-    display_printf("[i] Found %llu base addresses to test\n",
+    display_printf("Found %llu base addresses to test\n",
                    (unsigned long long)total_candidates);
 
     FindbaseMemMap memmap;

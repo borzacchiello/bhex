@@ -1,7 +1,17 @@
 // Copyright (c) 2022-2026, bageyelet
 
 #include "t_cmd_common.h"
+#include "dummy_filebuffer.h"
 #include "t.h"
+
+#include <color.h>
+
+/* The escapes of the colored graph, see common/color.c */
+#define c_addr "\x1b[0;1;37m"
+#define c_low  "\x1b[0;32m"
+#define c_mid  "\x1b[0;33m"
+#define c_high "\x1b[0;31m"
+#define c_off  "\x1b[0m"
 
 #ifndef TEST
 #define TEST(name) test_##name
@@ -113,6 +123,41 @@ int TEST(notkitty_len_8_rows_2)(void)
     bhex_free(out);
 
 end:
+    return r;
+}
+
+int TEST(colors_by_band)(void)
+{
+    // 256 bytes covering every value land in the high band, 256 bytes
+    // covering 64 of them in the middle one, and a run of zeroes in the low
+    u8_t buf[768];
+    for (int i = 0; i < 256; ++i) {
+        buf[i]       = (u8_t)i;
+        buf[256 + i] = (u8_t)(i % 64);
+        buf[512 + i] = 0;
+    }
+    DummyFilebuffer* tfb = dummyfilebuffer_create(buf, sizeof(buf));
+
+    // the colors are off by default in the tests, as they are whenever the
+    // output is not a terminal
+    colors_set_enabled(1);
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("entropy 3", tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r = strstr(out, c_high "(7.995)") != NULL &&
+                strstr(out, c_mid "(5.995)") != NULL &&
+                strstr(out, c_low "(0.000)") != NULL &&
+                strstr(out, c_addr "[ 00000000 - 00000100 ]" c_off) != NULL
+            ? TEST_SUCCEEDED
+            : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    colors_set_enabled(0);
+    dummyfilebuffer_destroy(tfb);
     return r;
 }
 

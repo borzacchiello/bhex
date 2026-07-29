@@ -4,6 +4,15 @@
 #include "t.h"
 #include "data/big_buffers.h"
 
+#include <color.h>
+
+/* The escapes of the colored dump, see common/color.c */
+#define c_addr  "\x1b[0;1;37m"
+#define c_dim   "\x1b[0;90m" /* header and 0x00 bytes */
+#define c_ascii "\x1b[0;32m"
+#define c_other "\x1b[0;37m"
+#define c_off   "\x1b[0m"
+
 #ifndef TEST
 #define TEST(name) test_##name
 #endif
@@ -41,6 +50,66 @@ int TEST(hex_1)(void)
     bhex_free(out);
 
 end:
+    return r;
+}
+
+int TEST(hex_colors)(void)
+{
+    // clang-format off
+    const char* expected =
+    c_dim
+    "       00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F \n"
+    "       -----------------------------------------------\n"
+    c_off
+    c_addr " 0000: "
+    c_other "7F "
+    c_ascii "45 " "4C " "46 "
+    c_other "01 " "01 " "01 "
+    c_dim "00 "
+    c_off "                        "
+    "  "
+    c_other "."
+    c_ascii "ELF"
+    c_other "..."
+    c_dim "."
+    c_off "\n";
+    // clang-format on
+
+    // the colors are off by default in the tests, as they are whenever the
+    // output is not a terminal
+    colors_set_enabled(1);
+
+    int r = TEST_FAILED;
+    if (exec_commands("s 0 ; print 8") != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = strcmp(out, expected) == 0 ? TEST_SUCCEEDED : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    colors_set_enabled(0);
+    return r;
+}
+
+int TEST(hex_colors_raw)(void)
+{
+    // raw mode is meant to be copied and pasted around: no escape must end up
+    // in it, colors or not
+    const char* expected = "7F454C46\n";
+
+    colors_set_enabled(1);
+
+    int r = TEST_FAILED;
+    if (exec_commands("s 0 ; print/r 4") != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = strcmp(out, expected) == 0 ? TEST_SUCCEEDED : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    colors_set_enabled(0);
     return r;
 }
 

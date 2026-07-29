@@ -77,6 +77,7 @@ set(common_src
     common/dlist.c
     common/ll.c
     common/log.c
+    common/color.c
     common/map.c
     common/strbuilder.c
     common/display.c

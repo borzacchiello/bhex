@@ -5,6 +5,7 @@
 
 #include <util/print.h>
 #include <display.h>
+#include <color.h>
 #include <string.h>
 #include <alloc.h>
 #include <defs.h>
@@ -13,11 +14,6 @@
 #define HINT_STR "[/p/w/n] <file>"
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
-
-/* SGR sequences marking the differing bytes. With `n` no escape at all is
- * emitted, so that the output can be piped and parsed as plain text. */
-#define HL_COLOR "\x1b[31;49;1m"
-#define HL_END   "\x1b[0m"
 
 static void diffcmd_dispose(void* obj) {}
 
@@ -36,8 +32,10 @@ static void diffcmd_help(void* obj)
 static void print_diffs(FileBuffer* self, FileBuffer* other, int print_diffs,
                         int wide, int no_colors)
 {
-    const char* hl_begin = no_colors ? "" : HL_COLOR;
-    const char* hl_end   = no_colors ? "" : HL_END;
+    /* With `n` (or with the colors globally disabled) no escape at all is
+     * emitted, so that the output can be piped and parsed as plain text. */
+    const char* hl_begin = no_colors ? "" : color_str(COLOR_HIGHLIGHT);
+    const char* hl_end   = no_colors ? "" : color_str(COLOR_RESET);
 
     fb_seek(self, 0);
     fb_seek(other, 0);

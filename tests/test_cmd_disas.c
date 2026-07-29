@@ -4,6 +4,15 @@
 #include "t_cmd_common.h"
 #include "t.h"
 
+#include <color.h>
+
+/* The escapes of the colored disassembly, see common/color.c */
+#define c_addr "\x1b[0;1;37m"
+#define c_dim  "\x1b[0;90m" /* opcode bytes */
+#define c_mnem "\x1b[0;1;37m"
+#define c_flow "\x1b[0;1;33m" /* jumps, calls, returns */
+#define c_off  "\x1b[0m"
+
 #ifndef TEST
 #define TEST(name) test_##name
 #endif
@@ -106,6 +115,63 @@ int TEST(x64_ret)(void)
     bhex_free(out);
 
 end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(x64_colors)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    const u8_t       nop_bytes[] = {0x90, 0x90};
+    DummyFilebuffer* tfb = dummyfilebuffer_create(nop_bytes, sizeof(nop_bytes));
+    const char*      expected =
+        c_addr "0x00000000:" c_off " " c_dim "90                   " c_off
+               " " c_mnem "nop" c_off "\t\t\n";
+
+    // the colors are off by default in the tests, as they are whenever the
+    // output is not a terminal
+    colors_set_enabled(1);
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("ds x64 1", tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = strcmp(out, expected) == 0 ? TEST_SUCCEEDED : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    colors_set_enabled(0);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(x64_colors_control_flow)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // a return is a control flow instruction: it must stand out from the
+    // mnemonics that just compute something
+    const u8_t       ret_bytes[] = {0xC3, 0x00};
+    DummyFilebuffer* tfb = dummyfilebuffer_create(ret_bytes, sizeof(ret_bytes));
+
+    colors_set_enabled(1);
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("ds x64 1", tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r = strstr(out, c_flow "ret" c_off) != NULL ? TEST_SUCCEEDED : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    colors_set_enabled(0);
     dummyfilebuffer_destroy(tfb);
     return r;
 #else

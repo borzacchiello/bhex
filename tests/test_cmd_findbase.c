@@ -7,6 +7,12 @@
 #include <string.h>
 #include <util/endian.h>
 
+#include <color.h>
+
+/* The escapes of the colored output, see common/color.c */
+#define c_addr "\x1b[0;1;37m"
+#define c_off  "\x1b[0m"
+
 #ifndef TEST
 #define TEST(name) test_##name
 #endif
@@ -45,11 +51,11 @@ static DummyFilebuffer* make_findbase_blob(void)
 
 int TEST(auto_detect_le_32)(void)
 {
-    const char* expected = "[i] 32-bit architecture selected.\n"
-                           "[i] Endianness is LE\n"
-                           "[i] 4 strings indexed\n"
-                           "[i] Found 1 base addresses to test\n"
-                           "[i] Base address found: 0x08004000.\n";
+    const char* expected = "32-bit architecture selected.\n"
+                           "Endianness is LE\n"
+                           "4 strings indexed\n"
+                           "Found 1 base addresses to test\n"
+                           "Base address found: 0x08004000.\n";
 
     DummyFilebuffer* tfb = make_findbase_blob();
 
@@ -62,6 +68,35 @@ int TEST(auto_detect_le_32)(void)
     bhex_free(out);
 
 end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+}
+
+int TEST(colors)(void)
+{
+    const char* expected =
+        "32-bit architecture selected.\n"
+        "Endianness is LE\n"
+        "4 strings indexed\n"
+        "Found 1 base addresses to test\n"
+        "Base address found: " c_addr "0x08004000" c_off ".\n";
+
+    DummyFilebuffer* tfb = make_findbase_blob();
+
+    // the colors are off by default in the tests, as they are whenever the
+    // output is not a terminal
+    colors_set_enabled(1);
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("findbase", tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    colors_set_enabled(0);
     dummyfilebuffer_destroy(tfb);
     return r;
 }

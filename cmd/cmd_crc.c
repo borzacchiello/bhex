@@ -9,6 +9,7 @@
 
 #include <filebuffer.h>
 #include <display.h>
+#include <color.h>
 #include <string.h>
 #include <alloc.h>
 #include <defs.h>
@@ -79,7 +80,8 @@ static int crccmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 
         const char* const* crcs = get_all_crc_names();
         while (*crcs) {
-            display_printf("    %s\n", *crcs);
+            display_printf("    %s%s%s\n", color_str(COLOR_CMD), *crcs,
+                           color_str(COLOR_RESET));
             crcs++;
         }
         return COMMAND_OK;
@@ -124,7 +126,8 @@ static int crccmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
         if (strcmp(name, "*") == 0 || stristr(*crcs, name) != NULL) {
             const crc_params_t* params = get_crc_by_name(*crcs);
             u32_t crc = fb_calculate_crc(params, fb, offset, size);
-            display_printf("  %24s : 0x%x\n", *crcs, crc);
+            display_printf("  %s%24s%s : 0x%x\n", color_str(COLOR_LABEL), *crcs,
+                           color_str(COLOR_RESET), crc);
         }
         crcs++;
     }

@@ -25,7 +25,11 @@ printf 's 0x40\np 64\n' | bhex -2ns file   # one command per line from stdin
 
 `-w` opens for writing (and **creates the file if it does not exist** — that is how you build one
 from scratch), `-b` first copies it to `file.bk`, `-2` silences warnings, `-n` skips the history
-file. `-c` and `-s` are mutually exclusive.
+file, `-C` turns off the colors. `-c` and `-s` are mutually exclusive.
+
+Colors need no flag when scripting: they are emitted only when the standard output is a terminal,
+so a redirect or a pipe already gets plain text (`NO_COLOR` in the environment disables them too).
+`-C` is for the case where the output *is* a terminal and the escapes are still in the way.
 
 For scripting always pass `-2 -n`: without them every run emits the read-only warning and appends
 to `~/.bhex_history` (`$BHEX_HISTORY_FILE` overrides; `-c` runs never save history anyway).

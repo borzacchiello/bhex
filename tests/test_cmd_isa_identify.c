@@ -9,6 +9,16 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <color.h>
+
+/* The escapes of the colored output, see common/color.c */
+#define c_addr      "\x1b[0;1;37m"
+#define c_arch      "\x1b[0;36m"
+#define c_conf_low  "\x1b[0;31m"
+#define c_conf_mid  "\x1b[0;33m"
+#define c_conf_high "\x1b[0;32m"
+#define c_off       "\x1b[0m"
+
 #ifndef TEST
 #define TEST(name) test_##name
 #endif
@@ -254,7 +264,7 @@ int TEST(help_output)(void)
 
     char* out = strbuilder_reset(sb);
     r         = strstr(out, "isa_identify: identify the ISA") != NULL &&
-        strstr(out, "if omitted, use the whole file") != NULL;
+                strstr(out, "if omitted, use the whole file") != NULL;
     bhex_free(out);
 
 end:
@@ -302,6 +312,39 @@ int TEST(graph_detects_code_ranges_and_isas)(void)
          extract_graph_arch_for_range(out, 1, arch1, sizeof(arch1)) &&
          extract_graph_arch_for_range(out, 2, arch2, sizeof(arch2)) &&
          strcmp(arch1, "x64") == 0 && strcmp(arch2, "x86") == 0;
+
+    bhex_free(out);
+    return ok ? TEST_SUCCEEDED : TEST_FAILED;
+}
+
+int TEST(graph_colors)(void)
+{
+    enum { CHUNK = 1024 };
+    u8_t  buffer[CHUNK * 2];
+    char* out = NULL;
+    int   ok;
+
+    fill_repeating(buffer, sizeof(buffer), snippet_x64, sizeof(snippet_x64));
+
+    // the colors are off by default in the tests, as they are whenever the
+    // output is not a terminal
+    colors_set_enabled(1);
+    ok = run_command_capture_output("ii/g 2048", buffer, sizeof(buffer), &out);
+    colors_set_enabled(0);
+    if (!ok)
+        return TEST_FAILED;
+
+    // the range keeps the address color and the architecture is padded
+    // inside its own escapes, so that the column stays aligned. Which of the
+    // three bands the confidence lands in depends on the model, so any of
+    // them will do -- what matters is that it is colored and closed
+    ok = strstr(out, c_addr "[0x0000000000000000, 0x0000000000000800)" c_off
+                            ": ") != NULL &&
+         strstr(out, c_arch "     x64" c_off ", le (confidence: ") != NULL &&
+         (strstr(out, "(confidence: " c_conf_low) != NULL ||
+          strstr(out, "(confidence: " c_conf_mid) != NULL ||
+          strstr(out, "(confidence: " c_conf_high) != NULL) &&
+         strstr(out, "%" c_off ")\n") != NULL;
 
     bhex_free(out);
     return ok ? TEST_SUCCEEDED : TEST_FAILED;

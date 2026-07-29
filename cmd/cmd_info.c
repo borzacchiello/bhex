@@ -6,6 +6,7 @@
 #include <util/math.h>
 #include <hash/md5.h>
 #include <display.h>
+#include <color.h>
 #include <string.h>
 #include <alloc.h>
 #include <log.h>
@@ -124,11 +125,14 @@ static int infocmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
         ctx->version = fb->version;
     }
 
-    display_printf("  path:    %s\n"
-                   "  size:    %s\n"
-                   "  entropy: %.03f / 8.000\n"
-                   "  md5:     %s\n",
-                   fb->path, size_string(fb->size), ctx->entropy, ctx->md5);
+    const char* label = color_str(COLOR_LABEL);
+    const char* reset = color_str(COLOR_RESET);
+    display_printf("  %spath:%s    %s\n"
+                   "  %ssize:%s    %s\n"
+                   "  %sentropy:%s %.03f / 8.000\n"
+                   "  %smd5:%s     %s\n",
+                   label, reset, fb->path, label, reset, size_string(fb->size),
+                   label, reset, ctx->entropy, label, reset, ctx->md5);
 
     return COMMAND_OK;
 }

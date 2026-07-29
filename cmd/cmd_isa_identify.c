@@ -4,6 +4,7 @@
 #include "cmd_arg_handler.h"
 
 #include <alloc.h>
+#include <color.h>
 #include <display.h>
 #include <log.h>
 #include <ml/binexec.h>
@@ -348,6 +349,17 @@ static int classify_chunk_from_fb(IsaIdentifyCmdCtx* ctx, FileBuffer* fb,
     return rc;
 }
 
+// How much the guess can be trusted, so that a range identified with 30% of
+// confidence does not read like one identified with 99%
+static Color confidence_color(double probability)
+{
+    if (probability >= 0.80)
+        return COLOR_CONFIDENCE_HIGH;
+    if (probability >= 0.50)
+        return COLOR_CONFIDENCE_MID;
+    return COLOR_CONFIDENCE_LOW;
+}
+
 static const char* graph_endianness_name(const char* endianness)
 {
     if (endianness == NULL)
@@ -373,11 +385,18 @@ static int print_code_range(IsaIdentifyCmdCtx* ctx, FileBuffer* fb, u64_t start,
         return COMMAND_SILENT_ERROR;
     }
 
+    // the escapes wrap the padded architecture, so that they do not eat into
+    // the width of the column
     display_printf(
-        "  [0x%016llx, 0x%016llx): %*s, %s (confidence: %.2f%%)\n",
-        (unsigned long long)start, (unsigned long long)end, GRAPH_ARCH_WIDTH,
+        "  %s[0x%016llx, 0x%016llx)%s: %s%*s%s, %s (confidence: "
+        "%s%.2f%%%s)\n",
+        color_str(COLOR_ADDR), (unsigned long long)start,
+        (unsigned long long)end, color_str(COLOR_RESET), color_str(COLOR_CMD),
+        GRAPH_ARCH_WIDTH,
         top[0].display_name != NULL ? top[0].display_name : "unknown",
-        graph_endianness_name(top[0].endianness), top[0].probability * 100.0);
+        color_str(COLOR_RESET), graph_endianness_name(top[0].endianness),
+        color_str(confidence_color(top[0].probability)),
+        top[0].probability * 100.0, color_str(COLOR_RESET));
 
     return COMMAND_OK;
 }
@@ -398,10 +417,13 @@ static int isa_identifycmd_exec_default(IsaIdentifyCmdCtx* ctx, FileBuffer* fb,
     display_printf("ISA identification (%zu bytes analyzed):\n", size);
     for (i = 0; i < ISA_TOPK; ++i) {
         display_printf(
-            "  top %zu: %s, %s-endian (confidence: %.2f%%)\n", i + 1,
+            "  top %zu: %s%s%s, %s-endian (confidence: %s%.2f%%%s)\n", i + 1,
+            color_str(COLOR_CMD),
             top[i].display_name != NULL ? top[i].display_name : "unknown",
+            color_str(COLOR_RESET),
             top[i].endianness != NULL ? top[i].endianness : "unknown",
-            top[i].probability * 100.0);
+            color_str(confidence_color(top[i].probability)),
+            top[i].probability * 100.0, color_str(COLOR_RESET));
     }
 
     return COMMAND_OK;
@@ -560,7 +582,8 @@ static int isa_identifycmd_exec_graph(IsaIdentifyCmdCtx* ctx, FileBuffer* fb,
     }
 
     if (!printed) {
-        display_printf("  no code ranges detected\n");
+        display_printf("  %sno code ranges detected%s\n",
+                       color_str(COLOR_HEADER), color_str(COLOR_RESET));
     }
 
     bhex_free(chunks);

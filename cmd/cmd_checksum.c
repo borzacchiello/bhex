@@ -10,6 +10,7 @@
 #include <filebuffer.h>
 #include <checksums.h>
 #include <display.h>
+#include <color.h>
 #include <string.h>
 #include <alloc.h>
 #include <defs.h>
@@ -70,14 +71,19 @@ static u32_t fb_calculate_checksum(const checksum_algo_t* algo, FileBuffer* fb,
 static void display_checksum(const char* name, u32_t value,
                              const checksum_algo_t* algo)
 {
+    // the escapes wrap the padded name, so that they do not eat into the
+    // width of the column
+    const char* label = color_str(COLOR_LABEL);
+    const char* reset = color_str(COLOR_RESET);
+
     if (algo->decimal)
-        display_printf("  %11s : %u\n", name, value);
+        display_printf("  %s%11s%s : %u\n", label, name, reset, value);
     else if (algo->width <= 8)
-        display_printf("  %11s : 0x%02x\n", name, value);
+        display_printf("  %s%11s%s : 0x%02x\n", label, name, reset, value);
     else if (algo->width <= 16)
-        display_printf("  %11s : 0x%04x\n", name, value);
+        display_printf("  %s%11s%s : 0x%04x\n", label, name, reset, value);
     else
-        display_printf("  %11s : 0x%08x\n", name, value);
+        display_printf("  %s%11s%s : 0x%08x\n", label, name, reset, value);
 }
 
 static int checksumcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
@@ -92,7 +98,8 @@ static int checksumcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 
         const char* const* names = get_all_checksum_names();
         while (*names) {
-            display_printf("    %s\n", *names);
+            display_printf("    %s%s%s\n", color_str(COLOR_CMD), *names,
+                           color_str(COLOR_RESET));
             names++;
         }
         return COMMAND_OK;

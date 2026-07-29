@@ -36,10 +36,13 @@ Usage:  bhex [ options ] inputfile
   -b  --backup      Backup original file in "filename.bk"
   -2  --no_warning  Disable warnings
   -n  --no_history  Do not save command history
+  -C  --no_color    Do not use colors
   -c  "c1; c2; ..." Execute the commands given as argument and exit
   -s  --script      Script mode (commands from raw stdin)
 
 command history is saved in "$HOME/.bhex_history", it can be changed setting BHEX_HISTORY_FILE environment variable
+
+colors are disabled automatically when the output is not a terminal, or when the NO_COLOR environment variable is set
 ```
 
 # Compilation

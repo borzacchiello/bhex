@@ -9,6 +9,7 @@
 
 #include <filebuffer.h>
 #include <display.h>
+#include <color.h>
 #include <string.h>
 #include <alloc.h>
 #include <defs.h>
@@ -58,7 +59,8 @@ static int search_cb(FileBuffer* fb, u64_t match_addr, const u8_t* match,
         display_printf("\n\n");
     else
         ctx->first_match = 0;
-    display_printf(" >> Match @ 0x%07llX\n", match_addr + fb->base_addr);
+    display_printf(" >> Match @ %s0x%07llX%s\n", color_str(COLOR_ADDR),
+                   match_addr + fb->base_addr, color_str(COLOR_RESET));
     if (ctx->seek_to_match) {
         ctx->seek_addr = match_addr;
     }
@@ -76,10 +78,10 @@ static int search_cb(FileBuffer* fb, u64_t match_addr, const u8_t* match,
                                : print_addr_end + CONTEXT_PRINT_RANGE;
         if ((print_addr_end - print_addr_begin + 1) % CONTEXT_PRINT_RANGE !=
             0) {
-            u64_t rem = CONTEXT_PRINT_RANGE -
-                        ((print_addr_end - print_addr_begin + 1) %
-                         CONTEXT_PRINT_RANGE) +
-                        1;
+            u64_t rem      = CONTEXT_PRINT_RANGE -
+                             ((print_addr_end - print_addr_begin + 1) %
+                              CONTEXT_PRINT_RANGE) +
+                             1;
             print_addr_end = print_addr_end + rem >= fb->size
                                  ? fb->size
                                  : print_addr_end + rem;

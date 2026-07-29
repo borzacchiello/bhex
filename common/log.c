@@ -6,17 +6,23 @@
 #include <string.h>
 
 #include <log.h>
+#include <color.h>
 
 static void (*g_callback)(const char*);
 int disable_warning = 0;
 
-static void common_print(const char* type, const char* format, va_list argp)
+// The tag is colored only on the direct path: when a callback is registered
+// the message is rendered by somebody else (the TUI puts it in its status
+// bar), and the escapes would break its layout.
+static void common_print(const char* type, Color color, const char* format,
+                         va_list argp)
 {
     char buf[2048] = {0};
     char tmp[1024] = {0};
 
     if (g_callback == NULL) {
-        fprintf(stderr, "[ %s ] ", type);
+        fprintf(stderr, "%s[ %s ]%s ", color_str(color), type,
+                color_str(COLOR_RESET));
         vfprintf(stderr, format, argp);
         fprintf(stderr, "\n");
     } else {
@@ -35,7 +41,7 @@ void panic(const char* format, ...)
 
     // PANIC always print on stderr
     g_callback = NULL;
-    common_print(" PANIC ", format, argp);
+    common_print(" PANIC ", COLOR_PANIC, format, argp);
     va_end(argp);
 
     exit(1);
@@ -49,7 +55,7 @@ void warning(const char* format, ...)
     va_list argp;
     va_start(argp, format);
 
-    common_print("WARNING", format, argp);
+    common_print("WARNING", COLOR_WARNING, format, argp);
     va_end(argp);
 }
 
@@ -61,7 +67,7 @@ void info(const char* format, ...)
     va_list argp;
     va_start(argp, format);
 
-    common_print(" INFO  ", format, argp);
+    common_print(" INFO  ", COLOR_INFO, format, argp);
     va_end(argp);
 }
 
@@ -70,7 +76,7 @@ void error(const char* format, ...)
     va_list argp;
     va_start(argp, format);
 
-    common_print(" ERROR ", format, argp);
+    common_print(" ERROR ", COLOR_ERROR, format, argp);
     va_end(argp);
 }
 

@@ -5,6 +5,7 @@
 #include <display.h>
 #include <string.h>
 #include <alloc.h>
+#include <color.h>
 
 #include "cmd_crc.h"
 #include "cmd_checksum.h"
@@ -111,12 +112,17 @@ void cmdctx_destroy(CmdContext* cmd)
 
 int cmd_help(CmdContext* cc)
 {
+    const char* cmd_col   = color_str(COLOR_CMD);
+    const char* alias_col = color_str(COLOR_ALIAS);
+    const char* reset     = color_str(COLOR_RESET);
+
     display_printf("\nAvailable commands:\n");
-    display_printf("    help [h]\n");
+    display_printf("    %shelp%s %s[h]%s\n", cmd_col, reset, alias_col, reset);
     ll_node_t* curr = cc->commands.head;
     while (curr) {
         Cmd* cmd = (Cmd*)curr->data;
-        display_printf("    %s [%s]\n", cmd->name, cmd->alias);
+        display_printf("    %s%s%s %s[%s]%s\n", cmd_col, cmd->name, reset,
+                       alias_col, cmd->alias, reset);
         curr = curr->next;
     }
     display_printf("\n");

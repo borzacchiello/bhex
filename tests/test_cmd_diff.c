@@ -3,6 +3,8 @@
 #include "t_cmd_common.h"
 #include "t.h"
 
+#include <color.h>
+
 #ifndef TEST
 #define TEST(name) test_##name
 #endif
@@ -78,6 +80,10 @@ int TEST(different_smaller_print)(void)
     if (snprintf(cmd, sizeof(cmd) - 1, "df/p %s", dfb_alt_2->fname) < 0)
         panic("snprintf failed");
 
+    // the colors are off by default in the tests, as they are whenever the
+    // output is not a terminal: turn them on to check the highlighting
+    colors_set_enabled(1);
+
     int r = TEST_FAILED;
     if (exec_commands(cmd) != 0)
         goto end;
@@ -87,6 +93,7 @@ int TEST(different_smaller_print)(void)
     bhex_free(out);
 
 end:
+    colors_set_enabled(0);
     return r;
 }
 
@@ -110,6 +117,9 @@ int TEST(different_smaller_print_no_colors)(void)
     if (snprintf(cmd, sizeof(cmd) - 1, "df/p/n %s", dfb_alt_2->fname) < 0)
         panic("snprintf failed");
 
+    // 'n' overrides the colors even when they are enabled
+    colors_set_enabled(1);
+
     int r = TEST_FAILED;
     if (exec_commands(cmd) != 0)
         goto end;
@@ -119,6 +129,7 @@ int TEST(different_smaller_print_no_colors)(void)
     bhex_free(out);
 
 end:
+    colors_set_enabled(0);
     return r;
 }
 
@@ -141,6 +152,10 @@ int TEST(different_smaller_print_wide)(void)
     if (snprintf(cmd, sizeof(cmd) - 1, "df/p/w %s", dfb_alt_2->fname) < 0)
         panic("snprintf failed");
 
+    // the colors are off by default in the tests, as they are whenever the
+    // output is not a terminal: turn them on to check the highlighting
+    colors_set_enabled(1);
+
     int r = TEST_FAILED;
     if (exec_commands(cmd) != 0)
         goto end;
@@ -150,5 +165,6 @@ int TEST(different_smaller_print_wide)(void)
     bhex_free(out);
 
 end:
+    colors_set_enabled(0);
     return r;
 }

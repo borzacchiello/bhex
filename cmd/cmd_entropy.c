@@ -10,6 +10,7 @@
 #include <util/math.h>
 #include <hash/md5.h>
 #include <display.h>
+#include <color.h>
 #include <string.h>
 #include <alloc.h>
 #include <defs.h>
@@ -32,6 +33,18 @@ static void entropycmd_help(void* obj)
         "  rows: number of points in the graph (if omitted or '-', auto mode)\n"
         "  len:  number of bytes to include starting from the current offset "
         "(if omitted, use the whole file)\n");
+}
+
+// The bands of the graph, on the 0..8 scale of the Shannon entropy: above 7
+// the data is usually compressed or encrypted, below 5 it is usually text,
+// code or padding
+static Color entropy_color(float entropy)
+{
+    if (entropy >= 7.0f)
+        return COLOR_ENTROPY_HIGH;
+    if (entropy >= 5.0f)
+        return COLOR_ENTROPY_MID;
+    return COLOR_ENTROPY_LOW;
 }
 
 static int entropycmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
@@ -87,12 +100,19 @@ static int entropycmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 
         float entropy = calculate_entropy(fb, addr, bytes_per_raw);
 
-        display_printf("[ %08llx - %08llx ] (%.03f) ", addr + fb->base_addr,
-                       addr + bytes_per_raw + fb->base_addr, entropy);
+        display_printf("%s[ %08llx - %08llx ]%s ", color_str(COLOR_ADDR),
+                       addr + fb->base_addr,
+                       addr + bytes_per_raw + fb->base_addr,
+                       color_str(COLOR_RESET));
+
+        // the value and its bar share the color of the band, so that the
+        // rows worth a second look can be spotted without reading the numbers
+        display_printf("%s", color_str(entropy_color(entropy)));
+        display_printf("(%.03f) ", entropy);
         u32_t bar_value = entropy * 45 / 8;
         for (u32_t i = 0; i < bar_value; ++i)
             display_printf("-");
-        display_printf("+\n");
+        display_printf("+%s\n", color_str(COLOR_RESET));
 
         addr += bytes_per_raw;
     }

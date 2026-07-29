@@ -4,9 +4,38 @@
 #include "data/big_buffers.h"
 #include "t.h"
 
+#include <color.h>
+
+/* The escapes of the colored output, see common/color.c */
+#define c_label "\x1b[0;36m"
+#define c_off   "\x1b[0m"
+
 #ifndef TEST
 #define TEST(name) test_##name
 #endif
+
+int TEST(colors)(void)
+{
+    // the escapes wrap the padded name: the column must stay aligned
+    const char* expected =
+        "  " c_label "           CRC-8/AUTOSAR" c_off " : 0xe3\n";
+
+    // the colors are off by default in the tests, as they are whenever the
+    // output is not a terminal
+    colors_set_enabled(1);
+
+    int r = TEST_FAILED;
+    if (exec_commands("crc CRC-8/AUTOSAR") != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = strcmp(out, expected) == 0 ? TEST_SUCCEEDED : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    colors_set_enabled(0);
+    return r;
+}
 
 int TEST(whole_file_all_crcs)(void)
 {

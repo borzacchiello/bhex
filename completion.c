@@ -9,6 +9,7 @@
 #include <string.h>
 #include <dirent.h>
 #include <alloc.h>
+#include <color.h>
 #include <defs.h>
 #include <ll.h>
 
@@ -181,7 +182,12 @@ char* bhex_shell_hint(const char* buf, int* color, int* bold)
     if (!buf)
         return NULL;
 
-    *bold   = 1;
+    // linenoise emits no escape at all when the hint is neither bold nor
+    // colored, which is what we want with the colors turned off
+    if (colors_enabled())
+        *color = 90; /* gray */
+    else
+        *bold = 1;
     char* r = NULL;
 
     char*       bufcp = bhex_strdup(buf);

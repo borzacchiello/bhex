@@ -4,6 +4,7 @@
 #include <string.h>
 #include <util/byte_to_num.h>
 #include <display.h>
+#include <color.h>
 #include <alloc.h>
 #include <defs.h>
 #include <log.h>
@@ -47,7 +48,8 @@ static int hashcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
         size_t                n_hashes;
         const hash_handler_t* hashes = get_all_hashes(&n_hashes);
         for (size_t i = 0; i < n_hashes; ++i)
-            display_printf("  %s\n", hashes[i].name);
+            display_printf("  %s%s%s\n", color_str(COLOR_CMD), hashes[i].name,
+                           color_str(COLOR_RESET));
 
         return COMMAND_OK;
     }
@@ -97,7 +99,10 @@ static int hashcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
             char* hash = NULL;
             hashes[i].handler(fb, real_off, size, &hash);
             if (hash) {
-                display_printf("  %12s : %s\n", hashes[i].name, hash);
+                // the escapes wrap the padded name, so that they do not
+                // eat into the width of the column
+                display_printf("  %s%12s%s : %s\n", color_str(COLOR_LABEL),
+                               hashes[i].name, color_str(COLOR_RESET), hash);
                 bhex_free(hash);
             } else {
                 error("error calculating %s hash", hashes[i].name);
