@@ -244,23 +244,292 @@ proc _identify_magic
     magic("PK\x03\x04", 0);
 }
 
+// The compressed size out of the zip64 extended information extra field, which
+// is where it lives once the 32 bit field is saturated. The field only carries
+// the sizes whose 32 bit counterpart is saturated, in a fixed order, so the
+// uncompressed one being there is what decides the offset of this one
+fn zip64_csize(at, nl, el, usize_saturated)
+{
+    local p     = at + 30 + nl;
+    local stop  = p + el;
+    local fsize = size();
+    local id    = 0;
+    local len   = 0;
+    local field = 0;
+    while (p + 4 <= stop && p + 4 <= fsize) {
+        seek(p);
+        id  = peek_u16();
+        len = peek_u16(2);
+        if (id == 1) {
+            field = p + 4;
+            if (usize_saturated) {
+                field = field + 8;
+            }
+            if (field + 8 <= stop && field + 8 <= fsize) {
+                seek(field);
+                result = peek_u64();
+            }
+            return;
+        }
+        p = p + 4 + len;
+    }
+}
+
+// Everything past a local file header's fixed part: the two variable length
+// fields and the payload. Zero when the header does not know, which is the
+// case for an entry written as a stream -- the sizes then live in a data
+// descriptor behind the payload, and only the central directory has them
+fn local_entry_size(at)
+{
+    if (at + 30 > size()) {
+        return;
+    }
+    seek(at);
+    if (peek_u32() != 0x04034b50) {
+        return;
+    }
+
+    local flags = peek_u16(6);
+    local csize = peek_u32(18);
+    local usize = peek_u32(22);
+    local nl    = peek_u16(26);
+    local el    = peek_u16(28);
+
+    if (csize == 0xffffffff) {
+        csize = zip64_csize(at, nl, el, usize == 0xffffffff);
+        if (csize == 0) {
+            return;
+        }
+    }
+    if (csize == 0 && (flags & 8) != 0) {
+        return;
+    }
+    result = 30 + nl + el + csize;
+}
+
+// An entry written as a stream does not know its own length: the sizes follow
+// the payload in a data descriptor, and only where the entry ends says where
+// that is. The next signature in the file is the only candidate, and the size
+// the descriptor in front of it reports is what confirms it -- compressed data
+// is full of bytes that look like a signature, and this is what tells them
+// apart. Returns the offset just past the entry, or 0
+fn streamed_entry_end(payload_start)
+{
+    local fsize = size();
+    local from  = payload_start;
+    local tries = 0;
+    local a     = 0;
+    local b     = 0;
+    local c     = 0;
+    while (tries < 32 && from + 4 <= fsize) {
+        // whichever of the two signatures that may follow an entry comes first
+        seek(from);
+        a = find_next("PK\x03\x04");
+        seek(from);
+        b = find_next("PK\x01\x02");
+        c = a;
+        if (a < 0 || (b >= 0 && b < a)) {
+            c = b;
+        }
+        if (c < 0) {
+            return;
+        }
+
+        // the descriptor, with or without its optional signature, and in the
+        // 32 or the 64 bit shape
+        if (c >= payload_start + 16) {
+            seek(c - 16);
+            if (peek_u32() == 0x08074b50 &&
+                peek_u32(8) == c - 16 - payload_start) {
+                result = c;
+                return;
+            }
+        }
+        if (c >= payload_start + 24) {
+            seek(c - 24);
+            if (peek_u32() == 0x08074b50 &&
+                peek_u64(8) == c - 24 - payload_start) {
+                result = c;
+                return;
+            }
+        }
+        if (c >= payload_start + 12) {
+            seek(c - 12);
+            if (peek_u32(4) == c - 12 - payload_start) {
+                result = c;
+                return;
+            }
+        }
+        if (c >= payload_start + 20) {
+            seek(c - 20);
+            if (peek_u64(4) == c - 20 - payload_start) {
+                result = c;
+                return;
+            }
+        }
+
+        from  = c + 4;
+        tries = tries + 1;
+    }
+}
+
+// Walks the local file headers from `at` to the central directory, which is
+// where they stop. Returns its offset, or 0 if the walk never gets there
+fn walk_local_headers(at)
+{
+    local fsize = size();
+    local d     = 0;
+    local ok    = 0;
+    while (at + 30 <= fsize) {
+        seek(at);
+        if (peek_u32() == 0x02014b50) {
+            result = at;
+            return;
+        }
+
+        local streamed = (peek_u16(6) & 8) != 0;
+        local adv      = local_entry_size(at);
+        if (adv == 0) {
+            // the header does not carry the sizes at all, so where the entry
+            // ends has to be recovered from the descriptor behind it
+            if (streamed == 0) {
+                return;
+            }
+            seek(at);
+            at = streamed_entry_end(at + 30 + peek_u16(26) + peek_u16(28));
+            if (at == 0) {
+                return;
+            }
+            continue;
+        }
+        at = at + adv;
+
+        // an entry with a trailing data descriptor: it is 12 or 16 bytes (24
+        // or 28 for zip64), and only what follows it says which. Landing on
+        // the next signature is the confirmation that the guess was right
+        if (streamed) {
+            d  = 0;
+            ok = 0;
+            while (d <= 28) {
+                if (at + d + 4 <= fsize) {
+                    seek(at + d);
+                    if (peek_u32() == 0x04034b50 || peek_u32() == 0x02014b50) {
+                        at = at + d;
+                        ok = 1;
+                        break;
+                    }
+                }
+                d = d + 4;
+            }
+            if (ok == 0) {
+                return;
+            }
+        }
+    }
+}
+
+// Walks the central directory headers from `at` to whatever follows them
+fn walk_central_dir(at)
+{
+    local fsize = size();
+    while (at + 46 <= fsize) {
+        seek(at);
+        if (peek_u32() != 0x02014b50) {
+            break;
+        }
+        at = at + 46 + peek_u16(28) + peek_u16(30) + peek_u16(32);
+    }
+    result = at;
+}
+
+// The size of the archive that starts at `at`, or 0. Walking the entries and
+// the directory only gets as far as the end of central directory record; what
+// makes the answer trustworthy is the record itself, which says where the
+// archive it belongs to begins. An entry in the middle of an archive walks to
+// the same record, and that is what tells the two apart
+fn archive_size(at)
+{
+    local fsize = size();
+
+    local cur = walk_local_headers(at);
+    if (cur == 0) {
+        return;
+    }
+    cur = walk_central_dir(cur);
+
+    // a zip64 archive puts its own record, and a locator for it, in front of
+    // the one every archive ends with, and saturates the fields it replaces
+    local cd_size  = 0;
+    local cd_off   = 0;
+    local is_zip64 = 0;
+    if (cur + 56 <= fsize) {
+        seek(cur);
+        if (peek_u32() == 0x06064b50) {
+            cd_size  = peek_u64(40);
+            cd_off   = peek_u64(48);
+            is_zip64 = 1;
+            cur      = cur + 12 + peek_u64(4); // the record sizes itself
+        }
+    }
+    if (cur + 20 <= fsize) {
+        seek(cur);
+        if (peek_u32() == 0x07064b50) {
+            cur = cur + 20;
+        }
+    }
+
+    if (cur + 22 > fsize) {
+        return;
+    }
+    seek(cur);
+    if (peek_u32() != 0x06054b50) {
+        return;
+    }
+    if (is_zip64 == 0) {
+        cd_size = peek_u32(12);
+        cd_off  = peek_u32(16);
+    }
+
+    // both are relative to the start of the archive, and the record sits just
+    // past the directory: subtracting them is where the archive began
+    local end = cur + 22 + peek_u16(20);
+    if (end > fsize || cd_size + cd_off > cur) {
+        return;
+    }
+    if (cur - cd_size - cd_off == at) {
+        result = end - at;
+    }
+}
+
 // A local file header, which is what a zip (and every zip-derived container:
 // jar, apk, docx, epub) starts with. The signature is backed by two fields
 // that cannot hold arbitrary values: the version needed to extract, and a
-// compression method from the assigned range
+// compression method from the assigned range.
+//
+// That is only the entry point: an archive is a run of such headers, so
+// stopping there would report one hit per file inside it. The whole thing is
+// walked instead, and reported once, at the offset it starts at
 proc _identify
 {
     little_endian();
-    if (peek_u32() == 0x04034b50 && peek_u16(4) <= 63 && peek_u16(8) <= 99) {
-        // the entry knows its own length: 30 byte header, the two variable
-        // length fields, then the payload. A streamed entry carries a zero
-        // compressed size (the real one lives in a trailing data descriptor),
-        // in which case this degrades to the header, which is fine
-        result = 30 + peek_u16(26) + peek_u16(28) + peek_u32(18);
-        if (result > remaining_size()) {
+    if (peek_u32() != 0x04034b50 || peek_u16(4) > 63 || peek_u16(8) > 99) {
+        return;
+    }
+
+    local start = off();
+    result      = archive_size(start);
+
+    // Nothing behind this header adds up to a whole archive: it is an entry in
+    // the middle of one, or what is left of a truncated one. The header itself
+    // is well formed, so that much is still reported
+    if (result == 0) {
+        result = local_entry_size(start);
+        if (result == 0 || start + result > size()) {
+            seek(start);
             result = 30 + peek_u16(26) + peek_u16(28);
         }
     }
+    seek(start);
 }
 
 proc

@@ -8,6 +8,7 @@
 
 #include "data/not_kitty_png.h"
 #include "data/sample_gzip.h"
+#include "data/sample_zip.h"
 
 #ifndef TEST
 #define TEST(name) test_##name
@@ -307,6 +308,50 @@ end:
     bhex_free(buf);
     dummyfilebuffer_destroy(tfb);
     identify_unload_templates();
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+// An archive is a run of local file headers, every one of which carries the
+// magic: reporting them one by one is the container turning into a pile of
+// hits. The whole thing has to come back once, at the offset it starts at
+int TEST(identify_archive_reported_once)(void)
+{
+    // clang-format off
+    const char* expected =
+        "  0x00000000  zip          877 bytes\n";
+    // clang-format on
+
+    int              r   = TEST_SUCCEEDED;
+    char*            out = NULL;
+    DummyFilebuffer* tfb = NULL;
+
+    bhengine_vm_add_template(bhengine_vm_get(), "zip", "./templates/zip.bhe");
+    tfb = dummyfilebuffer_create(sample_zip, sizeof(sample_zip));
+    ASSERT(tfb != NULL);
+    ASSERT(sizeof(sample_zip) == 877);
+
+    ASSERT(exec_commands_on("id", tfb) == 0);
+    out = strbuilder_reset(sb);
+    ASSERT(compare_strings_ignoring_X(expected, hits_only(out)));
+    bhex_free(out);
+
+    // ... and the entries behind the first are only reported with the skip
+    // turned off (the first one starts where the archive does, and one offset
+    // is one hit)
+    ASSERT(exec_commands_on("id/n", tfb) == 0);
+    out = strbuilder_reset(sb);
+    ASSERT(strstr(out, "5 hits in 877 bytes") != NULL);
+    ASSERT(strstr(out, "0x00000000  zip          877 bytes") != NULL);
+    ASSERT(strstr(out, "0x00000047  zip") != NULL); // the second entry, at 71
+
+end:
+    bhex_free(out);
+    dummyfilebuffer_destroy(tfb);
+    bhengine_vm_remove_template(bhengine_vm_get(), "zip");
     return r;
 
 fail:

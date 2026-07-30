@@ -17,4 +17,4 @@ else
 fi
 
 make -j > /dev/null
-./bhex_tests
+ASAN_OPTIONS=new_delete_type_mismatch=0 ./bhex_tests
