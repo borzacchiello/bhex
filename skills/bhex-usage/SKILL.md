@@ -25,14 +25,11 @@ printf 's 0x40\np 64\n' | bhex -2ns file   # one command per line from stdin
 
 `-w` opens for writing (and **creates the file if it does not exist** — that is how you build one
 from scratch), `-b` first copies it to `file.bk`, `-2` silences warnings, `-n` skips the history
-file, `-C` turns off the colors. `-c` and `-s` are mutually exclusive.
-
-Colors need no flag when scripting: they are emitted only when the standard output is a terminal,
-so a redirect or a pipe already gets plain text (`NO_COLOR` in the environment disables them too).
-`-C` is for the case where the output *is* a terminal and the escapes are still in the way.
+file. `reference.md` has the rest; colors need no flag when scripting, since they are emitted only
+when the standard output is a terminal.
 
 For scripting always pass `-2 -n`: without them every run emits the read-only warning and appends
-to `~/.bhex_history` (`$BHEX_HISTORY_FILE` overrides; `-c` runs never save history anyway).
+to `~/.bhex_history`.
 
 Short flags cluster, so that pair is usually written `-2n`, and the whole invocation `-2nc "..."`
 or `-2nwbc "..."`. Two rules make clustering safe:
@@ -56,8 +53,7 @@ name/mod1/mod2 arg1 "arg with spaces" `expression`
 - Quote any argument containing spaces: `w/x "00 01 02 03"`. Inside quotes only `\"` and `\\` are
   unescaped by the parser; `\xNN` survives and is decoded by the commands that take binary data
   (`src "\x00\x01"`).
-- `;` separates commands in `-c`. **The batch stops at the first failing command**, and the process
-  still exits 0 — `$?` tells you nothing, you must look at the output for `[ ERROR ]`.
+- `;` separates commands in `-c`, and **the batch stops at the first failing command**.
 - `?` prints a command's help, but only bare: `p?` works, `p/x?` and `p? 4` are parse errors.
 
 ## Everything happens at the current offset
@@ -148,6 +144,3 @@ bhex -2nwbc 's 0x10; w/x "90 90"; c' file   # patch two bytes, keeping file.bk
   text instead of stripping the escapes (differing bytes are then not marked in any way).
 - The `t` search path for template *names* is `/usr/local/share/bhex/templates`, `../templates`,
   `.` — the first match wins. Use an explicit `t ./x.bhe` when it matters.
-
-To make this skill discoverable by Claude Code, put it (or a symlink to it) in `.claude/skills/`
-of the project you are working in, or in `~/.claude/skills/` to have it everywhere.

@@ -21,14 +21,9 @@ bhex [ options ] inputfile
 ```
 
 Parsing is plain `getopt_long`, so short options cluster (`-2n`, `-2nwb`) and `-c` takes its
-argument attached or separated (`-2nc"p 4"`, `-2nc "p 4"`). Consequences worth knowing:
-
-- an arg-taking option ends the cluster: in `-2cn "p 4"` the command string is `n`, and `"p 4"`
-  becomes a second operand, which fails with the usage message and exit code 1;
-- **options must precede the filename** — `bhex file -2n` and `bhex -2n file -c "p 4"` both die
-  with `missing input file` (the loop in `main()` gives up on the path after getopt permutes argv);
-- long options never cluster: `--no_warning --no_history -c "p 4" file`;
-- `-c` together with `-s` is rejected outright.
+argument attached or separated (`-2nc"p 4"`, `-2nc "p 4"`). Beyond the two clustering rules in
+`SKILL.md`: long options never cluster (`--no_warning --no_history -c "p 4" file`), `-c` together
+with `-s` is rejected outright, and both mistakes exit 1 with the usage message.
 
 The output is colored (dumps, addresses, command names, log tags, template fields, the algorithm
 names of `hh`/`cs`/`cr`, disassembly -- where jumps, calls and returns are painted apart from the
@@ -86,13 +81,10 @@ commands above, which is what you want when driving bhex.
 
 ## Parsing rules
 
-- `name/mod1/mod2 args...` — `/` is only a modifier separator **before the first space**; after it
-  the character is literal, so paths (`t ./x.bhe`) work as arguments.
-- Double quotes group an argument; inside them only `\"` and `\\` are consumed by the parser,
-  every other backslash sequence is passed through to the command.
-- `;` separates commands (in `-c` and in the interactive line); it is ignored inside quotes and
-  backticks.
-- `?` must directly follow the command name, with no modifiers and no arguments.
+`SKILL.md` has the grammar; the details it leaves out:
+
+- `;` separates commands in the interactive line as well as in `-c`, and is ignored inside quotes
+  and backticks.
 - Errors: a bad command, a bad modifier, a bad argument or a failed expression stops a `-c` batch
   and the `-s` loop. The process still exits 0 — only the startup failures listed above set 1.
 
@@ -111,10 +103,10 @@ deref   := [ bitlen ('be'|'le')? ] expr        # bitlen in { 8, 16, 32, 64 }, de
 number  := decimal | 0xHEX
 ```
 
-Globals: `$off`/`$o` (current offset **plus base**), `$base`/`$b`, `$size`/`$s`. All arithmetic is
-u64 and wraps; there is no division or modulo. Nesting is capped at 128. A dereference whose
-address+width exceeds the file size fails with `memory read out of bounds`.
+`$off`/`$o` is the current offset **plus base**. All arithmetic is u64 and wraps; nesting is capped
+at 128. A dereference whose address+width exceeds the file size fails with
+`memory read out of bounds`.
 
-Dereference addresses are **absolute file offsets**, unaffected by `sb`; with a base set, the
-cursor-relative read is `[8 $off - $base]`. The result of the whole expression is substituted into
-the command line as a decimal string, so it can also be used where a name is expected.
+Dereference addresses are **absolute file offsets**, unaffected by `sb`. The result of the whole
+expression is substituted into the command line as a decimal string, so it can also be used where
+a name is expected.

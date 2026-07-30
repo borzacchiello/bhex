@@ -46,12 +46,9 @@ call, so a wrong number of arguments always fails the same way.
 
 `off` is relative to the current offset and may be **negative**, so `peek(4, 4)` is "the four bytes
 after the next four" and `peek_u32(-4)` re-reads the field just consumed. A `u64` with its top bit
-set is indistinguishable from the -1 sentinel: read those into a file variable instead.
-
-The two ways of running out of file are not the same: asking for **more bytes than are left** at a
-valid offset is fine (a shorter string, or -1), but an `off` that lands **outside the file** raises
-`peek: offset N is outside of the file`. Since `&&` and `||` short-circuit,
-`off() + 4 <= size() && peek_u32(4) == 0` is the way to guard it.
+set is indistinguishable from the -1 sentinel: read those into a file variable instead. An `off`
+landing outside the file raises `peek: offset N is outside of the file` (see the gotcha in
+`SKILL.md`).
 
 ### Scanning runs of bytes
 
@@ -61,9 +58,6 @@ Each takes a string used as a *byte set*. `scan_*` measure without moving, `skip
 | --- | --- |
 | `scan_while(set)` / `skip_while(set)` | length of the run of bytes that are in `set` |
 | `scan_until(set)` / `skip_until(set)` | length of the run of bytes that are **not** in `set` |
-
-`scan_while("0123456789")` is "how many digits are here"; `skip_while(" \t\r\n")` eats whitespace;
-`scan_until("\r\n")` is "how far to the end of the line".
 
 ### Searching
 
@@ -86,11 +80,11 @@ the last match that *ends* at or before the current offset.
 | `substr(s, start)` / `substr(s, start, len)` | slice |
 | `starts_with(s, prefix)` | 1 or 0 |
 | `index_of(s, needle)` | offset within the string, or -1 |
+| `tostring(v)` / `tostring(v, base)` | value to string; base 10 or 16, defaults to the current number format |
 
 `substr`, `starts_with`, `index_of`, `trim` and `printable` work on the raw bytes, NUL included, so
 they can slice what `peek()` returns. `strlen` is the exception: it stops at the first NUL, which
 is what a fixed-size `char[]` field needs.
-| `tostring(v)` / `tostring(v, base)` | value to string; base 10 or 16, defaults to the current number format |
 
 ### Math
 
@@ -135,8 +129,8 @@ like `print()` does, so a `"%d"` in the message is printed verbatim. Write
 `warning("bad size at", off())`, not `warning("bad size at %d", off())`.
 
 `disable_print()`, `max_array_print()` and the endianness are saved on entry to a `fn` **and to a
-struct** and restored on exit; a helper cannot leak its formatting state into the caller. That is
-what makes `max_array_print()` usable as a per-struct setting:
+struct** and restored on exit, so a helper cannot leak its formatting state into the caller — which
+is what makes `max_array_print()` usable as a per-struct setting:
 
 ```
 struct table_box_t
@@ -185,18 +179,14 @@ Operators, loosest to tightest binding:
 ```
 
 Literals: decimal and `0x` hex, with optional size/sign suffixes (`42s8`, `16u8`, `300u16`,
-`0xffffu32`, `1099511627537u64`); strings with `\0 \r \t \n \\ \xNN` escapes — and only those,
-there is no `\f`. There is no preprocessor either: `#` is the cross-file type operator. Strings compare with `==`,
-and a `char[n]` field compares directly against a string literal.
+`0xffffu32`, `1099511627537u64`); strings with `\0 \r \t \n \\ \xNN` escapes. Strings compare with
+`==`, and a `char[n]` field compares directly against a string literal.
 
 ## Output formatting (term mode)
 
 - Each file var prints as `b+<offset>  <indent><name>: <value>`; nesting adds 4 spaces.
 - Numbers: hex by default, width matching the type's size; `nums_in(10)` switches globally.
-- `char[]` → `'text'`, non-printables escaped as `\xNN`, **truncated at the first NUL**, otherwise
-  printed in full however long it is.
-- `u8[]` and other builtin-typed arrays → first 16 elements, then `...` / `, ...`.
-- Arrays of structs print every element, each preceded by `[i]`.
+- Arrays of structs print every element, each preceded by `[i]`; builtin-typed arrays stop at 16.
 - `max_array_print(n)` overrides both of those limits, for builtin and struct arrays alike. It is
   a **term-only** setting: `t/x` always emits every element, so the XML stays complete.
 - `print()` output bypasses `disable_print()`.
@@ -224,8 +214,9 @@ inside them does not end the command.
 
 Templates are searched by name, in order, in `$BHEX_TEMPLATES_PATH` (when set),
 `/usr/local/share/bhex/templates`, `../templates` and `.` — the first match wins, and a later file
-with the same template name is skipped with a warning. A path argument (`t ./myfmt.bhe`) bypasses the lookup entirely. Parsing always starts at
-the **current offset**, not at 0, so `s <off> ; t myfmt` parses an embedded instance.
+with the same template name is skipped with a warning. A path argument (`t ./myfmt.bhe`) bypasses
+the lookup entirely. Parsing always starts at the **current offset**, not at 0, so
+`s <off> ; t myfmt` parses an embedded instance.
 
 ## The `id` command
 
@@ -237,17 +228,12 @@ id[/l/v/n/e] [<len>]
   e: exhaustive; ignore the declared magics
 ```
 
-Runs every template's `_identify` at every offset from the current one. The proc sets `result` to
-0 (no) or to the number of bytes to skip; the scan reports the hit and resumes past the largest
-region claimed at that offset, unless `/n`. Output and exceptions are suppressed for the duration,
-so a proc that reads past the end of the file or fails an `assert` simply answers "no".
+Runs every template's `_identify` at every offset from the current one (see `SKILL.md` for the
+`result` contract and what makes a probe cheap and strict). The scan reports a hit and resumes past
+the largest region claimed at that offset, unless `/n`.
 
 Cost is one pass over the bytes to find the declared magics, plus one interpreted run per
-candidate. A template that declares no magic falls back to every offset and dominates everything
-else. Reporting real sizes keeps the skip working on a file that is mostly known content.
-
-`id/n` vs `id/n/e` is the check that a magic declaration is not hiding files: identical hits, or
-the declaration is wrong.
+candidate.
 
 ## Debugging
 

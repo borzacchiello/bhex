@@ -7,11 +7,9 @@ description: Write, debug and ship a .bhe template for the bhex hex editor, in a
 
 A template is a `.bhe` file describing a file format, which bhex's `t` command runs to decode a
 file. It can live anywhere: `t ./myfmt.bhe <file>` runs a template by path. Templates are also
-looked up **by name** (`t myfmt`) in `/usr/local/share/bhex/templates`, `../templates` and `.`,
-in that order — dropping a file in the first of those makes it available everywhere, and note that
-a name found there **shadows** a same-named file later in the list. `BHEX_TEMPLATES_PATH=<dir>`
-is searched before all of them, which is how a checkout gets tested without its templates being
-shadowed by an older system-wide install.
+looked up **by name** (`t myfmt`) along the search path listed in `reference.md`, where the first
+match **shadows** every same-named file after it — set `BHEX_TEMPLATES_PATH=<dir>` to test a
+checkout without an older system-wide install shadowing it.
 
 See `reference.md` in this skill folder for the complete builtin/type/operator tables. If you have
 a bhex source checkout, `bhengine/` is the final authority (`parser.y`, `builtin.c`,
@@ -23,10 +21,9 @@ a bhex source checkout, `bhengine/` is the final authority (`parser.y`, `builtin
    format, including at least one large or unusual one. Formats differ from the spec in practice
    (e.g. PDF xref entries are specced at 20 bytes, but some producers emit 19).
 2. **Read a shipped template** to match style — `t/l` lists what is installed, and the files are
-   in the search paths above (usually `/usr/local/share/bhex/templates`): `png.bhe` (chunked
-   binary, dispatch on a peeked tag, CRC validation), `gzip.bhe` (flags/enums, conditional
-   fields), `tar.bhe` (ASCII fields, `to_int(..., 8)`), `pdf.bhe` (fully text-oriented,
-   variable-length tokens).
+   in the search paths above: `png.bhe` (chunked binary, dispatch on a peeked tag, CRC
+   validation), `gzip.bhe` (flags/enums, conditional fields), `tar.bhe` (ASCII fields,
+   `to_int(..., 8)`), `pdf.bhe` (fully text-oriented, variable-length tokens).
 3. **Iterate against real files** — the fastest loop, since the template is read from disk on
    every run and nothing needs rebuilding:
    ```sh
@@ -109,9 +106,8 @@ struct obj_t
 }
 ```
 
-`scan_while(set)` / `skip_while(set)` measure or consume the bytes **in** the set,
-`scan_until(set)` / `skip_until(set)` the bytes **not** in it (`scan_until("\r\n")` is "distance to
-the end of the line").
+The `scan_*` calls measure without moving and the `skip_*` calls consume; the `_while` half works
+on the bytes **in** the set, the `_until` half on the bytes **not** in it.
 
 `peek(n [, off])`, `peek_u8/u16/u32/u64([off])` and `read(n)` cover the rest: they read without
 declaring a file variable, so nothing is printed and no helper function is needed. This is the
@@ -300,10 +296,8 @@ x1000 — useful to tell a compressed stream from a plain one without floating p
   large `char[]` will dump its entire content into the output.
 - **Numeric arrays print at most 16 elements** (then `, ...`), but arrays of structs print in full.
   For a big table (a symbol table, an MP4 sample table) declare the array anyway and cap the
-  *printing* with `max_array_print(n)`: every element is still parsed and still ends up in the
-  `t/x` output, the terminal listing just stops at `n` and says how many were left out. Put the
-  call inside the struct or `fn` that owns the table — like `disable_print()`, it is restored on
-  exit, so it will not truncate unrelated arrays (see `mp4.bhe`, `squashfs.bhe`).
+  *printing* with `max_array_print(n)` inside the struct or `fn` that owns the table (see
+  `mp4.bhe`, `squashfs.bhe`, and `reference.md` for what it does and does not affect).
 - **Guard every computed array size** before declaring it, or a corrupt file makes the template
   read absurd lengths: `assert(n * 18 <= remaining_size(), "...")`.
 - Zero-length arrays (`u8 body[0]`) are legal and print as empty — no need to special-case them.
@@ -311,8 +305,7 @@ x1000 — useful to tell a compressed stream from a plain one without floating p
   right reaction to a file that cannot be parsed further; the partial output is still shown. For
   something merely suspicious (a bad CRC, an unknown version) use `warning()`, which lets the
   parse continue.
-- `find(s)` searches forward from the current offset and *moves* there; `find_next(s)` returns the
-  offset without moving. Pass a second argument to search backward. Both are raw byte searches — a
+- `find`/`find_next` take a second argument to search backward, and both are raw byte searches — a
   needle that can occur inside a compressed payload may match early.
 - **There is no preprocessor**: `#` is the cross-file type operator, so character sets have to be
   written out at each use. String escapes are only `\0 \r \t \n \\ \xNN` — no `\f`.
@@ -338,16 +331,13 @@ x1000 — useful to tell a compressed stream from a plain one without floating p
       part of the format it covers.
 - [ ] Name the entry point `proc { ... }`. Add `proc <name> { ... }` for alternative views (a
       listing, a summary) — they are reachable as `t myfmt.<name>`.
-- [ ] Add a `proc _identify` so the format is found by `id`, and check it against files that do
-      **not** contain the format — a firmware image or a large stripped binary, not random bytes
-      (see above): `bhex -2 -n -c id <blob>` must not report yours.
-- [ ] Add a `proc _identify_magic` unless the format genuinely has no fixed pattern, and prove it is
-      a necessary condition by diffing the modes on your whole corpus — they must agree exactly:
-      `diff <(bhex -2 -n -c id/n f) <(bhex -2 -n -c id/n/e f)`
-- [ ] Install it where you want it found by name: copy the `.bhe` into
-      `/usr/local/share/bhex/templates` (or keep it next to your data and use `t ./myfmt.bhe`).
-      Check `t/l myfmt` lists it, and that the name does not collide with a shipped template —
-      the first match in the search path wins and the later file is silently skipped.
+- [ ] Add a `proc _identify`, and run `bhex -2 -n -c id <blob>` against files that do **not**
+      contain the format — a firmware image or a large stripped binary, not random bytes (see
+      above). It must not report yours.
+- [ ] Add a `proc _identify_magic` unless the format genuinely has no fixed pattern, and prove the
+      pattern is a necessary condition with the two-mode diff (see above) over your whole corpus.
+- [ ] Install it where you want it found by name, or keep it next to your data and use
+      `t ./myfmt.bhe`. Check `t/l myfmt` lists it and that the name collides with nothing shipped.
 - [ ] Re-run the sample files one last time in both formatters, `t myfmt` and `t/x myfmt`.
 
 ### If you are working inside the bhex repository
@@ -376,6 +366,3 @@ for l in sys.stdin.read().split("\n"):
       new test by name: `./bhex_tests cmd_templates.template_myfmt_1`.
 - [ ] Repeat under `build_asan` and re-run the real samples through `build_asan/bhex`.
 - [ ] Add the format to the `t/l` list in `README.md`.
-
-To make this skill discoverable by Claude Code, put it (or a symlink to it) in `.claude/skills/`
-of the project you are working in, or in `~/.claude/skills/` to have it everywhere.
