@@ -8,6 +8,7 @@
 #include <alloc.h>
 #include <log.h>
 #include <color.h>
+#include <unicode.h>
 #include <cmdline_parser.h>
 #include <expr_eval.h>
 
@@ -15,7 +16,7 @@
 #include "completion.h"
 #include "cmd/cmd.h"
 
-const char* const   short_options  = "hw2bnsCc:";
+const char* const   short_options  = "hw2bnsCUc:";
 const struct option long_options[] = {
     {"help", no_argument, NULL, 'h'},
     {"write", no_argument, NULL, 'w'},
@@ -26,6 +27,7 @@ const struct option long_options[] = {
     {"no_color", no_argument, NULL, 'C'},
     // the spelling of https://no-color.org, accepted as well
     {"no-color", no_argument, NULL, 'C'},
+    {"no_unicode", no_argument, NULL, 'U'},
     {NULL, 0, NULL, 0},
 };
 
@@ -50,6 +52,7 @@ static void usage(const char* prog, int exit_code)
            "  -2  --no_warning  Disable warnings\n"
            "  -n  --no_history  Do not save command history\n"
            "  -C  --no_color    Do not use colors\n"
+           "  -U  --no_unicode  Draw with ASCII only, never with unicode\n"
            "  -c  \"c1; c2; ...\" Execute the commands given as "
            "argument and exit\n"
            "  -s  --script      Script mode (commands from raw stdin)\n"
@@ -58,7 +61,8 @@ static void usage(const char* prog, int exit_code)
            "changed setting BHEX_HISTORY_FILE environment variable\n"
            "\n"
            "colors are disabled automatically when the output is not a "
-           "terminal, or when the NO_COLOR environment variable is set\n");
+           "terminal, or when the NO_COLOR environment variable is set; "
+           "unicode only when the locale of the environment is a UTF-8 one\n");
     exit(exit_code);
 }
 
@@ -253,7 +257,7 @@ int main(int argc, char* argv[])
     const char* path       = NULL;
     char*       commands   = NULL;
     int         write_mode = 0, backup = 0, save_history = 1, script_mode = 0;
-    int         no_color = 0;
+    int         no_color = 0, no_unicode = 0;
     int         c;
 
     // the banner of "-h" is printed while parsing, so the colors must be
@@ -280,6 +284,9 @@ int main(int argc, char* argv[])
                 case 'C':
                     no_color = 1;
                     break;
+                case 'U':
+                    no_unicode = 1;
+                    break;
                 case 'h':
                     print_banner();
                     usage(progname, 0);
@@ -300,6 +307,7 @@ int main(int argc, char* argv[])
         }
     }
     colors_init(no_color);
+    unicode_init(no_unicode);
 
     if (path == NULL) {
         bhex_free(commands);

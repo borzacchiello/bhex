@@ -4,6 +4,7 @@
 #include "t_cmd_common.h"
 #include "t.h"
 
+#include <unicode.h>
 #include <color.h>
 
 /* The escapes of the colored disassembly, see common/color.c */
@@ -129,7 +130,7 @@ int TEST(x64_colors)(void)
     DummyFilebuffer* tfb = dummyfilebuffer_create(nop_bytes, sizeof(nop_bytes));
     const char*      expected =
         c_addr "0x00000000:" c_off " " c_dim "90                   " c_off
-               " " c_mnem "nop" c_off "\t\t\n";
+               " " c_mnem "nop" c_off "\n";
 
     // the colors are off by default in the tests, as they are whenever the
     // output is not a terminal
@@ -329,6 +330,409 @@ int TEST(m68k_nop)(void)
 end:
     dummyfilebuffer_destroy(tfb);
     return r;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(m68k_operands_aligned)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // the mnemonics of m68k carry a size suffix and differ in length ("moveq"
+    // against "movea.l"): the operands must start at the same column anyway
+    const u8_t bytes[] = {0x70, 0x0c, 0x2a, 0x7c, 0x40, 0x66, 0x35, 0x24, 0x00};
+    DummyFilebuffer* tfb = dummyfilebuffer_create(bytes, sizeof(bytes));
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("ds m68k 2", tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = (strstr(out, "moveq   #$c, d0\n") != NULL &&
+                 strstr(out, "movea.l #$40663524, a5\n") != NULL)
+                    ? TEST_SUCCEEDED
+                    : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+/* The branch arrows of "ds/a". The bytes are hand assembled so that the
+ * geometry of the gutter is known exactly: a m68k branch lands on
+ * <address of the branch> + 2 + <displacement>. */
+
+int TEST(m68k_arrows_forward)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // bra.b $6, then three nops: the branch and its target are both printed,
+    // so the two are joined by a line
+    const u8_t bytes[] = {0x60, 0x04, 0x4e, 0x71, 0x4e, 0x71, 0x4e, 0x71, 0x00};
+    DummyFilebuffer* tfb = dummyfilebuffer_create(bytes, sizeof(bytes));
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("ds/a m68k 4", tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = (strstr(out, "/< bra.b") != NULL && /* the jump */
+                 strstr(out, "|  nop") != NULL &&   /* the rows it spans */
+                 strstr(out, "\\> nop") != NULL)    /* where it lands */
+                    ? TEST_SUCCEEDED
+                    : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(m68k_arrows_backward)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // a nop and a "dbra d0, $0" jumping back to it: the corners are the other
+    // way around, as the target is above the branch
+    const u8_t       bytes[] = {0x4e, 0x71, 0x51, 0xc8, 0xff, 0xfc, 0x00};
+    DummyFilebuffer* tfb     = dummyfilebuffer_create(bytes, sizeof(bytes));
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("ds/a m68k 2", tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r = (strstr(out, "/> nop") != NULL && strstr(out, "\\< dbra") != NULL)
+            ? TEST_SUCCEEDED
+            : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(m68k_arrows_nested)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // bra.b $a and bra.b $8: the second one is nested in the first, so they
+    // cannot share a lane. The shorter one gets the lane closest to the code
+    const u8_t       bytes[] = {0x60, 0x08, 0x60, 0x04, 0x4e, 0x71, 0x4e,
+                                0x71, 0x4e, 0x71, 0x4e, 0x71, 0x00};
+    DummyFilebuffer* tfb     = dummyfilebuffer_create(bytes, sizeof(bytes));
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("ds/a m68k 6", tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r = (strstr(out, "/-< bra.b") != NULL && /* outer branch */
+         strstr(out, "|/< bra.b") != NULL && /* inner one, crossed by it */
+         strstr(out, "||  nop") != NULL &&   /* both lanes busy */
+         strstr(out, "|\\> nop") != NULL &&  /* inner target */
+         strstr(out, "\\-> nop") != NULL)    /* outer target */
+            ? TEST_SUCCEEDED
+            : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(m68k_arrows_off_listing)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // the same branches, with a listing that stops before their targets: with
+    // nothing to draw a line to, only the direction is marked
+    const u8_t       bytes[] = {0x60, 0x08, 0x60, 0x04, 0x4e, 0x71, 0x4e,
+                                0x71, 0x4e, 0x71, 0x4e, 0x71, 0x00};
+    DummyFilebuffer* tfb     = dummyfilebuffer_create(bytes, sizeof(bytes));
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("ds/a m68k 2", tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r = (strstr(out, "v< bra.b   $a") != NULL &&
+         strstr(out, "v< bra.b   $8") != NULL && strchr(out, '|') == NULL)
+            ? TEST_SUCCEEDED
+            : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(m68k_arrows_off_listing_backwards)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // four nops and a "dbra d0, $0"; the listing starts at the branch, so its
+    // target is above what is printed
+    const u8_t       bytes[] = {0x4e, 0x71, 0x4e, 0x71, 0x4e, 0x71, 0x4e,
+                                0x71, 0x51, 0xc8, 0xff, 0xf6, 0x00};
+    DummyFilebuffer* tfb     = dummyfilebuffer_create(bytes, sizeof(bytes));
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("s 8; ds/a m68k 1", tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = strstr(out, "^< dbra") != NULL ? TEST_SUCCEEDED : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(x64_arrows)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // capstone hands over the target of a branch in a different way for m68k
+    // than for every other architecture: x86 exercises the common one
+    const u8_t       bytes[] = {0xeb, 0x02, 0x90, 0x90, 0x90, 0x90};
+    DummyFilebuffer* tfb     = dummyfilebuffer_create(bytes, sizeof(bytes));
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("ds/a x64 4", tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r = (strstr(out, "/< jmp") != NULL && strstr(out, "\\> nop") != NULL)
+            ? TEST_SUCCEEDED
+            : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(x64_arrows_indirect)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // "jmp rax" goes somewhere that is not known here: no arrow, and with no
+    // arrow at all in the listing there is no gutter either
+    const u8_t       bytes[] = {0xff, 0xe0, 0x90, 0x90};
+    DummyFilebuffer* tfb     = dummyfilebuffer_create(bytes, sizeof(bytes));
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("ds/a x64 2", tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r = (strstr(out, "jmp     rax") != NULL && strpbrk(out, "|<>v^") == NULL)
+            ? TEST_SUCCEEDED
+            : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(x64_no_arrows_without_mod)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // the arrows are asked for with "/a": a plain "ds" of the very listing
+    // that has one keeps printing what it always did
+    const u8_t       bytes[]  = {0xeb, 0x02, 0x90, 0x90, 0x90, 0x90};
+    DummyFilebuffer* tfb      = dummyfilebuffer_create(bytes, sizeof(bytes));
+    const char*      expected = "0x00000000: eb 02                 jmp     4\n"
+                                "0x00000002: 90                    nop\n"
+                                "0x00000003: 90                    nop\n"
+                                "0x00000004: 90                    nop\n";
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("ds x64 4", tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = strcmp(out, expected) == 0 ? TEST_SUCCEEDED : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(x64_arrows_colors)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // the gutter is painted as what it describes: control flow
+    const u8_t       bytes[] = {0xeb, 0x02, 0x90, 0x90, 0x90, 0x90};
+    DummyFilebuffer* tfb     = dummyfilebuffer_create(bytes, sizeof(bytes));
+
+    colors_set_enabled(1);
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("ds/a x64 4", tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = strstr(out, c_flow "/<" c_off " " c_flow "jmp" c_off) != NULL
+                    ? TEST_SUCCEEDED
+                    : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    colors_set_enabled(0);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(m68k_arrows_join)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // two branches landing on the same instruction: the two lines have to join
+    // into one, not sit next to each other. "bra.b $c" and "bra.b $c" from two
+    // different places, with the nesting that keeps them in two lanes
+    const u8_t       bytes[] = {0x60, 0x0a, 0x4e, 0x71, 0x60, 0x06, 0x4e, 0x71,
+                                0x4e, 0x71, 0x4e, 0x71, 0x4e, 0x71, 0x00};
+    DummyFilebuffer* tfb     = dummyfilebuffer_create(bytes, sizeof(bytes));
+
+    int r = TEST_FAILED;
+    // the instruction the two land on is the seventh
+    if (exec_commands_on("ds/a m68k 7", tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    /* the junction of the outer line with the inner one, '+' in ascii */
+    r = strstr(out, "\\+> nop") != NULL ? TEST_SUCCEEDED : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(m68k_arrows_unicode)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // the same listing as m68k_arrows_nested, drawn with box drawing
+    // characters: this is what a UTF-8 terminal gets
+    const u8_t       bytes[] = {0x60, 0x08, 0x60, 0x04, 0x4e, 0x71, 0x4e,
+                                0x71, 0x4e, 0x71, 0x4e, 0x71, 0x00};
+    DummyFilebuffer* tfb     = dummyfilebuffer_create(bytes, sizeof(bytes));
+
+    // as the colors, unicode is off unless the environment is known to take
+    // it, which is never the case for the tests
+    unicode_set_enabled(1);
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("ds/a m68k 6", tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r = (strstr(out, "╭─◂ bra.b") != NULL && strstr(out, "│╭◂ bra.b") != NULL &&
+         strstr(out, "││  nop") != NULL && strstr(out, "│╰▸ nop") != NULL &&
+         strstr(out, "╰─▸ nop") != NULL)
+            ? TEST_SUCCEEDED
+            : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    unicode_set_enabled(0);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(m68k_arrows_unicode_join)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // where two lines meet, the glyph is the one that joins them
+    const u8_t       bytes[] = {0x60, 0x0a, 0x4e, 0x71, 0x60, 0x06, 0x4e, 0x71,
+                                0x4e, 0x71, 0x4e, 0x71, 0x4e, 0x71, 0x00};
+    DummyFilebuffer* tfb     = dummyfilebuffer_create(bytes, sizeof(bytes));
+
+    unicode_set_enabled(1);
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("ds/a m68k 7", tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = strstr(out, "╰┴▸ nop") != NULL ? TEST_SUCCEEDED : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    unicode_set_enabled(0);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(m68k_arrows_unicode_off_listing)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // the direction markers of the targets that are not printed
+    const u8_t       bytes[] = {0x60, 0x08, 0x60, 0x04, 0x4e, 0x71, 0x4e,
+                                0x71, 0x4e, 0x71, 0x4e, 0x71, 0x00};
+    DummyFilebuffer* tfb     = dummyfilebuffer_create(bytes, sizeof(bytes));
+
+    unicode_set_enabled(1);
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("ds/a m68k 2", tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = strstr(out, "▾◂ bra.b") != NULL ? TEST_SUCCEEDED : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    unicode_set_enabled(0);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(arrows_invalid_mod_combination)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // listing the architectures and disassembling are two different requests
+    return exec_commands("ds/l/a") != 0;
 #else
     return TEST_SKIPPED;
 #endif

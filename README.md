@@ -37,12 +37,13 @@ Usage:  bhex [ options ] inputfile
   -2  --no_warning  Disable warnings
   -n  --no_history  Do not save command history
   -C  --no_color    Do not use colors
+  -U  --no_unicode  Draw with ASCII only, never with unicode
   -c  "c1; c2; ..." Execute the commands given as argument and exit
   -s  --script      Script mode (commands from raw stdin)
 
 command history is saved in "$HOME/.bhex_history", it can be changed setting BHEX_HISTORY_FILE environment variable
 
-colors are disabled automatically when the output is not a terminal, or when the NO_COLOR environment variable is set
+colors are disabled automatically when the output is not a terminal, or when the NO_COLOR environment variable is set; unicode only when the locale of the environment is a UTF-8 one
 ```
 
 # Compilation
@@ -454,11 +455,52 @@ assemble: assemble code and write it at current offset
 
 disas: disassemble code at current offset
 
-  ds[/l] <arch> [<nbytes>]
+  ds[/l|/a] <arch> [<nbytes>]
      l:  list supported architectures
+     a:  draw the branches as arrows on the left of the mnemonics.
+         '◂' marks a jump, '▸' where it lands, '▾' and '▴' a
+         target that is not part of the listing
 
   arch:   the architecture to use
   nbytes: number of opcodes to disassemble (default: 8)
+```
+
+With `/a`, every branch whose target is disassembled too is drawn as a line going from the jump
+to the instruction it lands on, so that the loops and the early exits of a function can be seen
+without following the addresses by hand:
+
+```
+[0x0215800] $ ds/a m68k 40
+[...]
+0x00215832: 6e 08                    ╭◂ bgt.b   $21583c
+0x00215834: 20 3c ff ff fb b5        │  move.l  #$fffffbb5, d0
+0x0021583a: 60 36                 ╭───◂ bra.b   $215872
+0x0021583c: 4a 88                 │  ╰▸ dc.w    $4a88
+0x0021583e: 67 04                 │  ╭◂ beq.b   $215844
+0x00215840: 4a 8c                 │  │  dc.w    $4a8c
+0x00215842: 66 08                 │ ╭─◂ bne.b   $21584c
+0x00215844: 20 3c ff ff fb b6     │ │╰▸ move.l  #$fffffbb6, d0
+0x0021584a: 60 26                 │╭──◂ bra.b   $215872
+0x0021584c: 4a ad 00 34           ││╰─▸ tst.l   $34(a5)
+[...]
+0x00215870: 70 00                 │││╰▸ moveq   #$0, d0
+0x00215872: 4c ee 30 80 ff f4     ╰┴┴─▸ movem.l -$c(a6), d7/a4-a5
+```
+
+Nested branches take one column each, up to five of them. Past that, and for the branches
+whose target is not part of the listing, only the direction is marked with `▾` or `▴`. Where
+several branches land on the same instruction the lines join, as they do on the last row above.
+The arrows need the branch targets that capstone reports for the architecture: bpf and ebpf get
+none, as capstone does not tell their jumps apart from the rest.
+
+The drawings need a UTF-8 locale, which is looked up in `LC_ALL`, `LC_CTYPE` and `LANG`. Any
+other locale, a `TERM` of `dumb`, or `-U` on the command line, and the same arrows are drawn
+with ASCII instead:
+
+```
+0x0021583a: 60 36                 /---< bra.b   $215872
+0x0021583c: 4a 88                 |  \> dc.w    $4a88
+0x00215872: 4c ee 30 80 ff f4     \++-> movem.l -$c(a6), d7/a4-a5
 ```
 
 ### Print

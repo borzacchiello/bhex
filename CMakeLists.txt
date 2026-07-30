@@ -78,6 +78,7 @@ set(common_src
     common/ll.c
     common/log.c
     common/color.c
+    common/unicode.c
     common/map.c
     common/strbuilder.c
     common/display.c
