@@ -62,10 +62,6 @@ typedef struct Prefilter {
     u64_t  npatterns;
 } Prefilter;
 
-typedef struct IdentifyCtx {
-    BHEngineVM* vm; // the engine's, not ours: nothing to release
-} IdentifyCtx;
-
 static void identifycmd_help(void* obj)
 {
     display_printf(
@@ -249,7 +245,7 @@ static u64_t now_nanos(void)
 
 static int identifycmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 {
-    IdentifyCtx* ctx = (IdentifyCtx*)obj;
+    (void)obj;
 
     char* len_str = NULL;
     if (handle_args(pc, 1, 0, &len_str) != 0)
@@ -267,8 +263,13 @@ static int identifycmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     int exhaustive = exhaust == EXHAUSTIVE_SET;
     int no_skip    = noskip == NOSKIP_SET;
 
+    // asked for here and not when the command was built: the VM scans the
+    // template folders as it comes up, and a session that never identifies
+    // anything should not pay for that
+    BHEngineVM* vm = bhengine_vm_get();
+
     DList* entries = DList_new();
-    bhengine_vm_iter_identifiers(ctx->vm, fb, collect_cb, entries);
+    bhengine_vm_iter_identifiers(vm, fb, collect_cb, entries);
 
     // declared up here so that the early exits below can share one cleanup
     Prefilter  pf      = {0};
@@ -457,16 +458,13 @@ end:
     return r;
 }
 
-static void identifycmd_dispose(void* obj) { bhex_free(obj); }
+static void identifycmd_dispose(void* obj) { (void)obj; }
 
 Cmd* identifycmd_create(void)
 {
     Cmd* cmd = bhex_malloc(sizeof(Cmd));
 
-    IdentifyCtx* ctx = bhex_calloc(sizeof(IdentifyCtx));
-    ctx->vm          = bhengine_vm_get();
-
-    cmd->obj   = ctx;
+    cmd->obj   = NULL;
     cmd->name  = "identify";
     cmd->alias = "id";
     cmd->hint  = HINT_STR;

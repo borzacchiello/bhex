@@ -17,10 +17,6 @@
 #define MODE_INTERPRET 1
 #define XML_SET        0
 
-typedef struct TemplateCtx {
-    BHEngineVM* vm; // the engine's, not ours: nothing to release
-} TemplateCtx;
-
 static void templatecmd_help(void* obj)
 {
     display_printf(
@@ -39,11 +35,7 @@ static void templatecmd_help(void* obj)
         "       - inline bhex code (if in interpret mode)\n");
 }
 
-static void templatecmd_dispose(TemplateCtx* ctx)
-{
-    bhex_free(ctx);
-    return;
-}
+static void templatecmd_dispose(void* obj) { (void)obj; }
 
 static int file_exists(const char* path)
 {
@@ -71,8 +63,10 @@ static void composite_print_cb(const char* name, const char* elname,
     }
 }
 
-static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
+static int templatecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 {
+    (void)obj;
+
     char* arg_str = NULL;
     if (handle_args(pc, 1, 0, &arg_str) != 0)
         return COMMAND_INVALID_ARG;
@@ -82,17 +76,22 @@ static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
     if (handle_mods(pc, "l,i|x", &mode, &xml) != 0)
         return COMMAND_INVALID_MOD;
 
+    // asked for here and not when the command was built: the VM scans the
+    // template folders as it comes up, and a session that never runs a
+    // template should not pay for that
+    BHEngineVM* vm = bhengine_vm_get();
+
     if (mode == MODE_LIST) {
         print_filter = arg_str;
         if (print_filter)
             display_printf(" > Filtering using '%s' <\n\n", arg_str);
 
         display_printf("Available templates:\n");
-        bhengine_vm_iter_templates(ctx->vm, templates_print_cb);
+        bhengine_vm_iter_templates(vm, templates_print_cb);
         display_printf("\nAvailable template structs:\n");
-        bhengine_vm_iter_structs(ctx->vm, composite_print_cb);
+        bhengine_vm_iter_structs(vm, composite_print_cb);
         display_printf("\nAvailable template named procs:\n");
-        bhengine_vm_iter_named_procs(ctx->vm, composite_print_cb);
+        bhengine_vm_iter_named_procs(vm, composite_print_cb);
         return COMMAND_OK;
     }
 
@@ -107,7 +106,7 @@ static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
     int   r           = COMMAND_SILENT_ERROR;
 
     if (mode == MODE_INTERPRET) {
-        if (bhengine_vm_process_string(ctx->vm, fb, arg_str) != 0) {
+        if (bhengine_vm_process_string(vm, fb, arg_str) != 0) {
             goto end;
         }
         r = COMMAND_OK;
@@ -116,16 +115,16 @@ static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
 
     if (file_exists(bhe)) {
         // Template file
-        if (bhengine_vm_process_file(ctx->vm, fb, bhe) != 0) {
+        if (bhengine_vm_process_file(vm, fb, bhe) != 0) {
             goto end;
         }
         r = COMMAND_OK;
         goto end;
     }
 
-    if (bhengine_vm_has_template(ctx->vm, bhe)) {
+    if (bhengine_vm_has_template(vm, bhe)) {
         // Template name
-        if (bhengine_vm_process_bhe(ctx->vm, fb, bhe) != 0) {
+        if (bhengine_vm_process_bhe(vm, fb, bhe) != 0) {
             goto end;
         }
         r = COMMAND_OK;
@@ -143,12 +142,12 @@ static int templatecmd_exec(TemplateCtx* ctx, FileBuffer* fb, ParsedCommand* pc)
     char* tname = bhe;
     char* sname = dot + 1;
 
-    if (bhengine_vm_has_bhe_struct(ctx->vm, tname, sname)) {
-        if (bhengine_vm_process_bhe_struct(ctx->vm, fb, tname, sname) != 0) {
+    if (bhengine_vm_has_bhe_struct(vm, tname, sname)) {
+        if (bhengine_vm_process_bhe_struct(vm, fb, tname, sname) != 0) {
             goto end;
         }
-    } else if (bhengine_vm_has_bhe_proc(ctx->vm, tname, sname)) {
-        if (bhengine_vm_process_bhe_proc(ctx->vm, fb, tname, sname) != 0) {
+    } else if (bhengine_vm_has_bhe_proc(vm, tname, sname)) {
+        if (bhengine_vm_process_bhe_proc(vm, fb, tname, sname) != 0) {
             goto end;
         }
     } else {
@@ -172,16 +171,14 @@ Cmd* templatecmd_create(void)
 {
     Cmd* cmd = bhex_malloc(sizeof(Cmd));
 
-    TemplateCtx* ctx = bhex_calloc(sizeof(TemplateCtx));
-    ctx->vm          = bhengine_vm_get();
-    cmd->obj         = ctx;
-    cmd->name        = "template";
-    cmd->alias       = "t";
-    cmd->hint        = HINT_STR;
+    cmd->obj   = NULL;
+    cmd->name  = "template";
+    cmd->alias = "t";
+    cmd->hint  = HINT_STR;
 
-    cmd->dispose = (void (*)(void*))templatecmd_dispose;
+    cmd->dispose = templatecmd_dispose;
     cmd->help    = templatecmd_help;
-    cmd->exec = (int (*)(void*, FileBuffer*, ParsedCommand*))templatecmd_exec;
+    cmd->exec    = templatecmd_exec;
 
     return cmd;
 }
