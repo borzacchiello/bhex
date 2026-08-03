@@ -304,19 +304,149 @@ proc _identify_magic
     magic("MZ", 0);
 }
 
+// How far a PE reaches on disk. The sections are the bulk of it, and behind
+// the last of them an image can still carry the certificate table and the COFF
+// symbols. Whatever the headers place outside the file is left out rather than
+// believed, so the answer never runs past what is really there
+fn pe_file_size(pe_off)
+{
+    result = 0;
+
+    local avail = remaining_size();
+    if (pe_off + 24 > avail) {
+        return;
+    }
+
+    local nsections = peek_u16(pe_off + 6);
+    local sym_off   = peek_u32(pe_off + 12);
+    local nsyms     = peek_u32(pe_off + 16);
+    local opt_size  = peek_u16(pe_off + 20);
+    local opt_off   = pe_off + 24;
+    local sec_off   = opt_off + opt_size;
+
+    // everything else is read through the section table, so that one has to be
+    // here whole
+    local end = sec_off + nsections * 40;
+    if (nsections == 0 || end > avail) {
+        return;
+    }
+
+    // the optional header stops at 'SizeOfHeaders' for an object file and goes
+    // as far as the data directories for an image: each field is worth only as
+    // much as the size the header claims
+    if (opt_size >= 64) {
+        // rounded up to FileAlignment, so no section starts any earlier
+        local hdr_size = peek_u32(opt_off + 60);
+        if (hdr_size > end && hdr_size <= avail) {
+            end = hdr_size;
+        }
+
+        // An alignment below a page is one the loader cannot honour, so an
+        // image that asks for it is mapped exactly as it lies: its RVAs are
+        // file offsets, and what it takes in memory it takes on disk. Above a
+        // page the two have nothing to do with each other
+        local sec_align = peek_u32(opt_off + 32);
+        if (sec_align == peek_u32(opt_off + 36) && sec_align < 0x1000) {
+            local img_size = peek_u32(opt_off + 56);
+            if (img_size > end && img_size <= avail) {
+                end = img_size;
+            }
+        }
+
+        // The certificate table is the one data directory addressed by a file
+        // offset instead of an RVA, and it is appended past every section
+        local ddir_off  = 0;
+        local opt_magic = peek_u16(opt_off);
+        if (opt_magic == 0x20b) {
+            ddir_off = 112;
+        } elif (opt_magic == 0x10b || opt_magic == 0x107) {
+            ddir_off = 96;
+        }
+        if (ddir_off != 0 && opt_size >= ddir_off + 40) {
+            // 'NumberOfRvaAndSizes', right in front of the array, says how many
+            // of the sixteen directories were actually written
+            if (peek_u32(opt_off + ddir_off - 4) > 4) {
+                local cert_off = peek_u32(opt_off + ddir_off + 32);
+                local cert_end = cert_off + peek_u32(opt_off + ddir_off + 36);
+                if (cert_off != 0 && cert_end > end && cert_end <= avail) {
+                    end = cert_end;
+                }
+            }
+        }
+    }
+
+    // where the sections were written, which for all but the strangest images
+    // is where the file ends
+    local i = 0;
+    while (i < nsections) {
+        local sh       = sec_off + i * 40;
+        local raw_size = peek_u32(sh + 16);
+        local raw_off  = peek_u32(sh + 20);
+
+        // A section with no raw data (.bss, and anything else the linker left
+        // in memory only) says so with a zero and is nowhere in the file; one
+        // starting past the end is not here either, which is what a file cut
+        // short looks like from the section table
+        if (raw_size != 0 && raw_off != 0 && raw_off < avail) {
+            local sec_end = raw_off + raw_size;
+            if (sec_end > avail) {
+                // cut short: trimmed to what is here, the way 'proc' trims it
+                // when it reads it
+                sec_end = avail;
+            }
+            if (sec_end > end) {
+                end = sec_end;
+            }
+        }
+        i = i + 1;
+    }
+
+    // A build that kept its COFF symbols puts them past everything else, with
+    // the string table right behind them
+    if (sym_off != 0 && nsyms != 0) {
+        local sym_end = sym_off + nsyms * 18;
+        if (sym_end <= avail) {
+            if (sym_end > end) {
+                end = sym_end;
+            }
+            // the string table opens with its own length, the four bytes it
+            // occupies included
+            if (sym_end + 4 <= avail) {
+                local str_end = sym_end + peek_u32(sym_end);
+                if (str_end > end && str_end <= avail) {
+                    end = str_end;
+                }
+            }
+        }
+    }
+
+    result = end;
+}
+
 // 'MZ' is two very common bytes on its own: what makes this a PE is the
 // e_lfanew field at 0x3c actually pointing at the "PE\0\0" signature
 proc _identify
 {
     little_endian();
-    if (peek_u16() == 0x5a4d && remaining_size() > 0x40) {
-        local pe_off = peek_u32(0x3c);
-        if (pe_off + 4 <= remaining_size() &&
-            peek_u32(pe_off) == 0x00004550) {
-            // the size of the image is the end of the last section, which
-            // needs the section table: report the DOS stub and the signature
-            result = pe_off + 4;
-        }
+    if (peek_u16() != 0x5a4d || remaining_size() <= 0x40) {
+        return;
+    }
+
+    // the bounds check and the read it guards are kept apart on purpose: '&&'
+    // evaluates both of its sides, and peeking past the end of the file raises
+    local pe_off = peek_u32(0x3c);
+    if (pe_off + 4 > remaining_size()) {
+        return;
+    }
+    if (peek_u32(pe_off) != 0x00004550) {
+        return;
+    }
+
+    result = pe_file_size(pe_off);
+    if (result == 0) {
+        // truncated, or headers describing an image that is not here: the DOS
+        // stub and the signature are still what was recognised
+        result = pe_off + 4;
     }
 }
 

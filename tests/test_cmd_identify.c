@@ -8,6 +8,7 @@
 
 #include "data/not_kitty_png.h"
 #include "data/sample_gzip.h"
+#include "data/sample_pe.h"
 #include "data/sample_zip.h"
 
 #ifndef TEST
@@ -352,6 +353,102 @@ end:
     bhex_free(out);
     dummyfilebuffer_destroy(tfb);
     bhengine_vm_remove_template(bhengine_vm_get(), "zip");
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+// Short of the 392 bytes 'sample_pe' needs for its section table
+#define PE_TRUNCATED 350
+
+// The size a PE answers with is the whole image: its headers reach as far as
+// the section table, but the file goes on to the sections behind it and to
+// whatever the certificate table adds past those. 'sample_pe' is a PE32 with
+// two sections and a certificate blob behind them, so the one right answer is
+// 1344 -- the end of the certificate, not the 68 bytes of stub and signature
+int TEST(identify_pe_whole_image)(void)
+{
+    // clang-format off
+    const char* expected =
+        "  0x00000064  pe           1344 bytes\n";
+    // clang-format on
+
+    int              r    = TEST_SUCCEEDED;
+    char*            out  = NULL;
+    DummyFilebuffer* tfb  = NULL;
+    u8_t*            buf  = NULL;
+    size_t           size = 100 + sizeof(sample_pe) + 100;
+
+    bhengine_vm_add_template(bhengine_vm_get(), "pe", "./templates/pe.bhe");
+    ASSERT(sizeof(sample_pe) == 1344);
+
+    // buried in filler, so that an answer running past the image shows up as a
+    // size larger than the image instead of being hidden by the file ending in
+    // the right place anyway
+    buf = bhex_calloc(size);
+    memcpy(buf + 100, sample_pe, sizeof(sample_pe));
+
+    tfb = dummyfilebuffer_create(buf, size);
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("id", tfb) == 0);
+
+    out = strbuilder_reset(sb);
+    ASSERT(compare_strings_ignoring_X(expected, hits_only(out)));
+    bhex_free(out);
+    out = NULL;
+    dummyfilebuffer_destroy(tfb);
+
+    // an image whose section table is not all there cannot be measured, and
+    // falls back to the part of it that was recognised: the stub and the
+    // signature behind it
+    tfb = dummyfilebuffer_create(sample_pe, PE_TRUNCATED);
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("id", tfb) == 0);
+
+    out = strbuilder_reset(sb);
+    ASSERT(strstr(out, "0x00000000  pe           68 bytes") != NULL);
+
+end:
+    bhex_free(out);
+    bhex_free(buf);
+    dummyfilebuffer_destroy(tfb);
+    bhengine_vm_remove_template(bhengine_vm_get(), "pe");
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+// The tiny PEs that fit in a few hundred bytes get there by overlapping their
+// headers and asking for an alignment below a page, which makes the image on
+// disk as long as the one in memory: 'SizeOfImage' is the whole of it
+int TEST(identify_pe_tiny)(void)
+{
+    // clang-format off
+    const char* expected =
+        "  0x00000000  pe           268 bytes\n";
+    // clang-format on
+
+    int              r   = TEST_SUCCEEDED;
+    char*            out = NULL;
+    DummyFilebuffer* tfb = NULL;
+
+    bhengine_vm_add_template(bhengine_vm_get(), "pe", "./templates/pe.bhe");
+    tfb = dummyfilebuffer_create(pe_tiny, sizeof(pe_tiny));
+    ASSERT(tfb != NULL);
+    ASSERT(sizeof(pe_tiny) == 268);
+
+    ASSERT(exec_commands_on("id", tfb) == 0);
+    out = strbuilder_reset(sb);
+    r   = compare_strings_ignoring_X(expected, hits_only(out));
+
+end:
+    bhex_free(out);
+    dummyfilebuffer_destroy(tfb);
+    bhengine_vm_remove_template(bhengine_vm_get(), "pe");
     return r;
 
 fail:
