@@ -1,0 +1,68 @@
+{
+  "struct": {
+    "prefix": "struct",
+    "body": ["struct ${1:name_t}", "{", "\t$0", "}"],
+    "description": "A named group of fields, usable afterwards as a field type"
+  },
+  "enum": {
+    "prefix": "enum",
+    "body": ["enum ${1:name_t} : ${2|u8,u16,u32,u64|}", "{", "\t${3:A} = ${4:0}$0", "}"],
+    "description": "A set of values, printed by exact match"
+  },
+  "orenum": {
+    "prefix": "orenum",
+    "body": ["orenum ${1:name_t} : ${2|u8,u16,u32,u64|}", "{", "\t${3:A} = ${4:0x01}$0", "}"],
+    "description": "A set of bit flags, printed as 'A | B'"
+  },
+  "fn": {
+    "prefix": "fn",
+    "body": ["fn ${1:name}(${2:args})", "{", "\t$0", "\tresult = ${3:0};", "}"],
+    "description": "A function; it returns through the implicit 'result' local"
+  },
+  "proc": {
+    "prefix": "proc",
+    "body": ["proc", "{", "\t$0", "}"],
+    "description": "The entry point the 't' command runs"
+  },
+  "named proc": {
+    "prefix": "procnamed",
+    "body": ["proc ${1:name}", "{", "\t$0", "}"],
+    "description": "An alternative entry point, reachable as 't myfmt.name'"
+  },
+  "identify": {
+    "prefix": "_identify",
+    "body": [
+      "proc _identify",
+      "{",
+      "\t${1|little_endian,big_endian|}();",
+      "\tif (${2:peek_u32() != 0x00000000}) {",
+      "\t\treturn;",
+      "\t}",
+      "\tresult = ${3:0};\t// how many bytes the scan may skip",
+      "}"
+    ],
+    "description": "The probe the 'id' command runs at every offset"
+  },
+  "identify magic": {
+    "prefix": "_identify_magic",
+    "body": ["proc _identify_magic", "{", "\tmagic(\"${1:pattern}\", ${2:0});$0", "}"],
+    "description": "Declares the patterns without which _identify cannot succeed"
+  },
+  "measure then read": {
+    "prefix": "scanread",
+    "body": [
+      "local ${1:len} = scan_${2|while,until|}(\"${3: \\t\\r\\n}\");",
+      "assert($1 > 0, \"${4:malformed}\");",
+      "char ${5:name}[$1];$0"
+    ],
+    "description": "Measure a variable-length token, then declare the field"
+  },
+  "guarded array": {
+    "prefix": "arr",
+    "body": [
+      "assert(${1:count} * ${2:1} <= remaining_size(), \"${3:bad element count}\");",
+      "${4:u8} ${5:name}[$1];$0"
+    ],
+    "description": "A computed array size, guarded against the remaining file size"
+  }
+}

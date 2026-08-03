@@ -122,8 +122,8 @@ proc _identify
     }
 
     // truncated, or a chunk length that does not add up: fall back to the
-    // signature and the IHDR chunk, the bytes actually validated
-    result = 33;
+    // signature and the IHDR chunk, or to however much of them is here
+    result = min(33, remaining_size());
 }
 
 proc

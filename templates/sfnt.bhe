@@ -1,0 +1,171 @@
+// Copyright (c) 2022-2026, bageyelet
+
+// TrueType and OpenType fonts, which share the "sfnt" container: a table
+// directory followed by the tables it points at. Big endian throughout.
+//
+// The directory is what makes a font recognisable without any magic worth the
+// name. Three of its fields are pure redundancy - searchRange, entrySelector
+// and rangeShift are all derived from the table count by a formula the spec
+// fixes - so checking them against that formula is a strong test that costs
+// nothing. The tags then have to be in ascending order, and every table has to
+// lie inside the file.
+
+// 0x00010000 for TrueType outlines, 'OTTO' for CFF ones, 'true' on old Macs
+enum sfnt_version_t : u32
+{
+    TRUETYPE = 0x00010000,
+    CFF      = 0x4f54544f,
+    TRUE_MAC = 0x74727565,
+    TYPE1    = 0x74797031
+}
+
+struct sfnt_table_record_t
+{
+    big_endian();
+
+    char tag[4];
+    u32  checksum;
+    u32  offset;
+    u32  length;
+
+    assert(offset + length >= offset, "malformed font: table extent overflows");
+}
+
+// 16 * 2^floor(log2(n)), which the directory stores as searchRange
+fn sfnt_search_range(n)
+{
+    disable_print();
+    local p = 1;
+    while (p * 2 <= n) {
+        p = p * 2;
+    }
+    result = p * 16;
+}
+
+fn sfnt_entry_selector(n)
+{
+    disable_print();
+    local p = 1;
+    local e = 0;
+    while (p * 2 <= n) {
+        p = p * 2;
+        e = e + 1;
+    }
+    result = e;
+}
+
+// The end of the furthest table, which is where the font stops
+fn sfnt_extent(at)
+{
+    disable_print();
+    result = 0;
+
+    local n = peek_u16(at + 4);
+    if (n == 0 || n > 512) {
+        return;
+    }
+    if (at + 12 + n * 16 > remaining_size()) {
+        return;
+    }
+
+    local end = 12 + u64(n) * 16;
+    local i   = 0;
+    while (i < n) {
+        local rec    = at + 12 + i * 16;
+        local offset = peek_u32(rec + 8);
+        local length = peek_u32(rec + 12);
+        if (offset < 12 || offset + length > remaining_size()) {
+            return;
+        }
+        if (offset + length > end) {
+            end = offset + length;
+        }
+        i = i + 1;
+    }
+    result = align_up(end, 4);
+}
+
+proc _identify_magic
+{
+    magic("\x00\x01\x00\x00", 0);
+    magic("OTTO", 0);
+    magic("true", 0);
+    magic("ttcf", 0);
+}
+
+// The version is four bytes with no room for anything else, and the three
+// derived fields of the directory have to match the formula the spec gives for
+// them. On top of that every table has to sit inside the file and the tags have
+// to ascend. Nothing arbitrary satisfies all of it, and the furthest table end
+// is the exact extent.
+proc _identify
+{
+    big_endian();
+
+    local version = peek_u32();
+    if (version != 0x00010000 && version != 0x4f54544f &&
+        version != 0x74727565 && version != 0x74797031) {
+        // a TrueType collection wraps several fonts and is measured elsewhere
+        return;
+    }
+
+    local n = peek_u16(4);
+    if (n == 0 || n > 512) {
+        return;
+    }
+
+    // the three redundant fields
+    if (peek_u16(6) != sfnt_search_range(n) ||
+        peek_u16(8) != sfnt_entry_selector(n) ||
+        peek_u16(10) != n * 16 - sfnt_search_range(n)) {
+        return;
+    }
+
+    // tags ascend, and every table lies inside the file
+    local prev = 0;
+    local i    = 0;
+    while (i < n) {
+        local rec = 12 + i * 16;
+        if (rec + 16 > remaining_size()) {
+            return;
+        }
+        local tag = peek_u32(rec);
+        if (i > 0 && tag <= prev) {
+            return;
+        }
+        prev = tag;
+        i    = i + 1;
+    }
+
+    result = sfnt_extent(0);
+}
+
+proc
+{
+    big_endian();
+
+    local base = off();
+
+    sfnt_version_t sfnt_version;
+    u16            num_tables;
+    u16            search_range;
+    u16            entry_selector;
+    u16            range_shift;
+
+    assert(num_tables > 0 && num_tables <= 512, "malformed font: implausible table count");
+    if (search_range != sfnt_search_range(num_tables) ||
+        entry_selector != sfnt_entry_selector(num_tables) ||
+        range_shift != num_tables * 16 - sfnt_search_range(num_tables)) {
+        warning("the table directory's derived fields do not match the table count");
+    }
+
+    // the directory is mostly what there is to see: the tables themselves are
+    // glyph outlines and metrics, and are left where they are
+    local i = 0;
+    while (i < num_tables) {
+        sfnt_table_record_t table;
+        i = i + 1;
+    }
+
+    print("  font ends at", tostring(sfnt_extent(base - off()), 10));
+}

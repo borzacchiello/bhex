@@ -149,13 +149,13 @@ struct mdhd_box_t
 struct hdlr_box_t
 {
     local start = off();
-    u32   box_size;
-    char  type[4];
-    u8    version;
-    u8    flags[3];
-    u32   pre_defined;
+    u32            box_size;
+    char           type[4];
+    u8             version;
+    u8             flags[3];
+    u32            pre_defined;
     handler_type_t handler_type;
-    u32   reserved[3];
+    u32            reserved[3];
     local name_len = start + box_size - off();
     assert(name_len >= 0 && start + box_size <= size(),
            "malformed 'hdlr' box: bad size");
@@ -265,7 +265,7 @@ struct table_box_t
             entry_size = 20;
         }
     }
-    assert(table_len >= 0 && entry_count * entry_size <= table_len,
+    assert(table_len >= 0 && u64(entry_count) * entry_size <= table_len,
            "malformed table box: the entries do not fit in the box");
 
     if (entry_count > 0) {

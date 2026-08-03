@@ -1,0 +1,244 @@
+// Copyright (c) 2022-2026, bageyelet
+
+// cpio archives, the format initramfs images are built out of. Two variants are
+// covered, both entirely ASCII:
+//
+//   "070701" / "070702"  SVR4 "newc", a 110 byte header of 8 digit hex fields,
+//                        with the header+name and the data each padded to 4
+//   "070707"             the older "odc", a 76 byte header of octal fields and
+//                        no padding at all
+//
+// Every archive ends with an entry named "TRAILER!!!", which is what gives the
+// format an exact length.
+
+// Field k of a newc header sits at 6 + k * 8
+fn newc_field(at)
+{
+    disable_print();
+    result = to_int(printable(peek(8, at)), 16);
+}
+
+struct cpio_newc_entry_t
+{
+    char magic[6];
+    char ino[8];
+    char mode[8];
+    char uid[8];
+    char gid[8];
+    char nlink[8];
+    char mtime[8];
+    char filesize[8];
+    char devmajor[8];
+    char devminor[8];
+    char rdevmajor[8];
+    char rdevminor[8];
+    char namesize[8];
+    char check[8];
+
+    assert(magic == "070701" || magic == "070702", "malformed cpio entry: bad magic");
+
+    local name_len = to_int(printable(namesize), 16);
+    local data_len = to_int(printable(filesize), 16);
+    assert(name_len > 0 && name_len <= remaining_size(), "malformed cpio entry: bad namesize");
+
+    char name[name_len];
+
+    // the header plus the name is padded to a 4 byte boundary, and so is the
+    // data behind it
+    local name_pad = align_up(110 + name_len, 4) - (110 + name_len);
+    if (name_pad > 0) {
+        u8 name_padding[name_pad];
+    }
+
+    assert(data_len <= remaining_size(), "malformed cpio entry: filesize runs past the end of the file");
+    if (data_len > 0) {
+        u8 data[data_len];
+
+        local data_pad = align_up(data_len, 4) - data_len;
+        if (data_pad > 0) {
+            u8 data_padding[data_pad];
+        }
+    }
+}
+
+struct cpio_odc_entry_t
+{
+    char magic[6];
+    char dev[6];
+    char ino[6];
+    char mode[6];
+    char uid[6];
+    char gid[6];
+    char nlink[6];
+    char rdev[6];
+    char mtime[11];
+    char namesize[6];
+    char filesize[11];
+
+    assert(magic == "070707", "malformed cpio entry: bad magic");
+
+    // odc fields are octal, and nothing is padded
+    local name_len = to_int(printable(namesize), 8);
+    local data_len = to_int(printable(filesize), 8);
+    assert(name_len > 0 && name_len <= remaining_size(), "malformed cpio entry: bad namesize");
+
+    char name[name_len];
+
+    assert(data_len <= remaining_size(), "malformed cpio entry: filesize runs past the end of the file");
+    if (data_len > 0) {
+        u8 data[data_len];
+    }
+}
+
+// Walks the newc entries from the current offset without reading anything into
+// a file variable, returning the length of the whole archive, or 0 when the
+// chain does not reach a "TRAILER!!!" entry cleanly.
+fn newc_archive_size()
+{
+    disable_print();
+    result = 0;
+
+    local at    = 0;
+    local count = 0;
+    while (count < 1000000) {
+        if (at + 110 > remaining_size()) {
+            return;
+        }
+
+        local magic = peek(6, at);
+        if (magic != "070701" && magic != "070702") {
+            return;
+        }
+
+        local name_len = newc_field(at + 94);
+        local data_len = newc_field(at + 54);
+        if (name_len == 0 || name_len > 0x10000) {
+            return;
+        }
+
+        local entry = align_up(110 + name_len, 4) + align_up(data_len, 4);
+        if (at + entry > remaining_size()) {
+            return;
+        }
+
+        if (name_len == 11 && peek(10, at + 110) == "TRAILER!!!") {
+            result = at + entry;
+            return;
+        }
+
+        at    = at + entry;
+        count = count + 1;
+    }
+}
+
+// The same walk for odc, whose fields are octal and whose entries are not
+// padded at all.
+fn odc_archive_size()
+{
+    disable_print();
+    result = 0;
+
+    local at    = 0;
+    local count = 0;
+    while (count < 1000000) {
+        if (at + 76 > remaining_size()) {
+            return;
+        }
+        if (peek(6, at) != "070707") {
+            return;
+        }
+
+        local name_len = to_int(printable(peek(6, at + 59)), 8);
+        local data_len = to_int(printable(peek(11, at + 65)), 8);
+        if (name_len == 0 || name_len > 0x10000) {
+            return;
+        }
+
+        local entry = 76 + name_len + data_len;
+        if (at + entry > remaining_size()) {
+            return;
+        }
+
+        if (name_len == 11 && peek(10, at + 76) == "TRAILER!!!") {
+            result = at + entry;
+            return;
+        }
+
+        at    = at + entry;
+        count = count + 1;
+    }
+}
+
+proc _identify_magic
+{
+    magic("070701", 0);
+    magic("070702", 0);
+    magic("070707", 0);
+}
+
+// The six magic bytes are ASCII digits that turn up in any text, so the header
+// behind them has to hold together: the sizes are read out of it and used to
+// step to where the next entry must begin, and something that says "070707"
+// without another entry or a trailer behind it is rejected.
+proc _identify
+{
+    local magic = peek(6);
+
+    if (magic == "070701" || magic == "070702") {
+        // the walk to "TRAILER!!!" gives the exact length of the archive
+        result = newc_archive_size();
+        return;
+    }
+
+    if (magic != "070707") {
+        return;
+    }
+
+    // odc: the whole 76 byte header is octal digits, magic included, which is
+    // a far stronger statement than the six magic bytes on their own
+    if (scan_while("01234567") < 76) {
+        return;
+    }
+
+    result = odc_archive_size();
+    if (result != 0) {
+        return;
+    }
+
+    // no trailer in reach, but a second entry right where this one ends is
+    // still enough to tell an archive from six digits in a text file
+    local name_len = to_int(printable(peek(6, 59)), 8);
+    local data_len = to_int(printable(peek(11, 65)), 8);
+    if (name_len == 0 || name_len > 0x10000) {
+        return;
+    }
+
+    local entry = 76 + name_len + data_len;
+    if (entry + 6 <= remaining_size() && peek(6, entry) == "070707") {
+        result = entry;
+    }
+}
+
+proc
+{
+    local kind = peek(6);
+    local more = 1;
+
+    if (kind == "070707") {
+        while (more) {
+            local name_len = to_int(printable(peek(6, 59)), 8);
+            if (name_len == 11 && peek(10, 76) == "TRAILER!!!") {
+                more = 0;
+            }
+            cpio_odc_entry_t entry;
+        }
+    } else {
+        while (more) {
+            local name_len = to_int(printable(peek(8, 94)), 16);
+            if (name_len == 11 && peek(10, 110) == "TRAILER!!!") {
+                more = 0;
+            }
+            cpio_newc_entry_t entry;
+        }
+    }
+}

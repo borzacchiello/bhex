@@ -1,0 +1,91 @@
+// Copyright (c) 2022-2026, bageyelet
+
+// A bzip2 stream is a four byte header followed by compressed blocks, and
+// everything past the header is **bit** aligned: only the first block starts on
+// a byte boundary, and the end of stream marker almost never does. So this
+// template decodes the header and the first block header, which is as far as a
+// byte oriented reader can honestly go, and leaves the rest as the payload.
+//
+// The stream carries no length, exactly like gzip: it is known only once the
+// data has been decompressed.
+
+// 0x314159265359, the first six digits of pi, opening every compressed block
+struct bzip2_block_header_t
+{
+    big_endian();
+
+    u8  block_magic[6];
+    u32 block_crc;
+
+    assert(peek_u32(-10) == 0x31415926 && peek_u16(-6) == 0x5359,
+           "malformed bzip2 stream: bad block magic");
+}
+
+// 0x177245385090, the first six digits of sqrt(pi), closing the stream
+struct bzip2_stream_footer_t
+{
+    big_endian();
+
+    u8  footer_magic[6];
+    u32 combined_crc;
+}
+
+struct bzip2_header_t
+{
+    big_endian();
+
+    char magic[3];
+    char level;
+
+    // the level digit is the block size in units of 100 kB
+    local level_digit = peek_u8(-1) - 0x30;
+    assert(magic == "BZh", "not a bzip2 stream: bad magic");
+    assert(level_digit >= 1 && level_digit <= 9, "not a bzip2 stream: bad block size");
+}
+
+proc _identify_magic
+{
+    magic("BZh", 0);
+}
+
+// "BZh" plus a digit is four bytes and shows up inside plenty of binaries, so
+// the six byte block magic behind it is required as well: ten bytes in total,
+// of which only the digit is free. An empty stream carries the end of stream
+// magic in that position instead, and is accepted the same way.
+proc _identify
+{
+    big_endian();
+    if (peek(3) != "BZh") {
+        return;
+    }
+
+    local level_digit = peek_u8(3) - 0x30;
+    if (level_digit < 1 || level_digit > 9) {
+        return;
+    }
+
+    local marker = peek(6, 4);
+    if (marker != "\x31\x41\x59\x26\x53\x59" && marker != "\x17\x72\x45\x38\x50\x90") {
+        return;
+    }
+
+    // the compressed length is only known once the stream has been inflated,
+    // so the hit carries the header and the marker that validated it
+    result = 10;
+}
+
+proc
+{
+    bzip2_header_t header;
+
+    if (peek(6) == "\x17\x72\x45\x38\x50\x90") {
+        // an empty stream: the footer follows the header directly
+        bzip2_stream_footer_t footer;
+    } else {
+        bzip2_block_header_t first_block;
+
+        // the blocks behind this one start on a bit boundary, so they cannot
+        // be walked without a bit reader
+        u8 compressed_data[remaining_size()];
+    }
+}

@@ -1,0 +1,219 @@
+// Copyright (c) 2022-2026, bageyelet
+
+// The GUID Partition Table. A GPT disk opens with a protective MBR in LBA 0,
+// so that tools which only know the old scheme see one partition of an unknown
+// type covering everything and leave the disk alone. The real table is the
+// header in LBA 1 and the array of entries it points at, and the whole lot is
+// mirrored at the end of the disk.
+//
+// The header carries a CRC32 over itself computed with its own crc field
+// zeroed, which cannot be expressed against the bytes as they sit on disk, so
+// the one verified here is the CRC32 over the partition entry array: it is a
+// contiguous run, usually 16 KiB of it, and nothing matches it by accident.
+//
+// The extent reported is the table, not the disk: a scan that stepped over the
+// whole disk would never look inside the partitions.
+
+// GUIDs are stored mixed endian - the first three fields little endian, the
+// rest big endian - so the bytes below are in the order they appear on disk
+fn print_partition_type(at)
+{
+    disable_print();
+    local g = peek(16, at);
+
+    if (g == "\x28\x73\x2a\xc1\x1f\xf8\xd2\x11\xba\x4b\x00\xa0\xc9\x3e\xc9\x3b") {
+        print("    EFI System");
+    } elif (g == "\xaf\x3d\xc6\x0f\x83\x84\x72\x47\x8e\x79\x3d\x69\xd8\x47\x7d\xe4") {
+        print("    Linux filesystem");
+    } elif (g == "\x6d\xfd\x57\x06\xab\xa4\xc4\x43\x84\xe5\x09\x33\xc8\x4b\x4f\x4f") {
+        print("    Linux swap");
+    } elif (g == "\x79\xd3\xd6\xe6\x07\xf5\xc2\x44\xa2\x3c\x23\x8f\x2a\x3d\xf9\x28") {
+        print("    Linux LVM");
+    } elif (g == "\xa2\xa0\xd0\xeb\xe5\xb9\x33\x44\x87\xc0\x68\xb6\xb7\x26\x99\xc7") {
+        print("    Microsoft basic data");
+    } elif (g == "\x16\xe3\xc9\xe3\x5c\x0b\xb8\x4d\x81\x7d\xf9\x2d\xf0\x02\x15\xae") {
+        print("    Microsoft reserved");
+    } elif (g == "\xa4\xbb\x94\xde\xd1\x06\x40\x4d\xa1\x6a\xbf\xd5\x01\x79\xd6\xac") {
+        print("    Windows recovery");
+    } elif (g == "\x00\x53\x46\x48\x00\x00\xaa\x11\xaa\x11\x00\x30\x65\x43\xec\xac") {
+        print("    Apple HFS+");
+    } elif (g == "\x48\x61\x68\x21\x49\x64\x6f\x6e\x74\x4e\x65\x65\x64\x45\x46\x49") {
+        print("    BIOS boot");
+    }
+    result = 0;
+}
+
+struct gpt_header_t
+{
+    little_endian();
+
+    char magic[8];
+    u32  revision;
+    u32  header_size;
+    u32  header_crc32;
+    u32  reserved;
+    u64  my_lba;
+    u64  alternate_lba;
+    u64  first_usable_lba;
+    u64  last_usable_lba;
+    u8   disk_guid[16];
+    u64  partition_entry_lba;
+    u32  num_partition_entries;
+    u32  size_of_partition_entry;
+    u32  partition_entry_array_crc32;
+
+    assert(magic == "EFI PART", "not a GPT header: bad signature");
+    assert(header_size >= 92 && header_size <= 512,
+           "malformed GPT header: implausible header size");
+    assert(size_of_partition_entry >= 128 && (size_of_partition_entry & 7) == 0,
+           "malformed GPT header: implausible entry size");
+    assert(num_partition_entries > 0 && num_partition_entries <= 4096,
+           "malformed GPT header: implausible entry count");
+}
+
+struct gpt_partition_t
+{
+    little_endian();
+
+    u8   partition_type_guid[16];
+    print_partition_type(-16);
+
+    u8    unique_partition_guid[16];
+    u64   starting_lba;
+    u64   ending_lba;
+    u64   attributes;
+    wchar partition_name[36];
+}
+
+// The array is 16 KiB of mostly zeroes on a normal disk, so its CRC32 is what
+// really confirms a header. Returns 1 when it checks out.
+fn array_crc_ok(header_at, sector_size)
+{
+    disable_print();
+    result = 0;
+
+    local arr_lba = peek_u64(header_at + 72);
+    local nents   = peek_u32(header_at + 80);
+    local esize   = peek_u32(header_at + 84);
+    local stored  = peek_u32(header_at + 88);
+
+    if (nents == 0 || nents > 4096 || esize < 128) {
+        return;
+    }
+
+    local total = nents * esize;
+    local at    = arr_lba * sector_size;
+    if (at + total > remaining_size()) {
+        return;
+    }
+
+    if (crc("CRC-32/ISO-HDLC", total, at) == stored) {
+        result = 1;
+    }
+}
+
+proc _identify_magic
+{
+    // the header lives in LBA 1, so a match here means the disk starts 512
+    // bytes earlier
+    magic("EFI PART", 512);
+}
+
+// The signature is eight bytes in a fixed place, and behind it the header has
+// to agree with itself: the revision and sizes the spec fixes, a primary header
+// that says it is in LBA 1, and an entry array whose CRC32 matches. That last
+// check is over kilobytes of data, so a hit is certain.
+proc _identify
+{
+    little_endian();
+    if (peek(8, 512) != "EFI PART") {
+        return;
+    }
+    if (peek_u32(512 + 8) != 0x00010000 || peek_u32(512 + 12) < 92) {
+        return;
+    }
+    // the primary header names its own location
+    if (peek_u64(512 + 24) != 1) {
+        return;
+    }
+    if (array_crc_ok(512, 512) == 0) {
+        return;
+    }
+
+    // the protective MBR, the header, and the array it points at: the
+    // partitions themselves are separate finds
+    local arr_end = peek_u64(512 + 72) * 512 +
+                    peek_u32(512 + 80) * peek_u32(512 + 84);
+    result = min(arr_end, remaining_size());
+}
+
+proc
+{
+    little_endian();
+
+    local base = off();
+
+    // the protective MBR: one entry of type 0xee covering the disk
+    u8  protective_mbr[446];
+    u8  protective_entry[16];
+    u8  mbr_padding[48];
+    u16 mbr_signature;
+    assert(mbr_signature == 0xaa55, "not a GPT disk: the protective MBR has no boot signature");
+
+    gpt_header_t header;
+
+    if (header.partition_entry_array_crc32 !=
+        crc("CRC-32/ISO-HDLC",
+            header.num_partition_entries * header.size_of_partition_entry,
+            base + header.partition_entry_lba * 512 - off())) {
+        warning("partition entry array CRC mismatch");
+    }
+
+    seek(base + header.partition_entry_lba * 512);
+
+    // Every entry is parsed, so the offsets stay right, but a disk with the
+    // usual 128 of them is mostly empty: only the first few are printed
+    max_array_print(8);
+    if (header.size_of_partition_entry == 128) {
+        gpt_partition_t entries[header.num_partition_entries];
+    } else {
+        u8 entry_array[header.num_partition_entries * header.size_of_partition_entry];
+    }
+}
+
+// The partitions that are actually in use, with where they start and how big
+// they are. Reachable as "t gpt.partitions".
+proc partitions
+{
+    little_endian();
+    disable_print();
+
+    local base    = off();
+    local arr_lba = peek_u64(512 + 72);
+    local nents   = peek_u32(512 + 80);
+    local esize   = peek_u32(512 + 84);
+
+    assert(peek(8, 512) == "EFI PART", "not a GPT disk: bad signature");
+
+    local i     = 0;
+    local found = 0;
+    while (i < nents) {
+        local at = arr_lba * 512 + i * esize;
+        if (at + esize > remaining_size()) {
+            i = nents;
+        } else {
+            // an unused entry has a type GUID of all zeroes
+            if (peek_u64(at) != 0 || peek_u64(at + 8) != 0) {
+                local start = peek_u64(at + 32);
+                local end   = peek_u64(at + 40);
+                print("partition", tostring(found, 10), "bytes",
+                      tostring(start * 512, 10), "to",
+                      tostring((end + 1) * 512, 10));
+                print_partition_type(at);
+                found = found + 1;
+            }
+            i = i + 1;
+        }
+    }
+    result = found;
+}

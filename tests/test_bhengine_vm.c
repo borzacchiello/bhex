@@ -57,11 +57,10 @@ int TEST(use_non_existent_struct_of_another_file)(void)
     const char* prog = "abcdefg#abc a;";
     // clang-format off
     const char* expected =
-        "[  ERROR  ] no such template file 'abcdefg'\n"
-        "[  ERROR  ] no such template file 'abcdefg'\n"
         "[  ERROR  ] 001: proc { abcdefg#abc a; }\n"
         "[  ERROR  ]      ____________________^\n"
-        "[  ERROR  ] Exception @ line 1, col 21 > error while processing abc\n";
+        "[  ERROR  ] Exception @ line 1, col 21 > cannot load template "
+        "'abcdefg'\n";
     // clang-format on
 
     int         r  = TEST_FAILED;

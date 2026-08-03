@@ -1,0 +1,207 @@
+// Copyright (c) 2022-2026, bageyelet
+
+// GIF87a and GIF89a. Little endian, and everything after the header is a
+// sequence of blocks introduced by a one byte label, closing with the trailer
+// 0x3b - so the image can be walked and its exact extent is known.
+//
+// Data is carried in "sub-block" chains: a length byte, that many bytes, and so
+// on until a length of zero.
+
+enum gif_block_t : u8
+{
+    EXTENSION = 0x21,
+    IMAGE     = 0x2c,
+    TRAILER   = 0x3b
+}
+
+enum gif_extension_t : u8
+{
+    PLAIN_TEXT       = 0x01,
+    GRAPHIC_CONTROL  = 0xf9,
+    COMMENT          = 0xfe,
+    APPLICATION      = 0xff
+}
+
+struct gif_header_t
+{
+    little_endian();
+
+    char magic[3];
+    char version[3];
+    u16  width;
+    u16  height;
+    u8   packed;
+    u8   background_color_index;
+    u8   pixel_aspect_ratio;
+
+    assert(magic == "GIF", "not a GIF: bad magic");
+    assert(version == "87a" || version == "89a", "not a GIF: unknown version");
+
+    // the global colour table follows the descriptor when the top bit is set
+    if (packed & 0x80) {
+        local entries = 1 << ((packed & 7) + 1);
+        u8 global_color_table[entries * 3];
+    }
+}
+
+struct gif_image_descriptor_t
+{
+    little_endian();
+
+    u8  separator;
+    u16 left;
+    u16 top;
+    u16 width;
+    u16 height;
+    u8  packed;
+
+    if (packed & 0x80) {
+        local entries = 1 << ((packed & 7) + 1);
+        u8 local_color_table[entries * 3];
+    }
+
+    u8 lzw_min_code_size;
+}
+
+// The length of a sub-block chain starting at `at`, terminator included
+fn sub_block_len(at)
+{
+    disable_print();
+    result = 0;
+
+    local p     = at;
+    local count = 0;
+    while (count < 100000) {
+        if (p >= remaining_size()) {
+            return;
+        }
+        local n = peek_u8(p);
+        p = p + 1 + n;
+        if (p > remaining_size()) {
+            return;
+        }
+        if (n == 0) {
+            result = p - at;
+            return;
+        }
+        count = count + 1;
+    }
+}
+
+struct gif_sub_blocks_t
+{
+    local len = sub_block_len(0);
+    assert(len > 0, "malformed GIF: unterminated sub-block chain");
+    u8 data[len];
+}
+
+// Walks the blocks from `at`, returning the offset just past the trailer, or 0
+fn walk_blocks(at)
+{
+    disable_print();
+    result = 0;
+
+    local p     = at;
+    local count = 0;
+    while (count < 100000) {
+        if (p >= remaining_size()) {
+            return;
+        }
+
+        local label = peek_u8(p);
+        if (label == 0x3b) {
+            result = p + 1;
+            return;
+        }
+
+        if (label == 0x21) {
+            // extension: label, sub-type, then a sub-block chain
+            if (p + 2 > remaining_size()) {
+                return;
+            }
+            local n = sub_block_len(p + 2);
+            if (n == 0) {
+                return;
+            }
+            p = p + 2 + n;
+        } elif (label == 0x2c) {
+            if (p + 10 > remaining_size()) {
+                return;
+            }
+            local packed = peek_u8(p + 9);
+            local q      = p + 10;
+            if (packed & 0x80) {
+                q = q + (1 << ((packed & 7) + 1)) * 3;
+            }
+            if (q + 1 > remaining_size()) {
+                return;
+            }
+            local n = sub_block_len(q + 1);
+            if (n == 0) {
+                return;
+            }
+            p = q + 1 + n;
+        } else {
+            return;
+        }
+
+        if (p > remaining_size()) {
+            return;
+        }
+        count = count + 1;
+    }
+}
+
+proc _identify_magic
+{
+    magic("GIF87a", 0);
+    magic("GIF89a", 0);
+}
+
+// Six printable magic bytes, so the blocks behind them are walked: every one
+// has to be an extension, an image or the trailer, and the sub-block chains
+// have to terminate where the next block begins. Reaching the trailer both
+// confirms the file and gives its exact length.
+proc _identify
+{
+    little_endian();
+
+    local magic = peek(6);
+    if (magic != "GIF87a" && magic != "GIF89a") {
+        return;
+    }
+
+    local packed = peek_u8(10);
+    local at     = 13;
+    if (packed & 0x80) {
+        at = at + (1 << ((packed & 7) + 1)) * 3;
+    }
+
+    result = walk_blocks(at);
+}
+
+proc
+{
+    little_endian();
+
+    gif_header_t header;
+
+    local walking = 1;
+    while (walking && remaining_size() >= 1) {
+        local label = peek_u8();
+
+        if (label == gif_block_t::TRAILER) {
+            u8 trailer;
+            walking = 0;
+        } elif (label == gif_block_t::EXTENSION) {
+            u8               introducer;
+            gif_extension_t  extension_label;
+            gif_sub_blocks_t extension_data;
+        } elif (label == gif_block_t::IMAGE) {
+            gif_image_descriptor_t image;
+            gif_sub_blocks_t       image_data;
+        } else {
+            error("malformed GIF: unknown block label", tostring(label, 16));
+        }
+    }
+}

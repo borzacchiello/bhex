@@ -1,0 +1,373 @@
+// Copyright (c) 2022-2026, bageyelet
+
+// The 7-Zip archive format. The layout is unusual: the 32 byte signature header
+// at the front points *forward* to the "next header", which sits at the very end
+// of the file behind the packed streams and describes everything in the archive.
+//
+// Two CRC32s make the format unusually easy to recognise and to measure: one
+// over the 20 byte start header, and one over the whole next header. Both cover
+// a contiguous run of bytes, so both are verified here, and the start header
+// gives the exact length of the archive without decoding anything.
+//
+// The next header is a stream of tagged properties whose integers use 7-Zip's
+// own encoding: the top bits of the first byte say how many bytes follow.
+
+enum sevenzip_property_t : u8
+{
+    kEnd                   = 0x00,
+    kHeader                = 0x01,
+    kArchiveProperties     = 0x02,
+    kAdditionalStreamsInfo = 0x03,
+    kMainStreamsInfo       = 0x04,
+    kFilesInfo             = 0x05,
+    kPackInfo              = 0x06,
+    kUnPackInfo            = 0x07,
+    kSubStreamsInfo        = 0x08,
+    kSize                  = 0x09,
+    kCRC                   = 0x0a,
+    kFolder                = 0x0b,
+    kCodersUnPackSize      = 0x0c,
+    kNumUnPackStream       = 0x0d,
+    kEmptyStream           = 0x0e,
+    kEmptyFile             = 0x0f,
+    kAnti                  = 0x10,
+    kName                  = 0x11,
+    kCTime                 = 0x12,
+    kATime                 = 0x13,
+    kMTime                 = 0x14,
+    kWinAttributes         = 0x15,
+    kComment               = 0x16,
+    kEncodedHeader         = 0x17,
+    kStartPos              = 0x18,
+    kDummy                 = 0x19
+}
+
+// A 7-Zip NUMBER: the set high bits of the first byte count the bytes that
+// follow, and what is left of it supplies the top of the value.
+fn number_len(at)
+{
+    disable_print();
+    local first = peek_u8(at);
+    local mask  = 0x80;
+    local i     = 0;
+
+    while (i < 8) {
+        if ((first & mask) == 0) {
+            result = i + 1;
+            return;
+        }
+        mask = mask >> 1;
+        i    = i + 1;
+    }
+    result = 9;
+}
+
+fn number_value(at)
+{
+    disable_print();
+    local first = peek_u8(at);
+    local mask  = 0x80;
+    local value = 0;
+    local i     = 0;
+
+    while (i < 8) {
+        if ((first & mask) == 0) {
+            result = value + ((first & (mask - 1)) << (i * 8));
+            return;
+        }
+        value = value | (peek_u8(at + 1 + i) << (8 * i));
+        mask  = mask >> 1;
+        i     = i + 1;
+    }
+    result = value;
+}
+
+fn print_coder_name(id)
+{
+    disable_print();
+    if (id == 0x21) {
+        print("    coder: LZMA2");
+    } elif (id == 0x030101) {
+        print("    coder: LZMA");
+    } elif (id == 0x03) {
+        print("    coder: delta");
+    } elif (id == 0x040108) {
+        print("    coder: BZip2");
+    } elif (id == 0x040109) {
+        print("    coder: Deflate");
+    } elif (id == 0x04f71101) {
+        print("    coder: Zstandard");
+    } elif (id == 0x06f10701) {
+        print("    coder: AES-256 + SHA-256");
+    } elif (id == 0x03030103) {
+        print("    coder: BCJ x86");
+    } elif (id == 0x0303011b) {
+        print("    coder: BCJ2 x86");
+    } elif (id == 0x0a) {
+        print("    coder: ARM64");
+    } else {
+        print("    coder: unknown", tostring(id, 16));
+    }
+    result = id;
+}
+
+// The 32 bytes at the front. `start_header_crc32` covers the 20 bytes behind
+// it, and those 20 bytes locate and check the next header.
+struct sevenzip_signature_header_t
+{
+    little_endian();
+
+    u8  magic[6];
+    u8  version_major;
+    u8  version_minor;
+    u32 start_header_crc32;
+    u64 next_header_offset;
+    u64 next_header_size;
+    u32 next_header_crc32;
+
+    assert(peek_u32(-32) == 0xafbc7a37 && peek_u16(-28) == 0x1c27,
+           "not a 7z archive: bad magic");
+
+    if (start_header_crc32 != crc("CRC-32/ISO-HDLC", 20, -20)) {
+        warning("start header CRC mismatch");
+    }
+    assert(next_header_offset + next_header_size <= remaining_size(),
+           "truncated 7z archive: the next header runs past the end of the file");
+}
+
+// A tagged integer, printed with its decoded value
+// 7-Zip's NUMBER encoding is not readable off the bytes, so the decoded value
+// is printed under them
+struct sevenzip_number_t
+{
+    local len   = number_len(0);
+    local value = number_value(0);
+    assert(len <= 9, "malformed 7z number");
+
+    u8 number[len];
+
+    // a single byte number is its own value; only a longer one needs decoding
+    if (len > 1) {
+        print("    =", tostring(value, 10));
+    }
+}
+
+// Where the packed streams sit, and how big each of them is
+struct sevenzip_pack_info_t
+{
+    sevenzip_property_t id;
+
+    sevenzip_number_t pack_pos;
+
+    local streams = number_value(0);
+    sevenzip_number_t num_pack_streams;
+
+    assert(streams <= 0x100000, "malformed 7z archive: implausible pack stream count");
+
+    sevenzip_property_t size_id;
+    assert(size_id == sevenzip_property_t::kSize, "malformed 7z PackInfo: expected kSize");
+
+    local i = 0;
+    while (i < streams) {
+        sevenzip_number_t pack_size;
+        i = i + 1;
+    }
+
+    // an optional CRC block, then the terminator
+    if (peek_u8() == 0x0a) {
+        sevenzip_property_t crc_id;
+        local skip = 0;
+        while (peek_u8() != 0 && skip < 0x10000) {
+            u8 crc_data;
+            skip = skip + 1;
+        }
+    }
+    sevenzip_property_t end_id;
+}
+
+// The coders each folder runs its data through, and how they are wired
+// together. A folder with more than one coder chains them with "bind pairs",
+// one per output stream past the first.
+struct sevenzip_folder_t
+{
+    local coders = number_value(0);
+    sevenzip_number_t num_coders;
+
+    assert(coders > 0 && coders <= 64, "malformed 7z folder: implausible coder count");
+
+    local total_in  = 0;
+    local total_out = 0;
+    local i         = 0;
+
+    while (i < coders) {
+        u8 coder_flags;
+
+        local id_size = coder_flags & 0x0f;
+        assert(id_size > 0 && id_size <= 8, "malformed 7z coder: bad id size");
+        u8 coder_id[id_size];
+
+        // the id is big endian, however many bytes it takes
+        local id = 0;
+        local k  = 0;
+        while (k < id_size) {
+            id = (id << 8) | peek_u8(-(id_size - k));
+            k  = k + 1;
+        }
+        print_coder_name(id);
+
+        // a complex coder states its stream counts; a simple one is 1 in, 1 out
+        local in_streams  = 1;
+        local out_streams = 1;
+        if (coder_flags & 0x10) {
+            in_streams = number_value(0);
+            sevenzip_number_t num_in_streams;
+
+            out_streams = number_value(0);
+            sevenzip_number_t num_out_streams;
+
+            assert(in_streams <= 64 && out_streams <= 64,
+                   "malformed 7z coder: implausible stream count");
+        }
+        total_in  = total_in + in_streams;
+        total_out = total_out + out_streams;
+
+        if (coder_flags & 0x20) {
+            local props = number_value(0);
+            sevenzip_number_t properties_size;
+            assert(props <= remaining_size(), "malformed 7z coder: properties run past the end of the file");
+            if (props > 0) {
+                u8 properties[props];
+            }
+        }
+
+        i = i + 1;
+    }
+
+    assert(total_out >= 1 && total_in >= total_out - 1,
+           "malformed 7z folder: the coders do not wire up");
+
+    local bind_pairs = total_out - 1;
+    local b          = 0;
+    while (b < bind_pairs) {
+        sevenzip_number_t bind_in_index;
+        sevenzip_number_t bind_out_index;
+        b = b + 1;
+    }
+
+    // with a single packed stream its index is implicit; more than one and they
+    // are listed
+    local packed = total_in - bind_pairs;
+    if (packed > 1) {
+        local p = 0;
+        while (p < packed) {
+            sevenzip_number_t packed_stream_index;
+            p = p + 1;
+        }
+    }
+}
+
+struct sevenzip_unpack_info_t
+{
+    sevenzip_property_t id;
+
+    sevenzip_property_t folder_id;
+    assert(folder_id == sevenzip_property_t::kFolder, "malformed 7z UnPackInfo: expected kFolder");
+
+    local folders = number_value(0);
+    sevenzip_number_t num_folders;
+    assert(folders > 0 && folders <= 0x100000, "malformed 7z archive: implausible folder count");
+
+    u8 external;
+    assert(external == 0, "7z archives with an external folder list are not supported by this template");
+
+    local i = 0;
+    while (i < folders) {
+        sevenzip_folder_t folder;
+        i = i + 1;
+    }
+
+    sevenzip_property_t sizes_id;
+    assert(sizes_id == sevenzip_property_t::kCodersUnPackSize,
+           "malformed 7z UnPackInfo: expected kCodersUnPackSize");
+
+    local k = 0;
+    while (k < folders) {
+        sevenzip_number_t unpack_size;
+        k = k + 1;
+    }
+}
+
+// The header at the end of the archive. When it is a kEncodedHeader the whole
+// thing is itself an LZMA stream, and only the streams info describing where
+// that stream lives can be read without decompressing it.
+struct sevenzip_next_header_t
+{
+    local start = off();
+    sevenzip_property_t id;
+
+    assert(id == sevenzip_property_t::kHeader || id == sevenzip_property_t::kEncodedHeader,
+           "malformed 7z archive: the next header starts with neither kHeader nor kEncodedHeader");
+
+    if (id == sevenzip_property_t::kEncodedHeader) {
+        sevenzip_pack_info_t   pack_info;
+        sevenzip_unpack_info_t unpack_info;
+    } elif (peek_u8() == sevenzip_property_t::kMainStreamsInfo) {
+        sevenzip_property_t main_streams_id;
+        if (peek_u8() == sevenzip_property_t::kPackInfo) {
+            sevenzip_pack_info_t pack_info;
+        }
+        if (peek_u8() == sevenzip_property_t::kUnPackInfo) {
+            sevenzip_unpack_info_t unpack_info;
+        }
+    }
+}
+
+proc _identify_magic
+{
+    magic("7z\xbc\xaf\x27\x1c", 0);
+}
+
+// Six magic bytes, backed by the CRC32 the archive carries over its own 20 byte
+// start header. Nothing passes that pair by accident, and the start header
+// records where the next header ends, which is the exact end of the archive.
+proc _identify
+{
+    little_endian();
+    if (peek_u32() != 0xafbc7a37 || peek_u16(4) != 0x1c27) {
+        return;
+    }
+    if (peek_u32(8) != crc("CRC-32/ISO-HDLC", 20, 12)) {
+        return;
+    }
+
+    local next_offset = peek_u64(12);
+    local next_size   = peek_u64(20);
+    if (next_offset > remaining_size() || next_size > remaining_size()) {
+        return;
+    }
+
+    local total = 32 + next_offset + next_size;
+    if (total > remaining_size()) {
+        return;
+    }
+    result = total;
+}
+
+proc
+{
+    little_endian();
+
+    sevenzip_signature_header_t header;
+
+    if (header.next_header_offset > 0) {
+        u8 packed_streams[header.next_header_offset];
+    }
+
+    if (header.next_header_size > 0) {
+        if (header.next_header_crc32 !=
+            crc("CRC-32/ISO-HDLC", header.next_header_size, 0)) {
+            warning("next header CRC mismatch");
+        }
+        sevenzip_next_header_t next_header;
+    }
+}

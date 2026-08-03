@@ -71,7 +71,9 @@ struct gzip_header_t
 struct gzip_member_t
 {
     gzip_header_t header;
-    u8            compressed_data[size() - off() - 8];
+
+    assert(remaining_size() >= 8, "truncated gzip member: no room for the 8 byte trailer");
+    u8            compressed_data[remaining_size() - 8];
     u32           crc32;
     u32           input_size;
 }
@@ -94,8 +96,9 @@ proc _identify
         peek_u8(2) == gzip_compression_method_t::DEFLATE &&
         (peek_u8(3) & 0xe0) == 0) {
         // the length of a member is only known once it has been inflated, so
-        // the hit carries the fixed part of the header and nothing more
-        result = 10;
+        // the hit carries the fixed part of the header and nothing more, and
+        // never more of it than is actually present
+        result = min(10, remaining_size());
     }
 }
 

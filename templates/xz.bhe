@@ -1,0 +1,370 @@
+// Copyright (c) 2022-2026, bageyelet
+
+// The .xz container format. A stream is a 12 byte header, a sequence of blocks,
+// an index listing them, and a 12 byte footer.
+//
+// Three things in it are self checking, and this template verifies all of them:
+// the CRC32 over the two stream flag bytes, the CRC32 at the end of every block
+// header, and the footer, whose backward size has to agree with the index that
+// precedes it.
+//
+// Integers are stored as "variable length integers": seven bits per byte, low
+// group first, the top bit marking that another byte follows.
+
+enum xz_check_t : u8
+{
+    NONE   = 0x00,
+    CRC32  = 0x01,
+    CRC64  = 0x04,
+    SHA256 = 0x0a
+}
+
+// Filter IDs are variable length integers in principle, but every one assigned
+// so far fits in a single byte, which is the case this enum covers
+enum xz_filter_id_t : u8
+{
+    DELTA        = 0x03,
+    BCJ_X86      = 0x04,
+    BCJ_POWERPC  = 0x05,
+    BCJ_IA64     = 0x06,
+    BCJ_ARM      = 0x07,
+    BCJ_ARMTHUMB = 0x08,
+    BCJ_SPARC    = 0x09,
+    BCJ_ARM64    = 0x0a,
+    BCJ_RISCV    = 0x0b,
+    LZMA2        = 0x21
+}
+
+// The length in bytes of a variable length integer at `at`, or 0 when it does
+// not terminate within the nine bytes the format allows
+fn vli_len(at)
+{
+    disable_print();
+    result = 0;
+
+    local n = 0;
+    while (n < 9) {
+        local b = peek_u8(at + n);
+        n = n + 1;
+        if ((b & 0x80) == 0) {
+            result = n;
+            return;
+        }
+    }
+}
+
+fn vli_value(at)
+{
+    disable_print();
+    result = 0;
+
+    local v = 0;
+    local n = 0;
+    while (n < 9) {
+        local b = peek_u8(at + n);
+        v = v | ((b & 0x7f) << (n * 7));
+        n = n + 1;
+        if ((b & 0x80) == 0) {
+            result = v;
+            return;
+        }
+    }
+}
+
+// Check IDs come in groups of three sharing a size: 0 is none, 1-3 are 4 bytes,
+// 4-6 are 8, and so on up to 64
+fn check_size(id)
+{
+    disable_print();
+    result = 0;
+    if (id > 0) {
+        result = 4 << ((id - 1) / 3);
+    }
+}
+
+struct xz_stream_header_t
+{
+    little_endian();
+
+    u8          magic[6];
+    u8          reserved;
+    xz_check_t  check_type;
+    u32         flags_crc32;
+
+    assert(peek_u32(-12) == 0x587a37fd && peek_u16(-8) == 0x005a,
+           "not an xz stream: bad magic");
+    assert(reserved == 0, "malformed xz stream: reserved flag byte is not zero");
+
+    if (flags_crc32 != crc("CRC-32/ISO-HDLC", 2, -6)) {
+        warning("stream flags CRC mismatch");
+    }
+}
+
+struct xz_filter_t
+{
+    local id_len = vli_len(0);
+    assert(id_len > 0, "malformed xz filter: unterminated filter id");
+
+    if (id_len == 1) {
+        xz_filter_id_t filter_id;
+    } else {
+        u8 filter_id[id_len];
+    }
+
+    local props_len  = vli_len(0);
+    local props_size = vli_value(0);
+    assert(props_len > 0, "malformed xz filter: unterminated property size");
+    u8 properties_size[props_len];
+
+    assert(props_size <= remaining_size(), "malformed xz filter: properties run past the end of the file");
+    if (props_size > 0) {
+        u8 properties[props_size];
+    }
+}
+
+struct xz_block_header_t
+{
+    little_endian();
+
+    local start    = off();
+    local hdr_size = (peek_u8() + 1) * 4;
+
+    u8 header_size;
+    u8 block_flags;
+
+    local filters = (block_flags & 3) + 1;
+    assert((block_flags & 0x3c) == 0, "malformed xz block header: reserved flag bits set");
+    assert(hdr_size <= remaining_size() + 2, "malformed xz block header: runs past the end of the file");
+
+    // The sizes are variable length integers. A single byte one is its own
+    // value; a longer one does not read as a number, so it gets decoded.
+    if (block_flags & 0x40) {
+        local csize_len = vli_len(0);
+        local csize     = vli_value(0);
+        assert(csize_len > 0, "malformed xz block header: unterminated compressed size");
+        u8 compressed_size[csize_len];
+        if (csize_len > 1) {
+            print("    =", tostring(csize, 10), "bytes");
+        }
+    }
+
+    if (block_flags & 0x80) {
+        local usize_len = vli_len(0);
+        local usize     = vli_value(0);
+        assert(usize_len > 0, "malformed xz block header: unterminated uncompressed size");
+        u8 uncompressed_size[usize_len];
+        if (usize_len > 1) {
+            print("    =", tostring(usize, 10), "bytes");
+        }
+    }
+
+    local i = 0;
+    while (i < filters) {
+        xz_filter_t filter;
+        i = i + 1;
+    }
+
+    local pad = hdr_size - 4 - (off() - start);
+    assert(pad >= 0, "malformed xz block header: the filters overflow the header");
+    if (pad > 0) {
+        u8 header_padding[pad];
+    }
+
+    local expected = crc("CRC-32/ISO-HDLC", hdr_size - 4, -(off() - start));
+    u32 header_crc32;
+    if (header_crc32 != expected) {
+        warning("block header CRC mismatch");
+    }
+}
+
+// One record per block: the unpadded size and the uncompressed size, both VLIs
+struct xz_index_record_t
+{
+    local unpadded_len = vli_len(0);
+    assert(unpadded_len > 0, "malformed xz index: unterminated record");
+    u8 unpadded_size[unpadded_len];
+
+    local uncompressed_len = vli_len(0);
+    assert(uncompressed_len > 0, "malformed xz index: unterminated record");
+    u8 uncompressed_size[uncompressed_len];
+}
+
+struct xz_stream_footer_t
+{
+    little_endian();
+
+    u32         footer_crc32;
+    u32         backward_size;
+    u8          reserved;
+    xz_check_t  check_type;
+    char        magic[2];
+
+    assert(magic == "YZ", "malformed xz stream: bad footer magic");
+    if (footer_crc32 != crc("CRC-32/ISO-HDLC", 6, -8)) {
+        warning("stream footer CRC mismatch");
+    }
+}
+
+// Walks the whole stream at the current offset without reading anything into a
+// file variable, returning its exact length, or 0 when it does not hold
+// together.
+fn stream_size()
+{
+    disable_print();
+    result = 0;
+
+    if (peek_u8(6) != 0) {
+        return;
+    }
+    if (peek_u32(8) != crc("CRC-32/ISO-HDLC", 2, 6)) {
+        return;
+    }
+
+    local check_len = check_size(peek_u8(7) & 0x0f);
+    local at        = 12;
+    local count     = 0;
+
+    while (count < 1000000) {
+        if (at + 1 > remaining_size()) {
+            return;
+        }
+
+        local first = peek_u8(at);
+        if (first == 0) {
+            // the index indicator: the blocks are over
+            local p = at + 1;
+
+            local n = vli_len(p);
+            if (n == 0) {
+                return;
+            }
+            local records = vli_value(p);
+            p = p + n;
+            if (records > 1000000) {
+                return;
+            }
+
+            local k = 0;
+            while (k < records) {
+                if (p + 2 > remaining_size()) {
+                    return;
+                }
+                n = vli_len(p);
+                if (n == 0) {
+                    return;
+                }
+                p = p + n;
+
+                n = vli_len(p);
+                if (n == 0) {
+                    return;
+                }
+                p = p + n;
+                k = k + 1;
+            }
+
+            // the index is padded to a four byte boundary, then its CRC32,
+            // then the 12 byte stream footer
+            p = at + align_up(p - at, 4) + 4 + 12;
+            if (p > remaining_size()) {
+                return;
+            }
+            if (peek(2, p - 2) != "YZ") {
+                return;
+            }
+
+            result = p;
+            return;
+        }
+
+        local hdr_size = (first + 1) * 4;
+        local flags    = peek_u8(at + 1);
+        if ((flags & 0x3c) != 0 || (flags & 0x40) == 0) {
+            // no compressed size recorded: the blocks cannot be walked
+            return;
+        }
+
+        local n = vli_len(at + 2);
+        if (n == 0) {
+            return;
+        }
+        local compressed = vli_value(at + 2);
+
+        at = at + hdr_size + align_up(compressed, 4) + check_len;
+        if (at > remaining_size()) {
+            return;
+        }
+        count = count + 1;
+    }
+}
+
+proc _identify_magic
+{
+    magic("\xfd\x37\x7a\x58\x5a\x00", 0);
+}
+
+// Six magic bytes, backed by the CRC32 the stream carries over its own two flag
+// bytes: together that is a ten byte check no compressed payload passes by
+// accident. The blocks are then walked to the index and the footer magic, which
+// both confirms the stream and gives its exact length.
+proc _identify
+{
+    little_endian();
+    if (peek_u32() != 0x587a37fd || peek_u16(4) != 0x005a) {
+        return;
+    }
+    result = stream_size();
+}
+
+proc
+{
+    little_endian();
+
+    xz_stream_header_t header;
+    local check_len = check_size(header.check_type);
+
+    while (peek_u8() != 0) {
+        local flags = peek_u8(1);
+        assert(flags & 0x40,
+               "this block does not record its compressed size, so the stream cannot be walked");
+        local compressed = vli_value(2);
+
+        xz_block_header_t block_header;
+
+        assert(compressed <= remaining_size(), "malformed xz block: runs past the end of the file");
+        u8 compressed_data[compressed];
+
+        local pad = align_up(compressed, 4) - compressed;
+        if (pad > 0) {
+            u8 block_padding[pad];
+        }
+        if (check_len > 0) {
+            u8 check[check_len];
+        }
+    }
+
+    local index_start = off();
+    u8    index_indicator;
+
+    local records_len = vli_len(0);
+    assert(records_len > 0, "malformed xz index: unterminated record count");
+    local records = vli_value(0);
+    u8 record_count[records_len];
+
+    local i = 0;
+    while (i < records) {
+        xz_index_record_t record;
+        i = i + 1;
+    }
+
+    local index_pad = align_up(off() - index_start, 4) - (off() - index_start);
+    if (index_pad > 0) {
+        u8 index_padding[index_pad];
+    }
+    u32 index_crc32;
+
+    xz_stream_footer_t footer;
+
+    assert((footer.backward_size + 1) * 4 == off() - 12 - index_start,
+           "malformed xz stream: the footer's backward size disagrees with the index");
+}

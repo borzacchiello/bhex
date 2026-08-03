@@ -1,0 +1,286 @@
+// Copyright (c) 2022-2026, bageyelet
+
+// UBIFS, the flash filesystem that sits on top of UBI volumes. Little endian
+// throughout.
+//
+// Everything in the image is a node, and every node starts with the same 24
+// byte common header carrying its own length and a CRC over its whole body.
+// That CRC is CRC-32/JAMCRC — the standard polynomial with an initial value of
+// all ones and no final inversion — and verifying it is what makes a node here
+// unmistakable.
+//
+// The superblock is the first node of the image, in LEB 0; the two master nodes
+// live one and two erase blocks further in.
+
+enum ubifs_node_type_t : u8
+{
+    INODE        = 0,
+    DATA         = 1,
+    DENTRY       = 2,
+    XENTRY       = 3,
+    TRUNCATION   = 4,
+    PADDING      = 5,
+    SUPERBLOCK   = 6,
+    MASTER       = 7,
+    REFERENCE    = 8,
+    INDEX        = 9,
+    COMMIT_START = 10,
+    ORPHAN       = 11,
+    AUTH         = 12,
+    SIGNATURE    = 13
+}
+
+enum ubifs_compr_t : u16
+{
+    NONE = 0,
+    LZO  = 1,
+    ZLIB = 2,
+    ZSTD = 3
+}
+
+enum ubifs_key_hash_t : u8
+{
+    R5   = 0,
+    TEST = 1
+}
+
+orenum ubifs_sb_flags_t : u32
+{
+    BIG_LPT        = 0x01,
+    SPACE_FIXUP    = 0x02,
+    DOUBLE_HASH    = 0x04,
+    ENCRYPTION     = 0x08,
+    AUTHENTICATION = 0x10
+}
+
+// The CRC covers the node from just past the crc field to the end of its
+// recorded length, and is read right after the 24 byte common header — so the
+// region starts 16 bytes behind the cursor
+fn node_crc(len)
+{
+    disable_print();
+    result = crc("CRC-32/JAMCRC", len - 8, -16);
+}
+
+// The common header every node begins with
+struct ubifs_ch_t
+{
+    little_endian();
+
+    u32               magic;
+    u32               crc;
+    u64               sqnum;
+    u32               len;
+    ubifs_node_type_t node_type;
+    u8                group_type;
+    u8                padding[2];
+
+    assert(magic == 0x06101831, "not a UBIFS node: bad magic");
+    assert(len >= 24 && len - 24 <= remaining_size(),
+           "malformed UBIFS node: the recorded length does not fit in the file");
+
+    if (crc != node_crc(len)) {
+        warning("node CRC mismatch");
+    }
+}
+
+struct ubifs_sb_node_t
+{
+    little_endian();
+
+    local start = off();
+    ubifs_ch_t ch;
+
+    u8               padding[2];
+    ubifs_key_hash_t key_hash;
+    u8               key_fmt;
+    ubifs_sb_flags_t flags;
+    u32              min_io_size;
+    u32              leb_size;
+    u32              leb_cnt;
+    u32              max_leb_cnt;
+    u64              max_bud_bytes;
+    u32              log_lebs;
+    u32              lpt_lebs;
+    u32              orph_lebs;
+    u32              jhead_cnt;
+    u32              fanout;
+    u32              lsave_cnt;
+    u32              fmt_version;
+    ubifs_compr_t    default_compr;
+    u8               padding1[2];
+    u32              rp_uid;
+    u32              rp_gid;
+    u64              rp_size;
+    u32              time_gran;
+    u8               uuid[16];
+    u32              ro_compat_version;
+    u8               hmac[64];
+    u8               hmac_wkm[64];
+    u16              hash_algo;
+    u8               hash_mst[64];
+
+    assert(leb_size > 0 && min_io_size > 0,
+           "malformed UBIFS superblock: zero erase block or I/O size");
+
+    // the node is a fixed 4096 bytes; whatever is left of it is padding
+    local pad = ch.len - (off() - start);
+    if (pad > 0) {
+        u8 padding2[pad];
+    }
+}
+
+struct ubifs_mst_node_t
+{
+    little_endian();
+
+    local start = off();
+    ubifs_ch_t ch;
+
+    u64 highest_inum;
+    u64 cmt_no;
+    u32 flags;
+    u32 log_lnum;
+    u32 root_lnum;
+    u32 root_offs;
+    u32 root_len;
+    u32 gc_lnum;
+    u32 ihead_lnum;
+    u32 ihead_offs;
+    u64 index_size;
+    u64 total_free;
+    u64 total_dirty;
+    u64 total_used;
+    u64 total_dead;
+    u64 total_dark;
+    u32 lpt_lnum;
+    u32 lpt_offs;
+    u32 nhead_lnum;
+    u32 nhead_offs;
+    u32 ltab_lnum;
+    u32 ltab_offs;
+    u32 lsave_lnum;
+    u32 lsave_offs;
+    u32 lscan_lnum;
+    u32 empty_lebs;
+    u32 idx_lebs;
+    u32 leb_cnt;
+
+    local pad = ch.len - (off() - start);
+    if (pad > 0) {
+        u8 padding[pad];
+    }
+}
+
+// Any other node: the header, then its body as bytes
+struct ubifs_generic_node_t
+{
+    little_endian();
+
+    local start = off();
+    ubifs_ch_t ch;
+
+    local body = ch.len - (off() - start);
+    if (body > 0) {
+        u8 body_data[body];
+    }
+}
+
+proc _identify_magic
+{
+    magic("\x31\x18\x10\x06", 0);
+}
+
+// A UBIFS image begins with its superblock, so that is what this looks for: the
+// node magic, a superblock node type, a length of exactly the 4096 bytes the
+// format fixes, a geometry that makes sense, and then the node's own CRC. A
+// four byte magic backed by a CRC over four kilobytes is not something
+// arbitrary data produces.
+//
+// The extent reported is the whole filesystem, which the superblock gives as
+// the erase block size times the count.
+proc _identify
+{
+    little_endian();
+    if (peek_u32() != 0x06101831) {
+        return;
+    }
+    if (peek_u8(20) != 6 || peek_u32(16) != 4096) {
+        return;
+    }
+
+    local leb_size = peek_u32(36);
+    local leb_cnt  = peek_u32(40);
+    local min_io   = peek_u32(32);
+    if (leb_size < 4096 || leb_cnt == 0 || min_io == 0 ||
+        (min_io & (min_io - 1)) != 0) {
+        return;
+    }
+
+    if (peek_u32(4) != crc("CRC-32/JAMCRC", 4088, 8)) {
+        return;
+    }
+
+    result = u64(leb_size) * leb_cnt;
+    if (result > remaining_size()) {
+        // a truncated image, or a bare superblock: report the node itself
+        result = min(4096, remaining_size());
+    }
+}
+
+proc
+{
+    little_endian();
+
+    local base = off();
+    local kind = peek_u8(20);
+
+    if (kind == ubifs_node_type_t::SUPERBLOCK) {
+        ubifs_sb_node_t superblock;
+
+        // the two master nodes live in the erase blocks behind the superblock
+        local leb_size = superblock.leb_size;
+        local i        = 1;
+        while (i <= 2) {
+            local at = base + u64(leb_size) * i;
+            if (at + 24 <= size() && peek_u32(at - off()) == 0x06101831) {
+                seek(at);
+                ubifs_mst_node_t master;
+            }
+            i = i + 1;
+        }
+    } elif (kind == ubifs_node_type_t::MASTER) {
+        ubifs_mst_node_t master;
+    } else {
+        ubifs_generic_node_t node;
+    }
+}
+
+// Walks the nodes from the current offset, printing what each one is. Erased
+// flash reads as 0xff, which is what ends the walk. Reachable as "t ubifs.nodes".
+proc nodes
+{
+    little_endian();
+    disable_print();
+
+    local count = 0;
+    while (count < 100000 && remaining_size() >= 24) {
+        if (peek_u32() != 0x06101831) {
+            return;
+        }
+
+        local len  = peek_u32(16);
+        local kind = peek_u8(20);
+        if (len < 24 || len > remaining_size()) {
+            return;
+        }
+
+        print(tostring(off(), 16), "node type", tostring(kind, 10),
+              "len", tostring(len, 10));
+
+        // nodes are aligned to 8 bytes
+        fwd(align_up(len, 8));
+        count = count + 1;
+    }
+    result = count;
+}

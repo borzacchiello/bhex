@@ -1,0 +1,251 @@
+// Copyright (c) 2022-2026, bageyelet
+
+// The pcapng capture format, the one that replaced libpcap's. A file is a
+// sequence of blocks, each of which repeats its own length at both ends — which
+// is what lets a reader walk the file backwards, and what makes a block easy to
+// confirm here.
+//
+// The block type that opens a section, 0x0A0D0D0A, reads the same in either
+// byte order on purpose; the byte order magic inside it is what settles which
+// way the rest of the file goes.
+
+enum pcapng_block_type_t : u32
+{
+    INTERFACE_DESCRIPTION = 0x00000001,
+    PACKET_OBSOLETE       = 0x00000002,
+    SIMPLE_PACKET         = 0x00000003,
+    NAME_RESOLUTION       = 0x00000004,
+    INTERFACE_STATISTICS  = 0x00000005,
+    ENHANCED_PACKET       = 0x00000006,
+    IRIG_TIMESTAMP        = 0x00000007,
+    ARINC_429             = 0x00000008,
+    SYSTEMD_JOURNAL       = 0x00000009,
+    DECRYPTION_SECRETS    = 0x0000000a,
+    CUSTOM_COPYABLE       = 0x00000bad,
+    CUSTOM_PRIVATE        = 0x40000bad,
+    SECTION_HEADER        = 0x0a0d0d0a
+}
+
+enum pcapng_linktype_t : u16
+{
+    NULL_LOOPBACK       = 0,
+    ETHERNET            = 1,
+    PPP                 = 9,
+    FDDI                = 10,
+    RAW                 = 101,
+    IEEE802_11          = 105,
+    LINUX_SLL           = 113,
+    IEEE802_11_RADIOTAP = 127,
+    USB_LINUX_MMAPPED   = 220,
+    IPV4                = 228,
+    IPV6                = 229,
+    NFLOG               = 239,
+    LINUX_SLL2          = 276
+}
+
+// Every block ends with a list of these, closed by a code and length of zero
+struct pcapng_option_t
+{
+    u16 option_code;
+    u16 option_length;
+
+    assert(option_length <= remaining_size(), "malformed pcapng option: it runs past the end of the block");
+    if (option_length > 0) {
+        u8 option_value[option_length];
+
+        local pad = align_up(option_length, 4) - option_length;
+        if (pad > 0) {
+            u8 option_padding[pad];
+        }
+    }
+}
+
+struct pcapng_section_header_t
+{
+    u32 byte_order_magic;
+    u16 version_major;
+    u16 version_minor;
+    i64 section_length;
+}
+
+struct pcapng_interface_description_t
+{
+    pcapng_linktype_t linktype;
+    u16               reserved;
+    u32               snaplen;
+}
+
+struct pcapng_enhanced_packet_t
+{
+    u32 interface_id;
+    u32 timestamp_high;
+    u32 timestamp_low;
+    u32 captured_len;
+    u32 original_len;
+}
+
+struct pcapng_block_t
+{
+    local start = off();
+
+    pcapng_block_type_t block_type;
+    u32                 total_length;
+
+    assert(total_length >= 12 && (total_length & 3) == 0,
+           "malformed pcapng block: implausible total length");
+    assert(total_length - 8 <= remaining_size(),
+           "malformed pcapng block: it runs past the end of the file");
+
+    // the trailing copy of the length is not part of the body
+    local body_end = start + total_length - 4;
+
+    if (block_type == pcapng_block_type_t::SECTION_HEADER) {
+        pcapng_section_header_t section_header;
+    } elif (block_type == pcapng_block_type_t::INTERFACE_DESCRIPTION) {
+        pcapng_interface_description_t interface;
+    } elif (block_type == pcapng_block_type_t::ENHANCED_PACKET) {
+        pcapng_enhanced_packet_t packet;
+
+        assert(packet.captured_len <= body_end - off(),
+               "malformed enhanced packet: it does not fit in its block");
+        if (packet.captured_len > 0) {
+            u8 packet_data[packet.captured_len];
+
+            local pad = align_up(packet.captured_len, 4) - packet.captured_len;
+            if (pad > 0) {
+                u8 packet_padding[pad];
+            }
+        }
+    } elif (block_type == pcapng_block_type_t::SIMPLE_PACKET) {
+        u32 original_len;
+
+        local captured = body_end - off();
+        if (captured > 0) {
+            u8 packet_data[captured];
+        }
+    }
+
+    // whatever is left of the body is options, closed by a zero code and length
+    local more = 1;
+    while (more && off() + 4 <= body_end) {
+        if (peek_u32() == 0) {
+            more = 0;
+        }
+        pcapng_option_t option;
+    }
+    if (body_end - off() > 0) {
+        u8 block_tail[body_end - off()];
+    }
+
+    u32 total_length_trailer;
+    assert(total_length_trailer == total_length,
+           "malformed pcapng block: the two length fields disagree");
+}
+
+// 0 when the section header magic is not there, 1 for little endian, 2 for big
+fn pcapng_byte_order(at)
+{
+    disable_print();
+    little_endian();
+    result = 0;
+
+    if (peek_u32(at) != 0x0a0d0d0a) {
+        return;
+    }
+
+    local bom = peek_u32(at + 8);
+    if (bom == 0x1a2b3c4d) {
+        result = 1;
+    } elif (bom == 0x4d3c2b1a) {
+        result = 2;
+    }
+}
+
+// Walks the blocks from `at`, returning the offset just past the last complete
+// one. The endianness has to be set by the caller.
+fn walk_blocks(at)
+{
+    disable_print();
+    result = 0;
+
+    local p     = at;
+    local count = 0;
+    while (count < 10000000) {
+        if (p + 12 > remaining_size()) {
+            result = p;
+            return;
+        }
+
+        local total = peek_u32(p + 4);
+        if (total < 12 || (total & 3) != 0 || p + total > remaining_size()) {
+            result = p;
+            return;
+        }
+        // the length is repeated at the end of the block, and has to agree
+        if (peek_u32(p + total - 4) != total) {
+            return;
+        }
+
+        p     = p + total;
+        count = count + 1;
+    }
+    result = p;
+}
+
+proc _identify_magic
+{
+    // the same four bytes whichever way the file is written
+    magic("\x0a\x0d\x0d\x0a", 0);
+}
+
+// The section header block type is four bytes, and it is deliberately a
+// palindrome, so it says nothing about byte order on its own. The byte order
+// magic inside settles that, and then the blocks are walked: each one has to
+// repeat its length at both ends, which no run of arbitrary bytes does twice in
+// a row. The walk also gives the extent of the capture.
+proc _identify
+{
+    local order = pcapng_byte_order(0);
+    if (order == 0) {
+        return;
+    }
+    if (order == 2) {
+        big_endian();
+    }
+
+    // the section header block is at least type, length, magic, version,
+    // section length and the trailing length
+    if (peek_u32(4) < 28) {
+        return;
+    }
+    if (peek_u16(12) != 1) {
+        return;
+    }
+
+    result = walk_blocks(0);
+    if (result < 28) {
+        result = 0;
+    }
+}
+
+proc
+{
+    local order = pcapng_byte_order(0);
+    assert(order != 0, "not a pcapng capture: no section header block");
+    if (order == 2) {
+        big_endian();
+    }
+
+    while (remaining_size() >= 12) {
+        // a new section may switch byte order part way through the file
+        if (peek_u32() == 0x0a0d0d0a) {
+            local here = pcapng_byte_order(0);
+            if (here == 2) {
+                big_endian();
+            } elif (here == 1) {
+                little_endian();
+            }
+        }
+        pcapng_block_t block;
+    }
+}

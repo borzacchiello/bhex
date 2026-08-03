@@ -44,7 +44,8 @@ enum MachoFileType : u32
     MH_BUNDLE      = 8,
     MH_DYLIB_STUB  = 9,
     MH_DSYM        = 10,
-    MH_KEXT_BUNDLE = 11
+    MH_KEXT_BUNDLE = 11,
+    MH_FILESET     = 12
 }
 
 orenum MachoFlags : u32
@@ -331,6 +332,9 @@ struct MachoGenericCmd
 {
     MachoLoadCommandType cmd;
     u32                  cmdsize;
+
+    assert(cmdsize >= 8, "malformed load command: cmdsize is smaller than its own header");
+    assert(cmdsize - 8 <= remaining_size(), "malformed load command: runs past the end of the file");
     u8                   data[cmdsize - 8];
 }
 
@@ -366,6 +370,10 @@ fn processLoadCommands(ncmds, is64)
         local cmd_off  = off();
         local cmd_type = peek_u32();
         local cmd_size = peek_u32(4);
+
+        // without this the walk would seek back to where it started and read
+        // the same command over and over
+        assert(cmd_size >= 8, "malformed load command: cmdsize is smaller than its own header");
 
         if (cmd_type == MachoLoadCommandType::LC_SEGMENT) {
             MachoSegmentCmd LoadCommand;
@@ -466,8 +474,180 @@ fn processEmbeddedMacho(arch_offset)
 }
 
 
-// The four Mach-O magics and the two fat ones, in both byte orders -- exactly
-// the set "_identify" accepts
+// The cpu type with the ABI bits (64 bit, 32 bit on 64 bit) masked off, which
+// is what the architectures share: a header whose cpu type is none of these is
+// not a Mach-O header, whatever its first four bytes say
+fn machoKnownCpuType(ct)
+{
+    result = 0;
+
+    local base = ct & 0x00ffffff;
+    if (base == MachoCpuType::CPU_TYPE_VAX ||
+        base == MachoCpuType::CPU_TYPE_MC680x0 ||
+        base == MachoCpuType::CPU_TYPE_X86 ||
+        base == MachoCpuType::CPU_TYPE_MIPS ||
+        base == MachoCpuType::CPU_TYPE_MC98000 ||
+        base == MachoCpuType::CPU_TYPE_HPPA ||
+        base == MachoCpuType::CPU_TYPE_ARM ||
+        base == MachoCpuType::CPU_TYPE_MC88000 ||
+        base == MachoCpuType::CPU_TYPE_SPARC ||
+        base == MachoCpuType::CPU_TYPE_I860 ||
+        base == MachoCpuType::CPU_TYPE_POWERPC) {
+        result = 1;
+    }
+}
+
+// Everything the load commands point at, as a distance from the header: the
+// furthest one is where the image ends -- the code signature at the tail of
+// __LINKEDIT for a linked image, the symbol table behind the sections for an
+// object file. The offsets a slice of a universal binary carries are its own,
+// so this stays relative on purpose and the caller adds the header back.
+// Zero when the commands do not add up, which is what four bytes that only
+// happen to read as a magic give
+fn machoImageSize(hdr_off, hdr_size, is64, ncmds, sizeofcmds)
+{
+    local fsize = size();
+    local stop  = hdr_off + hdr_size + sizeofcmds;
+    if (stop > fsize) {
+        result = 0;
+        return;
+    }
+
+    local nlist_size = 12;
+    if (is64) {
+        nlist_size = 16;
+    }
+
+    local extent = hdr_size + sizeofcmds;
+    local p      = hdr_off + hdr_size;
+    local i      = 0;
+    while (i < ncmds) {
+        if (p + 8 > stop) {
+            result = 0;
+            return;
+        }
+        seek(p);
+        local cmd     = peek_u32();
+        local cmdsize = peek_u32(4);
+
+        // the commands are a packed table whose length the header gave: one
+        // that does not fit in it, or that does not advance, ends it
+        if (cmdsize < 8 || (cmdsize & 3) != 0 || p + cmdsize > stop) {
+            result = 0;
+            return;
+        }
+
+        local far = 0;
+        if (cmd == MachoLoadCommandType::LC_SEGMENT && cmdsize >= 56) {
+            far = peek_u32(32) + peek_u32(36);
+        } elif (cmd == MachoLoadCommandType::LC_SEGMENT_64 && cmdsize >= 72) {
+            far = peek_u64(40) + peek_u64(48);
+        } elif (cmd == MachoLoadCommandType::LC_SYMTAB && cmdsize >= 24) {
+            far = max(peek_u32(8) + peek_u32(12) * nlist_size,
+                      peek_u32(16) + peek_u32(20));
+        } elif ((cmd == MachoLoadCommandType::LC_DYLD_INFO ||
+                 cmd == MachoLoadCommandType::LC_DYLD_INFO_ONLY) &&
+                cmdsize >= 48) {
+            // rebase, bind, weak bind, lazy bind and export, each an offset
+            // and a size; the ones the image does not have are zero
+            far = max(peek_u32(8) + peek_u32(12), peek_u32(16) + peek_u32(20),
+                      peek_u32(24) + peek_u32(28), peek_u32(32) + peek_u32(36),
+                      peek_u32(40) + peek_u32(44));
+        } elif ((cmd == MachoLoadCommandType::LC_CODE_SIGNATURE ||
+                 cmd == MachoLoadCommandType::LC_SEGMENT_SPLIT_INFO ||
+                 cmd == MachoLoadCommandType::LC_FUNCTION_STARTS ||
+                 cmd == MachoLoadCommandType::LC_DATA_IN_CODE ||
+                 cmd == MachoLoadCommandType::LC_DYLD_EXPORTS_TRIE ||
+                 cmd == MachoLoadCommandType::LC_DYLD_CHAINED_FIXUPS) &&
+                cmdsize >= 16) {
+            // the linkedit data commands all carry the same pair
+            far = peek_u32(8) + peek_u32(12);
+        }
+
+        if (far > extent) {
+            extent = far;
+        }
+        p = p + cmdsize;
+        i = i + 1;
+    }
+
+    if (hdr_off + extent > fsize) {
+        result = 0;
+        return;
+    }
+    result = extent;
+}
+
+// A universal binary is the fat header, the table of slices and the slices
+// themselves, so the end of the furthest slice is where it stops. Every slice
+// has to fit and has to be a Mach-O itself, which is what tells a fat header
+// apart from a Java class file: they were given the same 0xcafebabe magic, and
+// the version numbers a class file has where the slice count goes read as a
+// perfectly plausible one
+fn machoFatSize(at, entry_size)
+{
+    result = 0;
+
+    local fsize = size();
+    seek(at);
+    local nfat = peek_u32(4);
+
+    // the slice table has to fit in a page for dyld to look at it, and the
+    // real files have a handful of slices
+    if (nfat == 0 || nfat > 32) {
+        return;
+    }
+
+    local table_end = 8 + nfat * entry_size;
+    if (at + table_end > fsize) {
+        return;
+    }
+
+    local extent = table_end;
+    local i      = 0;
+    while (i < nfat) {
+        seek(at + 8 + i * entry_size);
+        local cputype    = peek_u32();
+        local slice_off  = 0;
+        local slice_size = 0;
+        if (entry_size == 20) {
+            slice_off  = peek_u32(8);
+            slice_size = peek_u32(12);
+        } else {
+            slice_off  = peek_u64(8);
+            slice_size = peek_u64(16);
+        }
+
+        // the slices come after the table they are listed in, and inside the
+        // file that holds them
+        if (machoKnownCpuType(cputype) == 0 || slice_off < table_end ||
+            slice_size < 4 || at + slice_off + slice_size > fsize) {
+            return;
+        }
+
+        seek(at + slice_off);
+        local slice_magic = peek_u32();
+        // the four thin magics are the same set read either way round, so the
+        // endianness of this read does not matter
+        if (slice_magic != MachoMagic::MH_MAGIC &&
+            slice_magic != MachoMagic::MH_CIGAM &&
+            slice_magic != MachoMagic::MH_MAGIC_64 &&
+            slice_magic != MachoMagic::MH_CIGAM_64) {
+            return;
+        }
+
+        if (slice_off + slice_size > extent) {
+            extent = slice_off + slice_size;
+        }
+        i = i + 1;
+    }
+
+    result = extent;
+}
+
+// The four thin magics, and the fat one in the only byte order it has: the fat
+// header is defined big endian, so a universal binary always starts with the
+// same bytes, whatever the slices inside it are
 proc _identify_magic
 {
     magic("\xce\xfa\xed\xfe", 0);
@@ -476,41 +656,66 @@ proc _identify_magic
     magic("\xfe\xed\xfa\xcf", 0);
     magic("\xca\xfe\xba\xbe", 0);
     magic("\xca\xfe\xba\xbf", 0);
-    magic("\xbe\xba\xfe\xca", 0);
-    magic("\xbf\xba\xfe\xca", 0);
 }
 
-// The four Mach-O magics and the two fat/universal ones, in both byte orders.
-// They are 32 bits of deliberately improbable value, so the magic alone is
-// the whole check -- note that FAT_MAGIC is also the Java class file magic
+// Four bytes of magic are not much to go on, and the two the fat header shares
+// with the Java class file are not even four: what makes the answer worth
+// something is the header behind them, whose every field is constrained, and
+// then the parts it points at all landing inside the file. The size reported
+// is the whole image -- a universal binary covers the slices inside it, which
+// is what keeps them from being identified all over again as they are found
 proc _identify
 {
     little_endian();
+
+    local start = off();
     local magic = peek_u32();
 
-    // the load commands follow the header, and the header says how long they
-    // are: that is as far as identification can see without parsing them
-    if (magic == MachoMagic::MH_MAGIC_64 || magic == MachoMagic::MH_CIGAM_64) {
-        if (magic == MachoMagic::MH_CIGAM_64) {
+    if (magic == MachoMagic::MH_MAGIC || magic == MachoMagic::MH_CIGAM ||
+        magic == MachoMagic::MH_MAGIC_64 || magic == MachoMagic::MH_CIGAM_64) {
+        if (magic == MachoMagic::MH_CIGAM || magic == MachoMagic::MH_CIGAM_64) {
             big_endian();
         }
-        result = 32 + peek_u32(20);
-    } elif (magic == MachoMagic::MH_MAGIC || magic == MachoMagic::MH_CIGAM) {
-        if (magic == MachoMagic::MH_CIGAM) {
-            big_endian();
+        local is64     = 0;
+        local hdr_size = 28;
+        if (magic == MachoMagic::MH_MAGIC_64 ||
+            magic == MachoMagic::MH_CIGAM_64) {
+            is64     = 1;
+            hdr_size = 32;
         }
-        result = 28 + peek_u32(20);
-    } elif (magic == MachoMagic::FAT_MAGIC || magic == MachoMagic::FAT_CIGAM ||
-            magic == MachoMagic::FAT_MAGIC_64 ||
+
+        local cputype    = peek_u32(4);
+        local filetype   = peek_u32(12);
+        local ncmds      = peek_u32(16);
+        local sizeofcmds = peek_u32(20);
+
+        // no image has no load commands, none of them is shorter than its own
+        // header, and the table they make has to be here to be read
+        if (machoKnownCpuType(cputype) == 0 ||
+            filetype < MachoFileType::MH_OBJECT ||
+            filetype > MachoFileType::MH_FILESET || ncmds == 0 ||
+            ncmds > 4096 || sizeofcmds < ncmds * 8 ||
+            hdr_size + sizeofcmds > remaining_size()) {
+            return;
+        }
+
+        result = machoImageSize(start, hdr_size, is64, ncmds, sizeofcmds);
+        if (result == 0) {
+            // the commands point outside the file, or stop adding up part way
+            // through: the header and the table are still here to report
+            result = hdr_size + sizeofcmds;
+        }
+    } elif (magic == MachoMagic::FAT_CIGAM ||
             magic == MachoMagic::FAT_CIGAM_64) {
-        // a fat header is 8 bytes and the slices follow; note this magic is
-        // also the Java class file one
-        result = 8;
+        big_endian();
+        local entry_size = 20;
+        if (magic == MachoMagic::FAT_CIGAM_64) {
+            entry_size = 32;
+        }
+        result = machoFatSize(start, entry_size);
     }
 
-    if (result > remaining_size()) {
-        result = 4;
-    }
+    seek(start);
 }
 
 proc

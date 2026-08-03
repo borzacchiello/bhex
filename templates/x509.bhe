@@ -1,0 +1,157 @@
+// Copyright (c) 2022-2026, bageyelet
+
+// X.509 certificates in DER form, which is what firmware images carry when they
+// carry certificates at all. PEM files are these bytes base64 encoded between
+// header lines, so this template wants the decoded form.
+//
+// DER is tag-length-value all the way down, and the length of the outermost
+// SEQUENCE gives the exact extent of the certificate. That self-describing
+// structure is also what makes the format recognisable: the tags of the first
+// few nested elements are fixed by the standard.
+//
+//   Certificate ::= SEQUENCE {
+//       tbsCertificate  TBSCertificate,
+//       signatureAlgorithm  AlgorithmIdentifier,
+//       signatureValue  BIT STRING }
+
+enum der_tag_t : u8
+{
+    BOOLEAN           = 0x01,
+    INTEGER           = 0x02,
+    BIT_STRING        = 0x03,
+    OCTET_STRING      = 0x04,
+    NULL_VALUE        = 0x05,
+    OBJECT_IDENTIFIER = 0x06,
+    UTF8_STRING       = 0x0c,
+    PRINTABLE_STRING  = 0x13,
+    IA5_STRING        = 0x16,
+    UTC_TIME          = 0x17,
+    GENERALIZED_TIME  = 0x18,
+    SEQUENCE          = 0x30,
+    SET               = 0x31,
+    CONTEXT_0         = 0xa0,
+    CONTEXT_3         = 0xa3
+}
+
+// The number of bytes the length field at `at` occupies
+fn der_len_size(at)
+{
+    disable_print();
+    local first = peek_u8(at);
+    if ((first & 0x80) == 0) {
+        result = 1;
+        return;
+    }
+    result = 1 + (first & 0x7f);
+}
+
+// The value the length field at `at` encodes
+fn der_len_value(at)
+{
+    disable_print();
+    result = 0;
+
+    local first = peek_u8(at);
+    if ((first & 0x80) == 0) {
+        result = first;
+        return;
+    }
+
+    local n = first & 0x7f;
+    if (n == 0 || n > 4) {
+        // indefinite length, or one too long to be a certificate
+        return;
+    }
+
+    local v = 0;
+    local i = 0;
+    while (i < n) {
+        v = (v << 8) | peek_u8(at + 1 + i);
+        i = i + 1;
+    }
+    result = v;
+}
+
+// One tag-length-value. The contents of a constructed element are left as bytes:
+// walking the whole tree would print thousands of lines for a certificate.
+struct der_tlv_t
+{
+    der_tag_t tag;
+
+    local size_bytes = der_len_size(0);
+    local length     = der_len_value(0);
+    assert(size_bytes >= 1 && size_bytes <= 5, "malformed DER: bad length field");
+
+    u8 length_field[size_bytes];
+
+    assert(length <= remaining_size(), "malformed DER: the element runs past the end of the file");
+    if (length > 0) {
+        u8 value[length];
+    }
+}
+
+proc _identify_magic
+{
+    // a certificate is a SEQUENCE whose length needs two or three bytes: 0x82
+    // covers everything from 256 bytes to 64 KiB, which is every real one
+    magic("\x30\x82", 0);
+}
+
+// DER has no magic, so the shape of the thing has to carry the weight: the
+// outermost element is a SEQUENCE whose length accounts for the whole file, the
+// first element inside it is the tbsCertificate SEQUENCE, and inside that comes
+// either the explicit version tag or the serial number. Requiring all three,
+// and requiring the outer length to land exactly on the end of a candidate,
+// leaves very little room.
+proc _identify
+{
+    if (peek_u8() != 0x30 || peek_u8(1) != 0x82) {
+        return;
+    }
+
+    local total = 4 + der_len_value(1);
+    if (total < 64 || total > remaining_size()) {
+        return;
+    }
+
+    // tbsCertificate: a SEQUENCE immediately inside
+    if (peek_u8(4) != 0x30) {
+        return;
+    }
+    local inner_len_size = der_len_size(5);
+    local inner_len      = der_len_value(5);
+    if (inner_len == 0 || 4 + 1 + inner_len_size + inner_len > total) {
+        return;
+    }
+
+    // and inside that, [0] EXPLICIT version, or the serial number
+    local first = peek_u8(5 + inner_len_size);
+    if (first != 0xa0 && first != 0x02) {
+        return;
+    }
+
+    result = total;
+}
+
+proc
+{
+    local base = off();
+
+    der_tag_t certificate_tag;
+    assert(certificate_tag == der_tag_t::SEQUENCE,
+           "not a DER certificate: the outermost element is not a SEQUENCE");
+
+    local len_size = der_len_size(0);
+    local total    = der_len_value(0);
+    u8 certificate_length[len_size];
+
+    print("  certificate is", tostring(total + 1 + len_size, 10), "bytes");
+    assert(total <= remaining_size(), "truncated certificate: the outer length runs past the end of the file");
+
+    // the three elements of a Certificate
+    der_tlv_t tbs_certificate;
+    der_tlv_t signature_algorithm;
+    der_tlv_t signature_value;
+
+    seek(base + 1 + len_size + total);
+}

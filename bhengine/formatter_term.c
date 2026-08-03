@@ -55,7 +55,13 @@ static u64_t fmt_term_array_limit(FormatterTerm* this)
 // column of its level eats into it instead of pushing the whole line right
 static u32_t fmt_term_name_width(FormatterTerm* this)
 {
-    return (u32_t)this->super->max_fvar_len + this->print_off;
+    // The true depth is still tracked, so pushing and popping stay balanced;
+    // it just stops being turned into indentation past FMT_PRINT_MAX_DEPTH
+    u32_t off = this->print_off;
+    if (off > FMT_PRINT_MAX_DEPTH * FMT_PRINT_OFF_STEP)
+        off = FMT_PRINT_MAX_DEPTH * FMT_PRINT_OFF_STEP;
+
+    return (u32_t)this->super->max_fvar_len + off;
 }
 
 static void fmt_term_dispose(FormatterTerm* fmt) { bhex_free(fmt); }

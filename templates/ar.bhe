@@ -1,0 +1,107 @@
+// Copyright (c) 2022-2026, bageyelet
+
+// The `ar` archive: the format of static libraries, and of Debian packages,
+// which are an ar archive of debian-binary, control.tar.* and data.tar.*.
+//
+// Everything is ASCII text: an 8 byte signature, then a 60 byte header per
+// member whose numeric fields are written as decimal (the mode is octal), and
+// whose payload is padded to an even length by a byte the size does not count.
+
+// The fixed two bytes that close every member header, and the cheapest way to
+// tell a real header from text that happens to look like one
+fn member_size(at)
+{
+    disable_print();
+    result = to_int(trim(printable(peek(10, at + 48))), 10);
+}
+
+struct ar_member_t
+{
+    char name[16];
+    char mtime[12];
+    char uid[6];
+    char gid[6];
+    char mode[8];
+    char size[10];
+    char fmag[2];
+
+    assert(fmag == "\x60\x0a", "malformed ar member: bad header terminator");
+
+    local data_len = to_int(trim(printable(size)), 10);
+    assert(data_len >= 0 && data_len <= remaining_size(),
+           "malformed ar member: size runs past the end of the file");
+
+    if (data_len > 0) {
+        u8 data[data_len];
+    }
+
+    // odd length members are padded to even with a newline
+    if ((data_len & 1) && remaining_size() > 0) {
+        u8 padding;
+    }
+}
+
+// Walks the members from `at`, returning the offset just past the last one, or
+// 0 when the chain does not hold together.
+fn archive_size(at)
+{
+    disable_print();
+    result = 0;
+
+    local p     = at;
+    local count = 0;
+    while (count < 1000000) {
+        if (p == remaining_size()) {
+            result = p;
+            return;
+        }
+        if (p + 60 > remaining_size()) {
+            return;
+        }
+        if (peek(2, p + 58) != "\x60\x0a") {
+            return;
+        }
+
+        local data_len = member_size(p);
+        if (data_len < 0) {
+            return;
+        }
+
+        p = p + 60 + data_len + (data_len & 1);
+        if (p > remaining_size()) {
+            return;
+        }
+        count = count + 1;
+    }
+}
+
+proc _identify_magic
+{
+    magic("!<arch>\x0a", 0);
+}
+
+// The eight byte signature is printable text, so the first member header behind
+// it has to be real: its two byte terminator sits at a fixed distance, and the
+// sizes have to chain to the end of the file. That walk is also what gives the
+// exact length of the archive.
+proc _identify
+{
+    if (peek(8) != "!<arch>\x0a") {
+        return;
+    }
+    if (remaining_size() < 68 || peek(2, 66) != "\x60\x0a") {
+        return;
+    }
+
+    result = archive_size(8);
+}
+
+proc
+{
+    char magic[8];
+    assert(magic == "!<arch>\x0a", "not an ar archive: bad magic");
+
+    while (remaining_size() >= 60) {
+        ar_member_t member;
+    }
+}

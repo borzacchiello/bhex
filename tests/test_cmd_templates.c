@@ -17,6 +17,31 @@
 #include "data/not_kitty_png.h"
 #include "data/sample_rpm.h"
 #include "data/sample_zip.h"
+#include "data/sample_7z.h"
+#include "data/sample_bzip2.h"
+#include "data/sample_cpio.h"
+#include "data/sample_dtb.h"
+#include "data/sample_uimage.h"
+#include "data/sample_xz.h"
+#include "data/sample_zstd.h"
+#include "data/sample_ar.h"
+#include "data/sample_javaclass.h"
+#include "data/sample_pcap.h"
+#include "data/sample_pcapng.h"
+#include "data/sample_riff.h"
+#include "data/sample_sqlite3.h"
+#include "data/sample_ubifs.h"
+#include "data/sample_ext.h"
+#include "data/sample_fat.h"
+#include "data/sample_gpt.h"
+#include "data/sample_mbr.h"
+#include "data/sample_dex.h"
+#include "data/sample_gif.h"
+#include "data/sample_ogg.h"
+#include "data/sample_sfnt.h"
+#include "data/sample_wasm.h"
+#include "data/sample_x509.h"
+#include "data/sample_tar.h"
 
 #ifndef TEST
 #define TEST(name) test_##name
@@ -1774,6 +1799,1673 @@ int TEST(template_fat_macho_1)(void)
         dummyfilebuffer_create(sample_fat_macho, sizeof(sample_fat_macho));
     ASSERT(tfb != NULL);
     ASSERT(exec_commands_on("t ./templates/macho.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_sevenzip_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000          header: \n"
+        "b+00000000               magic: 377abcaf271c\n"
+        "b+00000006       version_major: 00\n"
+        "b+00000007       version_minor: 04\n"
+        "b+00000008  start_header_crc32: 6526163d\n"
+        "b+0000000c  next_header_offset: 0000000000000032\n"
+        "b+00000014    next_header_size: 0000000000000052\n"
+        "b+0000001c   next_header_crc32: eaa9e7ca\n"
+        "b+00000020  packed_streams: e00071002a5d00311a08d4f5ca141d2a...\n"
+        "b+00000052     next_header: \n"
+        "b+00000052                  id: kHeader\n"
+        "b+00000053     main_streams_id: kMainStreamsInfo\n"
+        "b+00000054           pack_info: \n"
+        "b+00000054                      id: kPackInfo\n"
+        "b+00000055                pack_pos: \n"
+        "b+00000055                      number: 00\n"
+        "b+00000056        num_pack_streams: \n"
+        "b+00000056                      number: 01\n"
+        "b+00000057                 size_id: kSize\n"
+        "b+00000058               pack_size: \n"
+        "b+00000058                      number: 32\n"
+        "b+00000059                  end_id: kEnd\n"
+        "b+0000005a         unpack_info: \n"
+        "b+0000005a                      id: kUnPackInfo\n"
+        "b+0000005b               folder_id: kFolder\n"
+        "b+0000005c             num_folders: \n"
+        "b+0000005c                      number: 01\n"
+        "b+0000005d                external: 00\n"
+        "b+0000005e                  folder: \n"
+        "b+0000005e                  num_coders: \n"
+        "b+0000005e                          number: 01\n"
+        "b+0000005f                 coder_flags: 21\n"
+        "b+00000060                    coder_id: 21\n"
+        "    coder: LZMA2\n"
+        "b+00000061             properties_size: \n"
+        "b+00000061                          number: 01\n"
+        "b+00000062                  properties: 00\n"
+        "b+00000063                sizes_id: kCodersUnPackSize\n"
+        "b+00000064             unpack_size: \n"
+        "b+00000064                      number: 72\n"
+        "";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_7z, sizeof(sample_7z));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/7z.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_bzip2_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000           header: \n"
+        "b+00000000                magic: 'BZh'\n"
+        "b+00000003                level: 9\n"
+        "b+00000004      first_block: \n"
+        "b+00000004          block_magic: 314159265359\n"
+        "b+0000000a            block_crc: 21fb1ef0\n"
+        "b+0000000e  compressed_data: 000011918040053646dc60200050a1a6...\n"
+        "";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_bzip2, sizeof(sample_bzip2));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/bzip2.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_cpio_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000     entry: \n"
+        "b+00000000         magic: '070701'\n"
+        "b+00000006           ino: '00000001'\n"
+        "b+0000000e          mode: '000081A4'\n"
+        "b+00000016           uid: '00000000'\n"
+        "b+0000001e           gid: '00000000'\n"
+        "b+00000026         nlink: '00000001'\n"
+        "b+0000002e         mtime: '00000000'\n"
+        "b+00000036      filesize: '0000000B'\n"
+        "b+0000003e      devmajor: '00000000'\n"
+        "b+00000046      devminor: '00000000'\n"
+        "b+0000004e     rdevmajor: '00000000'\n"
+        "b+00000056     rdevminor: '00000000'\n"
+        "b+0000005e      namesize: '0000000A'\n"
+        "b+00000066         check: '00000000'\n"
+        "b+0000006e          name: 'hello.txt'\n"
+        "b+00000078          data: 68656c6c6f20626865780a\n"
+        "b+00000083  data_padding: 00\n"
+        "b+00000084     entry: \n"
+        "b+00000084         magic: '070701'\n"
+        "b+0000008a           ino: '00000002'\n"
+        "b+00000092          mode: '000041ED'\n"
+        "b+0000009a           uid: '00000000'\n"
+        "b+000000a2           gid: '00000000'\n"
+        "b+000000aa         nlink: '00000001'\n"
+        "b+000000b2         mtime: '00000000'\n"
+        "b+000000ba      filesize: '00000000'\n"
+        "b+000000c2      devmajor: '00000000'\n"
+        "b+000000ca      devminor: '00000000'\n"
+        "b+000000d2     rdevmajor: '00000000'\n"
+        "b+000000da     rdevminor: '00000000'\n"
+        "b+000000e2      namesize: '00000004'\n"
+        "b+000000ea         check: '00000000'\n"
+        "b+000000f2          name: 'dir'\n"
+        "b+000000f6  name_padding: 0000\n"
+        "b+000000f8     entry: \n"
+        "b+000000f8         magic: '070701'\n"
+        "b+000000fe           ino: '00000000'\n"
+        "b+00000106          mode: '00000000'\n"
+        "b+0000010e           uid: '00000000'\n"
+        "b+00000116           gid: '00000000'\n"
+        "b+0000011e         nlink: '00000001'\n"
+        "b+00000126         mtime: '00000000'\n"
+        "b+0000012e      filesize: '00000000'\n"
+        "b+00000136      devmajor: '00000000'\n"
+        "b+0000013e      devminor: '00000000'\n"
+        "b+00000146     rdevmajor: '00000000'\n"
+        "b+0000014e     rdevminor: '00000000'\n"
+        "b+00000156      namesize: '0000000B'\n"
+        "b+0000015e         check: '00000000'\n"
+        "b+00000166          name: 'TRAILER!!!'\n"
+        "b+00000171  name_padding: 000000\n"
+        "";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_cpio, sizeof(sample_cpio));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/cpio.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_dtb_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000           header: \n"
+        "b+00000000                magic: d00dfeed\n"
+        "b+00000004            totalsize: 00000151\n"
+        "b+00000008        off_dt_struct: 00000038\n"
+        "b+0000000c       off_dt_strings: 0000010c\n"
+        "b+00000010       off_mem_rsvmap: 00000028\n"
+        "b+00000014              version: 00000011\n"
+        "b+00000018    last_comp_version: 00000010\n"
+        "b+0000001c      boot_cpuid_phys: 00000000\n"
+        "b+00000020      size_dt_strings: 00000045\n"
+        "b+00000024       size_dt_struct: 000000d4\n"
+        "b+00000028  reserved_memory: \n"
+        "b+00000028              address: 0000000000000000\n"
+        "b+00000030                 size: 0000000000000000\n"
+        "b+00000038             node: \n"
+        "b+00000038                token: BEGIN_NODE\n"
+        "b+0000003c                 name: ''\n"
+        "b+0000003d         name_padding: 000000\n"
+        "  property: #address-cells\n"
+        "b+00000040         property: \n"
+        "b+00000040                token: PROP\n"
+        "b+00000044            value_len: 00000004\n"
+        "b+00000048             name_off: 00000000\n"
+        "b+0000004c                value: 00000001\n"
+        "  property: #size-cells\n"
+        "b+00000050         property: \n"
+        "b+00000050                token: PROP\n"
+        "b+00000054            value_len: 00000004\n"
+        "b+00000058             name_off: 0000000f\n"
+        "b+0000005c                value: 00000001\n"
+        "  property: model\n"
+        "b+00000060         property: \n"
+        "b+00000060                token: PROP\n"
+        "b+00000064            value_len: 00000010\n"
+        "b+00000068             name_off: 0000001b\n"
+        "b+0000006c                value: 62686578207465737420626f61726400\n"
+        "  property: compatible\n"
+        "b+0000007c         property: \n"
+        "b+0000007c                token: PROP\n"
+        "b+00000080            value_len: 0000000f\n"
+        "b+00000084             name_off: 00000021\n"
+        "b+00000088                value: 626865782c74657374626f61726400\n"
+        "b+00000097        value_padding: 00\n"
+        "b+00000098             node: \n"
+        "b+00000098                token: BEGIN_NODE\n"
+        "b+0000009c                 name: 'memory@40000000'\n"
+        "  property: device_type\n"
+        "b+000000ac         property: \n"
+        "b+000000ac                token: PROP\n"
+        "b+000000b0            value_len: 00000007\n"
+        "b+000000b4             name_off: 0000002c\n"
+        "b+000000b8                value: 6d656d6f727900\n"
+        "b+000000bf        value_padding: 00\n"
+        "  property: reg\n"
+        "b+000000c0         property: \n"
+        "b+000000c0                token: PROP\n"
+        "b+000000c4            value_len: 00000008\n"
+        "b+000000c8             name_off: 00000038\n"
+        "b+000000cc                value: 4000000008000000\n"
+        "b+000000d4         end_node: END_NODE\n"
+        "b+000000d8             node: \n"
+        "b+000000d8                token: BEGIN_NODE\n"
+        "b+000000dc                 name: 'chosen'\n"
+        "b+000000e3         name_padding: 00\n"
+        "  property: bootargs\n"
+        "b+000000e4         property: \n"
+        "b+000000e4                token: PROP\n"
+        "b+000000e8            value_len: 0000000e\n"
+        "b+000000ec             name_off: 0000003c\n"
+        "b+000000f0                value: 636f6e736f6c653d747479533000\n"
+        "b+000000fe        value_padding: 0000\n"
+        "b+00000100         end_node: END_NODE\n"
+        "b+00000104         end_node: END_NODE\n"
+        "b+00000108              end: END\n"
+        "";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_dtb, sizeof(sample_dtb));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/dtb.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_uimage_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000    header: \n"
+        "b+00000000         magic: 27051956\n"
+        "b+00000004          hcrc: 3c04782a\n"
+        "b+00000008     timestamp: 5f2e4b00\n"
+        "b+0000000c     data_size: 0000004e\n"
+        "b+00000010  load_address: 80008000\n"
+        "b+00000014   entry_point: 80008040\n"
+        "b+00000018          dcrc: 9651f74f\n"
+        "b+0000001c            os: LINUX\n"
+        "b+0000001d          arch: ARM\n"
+        "b+0000001e          type: KERNEL\n"
+        "b+0000001f   compression: BZIP2\n"
+        "b+00000020          name: 'bhex test kernel'\n"
+        "b+00000040   payload: 425a683931415926535921fb1ef00000...\n"
+        "";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_uimage, sizeof(sample_uimage));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/uimage.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_xz_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000           header: \n"
+        "b+00000000                magic: fd377a585a00\n"
+        "b+00000006             reserved: 00\n"
+        "b+00000007           check_type: CRC32\n"
+        "b+00000008          flags_crc32: 36de2269\n"
+        "b+0000000c     block_header: \n"
+        "b+0000000c          header_size: 04\n"
+        "b+0000000d          block_flags: c0\n"
+        "b+0000000e      compressed_size: 32\n"
+        "b+0000000f    uncompressed_size: 72\n"
+        "b+00000010               filter: \n"
+        "b+00000010                filter_id: LZMA2\n"
+        "b+00000011          properties_size: 01\n"
+        "b+00000012               properties: 1c\n"
+        "b+00000013       header_padding: 000000000000000000\n"
+        "b+0000001c         header_crc32: 536eecf3\n"
+        "b+00000020  compressed_data: e00071002a5d00311a08d4f5ca141d2a...\n"
+        "b+00000052    block_padding: 0000\n"
+        "b+00000054            check: 7d1a6a4a\n"
+        "b+00000058  index_indicator: 00\n"
+        "b+00000059     record_count: 01\n"
+        "b+0000005a           record: \n"
+        "b+0000005a        unpadded_size: 4a\n"
+        "b+0000005b    uncompressed_size: 72\n"
+        "b+0000005c      index_crc32: 941b02b4\n"
+        "b+00000060           footer: \n"
+        "b+00000060         footer_crc32: 0d994290\n"
+        "b+00000064        backward_size: 00000001\n"
+        "b+00000068             reserved: 00\n"
+        "b+00000069           check_type: CRC32\n"
+        "b+0000006a                magic: 'YZ'\n"
+        "";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_xz, sizeof(sample_xz));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/xz.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_zstd_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000              frame: \n"
+        "b+00000000                 header: \n"
+        "b+00000000                      magic: fd2fb528\n"
+        "b+00000004    frame_header_descriptor: 24\n"
+        "b+00000005         frame_content_size: 72\n"
+        "b+00000006                  block: \n"
+        "b+00000006               block_header: 650100\n"
+        "b+00000009            compressed_data: 72c2080fd0e7aa9228e5b84abe0462d3...\n"
+        "b+00000035       content_checksum: 3cf59b5a\n"
+        "";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_zstd, sizeof(sample_zstd));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/zstd.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_ar_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000   magic: '!<arch>\\x0a'\n"
+        "b+00000008  member: \n"
+        "b+00000008        name: 'a.txt/          '\n"
+        "b+00000018       mtime: '0           '\n"
+        "b+00000024         uid: '0     '\n"
+        "b+0000002a         gid: '0     '\n"
+        "b+00000030        mode: '644     '\n"
+        "b+00000038        size: '11        '\n"
+        "b+00000042        fmag: '`\\x0a'\n"
+        "b+00000044        data: 68656c6c6f20626865780a\n"
+        "b+0000004f     padding: 0a\n"
+        "b+00000050  member: \n"
+        "b+00000050        name: 'b.bin/          '\n"
+        "b+00000060       mtime: '0           '\n"
+        "b+0000006c         uid: '0     '\n"
+        "b+00000072         gid: '0     '\n"
+        "b+00000078        mode: '644     '\n"
+        "b+00000080        size: '4         '\n"
+        "b+0000008a        fmag: '`\\x0a'\n"
+        "b+0000008c        data: 01020304\n"
+        "";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_ar, sizeof(sample_ar));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/ar.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_javaclass_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000                magic: cafebabe\n"
+        "b+00000004        minor_version: 0000\n"
+        "b+00000006        major_version: JAVA_21\n"
+        "b+00000008  constant_pool_count: 0020\n"
+        "b+0000000a             constant: \n"
+        "b+0000000a                      tag: METHODREF\n"
+        "b+0000000b              first_index: 0002\n"
+        "b+0000000d             second_index: 0003\n"
+        "b+0000000f             constant: \n"
+        "b+0000000f                      tag: CLASS\n"
+        "b+00000010                    index: 0004\n"
+        "b+00000012             constant: \n"
+        "b+00000012                      tag: NAME_AND_TYPE\n"
+        "b+00000013              first_index: 0005\n"
+        "b+00000015             second_index: 0006\n"
+        "b+00000017             constant: \n"
+        "b+00000017                      tag: UTF8\n"
+        "b+00000018                   length: 0010\n"
+        "b+0000001a                     text: 'java/lang/Object'\n"
+        "b+0000002a             constant: \n"
+        "b+0000002a                      tag: UTF8\n"
+        "b+0000002b                   length: 0006\n"
+        "b+0000002d                     text: '<init>'\n"
+        "b+00000033             constant: \n"
+        "b+00000033                      tag: UTF8\n"
+        "b+00000034                   length: 0003\n"
+        "b+00000036                     text: '()V'\n"
+        "b+00000039             constant: \n"
+        "b+00000039                      tag: FIELDREF\n"
+        "b+0000003a              first_index: 0008\n"
+        "b+0000003c             second_index: 0009\n"
+        "b+0000003e             constant: \n"
+        "b+0000003e                      tag: CLASS\n"
+        "b+0000003f                    index: 000a\n"
+        "b+00000041             constant: \n"
+        "b+00000041                      tag: NAME_AND_TYPE\n"
+        "b+00000042              first_index: 000b\n"
+        "b+00000044             second_index: 000c\n"
+        "b+00000046             constant: \n"
+        "b+00000046                      tag: UTF8\n"
+        "b+00000047                   length: 0010\n"
+        "b+00000049                     text: 'java/lang/System'\n"
+        "b+00000059             constant: \n"
+        "b+00000059                      tag: UTF8\n"
+        "b+0000005a                   length: 0003\n"
+        "b+0000005c                     text: 'out'\n"
+        "b+0000005f             constant: \n"
+        "b+0000005f                      tag: UTF8\n"
+        "b+00000060                   length: 0015\n"
+        "b+00000062                     text: 'Ljava/io/PrintStream;'\n"
+        "b+00000077             constant: \n"
+        "b+00000077                      tag: CLASS\n"
+        "b+00000078                    index: 000e\n"
+        "b+0000007a             constant: \n"
+        "b+0000007a                      tag: UTF8\n"
+        "b+0000007b                   length: 0005\n"
+        "b+0000007d                     text: 'Hello'\n"
+        "b+00000082             constant: \n"
+        "b+00000082                      tag: STRING\n"
+        "b+00000083                    index: 0010\n"
+        "b+00000085             constant: \n"
+        "b+00000085                      tag: UTF8\n"
+        "b+00000086                   length: 000a\n"
+        "b+00000088                     text: 'hello bhex'\n"
+        "b+00000092             constant: \n"
+        "b+00000092                      tag: METHODREF\n"
+        "b+00000093              first_index: 0012\n"
+        "b+00000095             second_index: 0013\n"
+        "b+00000097             constant: \n"
+        "b+00000097                      tag: CLASS\n"
+        "b+00000098                    index: 0014\n"
+        "b+0000009a             constant: \n"
+        "b+0000009a                      tag: NAME_AND_TYPE\n"
+        "b+0000009b              first_index: 0015\n"
+        "b+0000009d             second_index: 0016\n"
+        "b+0000009f             constant: \n"
+        "b+0000009f                      tag: UTF8\n"
+        "b+000000a0                   length: 0013\n"
+        "b+000000a2                     text: 'java/io/PrintStream'\n"
+        "b+000000b5             constant: \n"
+        "b+000000b5                      tag: UTF8\n"
+        "b+000000b6                   length: 0007\n"
+        "b+000000b8                     text: 'println'\n"
+        "b+000000bf             constant: \n"
+        "b+000000bf                      tag: UTF8\n"
+        "b+000000c0                   length: 0015\n"
+        "b+000000c2                     text: '(Ljava/lang/String;)V'\n"
+        "b+000000d7             constant: \n"
+        "b+000000d7                      tag: UTF8\n"
+        "b+000000d8                   length: 0008\n"
+        "b+000000da                     text: 'GREETING'\n"
+        "b+000000e2             constant: \n"
+        "b+000000e2                      tag: UTF8\n"
+        "b+000000e3                   length: 0012\n"
+        "b+000000e5                     text: 'Ljava/lang/String;'\n"
+        "b+000000f7             constant: \n"
+        "b+000000f7                      tag: UTF8\n"
+        "b+000000f8                   length: 000d\n"
+        "b+000000fa                     text: 'ConstantValue'\n"
+        "b+00000107             constant: \n"
+        "b+00000107                      tag: UTF8\n"
+        "b+00000108                   length: 0004\n"
+        "b+0000010a                     text: 'Code'\n"
+        "b+0000010e             constant: \n"
+        "b+0000010e                      tag: UTF8\n"
+        "b+0000010f                   length: 000f\n"
+        "b+00000111                     text: 'LineNumberTable'\n"
+        "b+00000120             constant: \n"
+        "b+00000120                      tag: UTF8\n"
+        "b+00000121                   length: 0004\n"
+        "b+00000123                     text: 'main'\n"
+        "b+00000127             constant: \n"
+        "b+00000127                      tag: UTF8\n"
+        "b+00000128                   length: 0016\n"
+        "b+0000012a                     text: '([Ljava/lang/String;)V'\n"
+        "b+00000140             constant: \n"
+        "b+00000140                      tag: UTF8\n"
+        "b+00000141                   length: 000a\n"
+        "b+00000143                     text: 'SourceFile'\n"
+        "b+0000014d             constant: \n"
+        "b+0000014d                      tag: UTF8\n"
+        "b+0000014e                   length: 000a\n"
+        "b+00000150                     text: 'Hello.java'\n"
+        "b+0000015a         access_flags: PUBLIC | SUPER\n"
+        "b+0000015c           this_class: 000d\n"
+        "b+0000015e          super_class: 0002\n"
+        "b+00000160     interfaces_count: 0000\n"
+        "b+00000162         fields_count: 0001\n"
+        "b+00000164                field: \n"
+        "b+00000164             access_flags: STATIC | FINAL\n"
+        "b+00000166               name_index: 0017\n"
+        "b+00000168         descriptor_index: 0018\n"
+        "b+0000016a         attributes_count: 0001\n"
+        "b+0000016c                attribute: \n"
+        "b+0000016c         attribute_name_index: 0019\n"
+        "b+0000016e             attribute_length: 00000002\n"
+        "b+00000172                         info: 000f\n"
+        "b+00000174        methods_count: 0002\n"
+        "b+00000176               method: \n"
+        "b+00000176             access_flags: PUBLIC\n"
+        "b+00000178               name_index: 0005\n"
+        "b+0000017a         descriptor_index: 0006\n"
+        "b+0000017c         attributes_count: 0001\n"
+        "b+0000017e                attribute: \n"
+        "b+0000017e         attribute_name_index: 001a\n"
+        "b+00000180             attribute_length: 0000001d\n"
+        "b+00000184                         info: 00010001000000052ab70001b1000000...\n"
+        "b+000001a1               method: \n"
+        "b+000001a1             access_flags: PUBLIC | STATIC\n"
+        "b+000001a3               name_index: 001c\n"
+        "b+000001a5         descriptor_index: 001d\n"
+        "b+000001a7         attributes_count: 0001\n"
+        "b+000001a9                attribute: \n"
+        "b+000001a9         attribute_name_index: 001a\n"
+        "b+000001ab             attribute_length: 00000021\n"
+        "b+000001af                         info: 0002000100000009b20007120fb60011...\n"
+        "b+000001d0     attributes_count: 0001\n"
+        "b+000001d2            attribute: \n"
+        "b+000001d2     attribute_name_index: 001e\n"
+        "b+000001d4         attribute_length: 00000002\n"
+        "b+000001d8                     info: 001f\n"
+        "";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_javaclass, sizeof(sample_javaclass));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/javaclass.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_pcap_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000            header: \n"
+        "b+00000000                 magic: a1b2c3d4\n"
+        "b+00000004         version_major: 0002\n"
+        "b+00000006         version_minor: 0004\n"
+        "b+00000008              thiszone: 00000000\n"
+        "b+0000000c               sigfigs: 00000000\n"
+        "b+00000010               snaplen: 0000ffff\n"
+        "b+00000014               network: ETHERNET\n"
+        "b+00000018            record: \n"
+        "b+00000018                ts_sec: 5f2e4b00\n"
+        "b+0000001c               ts_usec: 00000000\n"
+        "b+00000020              incl_len: 00000036\n"
+        "b+00000024              orig_len: 00000036\n"
+        "b+00000028               eth: \n"
+        "b+00000028                   dst: ffffffffffff\n"
+        "b+0000002e                   src: 001122334455\n"
+        "b+00000034                  type: ETH_TYPE_IP\n"
+        "b+00000036                ip: \n"
+        "b+00000036           version_ihl: 45\n"
+        "b+00000037       type_of_service: 00\n"
+        "b+00000038          total_length: 0028\n"
+        "b+0000003a        identification: 0001\n"
+        "b+0000003c        flags_fragment: 0000\n"
+        "b+0000003e          time_to_live: 40\n"
+        "b+0000003f              protocol: IPPROTO_TCP\n"
+        "b+00000040       header_checksum: 7ccd\n"
+        "b+00000042        source_address: 7f000001\n"
+        "b+00000046          dest_address: 7f000001\n"
+        "b+0000004a               tcp: \n"
+        "b+0000004a           source_port: 04d2\n"
+        "b+0000004c             dest_port: 0050\n"
+        "b+0000004e          sequence_num: 00000000\n"
+        "b+00000052               ack_num: 00000000\n"
+        "b+00000056  data_offset_reserved: 50\n"
+        "b+00000057                 flags: TCP_FLAG_SYN\n"
+        "b+00000058           window_size: 2000\n"
+        "b+0000005a              checksum: 0000\n"
+        "b+0000005c        urgent_pointer: 0000\n"
+        "b+0000005e            record: \n"
+        "b+0000005e                ts_sec: 5f2e4b00\n"
+        "b+00000062               ts_usec: 00000000\n"
+        "b+00000066              incl_len: 00000036\n"
+        "b+0000006a              orig_len: 00000036\n"
+        "b+0000006e               eth: \n"
+        "b+0000006e                   dst: ffffffffffff\n"
+        "b+00000074                   src: 001122334455\n"
+        "b+0000007a                  type: ETH_TYPE_IP\n"
+        "b+0000007c                ip: \n"
+        "b+0000007c           version_ihl: 45\n"
+        "b+0000007d       type_of_service: 00\n"
+        "b+0000007e          total_length: 0028\n"
+        "b+00000080        identification: 0001\n"
+        "b+00000082        flags_fragment: 0000\n"
+        "b+00000084          time_to_live: 40\n"
+        "b+00000085              protocol: IPPROTO_TCP\n"
+        "b+00000086       header_checksum: 7ccd\n"
+        "b+00000088        source_address: 7f000001\n"
+        "b+0000008c          dest_address: 7f000001\n"
+        "b+00000090               tcp: \n"
+        "b+00000090           source_port: 04d2\n"
+        "b+00000092             dest_port: 0050\n"
+        "b+00000094          sequence_num: 00000000\n"
+        "b+00000098               ack_num: 00000000\n"
+        "b+0000009c  data_offset_reserved: 50\n"
+        "b+0000009d                 flags: TCP_FLAG_SYN\n"
+        "b+0000009e           window_size: 2000\n"
+        "b+000000a0              checksum: 0000\n"
+        "b+000000a2        urgent_pointer: 0000\n"
+        "";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_pcap, sizeof(sample_pcap));
+    ASSERT(tfb != NULL);
+
+    // pcap.bhe pulls the ethernet/IP/TCP structs out of net.bhe with the '#'
+    // operator, so the template it imports has to be registered first
+    ASSERT(register_imported_template("net", "./templates/net.bhe") == 0);
+    ASSERT(exec_commands_on("t ./templates/pcap.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_pcapng_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000             block: \n"
+        "b+00000000            block_type: SECTION_HEADER\n"
+        "b+00000004          total_length: 0000001c\n"
+        "b+00000008        section_header: \n"
+        "b+00000008          byte_order_magic: 1a2b3c4d\n"
+        "b+0000000c             version_major: 0001\n"
+        "b+0000000e             version_minor: 0000\n"
+        "b+00000010            section_length: ffffffffffffffff\n"
+        "b+00000018  total_length_trailer: 0000001c\n"
+        "b+0000001c             block: \n"
+        "b+0000001c            block_type: INTERFACE_DESCRIPTION\n"
+        "b+00000020          total_length: 00000014\n"
+        "b+00000024             interface: \n"
+        "b+00000024                  linktype: ETHERNET\n"
+        "b+00000026                  reserved: 0000\n"
+        "b+00000028                   snaplen: 0000ffff\n"
+        "b+0000002c  total_length_trailer: 00000014\n"
+        "b+00000030             block: \n"
+        "b+00000030            block_type: ENHANCED_PACKET\n"
+        "b+00000034          total_length: 00000044\n"
+        "b+00000038                packet: \n"
+        "b+00000038              interface_id: 00000000\n"
+        "b+0000003c            timestamp_high: 00000000\n"
+        "b+00000040             timestamp_low: 00000000\n"
+        "b+00000044              captured_len: 00000022\n"
+        "b+00000048              original_len: 00000022\n"
+        "b+0000004c           packet_data: ffffffffffffffffffffffffffff4500...\n"
+        "b+0000006e        packet_padding: 0000\n"
+        "b+00000070  total_length_trailer: 00000044\n"
+        "";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_pcapng, sizeof(sample_pcapng));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/pcapng.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_riff_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000            magic: 'RIFF'\n"
+        "b+00000004        riff_size: 0000004c\n"
+        "b+00000008        form_type: 'WAVE'\n"
+        "b+0000000c            chunk: \n"
+        "b+0000000c                   id: 'fmt '\n"
+        "b+00000010           chunk_size: 00000010\n"
+        "b+00000014                  fmt: \n"
+        "b+00000014                   format: PCM\n"
+        "b+00000016                 channels: 0001\n"
+        "b+00000018              sample_rate: 00001f40\n"
+        "b+0000001c                byte_rate: 00003e80\n"
+        "b+00000020              block_align: 0002\n"
+        "b+00000022          bits_per_sample: 0010\n"
+        "b+00000024            chunk: \n"
+        "b+00000024                   id: 'data'\n"
+        "b+00000028           chunk_size: 00000028\n"
+        "b+0000002c                 data: 00000100020003000400050006000700...\n"
+        "";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_riff, sizeof(sample_riff));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/riff.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_sqlite3_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000               header: \n"
+        "b+00000000                    magic: 'SQLite format 3'\n"
+        "b+00000010                page_size: 0200\n"
+        "b+00000012            write_version: 01\n"
+        "b+00000013             read_version: 01\n"
+        "b+00000014           reserved_space: 00\n"
+        "b+00000015     max_payload_fraction: 40\n"
+        "b+00000016     min_payload_fraction: 20\n"
+        "b+00000017    leaf_payload_fraction: 20\n"
+        "b+00000018      file_change_counter: 00000003\n"
+        "b+0000001c               page_count: 00000002\n"
+        "b+00000020      first_freelist_page: 00000000\n"
+        "b+00000024      freelist_page_count: 00000000\n"
+        "b+00000028            schema_cookie: 00000002\n"
+        "b+0000002c            schema_format: NULL_IN_INDEX\n"
+        "b+00000030  default_page_cache_size: 00000000\n"
+        "b+00000034  largest_root_btree_page: 00000000\n"
+        "b+00000038            text_encoding: UTF8\n"
+        "b+0000003c             user_version: 00000000\n"
+        "b+00000040       incremental_vacuum: 00000000\n"
+        "b+00000044           application_id: 00000000\n"
+        "b+00000048                 reserved: 00000000000000000000000000000000...\n"
+        "b+0000005c        version_valid_for: 00000003\n"
+        "b+00000060           sqlite_version: 002e7a71\n"
+        "  sqlite version: 3 46 1\n"
+        "b+00000064                page1: \n"
+        "b+00000064                page_type: TABLE_LEAF\n"
+        "b+00000065          first_freeblock: 0000\n"
+        "b+00000067               cell_count: 0001\n"
+        "b+00000069       cell_content_start: 01bf\n"
+        "b+0000006b    fragmented_free_bytes: 00\n"
+        "b+0000006c            cell_pointers: [ 01bf ]\n"
+        "b+00000200                 page: \n"
+        "b+00000200                page_type: TABLE_LEAF\n"
+        "b+00000201          first_freeblock: 0000\n"
+        "b+00000203               cell_count: 0005\n"
+        "b+00000205       cell_content_start: 01ce\n"
+        "b+00000207    fragmented_free_bytes: 00\n"
+        "b+00000208            cell_pointers: [ 01f6, 01ec, 01e2, 01d8, 01ce ]\n"
+        "";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_sqlite3, sizeof(sample_sqlite3));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/sqlite3.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_ubifs_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000     superblock: \n"
+        "b+00000000                 ch: \n"
+        "b+00000000                  magic: 06101831\n"
+        "b+00000004                    crc: abca2b18\n"
+        "b+00000008                  sqnum: 0000000000000001\n"
+        "b+00000010                    len: 00001000\n"
+        "b+00000014              node_type: SUPERBLOCK\n"
+        "b+00000015             group_type: 00\n"
+        "b+00000016                padding: 0000\n"
+        "b+00000018            padding: 0000\n"
+        "b+0000001a           key_hash: R5\n"
+        "b+0000001b            key_fmt: 00\n"
+        "b+0000001c              flags: NONE\n"
+        "b+00000020        min_io_size: 00000800\n"
+        "b+00000024           leb_size: 0001f000\n"
+        "b+00000028            leb_cnt: 0000017a\n"
+        "b+0000002c        max_leb_cnt: 000007fc\n"
+        "b+00000030      max_bud_bytes: 0000000000800000\n"
+        "b+00000038           log_lebs: 00000005\n"
+        "b+0000003c           lpt_lebs: 00000002\n"
+        "b+00000040          orph_lebs: 00000001\n"
+        "b+00000044          jhead_cnt: 00000001\n"
+        "b+00000048             fanout: 00000008\n"
+        "b+0000004c          lsave_cnt: 00000100\n"
+        "b+00000050        fmt_version: 00000004\n"
+        "b+00000054      default_compr: LZO\n"
+        "b+00000056           padding1: 0000\n"
+        "b+00000058             rp_uid: 00000000\n"
+        "b+0000005c             rp_gid: 00000000\n"
+        "b+00000060            rp_size: 0000000000000000\n"
+        "b+00000068          time_gran: 00000001\n"
+        "b+0000006c               uuid: 101112131415161718191a1b1c1d1e1f\n"
+        "b+0000007c  ro_compat_version: 00000000\n"
+        "b+00000080               hmac: 00000000000000000000000000000000...\n"
+        "b+000000c0           hmac_wkm: 00000000000000000000000000000000...\n"
+        "b+00000100          hash_algo: 0000\n"
+        "b+00000102           hash_mst: 00000000000000000000000000000000...\n"
+        "b+00000142           padding2: 00000000000000000000000000000000...\n"
+        "";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_ubifs, sizeof(sample_ubifs));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/ubifs.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_ext_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000             boot_area: 00000000000000000000000000000000...\n"
+        "b+00000400            superblock: \n"
+        "b+00000400              inodes_count: 00000400\n"
+        "b+00000404           blocks_count_lo: 00001000\n"
+        "b+00000408  reserved_blocks_count_lo: 000000cc\n"
+        "b+0000040c      free_blocks_count_lo: 00000ed8\n"
+        "b+00000410         free_inodes_count: 000003f5\n"
+        "b+00000414          first_data_block: 00000001\n"
+        "b+00000418            log_block_size: 00000000\n"
+        "b+0000041c          log_cluster_size: 00000000\n"
+        "b+00000420          blocks_per_group: 00002000\n"
+        "b+00000424        clusters_per_group: 00002000\n"
+        "b+00000428          inodes_per_group: 00000080\n"
+        "b+0000042c                     mtime: 5f2e4b00\n"
+        "b+00000430                     wtime: 5f2e4b00\n"
+        "b+00000434               mount_count: 0001\n"
+        "b+00000436           max_mount_count: ffff\n"
+        "b+00000438                     magic: ef53\n"
+        "b+0000043a                     state: CLEAN\n"
+        "b+0000043c                    errors: CONTINUE\n"
+        "b+0000043e           minor_rev_level: 0000\n"
+        "b+00000440                 lastcheck: 5f2e4b00\n"
+        "b+00000444             checkinterval: 00000000\n"
+        "b+00000448                creator_os: LINUX\n"
+        "b+0000044c                 rev_level: DYNAMIC\n"
+        "b+00000450            default_resuid: 0000\n"
+        "b+00000452            default_resgid: 0000\n"
+        "b+00000454               first_inode: 0000000b\n"
+        "b+00000458                inode_size: 0100\n"
+        "b+0000045a            block_group_nr: 0000\n"
+        "b+0000045c            feature_compat: EXT_ATTR | RESIZE_INODE | DIR_INDEX\n"
+        "b+00000460          feature_incompat: FILETYPE | EXTENTS | SIXTY_FOUR_BIT | FLEX_BG\n"
+        "b+00000464         feature_ro_compat: SPARSE_SUPER | LARGE_FILE | HUGE_FILE | DIR_NLINK | EXTRA_ISIZE | METADATA_CSUM\n"
+        "b+00000468                      uuid: 202122232425262728292a2b2c2d2e2f\n"
+        "b+00000478               volume_name: 'bhextest'\n"
+        "b+00000488              last_mounted: ''\n"
+        "b+000004c8    algorithm_usage_bitmap: 00000000\n"
+        "b+000004cc           prealloc_blocks: 00\n"
+        "b+000004cd       prealloc_dir_blocks: 00\n"
+        "b+000004ce       reserved_gdt_blocks: 0000\n"
+        "b+000004d0              journal_uuid: 00000000000000000000000000000000\n"
+        "b+000004e0              journal_inum: 00000000\n"
+        "b+000004e4               journal_dev: 00000000\n"
+        "b+000004e8               last_orphan: 00000000\n"
+        "b+000004ec                 hash_seed: [ 00000000, 00000000, 00000000, 00000000 ]\n"
+        "b+000004fc          def_hash_version: 00\n"
+        "b+000004fd           jnl_backup_type: 00\n"
+        "b+000004fe                 desc_size: 0040\n"
+        "b+00000500        default_mount_opts: 0000000c\n"
+        "b+00000504             first_meta_bg: 00000000\n"
+        "b+00000508                 mkfs_time: 00000000\n"
+        "b+0000050c                jnl_blocks: [ 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, 00000000, ... ]\n"
+        "b+00000550           blocks_count_hi: 00000000\n"
+        "b+00000554  reserved_blocks_count_hi: 00000000\n"
+        "b+00000558      free_blocks_count_hi: 00000000\n"
+        "b+0000055c                 remainder: 00000000000000000000000000000000...\n"
+        "  ext4, 1024 byte blocks, 4194304 bytes\n"
+        "\n"
+        "";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_ext, sizeof(sample_ext));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/ext.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_fat_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000              bpb: \n"
+        "b+00000000            jump_boot: eb3c90\n"
+        "b+00000003             oem_name: 'BHEX    '\n"
+        "b+0000000b     bytes_per_sector: 0200\n"
+        "b+0000000d  sectors_per_cluster: 01\n"
+        "b+0000000e     reserved_sectors: 0001\n"
+        "b+00000010             num_fats: 02\n"
+        "b+00000011         root_entries: 0010\n"
+        "b+00000013     total_sectors_16: 0008\n"
+        "b+00000015                media: f8\n"
+        "b+00000016   sectors_per_fat_16: 0001\n"
+        "b+00000018    sectors_per_track: 0001\n"
+        "b+0000001a            num_heads: 0001\n"
+        "b+0000001c       hidden_sectors: 00000000\n"
+        "b+00000020     total_sectors_32: 00000000\n"
+        "b+00000024             ebpb: \n"
+        "b+00000024         drive_number: 80\n"
+        "b+00000025             reserved: 00\n"
+        "b+00000026       boot_signature: 29\n"
+        "b+00000027            volume_id: 12345678\n"
+        "b+0000002b         volume_label: 'BHEXVOL    '\n"
+        "b+00000036              fs_type: 'FAT12   '\n"
+        "b+000001fe   boot_signature: aa55\n"
+        "  FAT12, 4 clusters\n"
+        "b+00000600            entry: \n"
+        "b+00000600                 name: 'HELLO   TXT'\n"
+        "b+0000060b           attributes: ARCHIVE\n"
+        "b+0000060c          nt_reserved: 00\n"
+        "b+0000060d    create_time_tenth: 00\n"
+        "b+0000060e          create_time: 0000\n"
+        "b+00000610          create_date: 0000\n"
+        "b+00000612     last_access_date: 0000\n"
+        "b+00000614   first_cluster_high: 0000\n"
+        "b+00000616           write_time: 0000\n"
+        "b+00000618           write_date: 0000\n"
+        "b+0000061a    first_cluster_low: 0002\n"
+        "b+0000061c            file_size: 0000000b\n"
+        "";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_fat, sizeof(sample_fat));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/fat.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_gpt_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000           protective_mbr: 00000000000000000000000000000000...\n"
+        "b+000001be         protective_entry: 00000200eeffffff010000000f000000\n"
+        "b+000001ce              mbr_padding: 00000000000000000000000000000000...\n"
+        "b+000001fe            mbr_signature: aa55\n"
+        "b+00000200                   header: \n"
+        "b+00000200                        magic: 'EFI PART'\n"
+        "b+00000208                     revision: 00010000\n"
+        "b+0000020c                  header_size: 0000005c\n"
+        "b+00000210                 header_crc32: 803a39ee\n"
+        "b+00000214                     reserved: 00000000\n"
+        "b+00000218                       my_lba: 0000000000000001\n"
+        "b+00000220                alternate_lba: 000000000000000f\n"
+        "b+00000228             first_usable_lba: 0000000000000004\n"
+        "b+00000230              last_usable_lba: 000000000000000c\n"
+        "b+00000238                    disk_guid: 0ff94b7eda6c154a8a31ccebd8f48883\n"
+        "b+00000248          partition_entry_lba: 0000000000000002\n"
+        "b+00000250        num_partition_entries: 00000008\n"
+        "b+00000254      size_of_partition_entry: 00000080\n"
+        "b+00000258  partition_entry_array_crc32: cc326593\n"
+        "b+00000400                  entries: [ \n"
+        "                                    [0]\n"
+        "b+00000400          partition_type_guid: 28732ac11ff8d211ba4b00a0c93ec93b\n"
+        "    EFI System\n"
+        "b+00000410        unique_partition_guid: fd13e0d5ae7c014d9ded6e676b2f80bf\n"
+        "b+00000420                 starting_lba: 0000000000000004\n"
+        "b+00000428                   ending_lba: 0000000000000005\n"
+        "b+00000430                   attributes: 0000000000000000\n"
+        "b+00000438               partition_name: 'EFI System'\n"
+        "                                    [1]\n"
+        "b+00000480          partition_type_guid: af3dc60f838472478e793d69d8477de4\n"
+        "    Linux filesystem\n"
+        "b+00000490        unique_partition_guid: 889f3343fecc6041a23ac4597a3eb54f\n"
+        "b+000004a0                 starting_lba: 0000000000000006\n"
+        "b+000004a8                   ending_lba: 000000000000000c\n"
+        "b+000004b0                   attributes: 0000000000000000\n"
+        "b+000004b8               partition_name: 'Linux root'\n"
+        "                                    [2]\n"
+        "b+00000500          partition_type_guid: 00000000000000000000000000000000\n"
+        "b+00000510        unique_partition_guid: 00000000000000000000000000000000\n"
+        "b+00000520                 starting_lba: 0000000000000000\n"
+        "b+00000528                   ending_lba: 0000000000000000\n"
+        "b+00000530                   attributes: 0000000000000000\n"
+        "b+00000538               partition_name: ''\n"
+        "                                    [3]\n"
+        "b+00000580          partition_type_guid: 00000000000000000000000000000000\n"
+        "b+00000590        unique_partition_guid: 00000000000000000000000000000000\n"
+        "b+000005a0                 starting_lba: 0000000000000000\n"
+        "b+000005a8                   ending_lba: 0000000000000000\n"
+        "b+000005b0                   attributes: 0000000000000000\n"
+        "b+000005b8               partition_name: ''\n"
+        "                                    [4]\n"
+        "b+00000600          partition_type_guid: 00000000000000000000000000000000\n"
+        "b+00000610        unique_partition_guid: 00000000000000000000000000000000\n"
+        "b+00000620                 starting_lba: 0000000000000000\n"
+        "b+00000628                   ending_lba: 0000000000000000\n"
+        "b+00000630                   attributes: 0000000000000000\n"
+        "b+00000638               partition_name: ''\n"
+        "                                    [5]\n"
+        "b+00000680          partition_type_guid: 00000000000000000000000000000000\n"
+        "b+00000690        unique_partition_guid: 00000000000000000000000000000000\n"
+        "b+000006a0                 starting_lba: 0000000000000000\n"
+        "b+000006a8                   ending_lba: 0000000000000000\n"
+        "b+000006b0                   attributes: 0000000000000000\n"
+        "b+000006b8               partition_name: ''\n"
+        "                                    [6]\n"
+        "b+00000700          partition_type_guid: 00000000000000000000000000000000\n"
+        "b+00000710        unique_partition_guid: 00000000000000000000000000000000\n"
+        "b+00000720                 starting_lba: 0000000000000000\n"
+        "b+00000728                   ending_lba: 0000000000000000\n"
+        "b+00000730                   attributes: 0000000000000000\n"
+        "b+00000738               partition_name: ''\n"
+        "                                    [7]\n"
+        "b+00000780          partition_type_guid: 00000000000000000000000000000000\n"
+        "b+00000790        unique_partition_guid: 00000000000000000000000000000000\n"
+        "b+000007a0                 starting_lba: 0000000000000000\n"
+        "b+000007a8                   ending_lba: 0000000000000000\n"
+        "b+000007b0                   attributes: 0000000000000000\n"
+        "b+000007b8               partition_name: '' ]\n"
+        "";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_gpt, sizeof(sample_gpt));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/gpt.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_mbr_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000     boot_code: fa33c000000000000000000000000000...\n"
+        "b+000001be     partition: \n"
+        "b+000001be            status: 80\n"
+        "b+000001bf         first_chs: \n"
+        "b+000001bf                  head: 01\n"
+        "b+000001c0  sector_cylinder_high: 01\n"
+        "b+000001c1          cylinder_low: 00\n"
+        "b+000001c2    partition_type: FAT32_LBA\n"
+        "b+000001c3          last_chs: \n"
+        "b+000001c3                  head: fe\n"
+        "b+000001c4  sector_cylinder_high: ff\n"
+        "b+000001c5          cylinder_low: ff\n"
+        "b+000001c6         start_lba: 00000800\n"
+        "b+000001ca      sector_count: 00005000\n"
+        "b+000001ce     partition: \n"
+        "b+000001ce            status: 00\n"
+        "b+000001cf         first_chs: \n"
+        "b+000001cf                  head: 01\n"
+        "b+000001d0  sector_cylinder_high: 01\n"
+        "b+000001d1          cylinder_low: 00\n"
+        "b+000001d2    partition_type: LINUX\n"
+        "b+000001d3          last_chs: \n"
+        "b+000001d3                  head: fe\n"
+        "b+000001d4  sector_cylinder_high: ff\n"
+        "b+000001d5          cylinder_low: ff\n"
+        "b+000001d6         start_lba: 00005800\n"
+        "b+000001da      sector_count: 0000a000\n"
+        "b+000001de     partition: \n"
+        "b+000001de            status: 00\n"
+        "b+000001df         first_chs: \n"
+        "b+000001df                  head: 00\n"
+        "b+000001e0  sector_cylinder_high: 00\n"
+        "b+000001e1          cylinder_low: 00\n"
+        "b+000001e2    partition_type: EMPTY\n"
+        "b+000001e3          last_chs: \n"
+        "b+000001e3                  head: 00\n"
+        "b+000001e4  sector_cylinder_high: 00\n"
+        "b+000001e5          cylinder_low: 00\n"
+        "b+000001e6         start_lba: 00000000\n"
+        "b+000001ea      sector_count: 00000000\n"
+        "b+000001ee     partition: \n"
+        "b+000001ee            status: 00\n"
+        "b+000001ef         first_chs: \n"
+        "b+000001ef                  head: 00\n"
+        "b+000001f0  sector_cylinder_high: 00\n"
+        "b+000001f1          cylinder_low: 00\n"
+        "b+000001f2    partition_type: EMPTY\n"
+        "b+000001f3          last_chs: \n"
+        "b+000001f3                  head: 00\n"
+        "b+000001f4  sector_cylinder_high: 00\n"
+        "b+000001f5          cylinder_low: 00\n"
+        "b+000001f6         start_lba: 00000000\n"
+        "b+000001fa      sector_count: 00000000\n"
+        "b+000001fe     signature: aa55\n"
+        "  partition 0 at byte 1048576 size 10485760\n"
+        "  partition 1 at byte 11534336 size 20971520\n"
+        "\n"
+        "";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_mbr, sizeof(sample_mbr));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/mbr.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_dex_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000       header: \n"
+        "b+00000000            magic: 'dex\\x0a035'\n"
+        "b+00000008         checksum: d9700bbe\n"
+        "b+0000000c        signature: 1d9c3f88730d0ed6caa377d4520465e7...\n"
+        "b+00000020        file_size: 0000008c\n"
+        "b+00000024      header_size: 00000070\n"
+        "b+00000028       endian_tag: 12345678\n"
+        "b+0000002c        link_size: 00000000\n"
+        "b+00000030         link_off: 00000000\n"
+        "b+00000034          map_off: 00000070\n"
+        "b+00000038  string_ids_size: 00000000\n"
+        "b+0000003c   string_ids_off: 00000000\n"
+        "b+00000040    type_ids_size: 00000000\n"
+        "b+00000044     type_ids_off: 00000000\n"
+        "b+00000048   proto_ids_size: 00000000\n"
+        "b+0000004c    proto_ids_off: 00000000\n"
+        "b+00000050   field_ids_size: 00000000\n"
+        "b+00000054    field_ids_off: 00000000\n"
+        "b+00000058  method_ids_size: 00000000\n"
+        "b+0000005c   method_ids_off: 00000000\n"
+        "b+00000060  class_defs_size: 00000000\n"
+        "b+00000064   class_defs_off: 00000000\n"
+        "b+00000068        data_size: 0000001c\n"
+        "b+0000006c         data_off: 00000070\n"
+        "  version: 035\n"
+        "b+00000070     map_size: 00000002\n"
+        "b+00000074         item: \n"
+        "b+00000074        item_type: HEADER_ITEM\n"
+        "b+00000076           unused: 0000\n"
+        "b+00000078             size: 00000001\n"
+        "b+0000007c           offset: 00000000\n"
+        "b+00000080         item: \n"
+        "b+00000080        item_type: MAP_LIST\n"
+        "b+00000082           unused: 0000\n"
+        "b+00000084             size: 00000001\n"
+        "b+00000088           offset: 00000070\n"
+        "";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_dex, sizeof(sample_dex));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/dex.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_gif_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000              header: \n"
+        "b+00000000                   magic: 'GIF'\n"
+        "b+00000003                 version: '89a'\n"
+        "b+00000006                   width: 0001\n"
+        "b+00000008                  height: 0001\n"
+        "b+0000000a                  packed: 80\n"
+        "b+0000000b  background_color_index: 00\n"
+        "b+0000000c      pixel_aspect_ratio: 00\n"
+        "b+0000000d      global_color_table: ffffff000000\n"
+        "b+00000013               image: \n"
+        "b+00000013               separator: 2c\n"
+        "b+00000014                    left: 0000\n"
+        "b+00000016                     top: 0000\n"
+        "b+00000018                   width: 0001\n"
+        "b+0000001a                  height: 0001\n"
+        "b+0000001c                  packed: 00\n"
+        "b+0000001d       lzw_min_code_size: 02\n"
+        "b+0000001e          image_data: \n"
+        "b+0000001e                    data: 02440100\n"
+        "b+00000022             trailer: 3b\n"
+        "";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_gif, sizeof(sample_gif));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/gif.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_ogg_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000          page: \n"
+        "b+00000000   capture_pattern: 'OggS'\n"
+        "b+00000004    stream_version: 00\n"
+        "b+00000005       header_type: FIRST\n"
+        "b+00000006  granule_position: 0000000000000000\n"
+        "b+0000000e  bitstream_serial: 1234abcd\n"
+        "b+00000012     page_sequence: 00000000\n"
+        "b+00000016     page_checksum: b4663ccf\n"
+        "b+0000001a     page_segments: 01\n"
+        "b+0000001b     segment_table: 1e\n"
+        "b+0000001c         page_data: 01766f72626973000000000000000000...\n"
+        "b+0000003a          page: \n"
+        "b+0000003a   capture_pattern: 'OggS'\n"
+        "b+0000003e    stream_version: 00\n"
+        "b+0000003f       header_type: LAST\n"
+        "b+00000040  granule_position: 0000000000000064\n"
+        "b+00000048  bitstream_serial: 1234abcd\n"
+        "b+0000004c     page_sequence: 00000001\n"
+        "b+00000050     page_checksum: 29a2fa92\n"
+        "b+00000054     page_segments: 01\n"
+        "b+00000055     segment_table: 11\n"
+        "b+00000056         page_data: 617564696f2d697368207061796c6f61...\n"
+        "";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_ogg, sizeof(sample_ogg));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/ogg.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_sfnt_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000    sfnt_version: TRUETYPE\n"
+        "b+00000004      num_tables: 0002\n"
+        "b+00000006    search_range: 0020\n"
+        "b+00000008  entry_selector: 0001\n"
+        "b+0000000a     range_shift: 0000\n"
+        "b+0000000c           table: \n"
+        "b+0000000c                 tag: 'head'\n"
+        "b+00000010            checksum: 62fb44c5\n"
+        "b+00000014              offset: 0000002c\n"
+        "b+00000018              length: 00000036\n"
+        "b+0000001c           table: \n"
+        "b+0000001c                 tag: 'maxp'\n"
+        "b+00000020            checksum: 00005000\n"
+        "b+00000024              offset: 00000064\n"
+        "b+00000028              length: 00000006\n"
+        "  font ends at 0\n"
+        "\n"
+        "";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_sfnt, sizeof(sample_sfnt));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/sfnt.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_wasm_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000         magic: 0061736d\n"
+        "b+00000004       version: 00000001\n"
+        "b+00000008       section: \n"
+        "b+00000008        section_id: TYPE\n"
+        "b+00000009      section_size: 04\n"
+        "b+0000000a  section_data: 01600000\n"
+        "b+0000000e       section: \n"
+        "b+0000000e        section_id: FUNCTION\n"
+        "b+0000000f      section_size: 02\n"
+        "b+00000010  section_data: 0100\n"
+        "b+00000012       section: \n"
+        "b+00000012        section_id: EXPORT\n"
+        "b+00000013      section_size: 07\n"
+        "b+00000014  section_data: 01036e6f700000\n"
+        "b+0000001b       section: \n"
+        "b+0000001b        section_id: CODE\n"
+        "b+0000001c      section_size: 04\n"
+        "b+0000001d  section_data: 0102000b\n"
+        "";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_wasm, sizeof(sample_wasm));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/wasm.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_x509_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000      certificate_tag: SEQUENCE\n"
+        "b+00000001   certificate_length: 820327\n"
+        "  certificate is 811 bytes\n"
+        "b+00000004      tbs_certificate: \n"
+        "b+00000004                      tag: SEQUENCE\n"
+        "b+00000005             length_field: 82020f\n"
+        "b+00000008                    value: a0030201020214626af93e8a4c46a6fc...\n"
+        "b+00000217  signature_algorithm: \n"
+        "b+00000217                      tag: SEQUENCE\n"
+        "b+00000218             length_field: 0d\n"
+        "b+00000219                    value: 06092a864886f70d01010b0500\n"
+        "b+00000226      signature_value: \n"
+        "b+00000226                      tag: BIT_STRING\n"
+        "b+00000227             length_field: 820101\n"
+        "b+0000022a                    value: 008bd0e803f4d54b8b16319b53b66163...\n"
+        "";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_x509, sizeof(sample_x509));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/x509.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_tar_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000  header: \n"
+        "b+00000000        name: 'hello.txt'\n"
+        "b+00000064        mode: '0000664'\n"
+        "b+0000006c         uid: '0000000'\n"
+        "b+00000074         gid: '0000000'\n"
+        "b+0000007c        size: '00000000013'\n"
+        "b+00000088       mtime: '00000000000'\n"
+        "b+00000094      chksum: '007605'\n"
+        "b+0000009c    typeflag: 0\n"
+        "b+0000009d    linkname: ''\n"
+        "b+00000101       magic: 'ustar'\n"
+        "b+00000107     version: '00'\n"
+        "b+00000109       uname: ''\n"
+        "b+00000129       gname: ''\n"
+        "b+00000149    devmajor: ''\n"
+        "b+00000151    devminor: ''\n"
+        "b+00000159      prefix: ''\n"
+        "b+000001f4     padding: 000000000000000000000000\n"
+        "b+00000200    data: 68656c6c6f20626865780a\n"
+        "b+00000400  header: \n"
+        "b+00000400        name: 'bin.dat'\n"
+        "b+00000464        mode: '0000664'\n"
+        "b+0000046c         uid: '0000000'\n"
+        "b+00000474         gid: '0000000'\n"
+        "b+0000047c        size: '00000000004'\n"
+        "b+00000488       mtime: '00000000000'\n"
+        "b+00000494      chksum: '007203'\n"
+        "b+0000049c    typeflag: 0\n"
+        "b+0000049d    linkname: ''\n"
+        "b+00000501       magic: 'ustar'\n"
+        "b+00000507     version: '00'\n"
+        "b+00000509       uname: ''\n"
+        "b+00000529       gname: ''\n"
+        "b+00000549    devmajor: ''\n"
+        "b+00000551    devminor: ''\n"
+        "b+00000559      prefix: ''\n"
+        "b+000005f4     padding: 000000000000000000000000\n"
+        "b+00000600    data: 01020304\n"
+        "b+00000800  header: \n"
+        "b+00000800        name: ''\n"
+        "b+00000864        mode: ''\n"
+        "b+0000086c         uid: ''\n"
+        "b+00000874         gid: ''\n"
+        "b+0000087c        size: ''\n"
+        "b+00000888       mtime: ''\n"
+        "b+00000894      chksum: ''\n"
+        "b+0000089c    typeflag: '\\x00'\n"
+        "b+0000089d    linkname: ''\n"
+        "b+00000901       magic: ''\n"
+        "b+00000907     version: ''\n"
+        "b+00000909       uname: ''\n"
+        "b+00000929       gname: ''\n"
+        "b+00000949    devmajor: ''\n"
+        "b+00000951    devminor: ''\n"
+        "b+00000959      prefix: ''\n"
+        "b+000009f4     padding: 000000000000000000000000\n"
+        "";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_tar, sizeof(sample_tar));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/tar.bhe", tfb) == 0);
 
     char* out = strbuilder_reset(sb);
     r         = compare_strings_ignoring_X(expected, out);

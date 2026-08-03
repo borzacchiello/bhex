@@ -526,7 +526,7 @@ proc _identify
         result = local_entry_size(start);
         if (result == 0 || start + result > size()) {
             seek(start);
-            result = 30 + peek_u16(26) + peek_u16(28);
+            result = min(30 + peek_u16(26) + peek_u16(28), remaining_size());
         }
     }
     seek(start);
@@ -563,6 +563,6 @@ proc
     }
 
     assert(off() - endOfCentralDir.central_dir_offset ==
-               endOfCentralDir.central_dir_size,
+           endOfCentralDir.central_dir_size,
            "invalid central_dir_size");
 }

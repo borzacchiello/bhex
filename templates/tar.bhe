@@ -24,13 +24,16 @@ struct TarHeader
 // the numeric fields of a tar header are octal ASCII, hence the explicit base
 proc list_files
 {
-    while (off() + 0x200 < size()) {
+    while (off() + 0x200 <= size()) {
         TarHeader header;
         if (strlen(header.size) == 0) {
             break;
         }
-        print(header.name, "[", to_int(printable(header.size), 8), "bytes ]");
-        u8    data[to_int(printable(header.size), 8)];
+        local entry_size = to_int(printable(header.size), 8);
+        assert(entry_size >= 0 && entry_size <= remaining_size(),
+               "malformed tar entry: size runs past the end of the file");
+        print(header.name, "[", entry_size, "bytes ]");
+        u8    data[entry_size];
         // every entry is padded to the 512 bytes block size
         seek(align_up(off(), 0x200));
     }
@@ -79,12 +82,15 @@ proc _identify
 
 proc
 {
-    while (off() + 0x200 < size()) {
+    while (off() + 0x200 <= size()) {
         TarHeader header;
         if (strlen(header.size) == 0) {
             break;
         }
-        u8    data[to_int(printable(header.size), 8)];
+        local entry_size = to_int(printable(header.size), 8);
+        assert(entry_size >= 0 && entry_size <= remaining_size(),
+               "malformed tar entry: size runs past the end of the file");
+        u8    data[entry_size];
         // every entry is padded to the 512 bytes block size
         seek(align_up(off(), 0x200));
     }

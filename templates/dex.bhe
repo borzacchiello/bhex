@@ -1,0 +1,163 @@
+// Copyright (c) 2022-2026, bageyelet
+
+// Android Dalvik executables. Little endian, and the header says so explicitly
+// with an endian tag whose byte order is the point.
+//
+// The file checks itself twice over: an Adler-32 across everything past the
+// checksum field, and a SHA-1 across everything past the signature. The
+// Adler-32 is a number and is verified here; the signature is 20 raw bytes and
+// `hash()` hands back a hex string, with nothing in the language to turn one
+// into the other, so that one is shown but not checked.
+
+enum dex_map_type_t : u16
+{
+    HEADER_ITEM               = 0x0000,
+    STRING_ID_ITEM            = 0x0001,
+    TYPE_ID_ITEM              = 0x0002,
+    PROTO_ID_ITEM             = 0x0003,
+    FIELD_ID_ITEM             = 0x0004,
+    METHOD_ID_ITEM            = 0x0005,
+    CLASS_DEF_ITEM            = 0x0006,
+    CALL_SITE_ID_ITEM         = 0x0007,
+    METHOD_HANDLE_ITEM        = 0x0008,
+    MAP_LIST                  = 0x1000,
+    TYPE_LIST                 = 0x1001,
+    ANNOTATION_SET_REF_LIST   = 0x1002,
+    ANNOTATION_SET_ITEM       = 0x1003,
+    CLASS_DATA_ITEM           = 0x2000,
+    CODE_ITEM                 = 0x2001,
+    STRING_DATA_ITEM          = 0x2002,
+    DEBUG_INFO_ITEM           = 0x2003,
+    ANNOTATION_ITEM           = 0x2004,
+    ENCODED_ARRAY_ITEM        = 0x2005,
+    ANNOTATIONS_DIRECTORY     = 0x2006,
+    HIDDENAPI_CLASS_DATA_ITEM = 0xf000
+}
+
+// A field named `checksum` would shadow the builtin of the same name, so the
+// call is made from here
+fn adler_of(size, at)
+{
+    disable_print();
+    result = checksum("ADLER-32", size, at);
+}
+
+struct dex_header_t
+{
+    little_endian();
+
+    char magic[8];
+    u32  checksum;
+    u8   signature[20];
+    u32  file_size;
+    u32  header_size;
+    u32  endian_tag;
+    u32  link_size;
+    u32  link_off;
+    u32  map_off;
+    u32  string_ids_size;
+    u32  string_ids_off;
+    u32  type_ids_size;
+    u32  type_ids_off;
+    u32  proto_ids_size;
+    u32  proto_ids_off;
+    u32  field_ids_size;
+    u32  field_ids_off;
+    u32  method_ids_size;
+    u32  method_ids_off;
+    u32  class_defs_size;
+    u32  class_defs_off;
+    u32  data_size;
+    u32  data_off;
+
+    assert(peek_u32(-112) == 0x0a786564, "not a dex file: bad magic");
+    assert(header_size == 112, "malformed dex: the header is not 112 bytes");
+    assert(endian_tag == 0x12345678,
+           "byte swapped dex files are not supported by this template");
+    assert(file_size >= 112 && file_size <= remaining_size() + 112,
+           "truncated dex: file_size runs past the end of the file");
+
+    // the Adler-32 covers everything behind the checksum field
+    if (checksum != adler_of(file_size - 12, -100)) {
+        warning("dex checksum mismatch");
+    }
+}
+
+// One entry of the map: what kind of item, how many of them, and where
+struct dex_map_item_t
+{
+    little_endian();
+
+    dex_map_type_t item_type;
+    u16            unused;
+    u32            size;
+    u32            offset;
+}
+
+proc _identify_magic
+{
+    magic("dex\n", 0);
+}
+
+// "dex\n" plus a three digit version is eight bytes, and the endian tag behind
+// it is another four that cannot be anything else. What settles it is the
+// Adler-32 the file carries over its own body: a whole file checksum is not
+// something arbitrary bytes satisfy. It also confirms file_size, which is the
+// exact extent.
+proc _identify
+{
+    little_endian();
+    if (peek_u32() != 0x0a786564) {
+        return;
+    }
+
+    // the version is three ASCII digits and a NUL
+    if (peek_u8(7) != 0) {
+        return;
+    }
+    local v0 = peek_u8(4);
+    local v1 = peek_u8(5);
+    local v2 = peek_u8(6);
+    if (v0 < 0x30 || v0 > 0x39 || v1 < 0x30 || v1 > 0x39 || v2 < 0x30 || v2 > 0x39) {
+        return;
+    }
+
+    if (peek_u32(36) != 112 || peek_u32(40) != 0x12345678) {
+        return;
+    }
+
+    local file_size = peek_u32(32);
+    if (file_size < 112 || file_size > remaining_size()) {
+        return;
+    }
+
+    if (peek_u32(8) != adler_of(file_size - 12, 12)) {
+        return;
+    }
+    result = file_size;
+}
+
+proc
+{
+    little_endian();
+
+    local base = off();
+    dex_header_t header;
+
+    print("  version:", peek(3, -108));
+
+    // The map lists every section of the file, including the ones the header
+    // already names, so it is the one thing worth walking
+    if (header.map_off >= 112 && header.map_off + 4 <= size()) {
+        seek(base + header.map_off);
+
+        u32 map_size;
+        assert(map_size <= 0x10000, "malformed dex map: implausible entry count");
+
+        local i = 0;
+        while (i < map_size) {
+            dex_map_item_t item;
+            i = i + 1;
+        }
+    }
+}

@@ -1,0 +1,185 @@
+// Copyright (c) 2022-2026, bageyelet
+
+// The classic MBR partition table: 446 bytes of boot code, four 16 byte entries,
+// and the 0x55aa signature that closes every boot sector.
+//
+// That signature is the only fixed thing in the sector, and two bytes are far
+// too little on their own — a FAT or NTFS volume boot record ends with the same
+// pair, and so does plenty of other boot code. What tells them apart is what
+// sits in front of it: a real partition table has four entries whose status
+// byte is 0x00 or 0x80 and whose extents stay inside a disk, while a volume
+// boot record has a BIOS parameter block there instead.
+//
+// The extent reported is the sector holding the table, not the disk it
+// describes: a scan that skipped the whole disk would never look inside the
+// partitions, which is where everything interesting lives.
+
+enum mbr_part_type_t : u8
+{
+    EMPTY              = 0x00,
+    FAT12              = 0x01,
+    FAT16_LT32M        = 0x04,
+    EXTENDED           = 0x05,
+    FAT16              = 0x06,
+    NTFS_EXFAT         = 0x07,
+    FAT32_CHS          = 0x0b,
+    FAT32_LBA          = 0x0c,
+    FAT16_LBA          = 0x0e,
+    EXTENDED_LBA       = 0x0f,
+    HIDDEN_FAT32       = 0x1b,
+    HIDDEN_FAT32_LBA   = 0x1c,
+    PLAN9              = 0x39,
+    LINUX_SWAP         = 0x82,
+    LINUX              = 0x83,
+    LINUX_EXTENDED     = 0x85,
+    LINUX_LVM          = 0x8e,
+    FREEBSD            = 0xa5,
+    OPENBSD            = 0xa6,
+    NETBSD             = 0xa9,
+    MAC_OS_X           = 0xaf,
+    SOLARIS            = 0xbf,
+    LEGACY_MBR_EFI     = 0xee,
+    EFI_SYSTEM         = 0xef,
+    LINUX_RAID         = 0xfd
+}
+
+// Cylinder/head/sector, kept for the sake of the layout: nothing has addressed
+// a disk this way in a very long time
+struct mbr_chs_t
+{
+    u8 head;
+    u8 sector_cylinder_high;
+    u8 cylinder_low;
+}
+
+struct mbr_partition_t
+{
+    little_endian();
+
+    u8              status;
+    mbr_chs_t       first_chs;
+    mbr_part_type_t partition_type;
+    mbr_chs_t       last_chs;
+    u32             start_lba;
+    u32             sector_count;
+
+    assert(status == 0x00 || status == 0x80,
+           "malformed MBR entry: the status byte is neither inactive nor bootable");
+}
+
+// Whether the boot sector at the current offset carries a BIOS parameter block,
+// which makes it a volume boot record rather than a partition table
+fn has_bpb()
+{
+    disable_print();
+    result = 0;
+
+    local jump = peek_u8(0);
+    if (jump != 0xeb && jump != 0xe9) {
+        return;
+    }
+
+    local bytes_per_sector = peek_u16(11);
+    if (bytes_per_sector != 512 && bytes_per_sector != 1024 &&
+        bytes_per_sector != 2048 && bytes_per_sector != 4096) {
+        return;
+    }
+
+    local media = peek_u8(21);
+    if (media != 0xf8 && media < 0xf0) {
+        return;
+    }
+    result = 1;
+}
+
+proc _identify_magic
+{
+    magic("\x55\xaa", 510);
+}
+
+// Two magic bytes, so everything else has to come from the table itself: all
+// four status bytes have to be one of the two the format defines, at least one
+// entry has to be non empty, and every non empty one has to describe a real
+// range of sectors. A volume boot record and a GPT protective MBR are both
+// turned away, since each has a template of its own.
+proc _identify
+{
+    little_endian();
+    if (peek_u16(510) != 0xaa55) {
+        return;
+    }
+    if (has_bpb()) {
+        return;
+    }
+
+    // a protective MBR fronting a GPT disk: gpt.bhe answers for those
+    if (remaining_size() >= 520 && peek(8, 512) == "EFI PART") {
+        return;
+    }
+
+    local used = 0;
+    local i    = 0;
+    while (i < 4) {
+        local at     = 446 + i * 16;
+        local status = peek_u8(at);
+        local kind   = peek_u8(at + 4);
+        local start  = peek_u32(at + 8);
+        local count  = peek_u32(at + 12);
+
+        if (status != 0x00 && status != 0x80) {
+            return;
+        }
+        if (kind == 0) {
+            // an unused entry has to be entirely zero
+            if (start != 0 || count != 0) {
+                return;
+            }
+        } else {
+            if (count == 0 || start + count < start) {
+                return;
+            }
+            used = used + 1;
+        }
+        i = i + 1;
+    }
+
+    if (used == 0) {
+        return;
+    }
+
+    // the table is one sector: the partitions it points at are separate finds
+    result = min(512, remaining_size());
+}
+
+proc
+{
+    little_endian();
+
+    local base = off();
+    u8    boot_code[446];
+
+    local i = 0;
+    while (i < 4) {
+        mbr_partition_t partition;
+        i = i + 1;
+    }
+
+    u16 signature;
+    assert(signature == 0xaa55, "not an MBR: bad boot signature");
+
+    // The entries carry their extent in sectors, which the sector size of the
+    // disk turns into bytes; 512 is the only value the table ever assumes
+    seek(base + 446);
+    local k = 0;
+    while (k < 4) {
+        local kind  = peek_u8(k * 16 + 4);
+        local start = peek_u32(k * 16 + 8);
+        local count = peek_u32(k * 16 + 12);
+        if (kind != 0) {
+            print("  partition", tostring(k, 10), "at byte",
+                  tostring(start * 512, 10), "size", tostring(count * 512, 10));
+        }
+        k = k + 1;
+    }
+    seek(base + 512);
+}

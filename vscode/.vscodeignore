@@ -1,2 +1,7 @@
 .gitignore
+.vscodeignore
 Makefile
+node_modules/**
+package-lock.json
+scripts/**
+test/**

@@ -1,0 +1,126 @@
+// Copyright (c) 2022-2026, bageyelet
+
+// The Ogg container, which carries Vorbis, Opus, FLAC and Theora streams.
+// Little endian.
+//
+// A file is a sequence of pages, and a page states its own length twice over:
+// the segment table says how many segments follow, and the segments say how
+// many bytes each. That makes the pages a chain, which is what this template
+// walks, and the walk is what gives the exact extent.
+//
+// Every page also carries a CRC32 over itself computed with the CRC field
+// zeroed. That cannot be expressed against the bytes as they lie on disk, so it
+// is shown rather than checked - the chain is what does the confirming here.
+
+orenum ogg_header_type_t : u8
+{
+    CONTINUED = 0x01,
+    FIRST     = 0x02,
+    LAST      = 0x04
+}
+
+struct ogg_page_t
+{
+    little_endian();
+
+    char              capture_pattern[4];
+    u8                stream_version;
+    ogg_header_type_t header_type;
+    i64               granule_position;
+    u32               bitstream_serial;
+    u32               page_sequence;
+    u32               page_checksum;
+    u8                page_segments;
+
+    assert(capture_pattern == "OggS", "not an Ogg page: bad capture pattern");
+    assert(stream_version == 0, "unsupported Ogg stream version");
+
+    if (page_segments > 0) {
+        u8 segment_table[page_segments];
+    }
+
+    // the payload is the sum of the segment lengths
+    local payload = 0;
+    local i       = 0;
+    while (i < page_segments) {
+        payload = payload + peek_u8(-(page_segments - i));
+        i       = i + 1;
+    }
+
+    assert(payload <= remaining_size(), "malformed Ogg page: it runs past the end of the file");
+    if (payload > 0) {
+        u8 page_data[payload];
+    }
+}
+
+// Walks the pages from `at`, returning the offset just past the last one, or 0
+fn walk_pages(at)
+{
+    disable_print();
+    result = 0;
+
+    local p     = at;
+    local count = 0;
+    while (count < 1000000) {
+        if (p == remaining_size()) {
+            result = p;
+            return;
+        }
+        if (p + 27 > remaining_size()) {
+            return;
+        }
+        if (peek(4, p) != "OggS" || peek_u8(p + 4) != 0) {
+            return;
+        }
+
+        local segs = peek_u8(p + 26);
+        if (p + 27 + segs > remaining_size()) {
+            return;
+        }
+
+        local payload = 0;
+        local i       = 0;
+        while (i < segs) {
+            payload = payload + peek_u8(p + 27 + i);
+            i       = i + 1;
+        }
+
+        p = p + 27 + segs + payload;
+        if (p > remaining_size()) {
+            return;
+        }
+        count = count + 1;
+    }
+}
+
+proc _identify_magic
+{
+    magic("OggS", 0);
+}
+
+// Four printable magic bytes and a version that has always been zero, so what
+// settles it is the page chain: each page's segment table has to add up to a
+// length that lands exactly on the next "OggS", all the way to the end of the
+// file. A run of arbitrary bytes does not chain.
+proc _identify
+{
+    little_endian();
+    if (peek(4) != "OggS" || peek_u8(4) != 0) {
+        return;
+    }
+    // the first page of a stream is flagged as such
+    if ((peek_u8(5) & 0x02) == 0) {
+        return;
+    }
+
+    result = walk_pages(0);
+}
+
+proc
+{
+    little_endian();
+
+    while (remaining_size() >= 27) {
+        ogg_page_t page;
+    }
+}

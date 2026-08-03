@@ -183,7 +183,7 @@ struct vbri_header_t
     u16  toc_scale;
     u16  toc_entry_size;
     u16  toc_frames;
-    local toc_size = toc_entries * toc_entry_size;
+    local toc_size = u64(toc_entries) * toc_entry_size;
     assert(toc_size <= remaining_size(), "malformed 'VBRI' header: bad seek table size");
     if (toc_size > 0) {
         u8 toc[toc_size];

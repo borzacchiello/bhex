@@ -17,6 +17,7 @@
 #include "dummy_filebuffer.h"
 #include "filebuffer.h"
 #include "../cmd/cmd.h"
+#include "../bhengine/vm.h"
 
 #define print_err_sb()                                                         \
     do {                                                                       \
@@ -26,6 +27,16 @@
     } while (0)
 
 extern int bhengine_vm_skip_search;
+
+// A template that pulls types out of another one with the '#' operator needs
+// that other template to be in the VM by name. The tests come up with an empty
+// VM on purpose (see bhengine_vm_skip_search below), so the dependency has to
+// be registered by hand: returns 0 on success, like bhengine_vm_add_template().
+__attribute__((unused)) static int register_imported_template(const char* name,
+                                                              const char* path)
+{
+    return bhengine_vm_add_template(bhengine_vm_get(), name, path);
+}
 
 static CmdContext*      cc;
 static DummyFilebuffer *elf_fb, *pe_fb, *dfb_alt_1, *dfb_alt_2;

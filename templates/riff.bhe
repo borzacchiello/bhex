@@ -1,0 +1,201 @@
+// Copyright (c) 2022-2026, bageyelet
+
+// The RIFF container, and the three forms of it that turn up most: WAVE audio,
+// AVI video and WebP images.
+//
+// A RIFF file is a chunk like any other — an id, a length, and a payload — that
+// happens to hold a four character form type followed by more chunks. Every
+// chunk records its own length, so the file can be walked and its exact extent
+// is known; a chunk of odd length is followed by a pad byte that the length
+// does not count.
+
+enum wave_format_t : u16
+{
+    PCM        = 0x0001,
+    ADPCM      = 0x0002,
+    IEEE_FLOAT = 0x0003,
+    ALAW       = 0x0006,
+    MULAW      = 0x0007,
+    GSM610     = 0x0031,
+    MPEG       = 0x0050,
+    MPEGLAYER3 = 0x0055,
+    EXTENSIBLE = 0xfffe
+}
+
+// 'fmt ': how the samples in the 'data' chunk are encoded
+struct wave_fmt_t
+{
+    little_endian();
+
+    wave_format_t format;
+    u16           channels;
+    u32           sample_rate;
+    u32           byte_rate;
+    u16           block_align;
+    u16           bits_per_sample;
+}
+
+// 'avih': the main AVI header
+struct avi_main_header_t
+{
+    little_endian();
+
+    u32 microsec_per_frame;
+    u32 max_bytes_per_sec;
+    u32 padding_granularity;
+    u32 flags;
+    u32 total_frames;
+    u32 initial_frames;
+    u32 streams;
+    u32 suggested_buffer_size;
+    u32 width;
+    u32 height;
+    u32 reserved[4];
+}
+
+// 'VP8X': the extended WebP header, which is where animation and alpha live
+struct webp_vp8x_t
+{
+    little_endian();
+
+    u8 flags;
+    u8 reserved[3];
+
+    // the dimensions are stored one less than they are, in three bytes each
+    u8 canvas_width_minus_one[3];
+    u8 canvas_height_minus_one[3];
+}
+
+struct riff_chunk_t
+{
+    little_endian();
+
+    local start = off();
+    char id[4];
+    u32  chunk_size;
+
+    assert(chunk_size <= remaining_size(), "malformed RIFF chunk: size runs past the end of the file");
+
+    if (id == "fmt " && chunk_size >= 16) {
+        wave_fmt_t fmt;
+        local extra = chunk_size - (off() - start - 8);
+        if (extra > 0) {
+            u8 fmt_extra[extra];
+        }
+    } elif (id == "avih" && chunk_size >= 56) {
+        avi_main_header_t avih;
+        local extra = chunk_size - (off() - start - 8);
+        if (extra > 0) {
+            u8 avih_extra[extra];
+        }
+    } elif (id == "VP8X" && chunk_size >= 10) {
+        webp_vp8x_t vp8x;
+        local extra = chunk_size - (off() - start - 8);
+        if (extra > 0) {
+            u8 vp8x_extra[extra];
+        }
+    } elif (id == "LIST" && chunk_size >= 4) {
+        char list_type[4];
+
+        // the rest of a LIST is chunks again
+        local stop = start + 8 + chunk_size;
+        while (off() + 8 <= stop) {
+            riff_chunk_t chunk;
+        }
+        if (off() < stop) {
+            u8 list_tail[stop - off()];
+        }
+    } elif (chunk_size > 0) {
+        u8 data[chunk_size];
+    }
+
+    // a chunk of odd length is followed by a pad byte outside the length
+    if ((chunk_size & 1) && remaining_size() > 0) {
+        u8 pad;
+    }
+}
+
+// Walks the chunks of the form at the current offset, returning the offset just
+// past the last one, or 0 when they do not tile the declared size exactly.
+fn walk_chunks(at, stop)
+{
+    disable_print();
+    result = 0;
+
+    local p     = at;
+    local count = 0;
+    while (count < 1000000) {
+        if (p == stop) {
+            result = p;
+            return;
+        }
+        if (p + 8 > stop) {
+            return;
+        }
+
+        local sz = peek_u32(p + 4);
+        if (sz > stop - p - 8) {
+            return;
+        }
+
+        p = p + 8 + sz + (sz & 1);
+        count = count + 1;
+    }
+}
+
+proc _identify_magic
+{
+    magic("RIFF", 0);
+}
+
+// "RIFF" is four printable bytes, so the form behind it has to hold together:
+// the recorded size must fit in the file, the form type must be one this
+// template knows, and the chunks must tile the declared size exactly. That walk
+// is also what confirms the length the header claims.
+proc _identify
+{
+    little_endian();
+    if (peek(4) != "RIFF") {
+        return;
+    }
+
+    local riff_size = peek_u32(4);
+    if (riff_size < 4 || riff_size > remaining_size() - 8) {
+        return;
+    }
+
+    local form = peek(4, 8);
+    if (form != "WAVE" && form != "AVI " && form != "WEBP" && form != "RMID" &&
+        form != "ACON" && form != "PAL " && form != "RDIB" && form != "CDDA") {
+        return;
+    }
+
+    // the chunks have to add up to exactly what the header said
+    if (walk_chunks(12, 8 + riff_size) == 0) {
+        return;
+    }
+    result = 8 + riff_size;
+}
+
+proc
+{
+    little_endian();
+
+    local start = off();
+    char  magic[4];
+    u32   riff_size;
+    char  form_type[4];
+
+    assert(magic == "RIFF", "not a RIFF file: bad magic");
+    assert(riff_size >= 4, "malformed RIFF file: size field is too small for a form type");
+
+    local stop = start + 8 + riff_size;
+    if (stop > size()) {
+        warning("the RIFF size runs past the end of the file: it is truncated");
+        stop = size();
+    }
+
+    while (off() + 8 <= stop) {
+        riff_chunk_t chunk;
+    }
+}

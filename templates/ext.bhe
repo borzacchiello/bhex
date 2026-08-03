@@ -1,0 +1,270 @@
+// Copyright (c) 2022-2026, bageyelet
+
+// The ext2/ext3/ext4 superblock, which sits 1024 bytes into the filesystem and
+// is 1024 bytes long. Everything is little endian.
+//
+// Which of the three a volume is comes from the feature flags rather than from
+// any version field: extents or 64bit make it ext4, a journal alone makes it
+// ext3, and neither makes it ext2.
+//
+// A modern mkfs turns on metadata checksums, and then the superblock carries a
+// CRC32C over itself. The kernel stores that one without the final inversion
+// the usual CRC-32C applies, so it is compared against the inverted value here.
+
+enum ext_state_t : u16
+{
+    CLEAN             = 1,
+    ERRORS            = 2,
+    ORPHANS_RECOVERED = 4
+}
+
+enum ext_errors_t : u16
+{
+    CONTINUE    = 1,
+    REMOUNT_RO  = 2,
+    PANIC       = 3
+}
+
+enum ext_creator_os_t : u32
+{
+    LINUX   = 0,
+    HURD    = 1,
+    MASIX   = 2,
+    FREEBSD = 3,
+    LITES   = 4
+}
+
+enum ext_rev_level_t : u32
+{
+    GOOD_OLD = 0,
+    DYNAMIC  = 1
+}
+
+orenum ext_feature_compat_t : u32
+{
+    DIR_PREALLOC  = 0x0001,
+    IMAGIC_INODES = 0x0002,
+    HAS_JOURNAL   = 0x0004,
+    EXT_ATTR      = 0x0008,
+    RESIZE_INODE  = 0x0010,
+    DIR_INDEX     = 0x0020,
+    SPARSE_SUPER2 = 0x0200,
+    FAST_COMMIT   = 0x0400,
+    ORPHAN_FILE   = 0x1000
+}
+
+orenum ext_feature_incompat_t : u32
+{
+    COMPRESSION    = 0x0001,
+    FILETYPE       = 0x0002,
+    RECOVER        = 0x0004,
+    JOURNAL_DEV    = 0x0008,
+    META_BG        = 0x0010,
+    EXTENTS        = 0x0040,
+    SIXTY_FOUR_BIT = 0x0080,
+    MMP            = 0x0100,
+    FLEX_BG        = 0x0200,
+    EA_INODE       = 0x0400,
+    DIRDATA        = 0x1000,
+    CSUM_SEED      = 0x2000,
+    LARGEDIR       = 0x4000,
+    INLINE_DATA    = 0x8000,
+    ENCRYPT        = 0x10000
+}
+
+orenum ext_feature_ro_compat_t : u32
+{
+    SPARSE_SUPER  = 0x0001,
+    LARGE_FILE    = 0x0002,
+    BTREE_DIR     = 0x0004,
+    HUGE_FILE     = 0x0008,
+    GDT_CSUM      = 0x0010,
+    DIR_NLINK     = 0x0020,
+    EXTRA_ISIZE   = 0x0040,
+    HAS_SNAPSHOT  = 0x0080,
+    QUOTA         = 0x0100,
+    BIGALLOC      = 0x0200,
+    METADATA_CSUM = 0x0400,
+    READONLY      = 0x1000,
+    PROJECT       = 0x2000
+}
+
+struct ext_superblock_t
+{
+    little_endian();
+
+    local start = off();
+
+    u32              inodes_count;
+    u32              blocks_count_lo;
+    u32              reserved_blocks_count_lo;
+    u32              free_blocks_count_lo;
+    u32              free_inodes_count;
+    u32              first_data_block;
+    u32              log_block_size;
+    u32              log_cluster_size;
+    u32              blocks_per_group;
+    u32              clusters_per_group;
+    u32              inodes_per_group;
+    u32              mtime;
+    u32              wtime;
+    u16              mount_count;
+    u16              max_mount_count;
+    u16              magic;
+    ext_state_t      state;
+    ext_errors_t     errors;
+    u16              minor_rev_level;
+    u32              lastcheck;
+    u32              checkinterval;
+    ext_creator_os_t creator_os;
+    ext_rev_level_t  rev_level;
+    u16              default_resuid;
+    u16              default_resgid;
+
+    assert(magic == 0xef53, "not an ext filesystem: bad magic");
+    assert(log_block_size <= 6, "malformed ext superblock: implausible block size");
+
+    // everything past this point exists only in the dynamic revision
+    if (rev_level == ext_rev_level_t::DYNAMIC) {
+        u32                     first_inode;
+        u16                     inode_size;
+        u16                     block_group_nr;
+        ext_feature_compat_t    feature_compat;
+        ext_feature_incompat_t  feature_incompat;
+        ext_feature_ro_compat_t feature_ro_compat;
+        u8                      uuid[16];
+        char                    volume_name[16];
+        char                    last_mounted[64];
+        u32                     algorithm_usage_bitmap;
+        u8                      prealloc_blocks;
+        u8                      prealloc_dir_blocks;
+        u16                     reserved_gdt_blocks;
+        u8                      journal_uuid[16];
+        u32                     journal_inum;
+        u32                     journal_dev;
+        u32                     last_orphan;
+        u32                     hash_seed[4];
+        u8                      def_hash_version;
+        u8                      jnl_backup_type;
+        u16                     desc_size;
+        u32                     default_mount_opts;
+        u32                     first_meta_bg;
+        u32                     mkfs_time;
+        u32                     jnl_blocks[17];
+        u32                     blocks_count_hi;
+        u32                     reserved_blocks_count_hi;
+        u32                     free_blocks_count_hi;
+    }
+
+    // the rest of the 1024 byte superblock
+    local consumed = off() - start;
+    if (consumed < 1024) {
+        u8 remainder[1024 - consumed];
+    }
+
+    if (rev_level == ext_rev_level_t::DYNAMIC &&
+        (feature_ro_compat & ext_feature_ro_compat_t::METADATA_CSUM)) {
+        // the kernel keeps the running CRC32C without inverting it at the end
+        local expected = crc("CRC-32/ISCSI", 0x3fc, -1024) ^ 0xffffffff;
+        if (peek_u32(-1024 + 0x3fc) != expected) {
+            warning("superblock checksum mismatch");
+        }
+    }
+}
+
+// 1024 << s_log_block_size
+fn ext_block_size(at)
+{
+    disable_print();
+    result = 1024 << peek_u32(at + 0x18);
+}
+
+proc _identify_magic
+{
+    // the magic sits 0x38 into a superblock that starts 1024 bytes into the
+    // filesystem, so a match here means the volume starts 0x438 earlier
+    magic("\x53\xef", 0x438);
+}
+
+// Two magic bytes at a fixed distance into the volume, so the superblock behind
+// them has to hold together: a block size the format allows, counts that are
+// non zero and consistent with each other, a revision and a state from the
+// short lists that exist, and a group geometry that agrees with the block size.
+proc _identify
+{
+    little_endian();
+    if (peek_u16(0x438) != 0xef53) {
+        return;
+    }
+
+    local sb = 1024;
+    local log_bs = peek_u32(sb + 0x18);
+    if (log_bs > 6) {
+        return;
+    }
+    local block_size = 1024 << log_bs;
+
+    local inodes = peek_u32(sb + 0x00);
+    local blocks = peek_u32(sb + 0x04);
+    local bpg    = peek_u32(sb + 0x20);
+    local ipg    = peek_u32(sb + 0x28);
+    if (inodes == 0 || blocks == 0 || bpg == 0 || ipg == 0) {
+        return;
+    }
+
+    // a block group covers one block worth of allocation bitmap
+    if (bpg != block_size * 8) {
+        return;
+    }
+    if (peek_u32(sb + 0x4c) > 1) {
+        return;
+    }
+
+    local state = peek_u16(sb + 0x3a);
+    if (state == 0 || state > 7) {
+        return;
+    }
+    if (peek_u16(sb + 0x3c) == 0 || peek_u16(sb + 0x3c) > 3) {
+        return;
+    }
+    if (peek_u32(sb + 0x14) > 1) {
+        return;
+    }
+
+    // free counts cannot exceed the totals they are part of
+    if (peek_u32(sb + 0x0c) > blocks || peek_u32(sb + 0x10) > inodes) {
+        return;
+    }
+
+    result = min(u64(blocks) * block_size, remaining_size());
+}
+
+proc
+{
+    little_endian();
+
+    local base = off();
+    u8    boot_area[1024];
+
+    ext_superblock_t superblock;
+
+    local block_size = ext_block_size(base + 1024 - off());
+    local total      = u64(superblock.blocks_count_lo) * block_size;
+
+    if (superblock.rev_level == ext_rev_level_t::DYNAMIC) {
+        if (superblock.feature_incompat &
+            (ext_feature_incompat_t::EXTENTS | ext_feature_incompat_t::SIXTY_FOUR_BIT)) {
+            print("  ext4,", tostring(block_size, 10), "byte blocks,",
+                  tostring(total, 10), "bytes");
+        } elif (superblock.feature_compat & ext_feature_compat_t::HAS_JOURNAL) {
+            print("  ext3,", tostring(block_size, 10), "byte blocks,",
+                  tostring(total, 10), "bytes");
+        } else {
+            print("  ext2,", tostring(block_size, 10), "byte blocks,",
+                  tostring(total, 10), "bytes");
+        }
+    } else {
+        print("  ext2 (original revision),", tostring(block_size, 10), "byte blocks,",
+              tostring(total, 10), "bytes");
+    }
+}

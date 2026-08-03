@@ -343,6 +343,22 @@ static BHEngineValue* process_type(InterpreterContext* ctx, const char* varname,
             fmt_process_value(ctx->fmt, r);
             return r;
         }
+    } else {
+        // An imported type. Resolve the template it comes from once and
+        // quietly: both attempts below ask for it, so letting them report a
+        // missing file would say the same thing twice, and neither of them
+        // would mention which template was meant to hold the type
+        if (imported_cb == NULL) {
+            bhengine_raise_exception(
+                ctx, "cannot import from '%s': no template loader is configured",
+                type->bhe_name);
+            return NULL;
+        }
+        if (imported_cb(imported_ptr, type->bhe_name, 1) == NULL) {
+            bhengine_raise_exception(ctx, "cannot load template '%s'",
+                                     type->bhe_name);
+            return NULL;
+        }
     }
 
     map* custom_type_vars = process_struct_type(ctx, type);
@@ -360,7 +376,13 @@ static BHEngineValue* process_type(InterpreterContext* ctx, const char* varname,
         return v;
     }
 
-    bhengine_raise_exception(ctx, "error while processing %s", type->name);
+    // Name the template an imported type came from: "error while processing
+    // eth_header" gives no hint about where it was looked for
+    if (type->bhe_name != NULL)
+        bhengine_raise_exception(ctx, "error while processing %s#%s",
+                                 type->bhe_name, type->name);
+    else
+        bhengine_raise_exception(ctx, "error while processing %s", type->name);
     return NULL;
 }
 

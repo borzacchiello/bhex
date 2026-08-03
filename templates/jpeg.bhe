@@ -77,6 +77,9 @@ struct sized_marker_t
 {
     JPEG_Marker id;
     u16         size;
+
+    assert(size >= 2, "malformed JPEG segment: length field is below its own size");
+    assert(size - 2 <= remaining_size(), "malformed JPEG segment: runs past the end of the file");
     u8          data[size - 2];
 }
 
@@ -98,8 +101,10 @@ struct APP0
     u16         y_density;
     u8          x_thumbnail;
     u8          y_thumbnail;
-    if (x_thumbnail * y_thumbnail > 0) {
-        pixel_t thumbnail_data[x_thumbnail * y_thumbnail];
+    // both are u8, and their product truncates to u8 unless widened: a
+    // 16x16 thumbnail would otherwise come out as no thumbnail at all
+    if (u64(x_thumbnail) * y_thumbnail > 0) {
+        pixel_t thumbnail_data[u64(x_thumbnail) * y_thumbnail];
     }
 }
 

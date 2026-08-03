@@ -1,0 +1,263 @@
+// Copyright (c) 2022-2026, bageyelet
+
+// FAT12, FAT16 and FAT32 volumes: SD cards, EFI system partitions, and the
+// filesystem most embedded devices still hand to a host over USB.
+//
+// Which of the three a volume is, is not written down anywhere. It follows
+// from the number of data clusters, and the thresholds are part of the format:
+// below 4085 it is FAT12, below 65525 FAT16, and FAT32 above that. The
+// "FAT16   " style string in the boot sector is documentation, not the answer.
+
+orenum fat_attr_t : u8
+{
+    READ_ONLY = 0x01,
+    HIDDEN    = 0x02,
+    SYSTEM    = 0x04,
+    VOLUME_ID = 0x08,
+    DIRECTORY = 0x10,
+    ARCHIVE   = 0x20
+}
+
+// The fields every variant shares
+struct fat_bpb_t
+{
+    little_endian();
+
+    u8   jump_boot[3];
+    char oem_name[8];
+    u16  bytes_per_sector;
+    u8   sectors_per_cluster;
+    u16  reserved_sectors;
+    u8   num_fats;
+    u16  root_entries;
+    u16  total_sectors_16;
+    u8   media;
+    u16  sectors_per_fat_16;
+    u16  sectors_per_track;
+    u16  num_heads;
+    u32  hidden_sectors;
+    u32  total_sectors_32;
+
+    assert(bytes_per_sector == 512 || bytes_per_sector == 1024 ||
+           bytes_per_sector == 2048 || bytes_per_sector == 4096,
+           "not a FAT volume: implausible sector size");
+    assert(sectors_per_cluster > 0 && (sectors_per_cluster & (sectors_per_cluster - 1)) == 0,
+           "not a FAT volume: sectors per cluster is not a power of two");
+    assert(reserved_sectors > 0, "not a FAT volume: no reserved sectors");
+    assert(num_fats > 0 && num_fats <= 4, "not a FAT volume: implausible FAT count");
+}
+
+// FAT12/FAT16 tail of the boot sector
+struct fat16_ebpb_t
+{
+    little_endian();
+
+    u8   drive_number;
+    u8   reserved;
+    u8   boot_signature;
+    u32  volume_id;
+    char volume_label[11];
+    char fs_type[8];
+}
+
+// FAT32 replaces the tail with a much longer one
+struct fat32_ebpb_t
+{
+    little_endian();
+
+    u32  sectors_per_fat_32;
+    u16  ext_flags;
+    u16  fs_version;
+    u32  root_cluster;
+    u16  fs_info_sector;
+    u16  backup_boot_sector;
+    u8   reserved[12];
+    u8   drive_number;
+    u8   reserved1;
+    u8   boot_signature;
+    u32  volume_id;
+    char volume_label[11];
+    char fs_type[8];
+}
+
+// One 32 byte slot of a directory. A long file name is stored in the slots in
+// front of the short one, all carrying the magic 0x0f attribute combination.
+struct fat_dir_entry_t
+{
+    little_endian();
+
+    char        name[11];
+    fat_attr_t  attributes;
+    u8          nt_reserved;
+    u8          create_time_tenth;
+    u16         create_time;
+    u16         create_date;
+    u16         last_access_date;
+    u16         first_cluster_high;
+    u16         write_time;
+    u16         write_date;
+    u16         first_cluster_low;
+    u32         file_size;
+}
+
+// The number of data clusters, which is what decides FAT12 vs 16 vs 32
+fn cluster_count(at)
+{
+    disable_print();
+    result = 0;
+
+    local bps      = peek_u16(at + 11);
+    local spc      = peek_u8(at + 13);
+    local reserved = peek_u16(at + 14);
+    local nfats    = peek_u8(at + 16);
+    local rootent  = peek_u16(at + 17);
+    local tot16    = peek_u16(at + 19);
+    local spf16    = peek_u16(at + 22);
+    local tot32    = peek_u32(at + 32);
+
+    if (bps == 0 || spc == 0) {
+        return;
+    }
+
+    local total = tot16;
+    if (total == 0) {
+        total = tot32;
+    }
+    local spf = spf16;
+    if (spf == 0) {
+        spf = peek_u32(at + 36);
+    }
+    if (total == 0 || spf == 0) {
+        return;
+    }
+
+    local root_sectors = (rootent * 32 + bps - 1) / bps;
+    // widened: two sized values multiplied together truncate to their own
+    // width, and a FAT of any size overflows a u16 that way
+    local meta         = reserved + u64(nfats) * spf + root_sectors;
+    if (meta >= total) {
+        return;
+    }
+    result = (total - meta) / spc;
+}
+
+fn total_bytes(at)
+{
+    disable_print();
+    local bps   = peek_u16(at + 11);
+    local total = peek_u16(at + 19);
+    if (total == 0) {
+        total = peek_u32(at + 32);
+    }
+    result = u64(total) * bps;
+}
+
+proc _identify_magic
+{
+    magic("\x55\xaa", 510);
+}
+
+// The boot signature is two bytes, so everything rests on the BIOS parameter
+// block behind it: a jump instruction where the processor would start, a sector
+// size and cluster size the format allows, a media descriptor from the short
+// list that exists, and a geometry whose metadata fits inside the volume it
+// claims. The cluster count falling out of that is the last check.
+proc _identify
+{
+    little_endian();
+    if (peek_u16(510) != 0xaa55) {
+        return;
+    }
+
+    local jump = peek_u8(0);
+    if (jump != 0xeb && jump != 0xe9) {
+        return;
+    }
+
+    local bps = peek_u16(11);
+    local spc = peek_u8(13);
+    if (bps != 512 && bps != 1024 && bps != 2048 && bps != 4096) {
+        return;
+    }
+    if (spc == 0 || spc > 128 || (spc & (spc - 1)) != 0) {
+        return;
+    }
+    if (peek_u16(14) == 0) {
+        return;
+    }
+
+    local nfats = peek_u8(16);
+    if (nfats == 0 || nfats > 4) {
+        return;
+    }
+
+    local media = peek_u8(21);
+    if (media != 0xf0 && media < 0xf8) {
+        return;
+    }
+
+    local clusters = cluster_count(0);
+    if (clusters == 0) {
+        return;
+    }
+
+    // the volume may be a partition image cut short of what the BPB claims,
+    // which is common enough that it is not treated as a failure
+    result = min(total_bytes(0), remaining_size());
+}
+
+proc
+{
+    little_endian();
+
+    local base = off();
+    fat_bpb_t bpb;
+
+    local clusters = cluster_count(-(off() - base));
+    local is_fat32 = 0;
+    if (clusters >= 65525) {
+        is_fat32 = 1;
+    }
+
+    if (is_fat32) {
+        fat32_ebpb_t ebpb;
+    } else {
+        fat16_ebpb_t ebpb;
+    }
+
+    seek(base + 510);
+    u16 boot_signature;
+    assert(boot_signature == 0xaa55, "not a FAT volume: bad boot signature");
+
+    if (clusters < 4085) {
+        print("  FAT12,", tostring(clusters, 10), "clusters");
+    } elif (clusters < 65525) {
+        print("  FAT16,", tostring(clusters, 10), "clusters");
+    } else {
+        print("  FAT32,", tostring(clusters, 10), "clusters");
+    }
+
+    // FAT12 and FAT16 keep the root directory in a fixed area behind the FATs;
+    // on FAT32 it is an ordinary cluster chain and is not walked here
+    if (is_fat32 == 0 && bpb.root_entries > 0) {
+        assert(bpb.sectors_per_fat_16 > 0,
+               "malformed FAT volume: FAT12/16 with no sectors per FAT");
+
+        local root_at = base + (bpb.reserved_sectors +
+                                u64(bpb.num_fats) * bpb.sectors_per_fat_16) *
+                        u64(bpb.bytes_per_sector);
+        assert(root_at < size(), "malformed FAT volume: the root directory is outside the file");
+        seek(root_at);
+
+        local i = 0;
+        while (i < bpb.root_entries && remaining_size() >= 32) {
+            if (peek_u8() == 0) {
+                // the first unused slot ends the directory
+                i = bpb.root_entries;
+            } else {
+                fat_dir_entry_t entry;
+                i = i + 1;
+            }
+        }
+    }
+}

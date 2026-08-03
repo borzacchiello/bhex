@@ -1,0 +1,287 @@
+// Copyright (c) 2022-2026, bageyelet
+
+// The flattened device tree (.dtb / FDT), the hardware description a bootloader
+// hands to the kernel. Everything in it is big endian.
+//
+// A blob is a header, a list of reserved memory ranges, a structure block of
+// tokens describing the tree, and a strings block holding the property names
+// the structure block refers to by offset.
+
+enum fdt_token_t : u32
+{
+    BEGIN_NODE = 0x00000001,
+    END_NODE   = 0x00000002,
+    PROP       = 0x00000003,
+    NOP        = 0x00000004,
+    END        = 0x00000009
+}
+
+struct fdt_header_t
+{
+    big_endian();
+
+    u32 magic;
+    u32 totalsize;
+    u32 off_dt_struct;
+    u32 off_dt_strings;
+    u32 off_mem_rsvmap;
+    u32 version;
+    u32 last_comp_version;
+
+    // added in version 2, 3 and 17 respectively, but no producer has emitted
+    // anything older than 16 in a very long time
+    u32 boot_cpuid_phys;
+    u32 size_dt_strings;
+    u32 size_dt_struct;
+
+    assert(magic == 0xd00dfeed, "not a device tree blob: bad magic");
+    assert(version >= 16, "unsupported device tree version");
+    assert(last_comp_version <= version, "malformed device tree: last_comp_version is ahead of version");
+    assert(totalsize <= remaining_size() + 40, "truncated device tree: totalsize runs past the end of the file");
+    assert(off_dt_struct + size_dt_struct <= totalsize, "malformed device tree: the structure block does not fit");
+    assert(off_dt_strings + size_dt_strings <= totalsize, "malformed device tree: the strings block does not fit");
+}
+
+// Reads the NUL terminated string at the absolute offset `at`, leaving the
+// cursor where it found it
+fn string_at(at)
+{
+    disable_print();
+    local save = off();
+
+    seek(at);
+    string s;
+
+    seek(save);
+    result = s;
+}
+
+// (address, size) pairs, closed by a pair of zeroes
+struct fdt_reserve_entry_t
+{
+    big_endian();
+
+    u64 address;
+    u64 size;
+}
+
+struct fdt_begin_node_t
+{
+    big_endian();
+
+    fdt_token_t token;
+
+    local start = off();
+    string      name;
+
+    local pad = align_up(off() - start, 4) - (off() - start);
+    if (pad > 0) {
+        u8 name_padding[pad];
+    }
+}
+
+struct fdt_prop_t
+{
+    big_endian();
+
+    fdt_token_t token;
+    u32         value_len;
+    u32         name_off;
+
+    assert(value_len <= remaining_size(), "malformed device tree: property runs past the end of the file");
+    if (value_len > 0) {
+        u8 value[value_len];
+
+        local pad = align_up(value_len, 4) - value_len;
+        if (pad > 0) {
+            u8 value_padding[pad];
+        }
+    }
+}
+
+// Walks the structure block from the current offset, checking that the tokens
+// are the ones the format defines and that the tree closes. Returns the number
+// of nodes, or 0 when the block does not hold together.
+fn struct_block_ok(at, limit)
+{
+    disable_print();
+    result = 0;
+
+    local p     = at;
+    local depth = 0;
+    local nodes = 0;
+
+    while (p + 4 <= limit) {
+        local token = peek_u32(p);
+        p = p + 4;
+
+        if (token == 1) {
+            local n = 0;
+            while (p + n < limit && peek_u8(p + n) != 0) {
+                n = n + 1;
+            }
+            p     = p + align_up(n + 1, 4);
+            depth = depth + 1;
+            nodes = nodes + 1;
+        } elif (token == 2) {
+            depth = depth - 1;
+            if (depth < 0) {
+                return;
+            }
+        } elif (token == 3) {
+            if (p + 8 > limit) {
+                return;
+            }
+            p = p + 8 + align_up(peek_u32(p), 4);
+        } elif (token == 9) {
+            if (depth == 0 && nodes > 0) {
+                result = nodes;
+            }
+            return;
+        } elif (token != 4) {
+            return;
+        }
+    }
+}
+
+proc _identify_magic
+{
+    magic("\xd0\x0d\xfe\xed", 0);
+}
+
+// The magic is four bytes, so the header behind it is checked for internal
+// agreement: the version, the two blocks fitting inside the recorded total
+// size, and then the structure block itself is walked to make sure its tokens
+// are real and its nodes close. The header records the length of the whole
+// blob, so a hit steps the scan straight over it.
+proc _identify
+{
+    big_endian();
+    if (peek_u32() != 0xd00dfeed) {
+        return;
+    }
+
+    local totalsize   = peek_u32(4);
+    local off_struct  = peek_u32(8);
+    local off_strings = peek_u32(12);
+    local version     = peek_u32(20);
+    local last_comp   = peek_u32(24);
+    local size_struct = peek_u32(36);
+
+    if (version < 16 || version > 17 || last_comp > version) {
+        return;
+    }
+    if (totalsize < 64 || totalsize > remaining_size()) {
+        return;
+    }
+    if (off_struct < 40 || off_struct + size_struct > totalsize) {
+        return;
+    }
+    if (off_strings > totalsize || size_struct < 8) {
+        return;
+    }
+
+    if (struct_block_ok(off_struct, off_struct + size_struct) == 0) {
+        return;
+    }
+
+    result = totalsize;
+}
+
+proc
+{
+    big_endian();
+
+    // every offset in the header is relative to the start of the blob, which is
+    // wherever the parse began, not necessarily the start of the file
+    local base = off();
+
+    fdt_header_t header;
+    local strings = base + header.off_dt_strings;
+
+    seek(base + header.off_mem_rsvmap);
+    local more = 1;
+    while (more) {
+        if (peek_u64() == 0 && peek_u64(8) == 0) {
+            more = 0;
+        }
+        fdt_reserve_entry_t reserved_memory;
+    }
+
+    seek(base + header.off_dt_struct);
+    local stop    = base + header.off_dt_struct + header.size_dt_struct;
+    local depth   = 0;
+    local walking = 1;
+
+    while (walking && off() + 4 <= stop) {
+        local token = peek_u32();
+
+        if (token == 1) {
+            fdt_begin_node_t node;
+            depth = depth + 1;
+        } elif (token == 2) {
+            fdt_token_t end_node;
+            depth = depth - 1;
+            assert(depth >= 0, "malformed device tree: unbalanced node end");
+        } elif (token == 3) {
+            local name_at = strings + peek_u32(8);
+            assert(name_at < size(), "malformed device tree: property name is outside the file");
+            print("  property:", string_at(name_at));
+
+            fdt_prop_t property;
+        } elif (token == 4) {
+            fdt_token_t nop;
+        } elif (token == 9) {
+            fdt_token_t end;
+            assert(depth == 0, "malformed device tree: the tree ends inside a node");
+            walking = 0;
+        } else {
+            error("malformed device tree: unknown token", tostring(token, 16));
+        }
+    }
+}
+
+// The tree on its own: node and property names, with no offsets and no values.
+// Reachable as "t dtb.tree".
+proc tree
+{
+    big_endian();
+    disable_print();
+
+    local base    = off();
+    local strings = base + peek_u32(12);
+    local at      = base + peek_u32(8);
+    local stop    = at + peek_u32(36);
+
+    seek(at);
+    local walking = 1;
+    while (walking && off() + 4 <= stop) {
+        local token = peek_u32();
+
+        if (token == 1) {
+            fwd(4);
+            local start = off();
+            string      name;
+
+            local pad = align_up(off() - start, 4) - (off() - start);
+            fwd(pad);
+
+            if (strlen(name) == 0) {
+                print("/");
+            } else {
+                print("node", name);
+            }
+        } elif (token == 3) {
+            local value_len = peek_u32(4);
+            local name_at   = strings + peek_u32(8);
+            assert(name_at < size(), "malformed device tree: property name is outside the file");
+
+            print("   ", string_at(name_at), tostring(value_len, 10), "bytes");
+            fwd(12 + align_up(value_len, 4));
+        } elif (token == 9) {
+            walking = 0;
+        } else {
+            fwd(4);
+        }
+    }
+}

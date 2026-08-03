@@ -1,0 +1,400 @@
+// Copyright (c) 2022-2026, bageyelet
+
+// Java .class files. Everything is big endian.
+//
+// The magic is 0xcafebabe, which Mach-O universal binaries were given as well.
+// The two are told apart by what sits behind it: here it is a minor and a major
+// version, and the major has been at least 45 since Java 1.0, while a fat
+// Mach-O has a slice count there, which is a handful. macho.bhe rejects a slice
+// count above 32 for exactly this reason, so the two never both answer.
+//
+// Every part of the file is length prefixed, so the whole thing can be walked
+// and its exact extent is known.
+
+enum java_version_t : u16
+{
+    JAVA_1_1 = 45,
+    JAVA_1_2 = 46,
+    JAVA_1_3 = 47,
+    JAVA_1_4 = 48,
+    JAVA_5   = 49,
+    JAVA_6   = 50,
+    JAVA_7   = 51,
+    JAVA_8   = 52,
+    JAVA_9   = 53,
+    JAVA_10  = 54,
+    JAVA_11  = 55,
+    JAVA_12  = 56,
+    JAVA_13  = 57,
+    JAVA_14  = 58,
+    JAVA_15  = 59,
+    JAVA_16  = 60,
+    JAVA_17  = 61,
+    JAVA_18  = 62,
+    JAVA_19  = 63,
+    JAVA_20  = 64,
+    JAVA_21  = 65,
+    JAVA_22  = 66,
+    JAVA_23  = 67,
+    JAVA_24  = 68
+}
+
+enum cp_tag_t : u8
+{
+    UTF8                = 1,
+    INTEGER             = 3,
+    FLOAT               = 4,
+    LONG                = 5,
+    DOUBLE              = 6,
+    CLASS               = 7,
+    STRING              = 8,
+    FIELDREF            = 9,
+    METHODREF           = 10,
+    INTERFACE_METHODREF = 11,
+    NAME_AND_TYPE       = 12,
+    METHOD_HANDLE       = 15,
+    METHOD_TYPE         = 16,
+    DYNAMIC             = 17,
+    INVOKE_DYNAMIC      = 18,
+    MODULE              = 19,
+    PACKAGE             = 20
+}
+
+orenum class_access_t : u16
+{
+    PUBLIC     = 0x0001,
+    FINAL      = 0x0010,
+    SUPER      = 0x0020,
+    INTERFACE  = 0x0200,
+    ABSTRACT   = 0x0400,
+    SYNTHETIC  = 0x1000,
+    ANNOTATION = 0x2000,
+    ENUM       = 0x4000,
+    MODULE     = 0x8000
+}
+
+orenum field_access_t : u16
+{
+    PUBLIC    = 0x0001,
+    PRIVATE   = 0x0002,
+    PROTECTED = 0x0004,
+    STATIC    = 0x0008,
+    FINAL     = 0x0010,
+    VOLATILE  = 0x0040,
+    TRANSIENT = 0x0080,
+    SYNTHETIC = 0x1000,
+    ENUM      = 0x4000
+}
+
+orenum method_access_t : u16
+{
+    PUBLIC       = 0x0001,
+    PRIVATE      = 0x0002,
+    PROTECTED    = 0x0004,
+    STATIC       = 0x0008,
+    FINAL        = 0x0010,
+    SYNCHRONIZED = 0x0020,
+    BRIDGE       = 0x0040,
+    VARARGS      = 0x0080,
+    NATIVE       = 0x0100,
+    ABSTRACT     = 0x0400,
+    STRICT       = 0x0800,
+    SYNTHETIC    = 0x1000
+}
+
+// One constant pool entry. LONG and DOUBLE are the odd ones: they take two
+// slots of the pool, which is why the walk below counts them twice.
+struct cp_info_t
+{
+    big_endian();
+
+    cp_tag_t tag;
+
+    if (tag == cp_tag_t::UTF8) {
+        u16 length;
+        assert(length <= remaining_size(), "malformed constant pool: utf8 runs past the end of the file");
+        char text[length];
+    } elif (tag == cp_tag_t::INTEGER || tag == cp_tag_t::FLOAT) {
+        u32 value;
+    } elif (tag == cp_tag_t::LONG || tag == cp_tag_t::DOUBLE) {
+        u64 value;
+    } elif (tag == cp_tag_t::CLASS || tag == cp_tag_t::STRING ||
+            tag == cp_tag_t::METHOD_TYPE || tag == cp_tag_t::MODULE ||
+            tag == cp_tag_t::PACKAGE) {
+        u16 index;
+    } elif (tag == cp_tag_t::METHOD_HANDLE) {
+        u8  reference_kind;
+        u16 reference_index;
+    } elif (tag == cp_tag_t::FIELDREF || tag == cp_tag_t::METHODREF ||
+            tag == cp_tag_t::INTERFACE_METHODREF || tag == cp_tag_t::NAME_AND_TYPE ||
+            tag == cp_tag_t::DYNAMIC || tag == cp_tag_t::INVOKE_DYNAMIC) {
+        u16 first_index;
+        u16 second_index;
+    } else {
+        error("malformed constant pool: unknown tag", tostring(tag, 10));
+    }
+}
+
+struct attribute_info_t
+{
+    big_endian();
+
+    u16 attribute_name_index;
+    u32 attribute_length;
+
+    assert(attribute_length >= 0 && attribute_length <= remaining_size(),
+           "malformed attribute: it runs past the end of the file");
+    if (attribute_length > 0) {
+        u8 info[attribute_length];
+    }
+}
+
+struct field_info_t
+{
+    big_endian();
+
+    field_access_t access_flags;
+    u16            name_index;
+    u16            descriptor_index;
+    u16            attributes_count;
+
+    local i = 0;
+    while (i < attributes_count) {
+        attribute_info_t attribute;
+        i = i + 1;
+    }
+}
+
+struct method_info_t
+{
+    big_endian();
+
+    method_access_t access_flags;
+    u16             name_index;
+    u16             descriptor_index;
+    u16             attributes_count;
+
+    local i = 0;
+    while (i < attributes_count) {
+        attribute_info_t attribute;
+        i = i + 1;
+    }
+}
+
+// The offset just past a constant pool of `count` slots starting at `at`, or 0
+// when it does not hold together
+fn cp_end(at, count)
+{
+    disable_print();
+    big_endian();
+    result = 0;
+
+    local p = at;
+    local i = 1;
+    while (i < count) {
+        if (p + 1 > remaining_size()) {
+            return;
+        }
+
+        local tag = peek_u8(p);
+        p = p + 1;
+
+        if (tag == 1) {
+            if (p + 2 > remaining_size()) {
+                return;
+            }
+            p = p + 2 + peek_u16(p);
+        } elif (tag == 3 || tag == 4 || tag == 9 || tag == 10 || tag == 11 ||
+                tag == 12 || tag == 17 || tag == 18) {
+            p = p + 4;
+        } elif (tag == 5 || tag == 6) {
+            // a long or a double eats the slot behind it as well
+            p = p + 8;
+            i = i + 1;
+        } elif (tag == 7 || tag == 8 || tag == 16 || tag == 19 || tag == 20) {
+            p = p + 2;
+        } elif (tag == 15) {
+            p = p + 3;
+        } else {
+            return;
+        }
+
+        if (p > remaining_size()) {
+            return;
+        }
+        i = i + 1;
+    }
+    result = p;
+}
+
+fn skip_attributes(at, count)
+{
+    disable_print();
+    big_endian();
+    result = 0;
+
+    local p = at;
+    local i = 0;
+    while (i < count) {
+        if (p + 6 > remaining_size()) {
+            return;
+        }
+
+        local len = peek_u32(p + 2);
+        if (len < 0) {
+            return;
+        }
+
+        p = p + 6 + len;
+        if (p > remaining_size()) {
+            return;
+        }
+        i = i + 1;
+    }
+    result = p;
+}
+
+// Fields and methods have the same shape: flags, two indices, and attributes
+fn skip_members(at, count)
+{
+    disable_print();
+    big_endian();
+    result = 0;
+
+    local p = at;
+    local i = 0;
+    while (i < count) {
+        if (p + 8 > remaining_size()) {
+            return;
+        }
+
+        p = skip_attributes(p + 8, peek_u16(p + 6));
+        if (p == 0) {
+            return;
+        }
+        i = i + 1;
+    }
+    result = p;
+}
+
+// Walks the whole class file, returning its exact length or 0
+fn class_size()
+{
+    disable_print();
+    big_endian();
+    result = 0;
+
+    local count = peek_u16(8);
+    if (count < 1) {
+        return;
+    }
+
+    local p = cp_end(10, count);
+    if (p == 0 || p + 8 > remaining_size()) {
+        return;
+    }
+
+    // access_flags, this_class, super_class, then the interface list
+    p = p + 8 + peek_u16(p + 6) * 2;
+    if (p + 2 > remaining_size()) {
+        return;
+    }
+
+    p = skip_members(p + 2, peek_u16(p));
+    if (p == 0 || p + 2 > remaining_size()) {
+        return;
+    }
+
+    p = skip_members(p + 2, peek_u16(p));
+    if (p == 0 || p + 2 > remaining_size()) {
+        return;
+    }
+
+    p = skip_attributes(p + 2, peek_u16(p));
+    result = p;
+}
+
+proc _identify_magic
+{
+    magic("\xca\xfe\xba\xbe", 0);
+}
+
+// The magic is shared with Mach-O universal binaries, so the version behind it
+// is what settles the question: no class file has ever had a major below 45,
+// and no fat binary has ever had that many slices. From Java 12 on, the minor
+// is either 0 or the 65535 that marks a preview build. The whole file is then
+// walked, which both confirms the guess and gives the exact extent.
+proc _identify
+{
+    big_endian();
+    if (peek_u32() != 0xcafebabe) {
+        return;
+    }
+
+    local minor = peek_u16(4);
+    local major = peek_u16(6);
+    if (major < 45 || major > 80) {
+        return;
+    }
+    if (major >= 56 && minor != 0 && minor != 65535) {
+        return;
+    }
+
+    result = class_size();
+}
+
+proc
+{
+    big_endian();
+
+    u32            magic;
+    u16            minor_version;
+    java_version_t major_version;
+
+    assert(magic == 0xcafebabe, "not a Java class file: bad magic");
+    assert(major_version >= 45, "not a Java class file: implausible major version");
+
+    u16 constant_pool_count;
+    assert(constant_pool_count >= 1, "malformed class file: empty constant pool");
+
+    // the pool is indexed from 1, so it holds one entry fewer than it counts
+    local i = 1;
+    while (i < constant_pool_count) {
+        local tag = peek_u8();
+        cp_info_t constant;
+
+        if (tag == cp_tag_t::LONG || tag == cp_tag_t::DOUBLE) {
+            i = i + 1;
+        }
+        i = i + 1;
+    }
+
+    class_access_t access_flags;
+    u16            this_class;
+    u16            super_class;
+    u16            interfaces_count;
+    if (interfaces_count > 0) {
+        u16 interfaces[interfaces_count];
+    }
+
+    u16 fields_count;
+    local f = 0;
+    while (f < fields_count) {
+        field_info_t field;
+        f = f + 1;
+    }
+
+    u16 methods_count;
+    local m = 0;
+    while (m < methods_count) {
+        method_info_t method;
+        m = m + 1;
+    }
+
+    u16 attributes_count;
+    local a = 0;
+    while (a < attributes_count) {
+        attribute_info_t attribute;
+        a = a + 1;
+    }
+}

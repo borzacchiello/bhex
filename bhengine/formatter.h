@@ -32,6 +32,12 @@ typedef void (*fmt_dispose_t)(void* obj);
 // How much the output of the term formatter is indented at each nesting level
 #define FMT_PRINT_OFF_STEP 4
 
+// Nesting past this many levels stops moving the name column any further right.
+// A structure that nests into itself runs until the interpreter's call depth
+// limit stops it, and without a cap here the last of those lines would carry a
+// kilobyte of leading spaces
+#define FMT_PRINT_MAX_DEPTH 32
+
 typedef enum fmt_t {
     FMT_UNK  = 0,
     FMT_TERM = 1,

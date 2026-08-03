@@ -318,21 +318,44 @@ template: parse the file at current offset using a 'bhe' template file
 [0x0000000] $ t/l
 
 Available templates:
-  squashfs
+  gpt
+  jpeg
+  gzip
+  mp4
+  ext
+  uimage
+  ubifs
+  rpm
+  mp3
+  7z
+  pcapng
+  dtb
+  pdf
+  elf
+  png
+  mbr
+  lzo
+  pcap
+  sfnt
+  riff
   tar
   zip
-  jpeg
-  elf
-  gzip
-  lzo
-  png
-  pdf
+  sqlite3
+  zstd
+  cpio
   pe
-  rpm
+  gif
+  ogg
+  squashfs
+  bzip2
+  ar
+  javaclass
+  wasm
+  dex
+  x509
+  fat
+  xz
   macho
-  mp4
-  mp3
-
 ...
 ```
 
@@ -376,8 +399,8 @@ identify: scan the file for known formats, running the '_identify' proc of
   0x0070084d  squashfs     623 bytes
   0x0080184d  rpm          96 bytes
 
-12 hits in 8395032 bytes, 14 templates
-prefilter: 41 patterns -> 157 candidates in 0.030s
+12 hits in 8395032 bytes, 38 templates
+prefilter: 72 patterns -> 157 candidates in 0.030s
 157 offsets, 157 runs in 0.034s
 ```
 

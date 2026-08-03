@@ -1,0 +1,245 @@
+// Copyright (c) 2022-2026, bageyelet
+
+// Zstandard, RFC 8878. A file is a sequence of frames, each either a real
+// compressed frame or a "skippable" one carrying application data.
+//
+// Unlike gzip and bzip2, every block carries its compressed length, so the
+// frames can be walked and the exact size of the stream is known without
+// decompressing anything.
+
+enum zstd_block_type_t : u8
+{
+    RAW        = 0,
+    RLE        = 1,
+    COMPRESSED = 2,
+    RESERVED   = 3
+}
+
+// A block header is 3 little endian bytes: bit 0 marks the last block of the
+// frame, bits 2-1 the type, and the remaining 21 bits the size
+struct zstd_block_t
+{
+    little_endian();
+
+    u8 block_header[3];
+
+    local header = peek_u8(-3) | (peek_u8(-2) << 8) | (peek_u8(-1) << 16);
+    local last   = header & 1;
+    local kind   = (header >> 1) & 3;
+    local sz     = header >> 3;
+
+    assert(kind != 3, "malformed zstd block: reserved block type");
+
+    // an RLE block stores the byte to repeat, not `sz` bytes of it
+    local stored = sz;
+    if (kind == 1) {
+        stored = 1;
+    }
+    assert(stored <= remaining_size(), "malformed zstd block: size runs past the end of the file");
+
+    if (kind == 0) {
+        u8 raw_data[stored];
+    } elif (kind == 1) {
+        u8 rle_byte;
+    } else {
+        u8 compressed_data[stored];
+    }
+}
+
+struct zstd_frame_header_t
+{
+    little_endian();
+
+    u32 magic;
+    u8  frame_header_descriptor;
+
+    assert(magic == 0xfd2fb528, "not a zstd frame: bad magic");
+
+    local fcs_flag  = (frame_header_descriptor >> 6) & 3;
+    local single    = (frame_header_descriptor >> 5) & 1;
+    local reserved  = (frame_header_descriptor >> 3) & 1;
+    local checksum  = (frame_header_descriptor >> 2) & 1;
+    local dict_flag = frame_header_descriptor & 3;
+
+    assert(reserved == 0, "malformed zstd frame: reserved bit set");
+
+    // the window descriptor is left out when the frame is a single segment,
+    // in which case the content size doubles as the window size
+    if (single == 0) {
+        u8 window_descriptor;
+
+        // the descriptor packs an exponent and a mantissa into its one byte
+        local exponent = window_descriptor >> 3;
+        local mantissa = window_descriptor & 7;
+        local base     = 1 << (10 + exponent);
+        print("    =", tostring(base + (base >> 3) * mantissa, 10), "bytes");
+    }
+
+    if (dict_flag == 1) {
+        u8 dictionary_id;
+    } elif (dict_flag == 2) {
+        u16 dictionary_id;
+    } elif (dict_flag == 3) {
+        u32 dictionary_id;
+    }
+
+    // 0 means "one byte", but only when the frame is a single segment;
+    // otherwise the field is absent
+    if (fcs_flag == 0) {
+        if (single == 1) {
+            u8 frame_content_size;
+        }
+    } elif (fcs_flag == 1) {
+        // the two byte form is stored biased by 256, so the field on its own
+        // reads 256 too low
+        u16 frame_content_size_biased;
+        print("    =", tostring(frame_content_size_biased + 256, 10), "bytes");
+    } elif (fcs_flag == 2) {
+        u32 frame_content_size;
+    } else {
+        u64 frame_content_size;
+    }
+}
+
+struct zstd_frame_t
+{
+    zstd_frame_header_t header;
+
+    local more = 1;
+    while (more) {
+        if (peek_u8(0) & 1) {
+            more = 0;
+        }
+        zstd_block_t block;
+    }
+
+    if (header.frame_header_descriptor & 4) {
+        u32 content_checksum;
+    }
+}
+
+// 0x184D2A50 - 0x184D2A5F: a length prefixed blob a decoder steps over
+struct zstd_skippable_frame_t
+{
+    little_endian();
+
+    u32 magic;
+    u32 frame_size;
+
+    assert(frame_size <= remaining_size(), "malformed skippable frame: size runs past the end of the file");
+    if (frame_size > 0) {
+        u8 user_data[frame_size];
+    }
+}
+
+// Walks the blocks of the frame at the current offset without reading anything
+// into a file variable, returning the length of the whole frame, or 0 when it
+// does not hold together.
+fn frame_size()
+{
+    disable_print();
+    result = 0;
+
+    local fhd       = peek_u8(4);
+    local fcs_flag  = (fhd >> 6) & 3;
+    local single    = (fhd >> 5) & 1;
+    local checksum  = (fhd >> 2) & 1;
+    local dict_flag = fhd & 3;
+
+    if ((fhd >> 3) & 1) {
+        return;
+    }
+
+    local at = 5;
+    if (single == 0) {
+        at = at + 1;
+    }
+    if (dict_flag == 1) {
+        at = at + 1;
+    } elif (dict_flag == 2) {
+        at = at + 2;
+    } elif (dict_flag == 3) {
+        at = at + 4;
+    }
+
+    if (fcs_flag == 0) {
+        at = at + single;
+    } elif (fcs_flag == 1) {
+        at = at + 2;
+    } elif (fcs_flag == 2) {
+        at = at + 4;
+    } else {
+        at = at + 8;
+    }
+
+    local count = 0;
+    while (count < 1000000) {
+        if (at + 3 > remaining_size()) {
+            return;
+        }
+
+        local header = peek_u8(at) | (peek_u8(at + 1) << 8) | (peek_u8(at + 2) << 16);
+        local kind   = (header >> 1) & 3;
+        if (kind == 3) {
+            return;
+        }
+
+        local stored = header >> 3;
+        if (kind == 1) {
+            stored = 1;
+        }
+
+        at = at + 3 + stored;
+        if (at > remaining_size()) {
+            return;
+        }
+
+        if (header & 1) {
+            if (checksum) {
+                at = at + 4;
+            }
+            if (at > remaining_size()) {
+                return;
+            }
+            result = at;
+            return;
+        }
+
+        count = count + 1;
+    }
+}
+
+proc _identify_magic
+{
+    magic("\x28\xb5\x2f\xfd", 0);
+}
+
+// The magic is a full four bytes with no printable characters in it, but the
+// frame header behind it is checked anyway: the reserved bit has to be clear,
+// and the blocks have to chain to a last one that lands inside the file. That
+// walk is also what gives the exact length of the frame.
+proc _identify
+{
+    little_endian();
+    if (peek_u32() != 0xfd2fb528) {
+        return;
+    }
+    result = frame_size();
+}
+
+proc
+{
+    little_endian();
+
+    while (remaining_size() >= 8) {
+        local magic = peek_u32();
+
+        if (magic == 0xfd2fb528) {
+            zstd_frame_t frame;
+        } elif ((magic & 0xfffffff0) == 0x184d2a50) {
+            zstd_skippable_frame_t skippable;
+        } else {
+            error("unexpected data where a zstd frame should start");
+        }
+    }
+}

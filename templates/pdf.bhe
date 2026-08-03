@@ -143,6 +143,47 @@ fn parse_section()
 }
 
 
+// Where the document opened at `at` ends: the "%%EOF" closing the last update
+// of its trailer chain. Reaching it through the chain means parsing the whole
+// document, but it is also simply the last one before the next document
+// begins, and that is two searches. Zero when there is none to find
+fn pdf_document_size(at)
+{
+    result = 0;
+
+    // another header is another document, and this one cannot reach past it.
+    // Note a PDF carrying another one as an attachment has the inner header in
+    // its body, ahead of its own trailer: that is what leaves the search below
+    // with nothing and the size of the outer document unknown
+    seek(at + 5);
+    local ceiling  = size();
+    local next_doc = find_next("%PDF-");
+    if (next_doc >= 0) {
+        ceiling = next_doc;
+    }
+
+    seek(ceiling);
+    local eof = find_next("%%EOF", 1);
+    if (eof < at + 8) {
+        return;
+    }
+
+    // the marker is a line of its own, so the end of the line is the end of
+    // the file -- and it is the end of the file that matters, since it is what
+    // decides where whatever follows it starts
+    local end = eof + 5;
+    seek(end);
+    if (peek_u8() == 0x0d) {
+        end = end + 1;
+        seek(end);
+    }
+    if (peek_u8() == 0x0a) {
+        end = end + 1;
+    }
+
+    result = end - at;
+}
+
 // "%PDF-", which every accepted header starts with
 proc _identify_magic
 {
@@ -156,9 +197,16 @@ proc _identify
         peek_u8(5) >= 0x31 && peek_u8(5) <= 0x32 &&
         peek_u8(6) == 0x2e &&
         peek_u8(7) >= 0x30 && peek_u8(7) <= 0x39) {
-        // the end of a PDF is the last "%%EOF" of the trailer chain, which
-        // takes the parse to find: the hit covers the header only
-        result = 8;
+        local start = off();
+
+        result = pdf_document_size(start);
+        if (result == 0) {
+            // truncated, or a producer that left the marker out: the header is
+            // all that is known to be here
+            result = 8;
+        }
+
+        seek(start);
     }
 }
 

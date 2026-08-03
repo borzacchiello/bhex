@@ -1,15 +1,39 @@
 {
   "name": "bhe-syntax-highlight",
   "displayName": "BHE Binary Format Language Support",
-  "description": "Syntax highlighting for BHE binary format description language",
-  "version": "1.0.0",
+  "description": "Syntax highlighting, formatting, outline and hover docs for bhex .bhe template files",
+  "version": "2.0.0",
+  "license": "UPL-1.0",
   "engines": {
     "vscode": "^1.74.0"
   },
-  "main": "./extension.js",
+  "main": "./src/extension.js",
   "categories": [
-    "Programming Languages"
+    "Programming Languages",
+    "Formatters"
   ],
+  "keywords": [
+    "bhe",
+    "bhex",
+    "binary",
+    "format",
+    "hex editor",
+    "template"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/borzacchiello/bhex.git",
+    "directory": "vscode"
+  },
+  "activationEvents": [
+    "onLanguage:bhe"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true
+    },
+    "virtualWorkspaces": true
+  },
   "contributes": {
     "languages": [
       {
@@ -30,17 +54,42 @@
         "scopeName": "source.bhe",
         "path": "./syntaxes/bhe.tmLanguage.json"
       }
-    ]
+    ],
+    "snippets": [
+      {
+        "language": "bhe",
+        "path": "./snippets/bhe.json"
+      }
+    ],
+    "configurationDefaults": {
+      "[bhe]": {
+        "editor.tabSize": 4,
+        "editor.insertSpaces": true
+      }
+    },
+    "configuration": {
+      "title": "BHE",
+      "properties": {
+        "bhe.format.alignDeclarations": {
+          "type": "boolean",
+          "default": true,
+          "description": "Line up the names of consecutive field declarations in a column."
+        },
+        "bhe.format.alignEnumMembers": {
+          "type": "boolean",
+          "default": true,
+          "description": "Line up the '=' of consecutive enum members in a column."
+        }
+      }
+    }
   },
   "scripts": {
+    "gen-grammar": "node scripts/gen-grammar.js",
+    "test": "node --test \"test/*.test.js\"",
     "package": "vsce package"
   },
-  "repository": "https://github.com/borzacchiello/bhex/vscode",
-  "keywords": [
-    "syntax",
-    "highlight",
-    "bhe",
-    "binary",
-    "format"
-  ]
+  "devDependencies": {
+    "vscode-oniguruma": "^2.0.1",
+    "vscode-textmate": "^9.1.0"
+  }
 }

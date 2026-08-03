@@ -1,0 +1,185 @@
+// Copyright (c) 2022-2026, bageyelet
+
+// SQLite 3 database files. Everything in the 100 byte header is big endian,
+// whatever the machine that wrote it was.
+//
+// The header records the page size and the page count, so the exact length of
+// the database is known from the first 32 bytes — and the two of them together
+// are what makes the magic worth believing.
+
+enum sqlite_text_encoding_t : u32
+{
+    UTF8     = 1,
+    UTF16LE  = 2,
+    UTF16BE  = 3
+}
+
+enum sqlite_schema_format_t : u32
+{
+    LEGACY            = 1,
+    DEFAULT_VALUES    = 2,
+    DESCENDING_INDEX  = 3,
+    NULL_IN_INDEX     = 4
+}
+
+// The b-tree page types, in the first byte of every page
+enum sqlite_page_type_t : u8
+{
+    INDEX_INTERIOR = 0x02,
+    TABLE_INTERIOR = 0x05,
+    INDEX_LEAF     = 0x0a,
+    TABLE_LEAF     = 0x0d
+}
+
+struct sqlite_header_t
+{
+    big_endian();
+
+    char magic[16];
+
+    // 512 to 32768, or the value 1 standing in for 65536
+    u16                    page_size;
+    u8                     write_version;
+    u8                     read_version;
+    u8                     reserved_space;
+    u8                     max_payload_fraction;
+    u8                     min_payload_fraction;
+    u8                     leaf_payload_fraction;
+    u32                    file_change_counter;
+    u32                    page_count;
+    u32                    first_freelist_page;
+    u32                    freelist_page_count;
+    u32                    schema_cookie;
+    sqlite_schema_format_t schema_format;
+    u32                    default_page_cache_size;
+    u32                    largest_root_btree_page;
+    sqlite_text_encoding_t text_encoding;
+    u32                    user_version;
+    u32                    incremental_vacuum;
+    u32                    application_id;
+    u8                     reserved[20];
+    u32                    version_valid_for;
+    u32                    sqlite_version;
+
+    // the field is 16 bytes: the NUL the magic ends with is part of it
+    assert(magic == "SQLite format 3\x00", "not a SQLite 3 database: bad magic");
+    assert(max_payload_fraction == 64 && min_payload_fraction == 32 &&
+           leaf_payload_fraction == 32,
+           "malformed SQLite header: the payload fractions are fixed by the format");
+
+    // the version is stored as X*1000000 + Y*1000 + Z
+    print("  sqlite version:", tostring(sqlite_version / 1000000, 10),
+          tostring((sqlite_version / 1000) % 1000, 10),
+          tostring(sqlite_version % 1000, 10));
+}
+
+// The b-tree page header. Interior pages carry an extra right-child pointer,
+// and page 1 is the one the file header shares its space with.
+struct sqlite_btree_page_header_t
+{
+    big_endian();
+
+    sqlite_page_type_t page_type;
+    u16                first_freeblock;
+    u16                cell_count;
+    u16                cell_content_start;
+    u8                 fragmented_free_bytes;
+
+    if (page_type == sqlite_page_type_t::INDEX_INTERIOR ||
+        page_type == sqlite_page_type_t::TABLE_INTERIOR) {
+        u32 right_child;
+    }
+
+    if (cell_count > 0) {
+        u16 cell_pointers[cell_count];
+    }
+}
+
+// The page size is stored as a u16, so 65536 does not fit: it is written as 1
+fn real_page_size(stored)
+{
+    disable_print();
+    result = stored;
+    if (stored == 1) {
+        result = 65536;
+    }
+}
+
+proc _identify_magic
+{
+    magic("SQLite format 3\x00", 0);
+}
+
+// The magic is sixteen bytes including its NUL, which is already strong, but
+// the geometry behind it is checked too: the page size has to be a power of two
+// in the range the format allows, the three payload fractions are constants,
+// and the recorded page count has to match the file. That last one is also
+// what gives the exact length of the database.
+proc _identify
+{
+    big_endian();
+    if (peek(16) != "SQLite format 3\x00") {
+        return;
+    }
+
+    local page_size = real_page_size(peek_u16(16));
+    if (page_size < 512 || page_size > 65536 || (page_size & (page_size - 1)) != 0) {
+        return;
+    }
+
+    // fixed by the file format, and never anything else
+    if (peek_u8(21) != 64 || peek_u8(22) != 32 || peek_u8(23) != 32) {
+        return;
+    }
+
+    local pages = peek_u32(28);
+    if (pages == 0) {
+        // written by a version that did not maintain the field: the header is
+        // still valid, so report just it
+        result = min(100, remaining_size());
+        return;
+    }
+
+    local total = u64(page_size) * pages;
+    if (total > remaining_size()) {
+        result = min(100, remaining_size());
+        return;
+    }
+    result = total;
+}
+
+proc
+{
+    big_endian();
+
+    local base = off();
+    sqlite_header_t header;
+
+    local page_size = real_page_size(header.page_size);
+    assert(page_size >= 512 && page_size <= 65536,
+           "malformed SQLite header: page size outside the range the format allows");
+
+    // page 1 carries the file header in its first 100 bytes, so its b-tree
+    // header starts right here
+    sqlite_btree_page_header_t page1;
+
+    local pages = header.page_count;
+    if (pages == 0 || base + u64(page_size) * pages > size()) {
+        exit();
+    }
+
+    // every page after the first starts on a page boundary
+    local i = 1;
+    while (i < pages) {
+        seek(base + i * u64(page_size));
+
+        local kind = peek_u8();
+        if (kind == 0x02 || kind == 0x05 || kind == 0x0a || kind == 0x0d) {
+            sqlite_btree_page_header_t page;
+        } else {
+            // a freelist, overflow or pointer map page: no b-tree header
+            u8 page_data[min(16, page_size)];
+        }
+        i = i + 1;
+    }
+}

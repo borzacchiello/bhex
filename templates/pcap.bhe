@@ -1,0 +1,196 @@
+// Copyright (c) 2022-2026, bageyelet
+
+// The classic libpcap capture format: a 24 byte file header, then one record
+// per captured packet.
+//
+// The magic doubles as a byte order mark. A file written on a big endian host
+// reads back as 0xd4c3b2a1 here, and the whole file — but not the packets
+// inside it, which are network byte order regardless — has to be read the other
+// way round.
+//
+// When the capture is Ethernet, the link, network and transport headers are
+// decoded by pulling the structs out of net.bhe.
+
+enum pcap_linktype_t : u32
+{
+    NULL_LOOPBACK       = 0,
+    ETHERNET            = 1,
+    AX25                = 3,
+    IEEE802_5           = 6,
+    ARCNET              = 7,
+    SLIP                = 8,
+    PPP                 = 9,
+    FDDI                = 10,
+    ATM_RFC1483         = 100,
+    RAW                 = 101,
+    C_HDLC              = 104,
+    IEEE802_11          = 105,
+    FRELAY              = 107,
+    LOOP                = 108,
+    LINUX_SLL           = 113,
+    PFLOG               = 117,
+    IEEE802_11_RADIOTAP = 127,
+    USB_LINUX           = 189,
+    PPI                 = 192,
+    IEEE802_15_4        = 195,
+    BLUETOOTH_HCI_H4    = 201,
+    USB_LINUX_MMAPPED   = 220,
+    CAN_SOCKETCAN       = 227,
+    IPV4                = 228,
+    IPV6                = 229,
+    NFLOG               = 239,
+    MPEG_2_TS           = 243,
+    INFINIBAND          = 247,
+    USBPCAP             = 249,
+    NETLINK             = 253,
+    LINUX_SLL2          = 276
+}
+
+// The endianness is settled by the caller before this is read, so the struct
+// must not touch it
+struct pcap_header_t
+{
+    u32             magic;
+    u16             version_major;
+    u16             version_minor;
+    i32             thiszone;
+    u32             sigfigs;
+    u32             snaplen;
+    pcap_linktype_t network;
+
+    assert(version_major == 2 && version_minor == 4,
+           "unsupported pcap version");
+}
+
+struct pcap_record_header_t
+{
+    u32 ts_sec;
+    u32 ts_usec;
+    u32 incl_len;
+    u32 orig_len;
+}
+
+// Whether the four magic bytes are a pcap magic, and which way round the file
+// is: 0 for not a pcap, 1 for little endian, 2 for big endian
+fn pcap_byte_order()
+{
+    disable_print();
+    little_endian();
+
+    local m = peek_u32();
+    result  = 0;
+    if (m == 0xa1b2c3d4 || m == 0xa1b23c4d) {
+        result = 1;
+    } elif (m == 0xd4c3b2a1 || m == 0x4d3cb2a1) {
+        result = 2;
+    }
+}
+
+// Walks the records from `at`, returning the offset just past the last complete
+// one. The endianness has to be set by the caller.
+fn walk_records(at, snaplen)
+{
+    disable_print();
+    result = 0;
+
+    local p     = at;
+    local count = 0;
+    while (count < 10000000) {
+        if (p + 16 > remaining_size()) {
+            result = p;
+            return;
+        }
+
+        local incl = peek_u32(p + 8);
+        local orig = peek_u32(p + 12);
+        if (incl > snaplen || incl > orig || orig > 0x4000000) {
+            return;
+        }
+        if (p + 16 + incl > remaining_size()) {
+            result = p;
+            return;
+        }
+
+        p     = p + 16 + incl;
+        count = count + 1;
+    }
+    result = p;
+}
+
+proc _identify_magic
+{
+    magic("\xd4\xc3\xb2\xa1", 0);
+    magic("\xa1\xb2\xc3\xd4", 0);
+    magic("\x4d\x3c\xb2\xa1", 0);
+    magic("\xa1\xb2\x3c\x4d", 0);
+}
+
+// The magic settles the byte order, and the header behind it is checked: the
+// version is fixed at 2.4, the link type has to be one that exists, and the
+// snap length has to be sane. The records are then walked, which both confirms
+// the header and gives the extent of the capture.
+proc _identify
+{
+    local order = pcap_byte_order();
+    if (order == 0) {
+        return;
+    }
+    if (order == 2) {
+        big_endian();
+    }
+
+    if (peek_u16(4) != 2 || peek_u16(6) != 4) {
+        return;
+    }
+
+    local snaplen = peek_u32(16);
+    local link    = peek_u32(20);
+    if (snaplen == 0 || snaplen > 0x400000 || link > 300) {
+        return;
+    }
+
+    // a capture with no records at all is just a header
+    result = walk_records(24, snaplen);
+    if (result < 24) {
+        result = 0;
+    }
+}
+
+proc
+{
+    local order = pcap_byte_order();
+    assert(order != 0, "not a pcap capture: bad magic");
+    if (order == 2) {
+        big_endian();
+    }
+
+    pcap_header_t header;
+
+    while (remaining_size() >= 16) {
+        pcap_record_header_t record;
+        assert(record.incl_len <= remaining_size(),
+               "malformed pcap record: it runs past the end of the file");
+
+        local end = off() + record.incl_len;
+
+        // Ethernet captures get their headers decoded; every other link type
+        // is left as bytes. The protocol structs come from net.bhe, and set
+        // network byte order themselves whatever the file's order is.
+        if (header.network == pcap_linktype_t::ETHERNET && record.incl_len >= 14) {
+            net#eth_header eth;
+
+            if (eth.type == 0x0800 && end - off() >= 20) {
+                net#ipv4_header ip;
+
+                if (ip.protocol == 6 && end - off() >= 20) {
+                    net#tcp_header tcp;
+                }
+            }
+        }
+
+        if (end - off() > 0) {
+            u8 payload[end - off()];
+        }
+        seek(end);
+    }
+}

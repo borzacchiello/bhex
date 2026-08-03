@@ -56,9 +56,16 @@ struct lzop_header_t
     u8  magic[9];
     u16 version;
     u16 lib_version;
-    u16 version_needed_to_extract;
-    u8  method;
-    u8  level;
+
+    // lzop only started writing these three in 0.94; everything since 1.00
+    // has them, but the fields are gated on the version all the same
+    if (version >= 0x0940) {
+        u16 version_needed_to_extract;
+    }
+    u8 method;
+    if (version >= 0x0940) {
+        u8 level;
+    }
 
     lzop_flags_hi_t flags_hi;
     lzop_flags_lo_t flags_lo;

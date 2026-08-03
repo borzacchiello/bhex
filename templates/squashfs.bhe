@@ -320,12 +320,12 @@ proc _identify
             // can step straight over the filesystem
             result = peek_u64(40);
             if (result == 0 || result > remaining_size()) {
-                result = 96;
+                result = min(96, remaining_size());
             }
         }
     } elif (peek(4) == "sqsh") {
         // the byte swapped variant, whose fields would need the other order
-        result = 96;
+        result = min(96, remaining_size());
     }
 }
 

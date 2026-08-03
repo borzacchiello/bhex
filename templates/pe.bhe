@@ -270,23 +270,17 @@ fn is64bit(header)
     result = 0;
     if (header.Machine == IMAGE_MACHINE_TYPE::ALPHA64) {
         result = 1;
-    }
-    elif (header.Machine == IMAGE_MACHINE_TYPE::AMD64) {
+    } elif (header.Machine == IMAGE_MACHINE_TYPE::AMD64) {
         result = 1;
-    }
-    elif (header.Machine == IMAGE_MACHINE_TYPE::ARM64) {
+    } elif (header.Machine == IMAGE_MACHINE_TYPE::ARM64) {
         result = 1;
-    }
-    elif (header.Machine == IMAGE_MACHINE_TYPE::AXP64) {
+    } elif (header.Machine == IMAGE_MACHINE_TYPE::AXP64) {
         result = 1;
-    }
-    elif (header.Machine == IMAGE_MACHINE_TYPE::IA64) {
+    } elif (header.Machine == IMAGE_MACHINE_TYPE::IA64) {
         result = 1;
-    }
-    elif (header.Machine == IMAGE_MACHINE_TYPE::LOONGARCH64) {
+    } elif (header.Machine == IMAGE_MACHINE_TYPE::LOONGARCH64) {
         result = 1;
-    }
-    elif (header.Machine == IMAGE_MACHINE_TYPE::RISCV64) {
+    } elif (header.Machine == IMAGE_MACHINE_TYPE::RISCV64) {
         result = 1;
     }
 }

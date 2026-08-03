@@ -1,0 +1,163 @@
+// Copyright (c) 2022-2026, bageyelet
+
+// WebAssembly binary modules. Little endian, and everything after the eight
+// byte preamble is a sequence of sections, each carrying its own length as an
+// unsigned LEB128 - so the module can be walked and its exact extent is known.
+//
+// Section ids appear in ascending order apart from custom sections, which are
+// id 0 and may appear anywhere and any number of times.
+
+enum wasm_section_t : u8
+{
+    CUSTOM     = 0,
+    TYPE       = 1,
+    IMPORT     = 2,
+    FUNCTION   = 3,
+    TABLE      = 4,
+    MEMORY     = 5,
+    GLOBAL     = 6,
+    EXPORT     = 7,
+    START      = 8,
+    ELEMENT    = 9,
+    CODE       = 10,
+    DATA       = 11,
+    DATA_COUNT = 12,
+    TAG        = 13
+}
+
+// Unsigned LEB128: seven bits per byte, low group first, top bit continues
+fn leb_len(at)
+{
+    disable_print();
+    result = 0;
+
+    local n = 0;
+    while (n < 5) {
+        local b = peek_u8(at + n);
+        n = n + 1;
+        if ((b & 0x80) == 0) {
+            result = n;
+            return;
+        }
+    }
+}
+
+fn leb_value(at)
+{
+    disable_print();
+    result = 0;
+
+    local v = 0;
+    local n = 0;
+    while (n < 5) {
+        local b = peek_u8(at + n);
+        v = v | ((b & 0x7f) << (n * 7));
+        n = n + 1;
+        if ((b & 0x80) == 0) {
+            result = v;
+            return;
+        }
+    }
+}
+
+struct wasm_section_hdr_t
+{
+    little_endian();
+
+    wasm_section_t section_id;
+
+    local len_bytes = leb_len(0);
+    local payload   = leb_value(0);
+    assert(len_bytes > 0, "malformed wasm section: unterminated length");
+
+    u8 section_size[len_bytes];
+    if (len_bytes > 1) {
+        print("    =", tostring(payload, 10), "bytes");
+    }
+}
+
+// Walks the sections from `at`, returning the offset just past the last one, or
+// 0 when they do not tile the module cleanly
+fn walk_sections(at)
+{
+    disable_print();
+    result = 0;
+
+    local p     = at;
+    local count = 0;
+    while (count < 100000) {
+        if (p == remaining_size()) {
+            result = p;
+            return;
+        }
+        if (p + 2 > remaining_size()) {
+            return;
+        }
+
+        local id = peek_u8(p);
+        if (id > 13) {
+            return;
+        }
+
+        local n = leb_len(p + 1);
+        if (n == 0) {
+            return;
+        }
+        local size = leb_value(p + 1);
+
+        p = p + 1 + n + size;
+        if (p > remaining_size()) {
+            return;
+        }
+        count = count + 1;
+    }
+}
+
+proc _identify_magic
+{
+    magic("\x00asm", 0);
+}
+
+// The four byte magic starts with a NUL, which keeps it out of text, and the
+// version behind it has been 1 since the format was finished. The sections are
+// then walked: every one has to carry a length that lands on the start of
+// another section or on the end of the module, which is what confirms the guess
+// and gives the extent.
+proc _identify
+{
+    little_endian();
+    if (peek_u32() != 0x6d736100) {
+        return;
+    }
+    if (peek_u32(4) != 1) {
+        return;
+    }
+
+    result = walk_sections(8);
+    if (result < 8) {
+        result = 0;
+    }
+}
+
+proc
+{
+    little_endian();
+
+    u8  magic[4];
+    u32 version;
+
+    assert(peek_u32(-8) == 0x6d736100, "not a wasm module: bad magic");
+    assert(version == 1, "unsupported wasm version");
+
+    while (remaining_size() >= 2) {
+        local start = off();
+
+        wasm_section_hdr_t section;
+
+        local size = leb_value(-(off() - start) + 1);
+        assert(size <= remaining_size(), "malformed wasm section: it runs past the end of the module");
+        if (size > 0) {
+            u8 section_data[size];
+        }
+    }
+}

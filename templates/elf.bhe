@@ -408,7 +408,7 @@ struct Elf64_Shdr
 fn is64Bit(header)
 {
     result =
-        header.e_ident.ei_class == ElfIdentClass::ELFCLASS64;
+             header.e_ident.ei_class == ElfIdentClass::ELFCLASS64;
 }
 
 fn getStringsOffset(header)
@@ -417,7 +417,7 @@ fn getStringsOffset(header)
     local off = off();
 
     local strtab_off =
-        header.e_shoff + (header.e_shstrndx * header.e_shentsize);
+                       header.e_shoff + (u64(header.e_shstrndx) * header.e_shentsize);
     seek(strtab_off);
     local str_off = 0;
     if (is64Bit(header)) {
@@ -486,13 +486,13 @@ proc load_segments
         } else {
             Elf32_Phdr phdr;
         }
-        
+
         if (phdr.p_type == PhdrType::PT_LOAD) {
             print("");
             print("flags:", phdr.p_flags);
             print("fsize:", tostring(phdr.p_filesz));
-            print("faddr:", tostring(phdr.p_offset), "->", tostring(phdr.p_offset+phdr.p_filesz));
-            print("vaddr:", tostring(phdr.p_vaddr), "->", tostring(phdr.p_vaddr+phdr.p_memsz));
+            print("faddr:", tostring(phdr.p_offset), "->", tostring(phdr.p_offset + phdr.p_filesz));
+            print("vaddr:", tostring(phdr.p_vaddr), "->", tostring(phdr.p_vaddr + phdr.p_memsz));
         }
         i = i + 1;
     }
