@@ -32,10 +32,21 @@ extern int bhengine_vm_skip_search;
 // that other template to be in the VM by name. The tests come up with an empty
 // VM on purpose (see bhengine_vm_skip_search below), so the dependency has to
 // be registered by hand: returns 0 on success, like bhengine_vm_add_template().
+//
+// It goes in the one VM every command shares, so a test that registers one owns
+// dropping it again with unregister_imported_template(): 't/l' asserts that the
+// VM lists nothing, and a leftover would fail it depending on the order the
+// tests happen to run in.
 __attribute__((unused)) static int register_imported_template(const char* name,
                                                               const char* path)
 {
     return bhengine_vm_add_template(bhengine_vm_get(), name, path);
+}
+
+__attribute__((unused)) static void
+unregister_imported_template(const char* name)
+{
+    bhengine_vm_remove_template(bhengine_vm_get(), name);
 }
 
 static CmdContext*      cc;

@@ -7,8 +7,12 @@ script_folder = os.path.realpath(os.path.dirname(__file__))
 data_folder = os.path.join(script_folder, "data")
 
 def iterate_files(path: str, recursive=False):
+    # sorted, so that the order the tests end up running in is the same on
+    # every machine: os.walk hands the files back in whatever order the
+    # filesystem keeps them, and a failure that depends on the order is no fun
+    # to chase when it only shows up on one checkout
     for subdir, _, files in os.walk(path):
-        for file in files:
+        for file in sorted(files):
             yield os.path.join(subdir, file)
         if not recursive:
             break

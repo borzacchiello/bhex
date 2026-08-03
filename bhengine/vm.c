@@ -54,6 +54,16 @@ static ASTCtx* bhengine_vm_process_imported(BHEngineVM* vm, const char* bhe,
     return vm_ensure_parsed_ex(bhe, te, quiet);
 }
 
+// The interpreter resolves imported types ('#') through a single global
+// callback, so the VM that is about to run something has to claim it first.
+// More than one VM can be alive at a time, and whichever was created last would
+// otherwise answer for all of them -- or, once it is destroyed, nobody would.
+static void vm_claim_imported_callback(BHEngineVM* ctx)
+{
+    bhengine_interpreter_set_imported_types_callback(
+        (imported_cb_t)bhengine_vm_process_imported, ctx);
+}
+
 // Registers every "*.bhe" of a directory under its bare name. A name already
 // taken keeps the file that claimed it: the caller walks the search path in
 // priority order
@@ -106,8 +116,7 @@ BHEngineVM* bhengine_vm_create(const char** dirs)
     for (const char** curr = dirs; *curr; ++curr)
         vm_load_dir(ctx, *curr);
 
-    bhengine_interpreter_set_imported_types_callback(
-        (imported_cb_t)bhengine_vm_process_imported, ctx);
+    vm_claim_imported_callback(ctx);
     return ctx;
 }
 
@@ -146,7 +155,10 @@ int bhengine_vm_remove_template(BHEngineVM* ctx, const char* name)
 
 void bhengine_vm_destroy(BHEngineVM* ctx)
 {
-    bhengine_interpreter_set_imported_types_callback(NULL, NULL);
+    // hand the callback back only when this VM is the one holding it: a
+    // throwaway VM must not leave another one unable to resolve its imports
+    if (bhengine_interpreter_get_imported_types_userptr() == ctx)
+        bhengine_interpreter_set_imported_types_callback(NULL, NULL);
     map_destroy(ctx->templates);
     bhex_free(ctx);
 }
@@ -253,6 +265,10 @@ void bhengine_vm_iter_identifiers(BHEngineVM* ctx, FileBuffer* fb,
                                              void*               user),
                                   void* user)
 {
+    // the identifiers built here run their "_identify" proc later on, and it
+    // may well name an imported type
+    vm_claim_imported_callback(ctx);
+
     for (const char* key = map_first(ctx->templates); key != NULL;
          key             = map_next(ctx->templates, key)) {
         TemplateEntry* te = map_get(ctx->templates, key);
@@ -302,6 +318,7 @@ int bhengine_vm_has_bhe_proc(BHEngineVM* ctx, const char* bhe,
 
 int bhengine_vm_process_bhe(BHEngineVM* ctx, FileBuffer* fb, const char* bhe)
 {
+    vm_claim_imported_callback(ctx);
     if (!map_contains(ctx->templates, bhe))
         return 1;
 
@@ -319,6 +336,7 @@ int bhengine_vm_process_bhe(BHEngineVM* ctx, FileBuffer* fb, const char* bhe)
 int bhengine_vm_process_bhe_struct(BHEngineVM* ctx, FileBuffer* fb,
                                    const char* bhe, const char* struct_name)
 {
+    vm_claim_imported_callback(ctx);
     if (!map_contains(ctx->templates, bhe))
         return 1;
 
@@ -332,6 +350,7 @@ int bhengine_vm_process_bhe_struct(BHEngineVM* ctx, FileBuffer* fb,
 int bhengine_vm_process_bhe_proc(BHEngineVM* ctx, FileBuffer* fb,
                                  const char* bhe, const char* proc_name)
 {
+    vm_claim_imported_callback(ctx);
     if (!map_contains(ctx->templates, bhe))
         return 1;
 
@@ -344,12 +363,15 @@ int bhengine_vm_process_bhe_proc(BHEngineVM* ctx, FileBuffer* fb,
 
 int bhengine_vm_process_file(BHEngineVM* ctx, FileBuffer* fb, const char* fname)
 {
+    vm_claim_imported_callback(ctx);
     return bhengine_interpreter_process_filename(fb, fname);
 }
 
 int bhengine_vm_process_string(BHEngineVM* ctx, FileBuffer* fb,
                                const char* code)
 {
+    vm_claim_imported_callback(ctx);
+
     u64_t orig_off = fb->off;
 
     size_t prog_size = strlen(code) + 32;

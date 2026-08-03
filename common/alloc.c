@@ -5,6 +5,7 @@
 #include <log.h>
 
 #include <sys/types.h>
+#include <pthread.h>
 #include <string.h>
 #include <stdio.h>
 
@@ -34,10 +35,23 @@ static u64_t  g_track_marks[TRACK_MAX_DEPTH];
 static u32_t  g_track_depth;
 int           g_bhex_alloc_tracking;
 
+// A tracked scope can well contain something that allocates from more than one
+// thread (a search spawns workers), so the bookkeeping has to be serialised --
+// otherwise two threads racing on g_track_size hand back a live count that is
+// simply wrong. The lock is taken only once tracking is on: with it off, which
+// is every run outside the leak tests, the fast path is the flag test alone.
+static pthread_mutex_t g_track_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 static inline void track_add(void* ptr)
 {
     if (likely(!g_bhex_alloc_tracking))
         return;
+
+    pthread_mutex_lock(&g_track_mutex);
+    if (!g_bhex_alloc_tracking) {
+        pthread_mutex_unlock(&g_track_mutex);
+        return;
+    }
 
     if (g_track_capacity == g_track_size) {
         g_track_capacity *= 2;
@@ -46,12 +60,19 @@ static inline void track_add(void* ptr)
             panic("unable to allocate %llu bytes", g_track_capacity);
     }
     g_track_ptr[g_track_size++] = ptr;
+    pthread_mutex_unlock(&g_track_mutex);
 }
 
 static inline int track_remove(void* ptr)
 {
     if (likely(!g_bhex_alloc_tracking))
         return 0;
+
+    pthread_mutex_lock(&g_track_mutex);
+    if (!g_bhex_alloc_tracking) {
+        pthread_mutex_unlock(&g_track_mutex);
+        return 0;
+    }
 
     // scan from the newest: short-lived allocations dominate
     for (u64_t i = g_track_size; i-- > 0;) {
@@ -64,13 +85,19 @@ static inline int track_remove(void* ptr)
         for (u32_t k = 0; k < g_track_depth; ++k)
             if (g_track_marks[k] > i)
                 g_track_marks[k]--;
+        pthread_mutex_unlock(&g_track_mutex);
         return 1;
     }
+    pthread_mutex_unlock(&g_track_mutex);
     return 0;
 }
 
+// The scope calls below are only ever made by the thread that owns the scope,
+// but they still take the lock: a worker of an enclosed scope may be allocating
+// while they run.
 static inline void track_start()
 {
+    pthread_mutex_lock(&g_track_mutex);
     if (g_track_depth == TRACK_MAX_DEPTH)
         panic("allocation tracker nested too deeply");
 
@@ -84,35 +111,46 @@ static inline void track_start()
 
     g_track_marks[g_track_depth++] = g_track_size;
     g_bhex_alloc_tracking          = 1;
+    pthread_mutex_unlock(&g_track_mutex);
 }
 
 static inline void track_stop()
 {
-    if (!g_bhex_alloc_tracking)
+    pthread_mutex_lock(&g_track_mutex);
+    if (!g_bhex_alloc_tracking) {
+        pthread_mutex_unlock(&g_track_mutex);
         return;
+    }
 
     // anything the inner scope allocated and did not free is still live, and
     // becomes the enclosing scope's responsibility: leave it in the array
     g_track_depth--;
-    if (g_track_depth > 0)
+    if (g_track_depth > 0) {
+        pthread_mutex_unlock(&g_track_mutex);
         return;
+    }
 
     free(g_track_ptr);
     g_bhex_alloc_tracking = 0;
     g_track_ptr           = NULL;
     g_track_size          = 0;
     g_track_capacity      = 0;
+    pthread_mutex_unlock(&g_track_mutex);
 }
 
 static inline void track_free_all()
 {
-    if (!g_bhex_alloc_tracking)
+    pthread_mutex_lock(&g_track_mutex);
+    if (!g_bhex_alloc_tracking) {
+        pthread_mutex_unlock(&g_track_mutex);
         return;
+    }
 
     u64_t start = g_track_marks[g_track_depth - 1];
     for (u64_t i = start; i < g_track_size; ++i)
         free(g_track_ptr[i]);
     g_track_size = start;
+    pthread_mutex_unlock(&g_track_mutex);
 }
 
 void* bhex_malloc(size_t n)
@@ -200,7 +238,12 @@ void bhex_alloc_track_free_all()
 // live allocations of the innermost scope only
 size_t bhex_alloc_live_count()
 {
-    if (!g_bhex_alloc_tracking)
+    pthread_mutex_lock(&g_track_mutex);
+    if (!g_bhex_alloc_tracking) {
+        pthread_mutex_unlock(&g_track_mutex);
         return 0;
-    return (size_t)(g_track_size - g_track_marks[g_track_depth - 1]);
+    }
+    size_t live = (size_t)(g_track_size - g_track_marks[g_track_depth - 1]);
+    pthread_mutex_unlock(&g_track_mutex);
+    return live;
 }

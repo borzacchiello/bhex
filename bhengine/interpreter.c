@@ -1425,6 +1425,11 @@ void bhengine_interpreter_set_imported_types_callback(imported_cb_t cb,
     imported_cb  = cb;
 }
 
+void* bhengine_interpreter_get_imported_types_userptr(void)
+{
+    return imported_ptr;
+}
+
 int bhengine_interpreter_process_filename(FileBuffer* fb, const char* bhe)
 {
     FILE* f = fopen(bhe, "r");

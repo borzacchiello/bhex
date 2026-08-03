@@ -134,4 +134,8 @@ void bhengine_interpreter_context_pp(InterpreterContext* e);
 // callback to process imported types
 void bhengine_interpreter_set_imported_types_callback(imported_cb_t cb,
                                                       void*         userptr);
+
+// The 'userptr' the callback is currently installed with, so that its owner can
+// tell whether it is still the one answering
+void* bhengine_interpreter_get_imported_types_userptr(void);
 #endif

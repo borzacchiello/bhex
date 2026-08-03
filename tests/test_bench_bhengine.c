@@ -8,7 +8,13 @@
 // times and prints the best/avg wall-clock time as a side effect; it only
 // fails (TEST_FAILED) if the engine errors out while running the workload.
 //
-// Run just these with:  ./bhex_tests bench_bhengine
+// A workload big enough to time is far too slow to pay for on every run -- the
+// three of them used to be 40% of the whole suite -- so the full size is only
+// used when BHEX_TESTS_BENCH is set in the environment. Without it the same
+// workloads run once, scaled down, and print nothing: cheap enough to keep, and
+// they still catch an engine that errors out.
+//
+// Run the real thing with:  BHEX_TESTS_BENCH=1 ./bhex_tests bench_bhengine
 
 #include "dummy_filebuffer.h"
 #include "../bhengine/interpreter.h"
@@ -23,6 +29,16 @@
 #ifndef TEST
 #define TEST(name) test_##name
 #endif
+
+// Set (to anything) to run the benchmarks at full size and report timings
+static int bench_enabled(void) { return getenv("BHEX_TESTS_BENCH") != NULL; }
+
+// How much of the workload to run, and how many times: the full thing when
+// benchmarking, a small smoke-sized slice of it otherwise
+static u32_t bench_workload(u32_t full, u32_t reduced)
+{
+    return bench_enabled() ? full : reduced;
+}
 
 static double bench_now_ms(void)
 {
@@ -59,6 +75,14 @@ static int bench_run(const char* name, const char* prog, size_t buf_size,
         goto end;
     fb_seek(dfb->fb, 0);
 
+    // Outside a benchmarking run the warm-up *is* the run: it has just proved
+    // the workload goes through the engine without an error, which is all a
+    // regular test run wants from it
+    if (!bench_enabled()) {
+        result = TEST_SUCCEEDED;
+        goto end;
+    }
+
     double best = 1e300;
     double sum  = 0;
     for (int i = 0; i < iters; ++i) {
@@ -85,27 +109,33 @@ end:
 // (fb_read / fb_seek) and the value allocation / scope machinery.
 int TEST(struct_array)(void)
 {
-    const char* prog = "struct Entry {"
-                       "  u32 a; u32 b; u16 c; u16 d; u8 e; u8 f;"
-                       "}"
-                       "proc {"
-                       "  disable_print();"
-                       "  Entry entries[16384];"
-                       "}";
+    char prog[256];
+    snprintf(prog, sizeof(prog),
+             "struct Entry {"
+             "  u32 a; u32 b; u16 c; u16 d; u8 e; u8 f;"
+             "}"
+             "proc {"
+             "  disable_print();"
+             "  Entry entries[%u];"
+             "}",
+             bench_workload(16384, 256));
     return bench_run("struct_array", prog, 1u << 20, 10);
 }
 
 // Parse many NUL-terminated strings. Stresses the byte-at-a-time read path.
 int TEST(strings)(void)
 {
-    const char* prog = "proc {"
-                       "  disable_print();"
-                       "  local i = 0;"
-                       "  while (i < 8192) {"
-                       "    string s;"
-                       "    i = i + 1;"
-                       "  }"
-                       "}";
+    char prog[256];
+    snprintf(prog, sizeof(prog),
+             "proc {"
+             "  disable_print();"
+             "  local i = 0;"
+             "  while (i < %u) {"
+             "    string s;"
+             "    i = i + 1;"
+             "  }"
+             "}",
+             bench_workload(8192, 128));
     return bench_run("strings", prog, 1u << 20, 10);
 }
 
@@ -113,14 +143,17 @@ int TEST(strings)(void)
 // expression-evaluation / scope overhead from the I/O path.
 int TEST(arith)(void)
 {
-    const char* prog = "proc {"
-                       "  disable_print();"
-                       "  local i = 0;"
-                       "  local acc = 0;"
-                       "  while (i < 1000000) {"
-                       "    acc = acc + i * 3 - 1;"
-                       "    i = i + 1;"
-                       "  }"
-                       "}";
+    char prog[256];
+    snprintf(prog, sizeof(prog),
+             "proc {"
+             "  disable_print();"
+             "  local i = 0;"
+             "  local acc = 0;"
+             "  while (i < %u) {"
+             "    acc = acc + i * 3 - 1;"
+             "    i = i + 1;"
+             "  }"
+             "}",
+             bench_workload(1000000, 2000));
     return bench_run("arith", prog, 4096, 3);
 }

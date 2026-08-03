@@ -2545,6 +2545,7 @@ int TEST(template_pcap_1)(void)
     bhex_free(out);
 
 end:
+    unregister_imported_template("net");
     dummyfilebuffer_destroy(tfb);
     return r;
 

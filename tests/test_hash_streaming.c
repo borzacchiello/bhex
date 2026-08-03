@@ -31,10 +31,28 @@
 
 #define MAX_LEN 300
 
+// Both implementations buffer into a 64 byte block
+#define HASH_BLOCK 64
+
 static void fill(u8_t* buf, u32_t len)
 {
     for (u32_t i = 0; i < len; ++i)
         buf[i] = (u8_t)(i * 7 + 3);
+}
+
+// Which message lengths are worth feeding in. Sweeping every length up to
+// MAX_LEN with every split was 5 seconds of the suite, nearly all of it spent
+// re-testing the same code path with a longer message: what the buffering can
+// get wrong is how much of a block is already filled, so what matters is every
+// length up to a couple of blocks, then the boundaries themselves.
+static int len_is_interesting(u32_t len)
+{
+    if (len <= 2 * HASH_BLOCK + 8)
+        return 1;
+    if (len == MAX_LEN)
+        return 1;
+    u32_t d = len % HASH_BLOCK;
+    return d <= 2 || d >= HASH_BLOCK - 2;
 }
 
 // Feed `data` in `split`-byte pieces, each copied into its own exact-size heap
@@ -58,16 +76,22 @@ int TEST(jh_streaming_matches_oneshot)(void)
     fill(buf, sizeof(buf));
 
     for (u32_t len = 0; len <= MAX_LEN; ++len) {
-        for (u32_t split = 1; split <= 5; ++split) {
-            u8_t         oneshot[64], streamed[64];
-            jh_hashState s1, s2;
+        if (!len_is_interesting(len))
+            continue;
+        // the one-shot digest is what every split is compared against, so it is
+        // computed once per length rather than once per split
+        u8_t         oneshot[64];
+        jh_hashState s1;
+        jh_256_init(&s1);
+        u8_t* whole = bhex_malloc(len ? len : 1);
+        memcpy(whole, buf, len);
+        jh_update_bytes(&s1, whole, len);
+        jh_final_wrap(oneshot, &s1);
+        bhex_free(whole);
 
-            jh_256_init(&s1);
-            u8_t* whole = bhex_malloc(len ? len : 1);
-            memcpy(whole, buf, len);
-            jh_update_bytes(&s1, whole, len);
-            jh_final_wrap(oneshot, &s1);
-            bhex_free(whole);
+        for (u32_t split = 1; split <= 5; ++split) {
+            u8_t         streamed[64];
+            jh_hashState s2;
 
             jh_256_init(&s2);
             STREAM_IN_PIECES(jh_update_bytes, s2, buf, len, split);
@@ -86,16 +110,20 @@ int TEST(shash_streaming_matches_oneshot)(void)
     fill(buf, sizeof(buf));
 
     for (u32_t len = 0; len <= MAX_LEN; ++len) {
-        for (u32_t split = 1; split <= 5; ++split) {
-            u8_t            oneshot[64], streamed[64];
-            SpectralHashCtx s1, s2;
+        if (!len_is_interesting(len))
+            continue;
+        u8_t            oneshot[64];
+        SpectralHashCtx s1;
+        shash_256_init(&s1);
+        u8_t* whole = bhex_malloc(len ? len : 1);
+        memcpy(whole, buf, len);
+        shash_update(&s1, whole, len);
+        shash_final(oneshot, &s1);
+        bhex_free(whole);
 
-            shash_256_init(&s1);
-            u8_t* whole = bhex_malloc(len ? len : 1);
-            memcpy(whole, buf, len);
-            shash_update(&s1, whole, len);
-            shash_final(oneshot, &s1);
-            bhex_free(whole);
+        for (u32_t split = 1; split <= 5; ++split) {
+            u8_t            streamed[64];
+            SpectralHashCtx s2;
 
             shash_256_init(&s2);
             STREAM_IN_PIECES(shash_update, s2, buf, len, split);
