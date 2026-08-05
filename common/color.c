@@ -61,6 +61,15 @@ void colors_init(int disable)
         return;
     }
 
+    // a caller that knows where the output goes (a pager, for instance) can
+    // ask for the colors anyway, since the isatty() check below would see the
+    // pipe and turn them off
+    const char* force = getenv("CLICOLOR_FORCE");
+    if (force != NULL && force[0] != '\0' && strcmp(force, "0") != 0) {
+        g_colors_enabled = 1;
+        return;
+    }
+
     // when the output is redirected the escapes would end up in the file of
     // the user, so they are emitted only for a terminal
     g_colors_enabled = isatty(STDOUT_FILENO);

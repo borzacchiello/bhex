@@ -37,7 +37,7 @@ Usage:  bhex [ options ] inputfile
 
 command history is saved in "$HOME/.bhex_history", it can be changed setting BHEX_HISTORY_FILE environment variable
 
-colors are disabled automatically when the output is not a terminal, or when the NO_COLOR environment variable is set; unicode only when the locale of the environment is a UTF-8 one
+colors are disabled automatically when the output is not a terminal, or when the NO_COLOR environment variable is set (set CLICOLOR_FORCE to keep them through a pipe); unicode only when the locale of the environment is a UTF-8 one
 ```
 
 # Compilation

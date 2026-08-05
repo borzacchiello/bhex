@@ -59,6 +59,8 @@ extern int g_colors_enabled;
 
 // Enable the colors, unless `disable` is set, the standard output is not a
 // terminal, or the environment asks not to use them (NO_COLOR, TERM=dumb).
+// CLICOLOR_FORCE keeps them on when the output is a pipe, for the callers that
+// know the escapes will be interpreted anyway.
 void colors_init(int disable);
 void colors_set_enabled(int enabled);
 int  colors_enabled(void);

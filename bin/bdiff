@@ -15,4 +15,6 @@ if (( $# != 2 )); then
     exit 1
 fi
 
-bhex -2c "df/p/w $2" "$1" | less
+# bhex turns the colors off when it does not write to a terminal: the pager
+# does interpret the escapes ("-R"), so ask for them explicitly
+CLICOLOR_FORCE=1 bhex -2c "df/p/w $2" "$1" | less -R
