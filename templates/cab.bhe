@@ -1,0 +1,288 @@
+// Copyright (c) 2022-2026, bageyelet
+//
+// Microsoft Cabinet (MS-CAB). A cabinet is a header, a table of folders, a
+// table of files and the CFDATA blocks the folders are made of. A folder is a
+// compression unit, not a directory: files are byte ranges inside a folder's
+// decompressed stream, which is why a CFFILE carries an offset into that
+// stream rather than a position in the cabinet. Directories live in the file
+// names, backslash separated.
+
+orenum cab_flags_t : u16
+{
+    PREV_CABINET    = 0x0001,
+    NEXT_CABINET    = 0x0002,
+    RESERVE_PRESENT = 0x0004
+}
+
+orenum cab_attributes_t : u16
+{
+    RDONLY      = 0x0001,
+    HIDDEN      = 0x0002,
+    SYSTEM      = 0x0004,
+    ARCH        = 0x0020,
+    EXEC        = 0x0040,
+    NAME_IS_UTF = 0x0080
+}
+
+struct cab_header_t
+{
+    char       signature[4];
+    u32        reserved1;
+    u32        cb_cabinet;              // size of this cabinet file
+    u32        reserved2;
+    u32        coff_files;              // offset of the first CFFILE
+    u32        reserved3;
+    u8         version_minor;
+    u8         version_major;
+    u16        n_folders;
+    u16        n_files;
+    cab_flags_t flags;
+    u16        set_id;                  // shared by every cabinet of a set
+    u16        cabinet_index;           // position of this cabinet in the set
+
+    // The three reserve sizes are declared once, in the header, and then apply
+    // to every CFFOLDER and CFDATA in the cabinet
+    if (flags & cab_flags_t::RESERVE_PRESENT) {
+        u16 cb_header_reserve;
+        u8  cb_folder_reserve;
+        u8  cb_data_reserve;
+        if (cb_header_reserve > 0) {
+            u8 header_reserve[cb_header_reserve];
+        }
+    }
+
+    if (flags & cab_flags_t::PREV_CABINET) {
+        string prev_cabinet;
+        string prev_disk;
+    }
+
+    if (flags & cab_flags_t::NEXT_CABINET) {
+        string next_cabinet;
+        string next_disk;
+    }
+}
+
+// typeCompress is a 16 bit word, but it splits along the byte boundary: the low
+// byte names the method in its low nibble and carries the Quantum compression
+// level in its high nibble, while the high byte holds the LZX window size or
+// the Quantum memory level. Naming the low byte's values outright is what lets
+// the method print itself.
+enum cab_compression_t : u8
+{
+    NONE       = 0x00,                  // stored
+    MSZIP      = 0x01,
+    LZX        = 0x03,
+    QUANTUM_L0 = 0x02,
+    QUANTUM_L1 = 0x12,
+    QUANTUM_L2 = 0x22,
+    QUANTUM_L3 = 0x32,
+    QUANTUM_L4 = 0x42,
+    QUANTUM_L5 = 0x52,
+    QUANTUM_L6 = 0x62,
+    QUANTUM_L7 = 0x72
+}
+
+struct cab_folder_t
+{
+    u32               coff_cab_start;   // offset of this folder's first CFDATA
+    u16               n_data;           // number of CFDATA blocks
+    cab_compression_t compression;
+    u8                window;           // LZX window size, or Quantum memory level
+}
+
+struct cab_file_t
+{
+    u32              cb_file;           // uncompressed size
+    u32              uoff_folder_start; // offset into the folder's stream
+    // a real index into the folder table, except for three sentinels: fffd is
+    // continued from the previous cabinet, fffe continued into the next, and
+    // ffff both
+    u16              i_folder;
+    u16              date;              // MS-DOS date
+    u16              time;              // MS-DOS time
+    cab_attributes_t attribs;
+    string           name;
+}
+
+struct cab_data_t
+{
+    u32 csum;                           // 0 means "not computed"
+    u16 cb_data;                        // compressed size of this block
+    u16 cb_uncomp;                      // uncompressed size, 0 when continued
+}
+
+// The CFDATA checksum is a running XOR over the payload as 32 bit little
+// endian words, with the trailing one to three bytes folded in big endian, and
+// then the cbData/cbUncomp pair XORed in as one more word. A zero csum field
+// means the writer did not compute one.
+fn cab_data_checksum(n, at)
+{
+    disable_print();
+    local cks = 0;
+    local i = 0;
+    while (i + 4 <= n) {
+        cks = cks ^ peek_u32(at + i);
+        i = i + 4;
+    }
+
+    local rest = n - i;
+    local ul = 0;
+    if (rest == 3) {
+        ul = (peek_u8(at + i) << 16) | (peek_u8(at + i + 1) << 8) | peek_u8(at + i + 2);
+    } elif (rest == 2) {
+        ul = (peek_u8(at + i) << 8) | peek_u8(at + i + 1);
+    } elif (rest == 1) {
+        ul = peek_u8(at + i);
+    }
+    result = cks ^ ul;
+}
+
+
+// The signature plus the first reserved field, which "_identify" requires to
+// be zero. This is the same pattern 7-Zip and file(1) look for
+proc _identify_magic
+{
+    magic("MSCF\x00\x00\x00\x00", 0);
+}
+
+// "MSCF" alone is four bytes and turns up inside any binary that mentions the
+// format, so the three reserved fields (all specified as zero), the version
+// and the two offsets are checked as well: coffFiles has to point inside the
+// cabinet, past the fixed header
+proc _identify
+{
+    little_endian();
+    if (peek(4) != "MSCF" || peek_u32(4) != 0 || peek_u32(12) != 0 ||
+        peek_u32(20) != 0) {
+        return;
+    }
+    if (peek_u8(24) != 3 || peek_u8(25) != 1) {
+        return;
+    }
+
+    local cb_cabinet = peek_u32(8);
+    local coff_files = peek_u32(16);
+    if (cb_cabinet < 36 || coff_files < 36 || coff_files >= cb_cabinet) {
+        return;
+    }
+    // a cabinet with no folder cannot hold anything, and the folder table sits
+    // between the header and the file table
+    if (peek_u16(26) == 0 || peek_u16(28) == 0) {
+        return;
+    }
+
+    // the header carries the size of the whole cabinet, so the scan can skip it
+    result = min(cb_cabinet, remaining_size());
+}
+
+proc
+{
+    little_endian();
+    local base = off();
+
+    cab_header_t header;
+    assert(header.signature == "MSCF", "not a cabinet: bad signature");
+
+    // the reserve sizes are zero unless the header opted in
+    local folder_reserve_size = 0;
+    local data_reserve_size = 0;
+    if (header.flags & cab_flags_t::RESERVE_PRESENT) {
+        folder_reserve_size = header.cb_folder_reserve;
+        data_reserve_size = header.cb_data_reserve;
+    }
+
+    // --- the folder table, right behind the header
+    local n_folders = header.n_folders;
+    assert(n_folders * (8 + folder_reserve_size) <= remaining_size(),
+           "truncated cabinet: the folder table runs past the end of the file");
+
+    local first_folder = off();
+    local i = 0;
+    while (i < n_folders) {
+        cab_folder_t folder;
+        if (folder_reserve_size > 0) {
+            u8 folder_reserve[folder_reserve_size];
+        }
+        i = i + 1;
+    }
+
+    // --- the file table, at the offset the header points to
+    assert(header.coff_files >= 36 && base + header.coff_files < size(),
+           "malformed cabinet: coffFiles is outside the file");
+    seek(base + header.coff_files);
+    i = 0;
+    while (i < header.n_files) {
+        cab_file_t file;
+        i = i + 1;
+    }
+
+    // --- the data blocks of every folder, in folder order
+    i = 0;
+    while (i < n_folders) {
+        seek(first_folder + i * (8 + folder_reserve_size));
+        local start = peek_u32();
+        local n_data = peek_u16(4);
+        if (base + start >= size()) {
+            warning("folder", tostring(i, 10), "starts past the end of the file");
+            i = i + 1;
+            continue;
+        }
+
+        // the walk seeks away from the file table, so say which folder's
+        // blocks the offsets below belong to
+        seek(base + start);
+        print("folder", tostring(i, 10), "data blocks:");
+
+        max_array_print(8);
+        local j = 0;
+        while (j < n_data) {
+            if (remaining_size() < 8 + data_reserve_size) {
+                warning("truncated cabinet: CFDATA header runs past the end of the file");
+                break;
+            }
+            cab_data_t block;
+            if (data_reserve_size > 0) {
+                u8 block_reserve[data_reserve_size];
+            }
+            if (block.cb_data > remaining_size()) {
+                warning("truncated cabinet: CFDATA payload runs past the end of the file");
+                break;
+            }
+            local data_at = off();
+            u8 data[block.cb_data];
+
+            if (block.csum != 0) {
+                // the payload, then the cbData/cbUncomp pair sitting four
+                // bytes ahead of the reserve area and the payload
+                local sum = cab_data_checksum(block.cb_data, data_at - off());
+                sum = sum ^ peek_u32(data_at - off() - data_reserve_size - 4);
+                if (sum != block.csum) {
+                    warning("CFDATA checksum mismatch in folder", tostring(i, 10),
+                            "block", tostring(j, 10));
+                }
+            }
+            j = j + 1;
+        }
+        i = i + 1;
+    }
+}
+
+// The file table on its own, which is what a cabinet is usually opened for
+proc list_files
+{
+    little_endian();
+    local base = off();
+
+    disable_print();
+    cab_header_t header;
+    assert(header.signature == "MSCF", "not a cabinet: bad signature");
+    seek(base + header.coff_files);
+    enable_print();
+
+    local i = 0;
+    while (i < header.n_files) {
+        cab_file_t file;
+        i = i + 1;
+    }
+    result = header.n_files;
+}

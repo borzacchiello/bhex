@@ -1,0 +1,552 @@
+// Copyright (c) 2022-2026, bageyelet
+//
+// RAR archives, both the 1.5-4.x format and the 5.0 one. They share a magic
+// prefix and nothing else: RAR4 is a chain of fixed layout blocks with a 16
+// bit header CRC, RAR5 a chain of records whose every length and flag word is
+// a variable length integer covered by a 32 bit CRC.
+//
+// Both header CRCs are verified here, which is what makes a hit trustworthy:
+// the eight byte magic on its own turns up inside anything that merely
+// mentions the format.
+
+enum rar4_block_type_t : u8
+{
+    MARKER       = 0x72,
+    ARCHIVE      = 0x73,
+    FILE         = 0x74,
+    COMMENT      = 0x75,
+    AV           = 0x76,
+    SUBBLOCK_OLD = 0x77,
+    RECOVERY     = 0x78,
+    AUTH         = 0x79,
+    SUBBLOCK     = 0x7a,
+    END          = 0x7b
+}
+
+orenum rar4_archive_flags_t : u16
+{
+    VOLUME        = 0x0001,
+    COMMENT       = 0x0002,
+    LOCK          = 0x0004,
+    SOLID         = 0x0008,
+    NEW_NUMBERING = 0x0010,
+    AV            = 0x0020,
+    PROTECT       = 0x0040,
+    PASSWORD      = 0x0080,
+    FIRST_VOLUME  = 0x0100,
+    ENCRYPT_VER   = 0x0200
+}
+
+orenum rar4_file_flags_t : u16
+{
+    SPLIT_BEFORE = 0x0001,
+    SPLIT_AFTER  = 0x0002,
+    PASSWORD     = 0x0004,
+    COMMENT      = 0x0008,
+    SOLID        = 0x0010,
+    DIRECTORY    = 0x00e0,
+    LARGE        = 0x0100,
+    UNICODE      = 0x0200,
+    SALT         = 0x0400,
+    VERSION      = 0x0800,
+    EXT_TIME     = 0x1000,
+    LONG_BLOCK   = 0x8000
+}
+
+enum rar4_host_os_t : u8
+{
+    MSDOS   = 0,
+    OS2     = 1,
+    WINDOWS = 2,
+    UNIX    = 3,
+    MACOS   = 4,
+    BEOS    = 5
+}
+
+enum rar4_method_t : u8
+{
+    STORE   = 0x30,
+    FASTEST = 0x31,
+    FAST    = 0x32,
+    NORMAL  = 0x33,
+    GOOD    = 0x34,
+    BEST    = 0x35
+}
+
+enum rar5_header_type_t : u8
+{
+    MAIN       = 1,
+    FILE       = 2,
+    SERVICE    = 3,
+    ENCRYPTION = 4,
+    END        = 5
+}
+
+orenum rar5_header_flags_t : u8
+{
+    EXTRA_AREA   = 0x01,
+    DATA_AREA    = 0x02,
+    SKIP_UNKNOWN = 0x04,
+    SPLIT_BEFORE = 0x08,
+    SPLIT_AFTER  = 0x10,
+    CHILD        = 0x20,
+    INHERITED    = 0x40
+}
+
+orenum rar5_file_flags_t : u8
+{
+    DIRECTORY      = 0x01,
+    MTIME          = 0x02,
+    CRC32          = 0x04,
+    UNKNOWN_UNPSIZE = 0x08
+}
+
+orenum rar5_archive_flags_t : u8
+{
+    VOLUME        = 0x01,
+    VOLUME_NUMBER = 0x02,
+    SOLID         = 0x04,
+    RECOVERY      = 0x08,
+    LOCKED        = 0x10
+}
+
+orenum rar5_end_flags_t : u8
+{
+    NOT_LAST_VOLUME = 0x01
+}
+
+enum rar5_host_os_t : u8
+{
+    WINDOWS = 0,
+    UNIX    = 1
+}
+
+// RAR5 stores nearly every number as a variable length integer: seven bits per
+// byte, lowest group first, with the top bit marking a continuation
+fn vint_len(at)
+{
+    disable_print();
+    result = 0;
+
+    local n = 0;
+    while (n < 10) {
+        local b = peek_u8(at + n);
+        n = n + 1;
+        if ((b & 0x80) == 0) {
+            result = n;
+            return;
+        }
+    }
+}
+
+fn vint_value(at)
+{
+    disable_print();
+    result = 0;
+
+    local v = 0;
+    local n = 0;
+    while (n < 10) {
+        local b = peek_u8(at + n);
+        v = v | ((b & 0x7f) << (n * 7));
+        n = n + 1;
+        if ((b & 0x80) == 0) {
+            result = v;
+            return;
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// RAR 1.5 - 4.x
+// ---------------------------------------------------------------------------
+
+struct rar4_archive_body_t
+{
+    u16 reserved1;
+    u32 reserved2;
+}
+
+// The fixed part of a file or subblock header. What follows it depends on the
+// block's flags, so the name and the 64 bit size halves stay with the caller.
+struct rar4_file_body_t
+{
+    u32            unp_size;
+    rar4_host_os_t host_os;
+    u32            file_crc;
+    u32            ftime;               // MS-DOS timestamp
+    u8             unp_ver;
+    rar4_method_t  method;
+    u16            name_size;
+    u32            attr;
+}
+
+struct rar4_block_t
+{
+    local start = off();
+
+    u16               head_crc;
+    rar4_block_type_t head_type;
+    // the flag word is per block type, so it is named once and decoded three
+    // ways rather than left as a bare number
+    if (head_type == rar4_block_type_t::ARCHIVE) {
+        rar4_archive_flags_t head_flags;
+    } elif (head_type == rar4_block_type_t::FILE ||
+            head_type == rar4_block_type_t::SUBBLOCK) {
+        rar4_file_flags_t head_flags;
+    } else {
+        u16 head_flags;
+    }
+    u16               head_size;
+
+    assert(head_size >= 7, "malformed RAR4 block: header shorter than its fixed part");
+    assert(head_size <= remaining_size() + 7,
+           "truncated RAR4 block: the header runs past the end of the file");
+
+    // the header CRC covers everything from the type byte to the end of the
+    // header, i.e. the head_size bytes minus the CRC field itself
+    if (head_crc != (crc("CRC-32/ISO-HDLC", head_size - 2, -5) & 0xffff)) {
+        warning("RAR4 block header CRC mismatch");
+    }
+
+    // a long block carries the size of its data area right behind the header
+    local data_size = 0;
+    if (head_flags & rar4_file_flags_t::LONG_BLOCK) {
+        u32 add_size;
+        data_size = add_size;
+    }
+
+    if (head_type == rar4_block_type_t::ARCHIVE) {
+        rar4_archive_body_t archive_header;
+    } elif (head_type == rar4_block_type_t::FILE ||
+            head_type == rar4_block_type_t::SUBBLOCK) {
+        rar4_file_body_t file_header;
+        if (head_flags & rar4_file_flags_t::LARGE) {
+            u32 high_pack_size;
+            u32 high_unp_size;
+        }
+        assert(file_header.name_size <= remaining_size(),
+               "malformed RAR4 file header: the name runs past the end of the file");
+        char name[file_header.name_size];
+    }
+
+    // whatever of the header this template does not name is padding
+    local used = off() - start;
+    if (head_size > used) {
+        u8 head_extra[head_size - used];
+    }
+
+    if (data_size > 0) {
+        assert(data_size <= remaining_size(),
+               "truncated RAR4 block: the data area runs past the end of the file");
+        u8 data[data_size];
+    }
+}
+
+// ---------------------------------------------------------------------------
+// RAR 5.0
+// ---------------------------------------------------------------------------
+
+// A vint prints as the raw bytes it occupies. One byte is already readable as
+// hex, so only a longer one is worth spelling out.
+fn print_vint(n, value)
+{
+    if (n > 1) {
+        print("    =", tostring(value, 10));
+    }
+}
+
+struct rar5_main_body_t
+{
+    local n = vint_len(0);
+    local flags = vint_value(0);
+    if (n == 1) {
+        rar5_archive_flags_t archive_flags;
+    } else {
+        u8 archive_flags[n];
+    }
+
+    if (flags & rar5_archive_flags_t::VOLUME_NUMBER) {
+        n = vint_len(0);
+        local number = vint_value(0);
+        u8 volume_number[n];
+        print_vint(n, number);
+    }
+}
+
+struct rar5_file_body_t
+{
+    local n = vint_len(0);
+    local flags = vint_value(0);
+    if (n == 1) {
+        rar5_file_flags_t file_flags;
+    } else {
+        u8 file_flags[n];
+    }
+
+    n = vint_len(0);
+    local unpacked = vint_value(0);
+    u8 unpacked_size[n];
+    print_vint(n, unpacked);
+
+    n = vint_len(0);
+    u8 attributes[n];
+
+    if (flags & rar5_file_flags_t::MTIME) {
+        u32 mtime;                      // unix time
+    }
+    if (flags & rar5_file_flags_t::CRC32) {
+        u32 data_crc32;
+    }
+
+    n = vint_len(0);
+    local comp_info = vint_value(0);
+    u8 compression_info[n];
+    // one packed field: bits 0-5 the minimum version, 7-9 the method with 0
+    // meaning store, and 10-13 the dictionary size
+    print("    = version", tostring(comp_info & 0x3f, 10), "method",
+          tostring((comp_info >> 7) & 0x07, 10), "dictionary",
+          tostring(128 << ((comp_info >> 10) & 0x0f), 10), "KB");
+
+    n = vint_len(0);
+    if (n == 1) {
+        rar5_host_os_t host_os;
+    } else {
+        u8 host_os[n];
+    }
+
+    n = vint_len(0);
+    local name_len = vint_value(0);
+    u8 name_size[n];
+    print_vint(n, name_len);
+    assert(name_len <= remaining_size(),
+           "malformed RAR5 file header: the name runs past the end of the file");
+    char name[name_len];
+}
+
+struct rar5_end_body_t
+{
+    local n = vint_len(0);
+    if (n == 1) {
+        rar5_end_flags_t end_flags;
+    } else {
+        u8 end_flags[n];
+    }
+}
+
+struct rar5_record_t
+{
+    u32 header_crc32;
+
+    local hs_len = vint_len(0);
+    local hs_val = vint_value(0);
+    assert(hs_len > 0, "malformed RAR5 record: unterminated header size");
+    assert(hs_val <= remaining_size(),
+           "truncated RAR5 record: the header runs past the end of the file");
+    u8 header_size[hs_len];
+    print_vint(hs_len, hs_val);
+
+    // the record CRC covers the header size field and the header it announces
+    if (header_crc32 != crc("CRC-32/ISO-HDLC", hs_len + hs_val, -hs_len)) {
+        warning("RAR5 record header CRC mismatch");
+    }
+
+    local body_end = off() + hs_val;
+
+    // every record type the format defines is 1 to 5, so the vint is a single
+    // byte and the enum can name it outright
+    assert(vint_len(0) == 1, "unsupported RAR5 record: multi-byte header type");
+    local htype = vint_value(0);
+    rar5_header_type_t header_type;
+
+    // the flags are a vint too, and a byte covers every flag defined so far
+    local hf_len = vint_len(0);
+    local hf_val = vint_value(0);
+    if (hf_len == 1) {
+        rar5_header_flags_t header_flags;
+    } else {
+        u8 header_flags[hf_len];
+    }
+
+    local extra_size = 0;
+    if (hf_val & rar5_header_flags_t::EXTRA_AREA) {
+        local n = vint_len(0);
+        extra_size = vint_value(0);
+        u8 extra_area_size[n];
+        print_vint(n, extra_size);
+    }
+    local data_size = 0;
+    if (hf_val & rar5_header_flags_t::DATA_AREA) {
+        local n = vint_len(0);
+        data_size = vint_value(0);
+        u8 data_size_field[n];
+        print_vint(n, data_size);
+    }
+
+    if (htype == rar5_header_type_t::MAIN) {
+        rar5_main_body_t main_header;
+    } elif (htype == rar5_header_type_t::FILE ||
+            htype == rar5_header_type_t::SERVICE) {
+        rar5_file_body_t file_header;
+    } elif (htype == rar5_header_type_t::END) {
+        rar5_end_body_t end_of_archive;
+    }
+
+    // the extra area, and whatever of the header this template does not name
+    assert(body_end >= off(), "malformed RAR5 record: the header overran its size");
+    if (body_end > off()) {
+        u8 header_rest[body_end - off()];
+    }
+
+    if (data_size > 0) {
+        assert(data_size <= remaining_size(),
+               "truncated RAR5 record: the data area runs past the end of the file");
+        u8 data[data_size];
+    }
+}
+
+
+// Both magics. RAR5 extends the RAR4 one with a version byte, so neither is a
+// prefix of a shorter declaration that would over-match
+proc _identify_magic
+{
+    magic("Rar!\x1a\x07\x00", 0);
+    magic("Rar!\x1a\x07\x01\x00", 0);
+}
+
+// The magic is seven or eight bytes, which is a lot, but it is also a string
+// that appears verbatim in every program able to read the format. What settles
+// it is the header CRC of the first block behind the magic: an archive always
+// opens with a main/archive header, and its CRC has to check out
+proc _identify
+{
+    little_endian();
+    if (peek(6) != "Rar!\x1a\x07") {
+        return;
+    }
+
+    if (peek_u8(6) == 0) {
+        // RAR4: the archive header follows the seven byte marker
+        if (remaining_size() < 7 + 7) {
+            return;
+        }
+        // the marker is seven bytes, so the archive block's CRC sits at 7, its
+        // type at 9 and its size at 12
+        if (peek_u8(9) != rar4_block_type_t::ARCHIVE) {
+            return;
+        }
+        local head_size = peek_u16(12);
+        if (head_size < 13 || head_size > remaining_size() - 7) {
+            return;
+        }
+        if (peek_u16(7) != (crc("CRC-32/ISO-HDLC", head_size - 2, 9) & 0xffff)) {
+            return;
+        }
+
+        // walk the block chain to the end of archive marker
+        local o = 7;
+        while (o + 7 <= remaining_size()) {
+            local t = peek_u8(o + 2);
+            local flags = peek_u16(o + 3);
+            local hs = peek_u16(o + 5);
+            if (hs < 7) {
+                break;
+            }
+            local total = hs;
+            if (flags & 0x8000) {
+                if (o + 11 > remaining_size()) {
+                    break;
+                }
+                total = total + peek_u32(o + 7);
+            }
+            if (total > remaining_size() - o) {
+                break;
+            }
+            o = o + total;
+            if (t == rar4_block_type_t::END) {
+                result = o;
+                return;
+            }
+        }
+        result = min(7 + head_size, remaining_size());
+        return;
+    }
+
+    if (peek_u8(6) != 1 || peek_u8(7) != 0) {
+        return;
+    }
+    // RAR5: the main archive header follows the eight byte magic
+    if (remaining_size() < 8 + 7) {
+        return;
+    }
+    local hs_len = vint_len(12);
+    local hs_val = vint_value(12);
+    if (hs_len == 0 || hs_val == 0 || hs_val > remaining_size() - 12 - hs_len) {
+        return;
+    }
+    if (peek_u32(8) != crc("CRC-32/ISO-HDLC", hs_len + hs_val, 12)) {
+        return;
+    }
+
+    // walk the record chain to the end of archive record
+    local o = 8;
+    while (o + 5 <= remaining_size()) {
+        local n = vint_len(o + 4);
+        local hv = vint_value(o + 4);
+        if (n == 0 || hv == 0) {
+            break;
+        }
+        local body = o + 4 + n;
+        if (hv > remaining_size() - body) {
+            break;
+        }
+        local t = vint_value(body);
+        local tn = vint_len(body);
+        local fv = vint_value(body + tn);
+        local fn_len = vint_len(body + tn);
+
+        local total = 4 + n + hv;
+        if (fv & 0x0002) {
+            local dn = vint_len(body + tn + fn_len);
+            total = total + vint_value(body + tn + fn_len);
+        }
+        if (total > remaining_size() - o) {
+            break;
+        }
+        o = o + total;
+        if (t == rar5_header_type_t::END) {
+            result = o;
+            return;
+        }
+    }
+    result = min(8 + 4 + hs_len + hs_val, remaining_size());
+}
+
+proc
+{
+    little_endian();
+
+    assert(peek(6) == "Rar!\x1a\x07", "not a RAR archive: bad magic");
+
+    if (peek_u8(6) == 1) {
+        u8 signature[8];
+        while (remaining_size() >= 5) {
+            // the type sits behind the CRC and the header size, and decides
+            // whether this is the last record
+            local hs_len = vint_len(4);
+            local htype = vint_value(4 + hs_len);
+            rar5_record_t record;
+            if (htype == rar5_header_type_t::END) {
+                break;
+            }
+        }
+    } else {
+        u8 signature[7];
+        while (remaining_size() >= 7) {
+            rar4_block_t block;
+            if (block.head_type == rar4_block_type_t::END) {
+                break;
+            }
+        }
+    }
+}

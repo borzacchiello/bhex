@@ -1,0 +1,316 @@
+// Copyright (c) 2022-2026, bageyelet
+//
+// QEMU copy-on-write disk images, v1 through v3. Everything is big endian.
+//
+// A qcow2 image maps guest clusters to host clusters through a two level
+// table: the L1 table holds the offsets of the L2 tables, and each L2 entry
+// holds the offset of one data cluster. A parallel refcount table tracks how
+// many references each host cluster has, which is what makes snapshots and
+// internal copy-on-write work.
+
+enum qcow_crypt_method_t : u32
+{
+    NONE = 0,
+    AES  = 1,
+    LUKS = 2
+}
+
+orenum qcow_incompatible_t : u64
+{
+    DIRTY             = 0x01,
+    CORRUPT           = 0x02,
+    EXTERNAL_DATA     = 0x04,
+    COMPRESSION_TYPE  = 0x08,
+    EXTENDED_L2       = 0x10
+}
+
+orenum qcow_compatible_t : u64
+{
+    LAZY_REFCOUNTS = 0x01
+}
+
+orenum qcow_autoclear_t : u64
+{
+    BITMAPS          = 0x01,
+    RAW_EXTERNAL_DATA = 0x02
+}
+
+enum qcow_ext_type_t : u32
+{
+    END                 = 0x00000000,
+    BACKING_FILE_FORMAT = 0xe2792aca,
+    FEATURE_NAME_TABLE  = 0x6803f857,
+    BITMAPS             = 0x23852875,
+    FULL_DISK_ENCRYPTION = 0x0537be77,
+    EXTERNAL_DATA_FILE  = 0x44415441
+}
+
+// v1 is a different header entirely: no refcounts, no snapshots, and the L2
+// table size is a header field rather than a function of the cluster size
+struct qcow1_header_t
+{
+    char                magic[4];
+    u32                 version;
+    u64                 backing_file_offset;
+    u32                 backing_file_size;
+    u32                 mtime;
+    u64                 size;                   // virtual disk size
+    u8                  cluster_bits;
+    u8                  l2_bits;
+    u16                 padding;
+    qcow_crypt_method_t crypt_method;
+    u64                 l1_table_offset;
+}
+
+struct qcow2_header_t
+{
+    char                magic[4];
+    u32                 version;
+    u64                 backing_file_offset;
+    u32                 backing_file_size;
+    u32                 cluster_bits;
+    u64                 size;                   // virtual disk size
+    qcow_crypt_method_t crypt_method;
+    u32                 l1_size;                // entries in the L1 table
+    u64                 l1_table_offset;
+    u64                 refcount_table_offset;
+    u32                 refcount_table_clusters;
+    u32                 nb_snapshots;
+    u64                 snapshots_offset;
+
+    // everything below this point exists only from v3 on
+    if (version >= 3) {
+        qcow_incompatible_t incompatible_features;
+        qcow_compatible_t   compatible_features;
+        qcow_autoclear_t    autoclear_features;
+        u32                 refcount_order;
+        u32                 header_length;
+    }
+}
+
+// One entry of the feature name table extension: which bit of which feature
+// word this is, and what it is called
+struct qcow_feature_name_t
+{
+    u8   feature_type;                  // 0 incompatible, 1 compatible, 2 autoclear
+    u8   bit_number;
+    char name[46];
+}
+
+struct qcow_ext_header_t
+{
+    qcow_ext_type_t type;
+    u32             length;
+}
+
+// One snapshot record, followed by its variable length id and name
+struct qcow_snapshot_t
+{
+    u64  l1_table_offset;
+    u32  l1_size;
+    u16  id_str_size;
+    u16  name_size;
+    u32  date_sec;
+    u32  date_nsec;
+    u64  vm_clock_nsec;
+    u32  vm_state_size;
+    u32  extra_data_size;
+
+    assert(extra_data_size <= remaining_size(),
+           "malformed snapshot: extra data runs past the end of the file");
+    if (extra_data_size > 0) {
+        u8 extra_data[extra_data_size];
+    }
+    assert(id_str_size + name_size <= remaining_size(),
+           "malformed snapshot: the id and name run past the end of the file");
+    char id_str[id_str_size];
+    char name[name_size];
+}
+
+// An L1/L2/refcount table offset carries flags in the bits the cluster
+// alignment leaves free, so the offset itself is the masked value
+fn count_allocated(entries, at)
+{
+    disable_print();
+    local i = 0;
+    local n = 0;
+    while (i < entries) {
+        if ((peek_u64(at + i * 8) & 0x00fffffffffffe00) != 0) {
+            n = n + 1;
+        }
+        i = i + 1;
+    }
+    result = n;
+}
+
+
+proc _identify_magic
+{
+    magic("QFI\xfb", 0);
+}
+
+// The four byte magic plus the version and the cluster size, which the format
+// pins down tightly: a cluster is a power of two between 512 bytes and 2 MB,
+// and v2 onwards also has to agree about where its own header ends
+proc _identify
+{
+    big_endian();
+    if (peek(4) != "QFI\xfb") {
+        return;
+    }
+    local version = peek_u32(4);
+    if (version < 1 || version > 3) {
+        return;
+    }
+
+    if (version == 1) {
+        local cb = peek_u8(32);
+        local l2b = peek_u8(33);
+        if (cb < 9 || cb > 21 || l2b < 1 || l2b > 21) {
+            return;
+        }
+        result = min(48, remaining_size());
+        return;
+    }
+
+    local cluster_bits = peek_u32(20);
+    if (cluster_bits < 9 || cluster_bits > 21) {
+        return;
+    }
+    // the virtual size has to be a whole number of sectors
+    if ((peek_u64(24) & 0x1ff) != 0) {
+        return;
+    }
+    if (peek_u32(32) > 2) {             // crypt method
+        return;
+    }
+
+    if (version == 2) {
+        result = min(72, remaining_size());
+        return;
+    }
+
+    local header_length = peek_u32(100);
+    if (header_length < 104 || header_length > (1 << cluster_bits)) {
+        return;
+    }
+    result = min(header_length, remaining_size());
+}
+
+proc
+{
+    big_endian();
+    local base = off();
+
+    assert(peek(4) == "QFI\xfb", "not a qcow image: bad magic");
+    local version = peek_u32(4);
+
+    if (version == 1) {
+        qcow1_header_t header;
+        if (header.backing_file_size > 0) {
+            assert(base + header.backing_file_offset + header.backing_file_size <= size(),
+                   "malformed qcow: the backing file name is outside the image");
+            seek(base + header.backing_file_offset);
+            char backing_file[header.backing_file_size];
+        }
+    } else {
+        qcow2_header_t header;
+        assert(header.cluster_bits >= 9 && header.cluster_bits <= 21,
+               "malformed qcow2: implausible cluster size");
+        // cluster_bits is a log, and the byte figure it stands for is what the
+        // offsets below are all multiples of
+        local cluster_size = 1 << header.cluster_bits;
+        print("cluster size:", tostring(cluster_size, 10), "bytes");
+
+        // --- the header extension area. It starts right behind the header (a
+        // fixed 72 bytes in v2, header_length from v3 on) and ends at the
+        // backing file name, or at the first cluster when there is none
+        if (version >= 3) {
+            assert(header.header_length >= 104 && base + header.header_length <= size(),
+                   "malformed qcow2: implausible header length");
+            seek(base + header.header_length);
+        }
+        local ext_end = base + cluster_size;
+        if (header.backing_file_offset > 0) {
+            ext_end = base + header.backing_file_offset;
+        }
+        if (ext_end > size()) {
+            ext_end = size();
+        }
+        while (off() + 8 <= ext_end) {
+            local ext_type = peek_u32();
+            local ext_len = peek_u32(4);
+            qcow_ext_header_t extension;
+            if (ext_type == 0) {
+                break;
+            }
+            assert(off() + ext_len <= ext_end,
+                   "malformed qcow2: header extension runs past the extension area");
+
+            if (ext_type == qcow_ext_type_t::FEATURE_NAME_TABLE) {
+                max_array_print(8);
+                qcow_feature_name_t features[ext_len / 48];
+            } elif (ext_type == qcow_ext_type_t::BACKING_FILE_FORMAT ||
+                    ext_type == qcow_ext_type_t::EXTERNAL_DATA_FILE) {
+                char ext_name[ext_len];
+            } else {
+                u8 ext_data[ext_len];
+            }
+
+            // every extension is padded out to an 8 byte boundary
+            local pad = align_up(ext_len, 8) - ext_len;
+            if (pad > 0 && off() + pad <= ext_end) {
+                u8 ext_padding[pad];
+            }
+        }
+
+        // --- the backing file name, if this image is an overlay
+        if (header.backing_file_size > 0) {
+            assert(base + header.backing_file_offset + header.backing_file_size <= size(),
+                   "malformed qcow2: the backing file name is outside the image");
+            seek(base + header.backing_file_offset);
+            char backing_file[header.backing_file_size];
+        }
+
+        // --- the L1 table
+        if (header.l1_size > 0 && header.l1_table_offset > 0) {
+            assert(base + header.l1_table_offset + header.l1_size * 8 <= size(),
+                   "malformed qcow2: the L1 table is outside the image");
+            seek(base + header.l1_table_offset);
+            print("L1 table:", tostring(count_allocated(header.l1_size, 0), 10), "of",
+                  tostring(header.l1_size, 10), "entries allocated");
+            max_array_print(8);
+            u64 l1_table[header.l1_size];
+        }
+
+        // --- the refcount table
+        local refcount_entries = header.refcount_table_clusters * (cluster_size / 8);
+        if (refcount_entries > 0 && header.refcount_table_offset > 0) {
+            assert(base + header.refcount_table_offset + refcount_entries * 8 <= size(),
+                   "malformed qcow2: the refcount table is outside the image");
+            seek(base + header.refcount_table_offset);
+            print("refcount table:",
+                  tostring(count_allocated(refcount_entries, 0), 10), "of",
+                  tostring(refcount_entries, 10), "entries allocated");
+            max_array_print(8);
+            u64 refcount_table[refcount_entries];
+        }
+
+        // --- the snapshot table
+        if (header.nb_snapshots > 0) {
+            assert(base + header.snapshots_offset < size(),
+                   "malformed qcow2: the snapshot table is outside the image");
+            seek(base + header.snapshots_offset);
+            local i = 0;
+            while (i < header.nb_snapshots) {
+                qcow_snapshot_t snapshot;
+                // records are padded out to an 8 byte boundary
+                local pad = align_up(off() - base, 8) - (off() - base);
+                if (pad > 0) {
+                    u8 snapshot_padding[pad];
+                }
+                i = i + 1;
+            }
+        }
+    }
+}

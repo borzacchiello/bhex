@@ -1,0 +1,433 @@
+// Copyright (c) 2022-2026, bageyelet
+//
+// ISO 9660, the CD-ROM filesystem, plus the two extensions that always ride
+// along with it: Joliet (a supplementary descriptor whose names are UTF-16)
+// and El Torito (a boot record pointing at a boot catalog).
+//
+// The first 16 sectors are the system area, reserved for boot code and
+// ignored by the filesystem. The volume descriptors start at sector 16 and
+// run until a terminator. Numbers are stored twice, little endian first and
+// big endian second, so that a reader of either byte order can pick a half
+// without swapping -- that pair is what the both16/both32 structs below are.
+
+enum iso_vd_type_t : u8
+{
+    BOOT_RECORD   = 0,
+    PRIMARY       = 1,
+    SUPPLEMENTARY = 2,
+    PARTITION     = 3,
+    TERMINATOR    = 255
+}
+
+orenum iso_file_flags_t : u8
+{
+    HIDDEN              = 0x01,
+    DIRECTORY           = 0x02,
+    ASSOCIATED          = 0x04,
+    EXTENDED_ATTR_FORMAT = 0x08,
+    EXTENDED_ATTR_PERMS = 0x10,
+    NOT_FINAL           = 0x80
+}
+
+enum iso_boot_media_t : u8
+{
+    NO_EMULATION = 0,
+    DISKETTE_1_2 = 1,
+    DISKETTE_1_44 = 2,
+    DISKETTE_2_88 = 3,
+    HARD_DISK    = 4
+}
+
+struct iso_both16_t
+{
+    little_endian();
+    u16 le;
+    big_endian();
+    u16 be;
+}
+
+struct iso_both32_t
+{
+    little_endian();
+    u32 le;
+    big_endian();
+    u32 be;
+}
+
+// The 17 byte ASCII timestamp the volume descriptors carry
+struct iso_datetime_t
+{
+    char year[4];
+    char month[2];
+    char day[2];
+    char hour[2];
+    char minute[2];
+    char second[2];
+    char centiseconds[2];
+    i8   gmt_offset;                    // in 15 minute steps from GMT
+}
+
+// The 7 byte binary timestamp the directory records carry
+struct iso_dir_datetime_t
+{
+    u8 years_since_1900;
+    u8 month;
+    u8 day;
+    u8 hour;
+    u8 minute;
+    u8 second;
+    i8 gmt_offset;
+}
+
+struct iso_dir_record_t
+{
+    local start = off();
+
+    u8                 length;
+    u8                 ext_attr_length;
+    iso_both32_t       extent;          // in logical blocks
+    iso_both32_t       data_length;
+    iso_dir_datetime_t recorded_at;
+    iso_file_flags_t   flags;
+    u8                 file_unit_size;
+    u8                 interleave_gap;
+    iso_both16_t       volume_seq_number;
+    u8                 file_id_length;
+
+    // the two entries every directory begins with name themselves with a
+    // single byte rather than a string: 0 is "." and 1 is ".."
+    if (file_id_length == 1 && peek_u8() <= 1) {
+        u8 file_id;
+    } else {
+        assert(file_id_length <= remaining_size(),
+               "malformed directory record: the name runs past the end of the file");
+        char file_id[file_id_length];
+    }
+
+    // the record is padded out to the length it declared, which also absorbs
+    // the system use area a Rock Ridge image puts there
+    local used = off() - start;
+    assert(length >= used, "malformed directory record: it is shorter than its fields");
+    if (length > used) {
+        u8 system_use[length - used];
+    }
+}
+
+struct iso_path_table_record_t
+{
+    u8   name_length;
+    u8   ext_attr_length;
+    u32  extent;                        // in logical blocks
+    u16  parent_index;                  // 1 based, into this same table
+    assert(name_length <= remaining_size(),
+           "malformed path table: the name runs past the end of the file");
+    if (name_length == 1 && peek_u8() == 0) {
+        u8 name;                        // the root names itself with a NUL
+    } else {
+        char name[name_length];
+    }
+    if (name_length % 2 == 1) {
+        u8 padding;
+    }
+}
+
+struct iso_volume_descriptor_header_t
+{
+    iso_vd_type_t type;
+    char          id[5];                // "CD001"
+    u8            version;
+}
+
+// Shared by the primary descriptor and the supplementary one Joliet uses; the
+// two differ only in three fields the primary leaves unused
+struct iso_volume_descriptor_t
+{
+    iso_vd_type_t      type;
+    char               id[5];
+    u8                 version;
+    u8                 flags;           // "unused" in a primary descriptor
+    char               system_id[32];
+    char               volume_id[32];
+    u8                 unused2[8];
+    iso_both32_t       volume_space_size;
+    u8                 escape_sequences[32];   // "unused" in a primary descriptor
+    iso_both16_t       volume_set_size;
+    iso_both16_t       volume_seq_number;
+    iso_both16_t       logical_block_size;
+    iso_both32_t       path_table_size;
+    little_endian();
+    u32                type_l_path_table;
+    u32                opt_type_l_path_table;
+    big_endian();
+    u32                type_m_path_table;
+    u32                opt_type_m_path_table;
+    little_endian();
+    iso_dir_record_t   root_directory_record;
+    char               volume_set_id[128];
+    char               publisher_id[128];
+    char               data_preparer_id[128];
+    char               application_id[128];
+    char               copyright_file_id[37];
+    char               abstract_file_id[37];
+    char               bibliographic_file_id[37];
+    iso_datetime_t     created_at;
+    iso_datetime_t     modified_at;
+    iso_datetime_t     expires_at;
+    iso_datetime_t     effective_at;
+    u8                 file_structure_version;
+    u8                 reserved1;
+    u8                 application_used[512];
+    u8                 reserved2[653];
+}
+
+// A boot record volume descriptor. When the boot system id says El Torito, the
+// 32 bit word at offset 71 is the sector of the boot catalog
+struct iso_boot_record_t
+{
+    iso_vd_type_t type;
+    char          id[5];
+    u8            version;
+    char          boot_system_id[32];
+    char          boot_id[32];
+    if (starts_with(boot_system_id, "EL TORITO SPECIFICATION")) {
+        little_endian();
+        u32 boot_catalog_sector;
+        u8  boot_system_use[1973];
+    } else {
+        u8  boot_system_use[1977];
+    }
+}
+
+// A boot catalog validation entry is valid when its sixteen little endian
+// words sum to zero
+fn el_torito_word_sum(at)
+{
+    disable_print();
+    local sum = 0;
+    local i = 0;
+    while (i < 16) {
+        sum = sum + peek_u16(at + i * 2);
+        i = i + 1;
+    }
+    result = sum & 0xffff;
+}
+
+// The first entry of an El Torito boot catalog: a checksum record proving the
+// catalog is one
+struct iso_boot_validation_entry_t
+{
+    u8   header_id;                     // always 1
+    u8   platform_id;                   // 0 x86, 1 PowerPC, 2 Mac, 0xef EFI
+    u16  reserved;
+    char manufacturer[24];
+    u16  checksum;
+    u8   key55;
+    u8   keyAA;
+
+    if (el_torito_word_sum(-32) != 0 || key55 != 0x55 || keyAA != 0xaa) {
+        warning("El Torito validation entry is not valid");
+    }
+}
+
+struct iso_boot_entry_t
+{
+    u8                bootable;         // 0x88 bootable, 0x00 not
+    iso_boot_media_t  media_type;
+    u16               load_segment;
+    u8                system_type;
+    u8                unused1;
+    u16               sector_count;     // in 512 byte virtual sectors
+    u32               load_rba;         // in logical blocks
+    u8                unused2[20];
+}
+
+
+// "CD001" at the start of the first volume descriptor, i.e. one byte into
+// sector 16
+proc _identify_magic
+{
+    magic("CD001", 32769);
+}
+
+// The descriptor identifier is five bytes and its version is always 1, which
+// is not much on its own, so the type is checked against the five defined
+// values and the descriptor is required to be a real one: a primary
+// descriptor with a logical block size that is a power of two and a volume
+// that is at least as large as the sixteen sectors of the system area plus
+// the descriptor itself
+proc _identify
+{
+    if (remaining_size() < 32768 + 2048) {
+        return;
+    }
+    if (peek(5, 32769) != "CD001" || peek_u8(32774) != 1) {
+        return;
+    }
+
+    // walk the descriptor sequence looking for a primary, so that a stray
+    // "CD001" inside a data track cannot pass
+    local o = 32768;
+    local found = 0;
+    while (o + 2048 <= remaining_size()) {
+        local type = peek_u8(o);
+        if (peek(5, o + 1) != "CD001") {
+            return;
+        }
+        if (type == 255) {
+            break;
+        }
+        if (type == 1) {
+            found = o;
+        }
+        if (type > 3) {
+            return;
+        }
+        o = o + 2048;
+    }
+    if (found == 0) {
+        return;
+    }
+
+    little_endian();
+    local block_size = peek_u16(found + 128);
+    if (block_size != 512 && block_size != 1024 && block_size != 2048) {
+        return;
+    }
+    local blocks = peek_u32(found + 80);
+    if (blocks < 17) {
+        return;
+    }
+
+    // the primary descriptor carries the size of the whole volume
+    result = min(blocks * block_size, remaining_size());
+}
+
+proc
+{
+    little_endian();
+    local base = off();
+
+    assert(base + 32768 + 2048 <= size(),
+           "not an ISO 9660 image: no room for a volume descriptor at sector 16");
+    seek(base + 32768);
+    assert(peek(5, 1) == "CD001", "not an ISO 9660 image: bad descriptor identifier");
+
+    // --- the volume descriptor sequence
+    local pvd_at = 0;
+    local block_size = 2048;
+    local boot_catalog = 0;
+    while (off() + 2048 <= size()) {
+        local type = peek_u8();
+        local vd_at = off();
+
+        if (type == iso_vd_type_t::PRIMARY || type == iso_vd_type_t::SUPPLEMENTARY) {
+            iso_volume_descriptor_t volume_descriptor;
+            if (type == iso_vd_type_t::PRIMARY && pvd_at == 0) {
+                pvd_at = vd_at;
+                block_size = volume_descriptor.logical_block_size.le;
+            }
+        } elif (type == iso_vd_type_t::BOOT_RECORD) {
+            iso_boot_record_t boot_record;
+            if (starts_with(boot_record.boot_system_id, "EL TORITO SPECIFICATION")) {
+                boot_catalog = boot_record.boot_catalog_sector;
+            }
+        } else {
+            iso_volume_descriptor_header_t volume_descriptor_header;
+            if (type == iso_vd_type_t::TERMINATOR) {
+                seek(vd_at + 2048);
+                break;
+            }
+        }
+
+        seek(vd_at + 2048);
+    }
+
+    assert(pvd_at != 0, "no primary volume descriptor in the sequence");
+    assert(block_size >= 512, "malformed ISO 9660: implausible logical block size");
+
+    // --- the El Torito boot catalog, when the boot record pointed at one
+    if (boot_catalog > 0 && base + boot_catalog * block_size + 64 <= size()) {
+        seek(base + boot_catalog * block_size);
+        iso_boot_validation_entry_t boot_validation;
+        iso_boot_entry_t            boot_entry;
+    }
+
+    // --- the type L path table, which names every directory on the volume
+    seek(pvd_at + 132);
+    local path_table_size = peek_u32();
+    seek(pvd_at + 140);
+    local path_table_at = peek_u32();
+    assert(base + path_table_at * block_size + path_table_size <= size(),
+           "malformed ISO 9660: the path table is outside the image");
+
+    seek(base + path_table_at * block_size);
+    local path_table_end = off() + path_table_size;
+    local n_dirs = 0;
+    while (off() + 8 <= path_table_end) {
+        iso_path_table_record_t path_table_record;
+        n_dirs = n_dirs + 1;
+    }
+    print("path table:", tostring(n_dirs, 10), "directories");
+
+    // --- every directory the path table listed, walked in table order. Going
+    // through the path table rather than following the tree keeps this a flat
+    // loop, and covers directories the root does not reach directly
+    local i = 0;
+    while (i < n_dirs) {
+        seek(base + path_table_at * block_size);
+        local skipped = 0;
+        while (skipped < i) {
+            local nl = peek_u8();
+            seek(off() + 8 + nl + (nl % 2));
+            skipped = skipped + 1;
+        }
+
+        local name_length = peek_u8();
+        local dir_extent = peek_u32(2);
+        if (base + dir_extent * block_size >= size()) {
+            warning("directory", tostring(i + 1, 10), "is outside the image");
+            i = i + 1;
+            continue;
+        }
+
+        // the walk seeks to each directory in turn, so say whose records follow
+        seek(base + dir_extent * block_size);
+        print("directory", tostring(i + 1, 10), "contents:");
+        local dir_end = off() + block_size;
+        if (dir_end > size()) {
+            dir_end = size();
+        }
+        while (off() < dir_end) {
+            // a zero length means the rest of the sector is padding
+            if (peek_u8() == 0) {
+                break;
+            }
+            iso_dir_record_t dir_record;
+        }
+        i = i + 1;
+    }
+}
+
+// Just the primary volume descriptor, which is what an image is usually
+// opened for
+proc volume
+{
+    little_endian();
+    local base = off();
+    assert(base + 32768 + 2048 <= size(), "not an ISO 9660 image");
+    seek(base + 32768);
+
+    while (off() + 2048 <= size()) {
+        local type = peek_u8();
+        assert(peek(5, 1) == "CD001", "not an ISO 9660 image");
+        if (type == iso_vd_type_t::PRIMARY) {
+            iso_volume_descriptor_t volume_descriptor;
+            result = 1;
+            return;
+        }
+        if (type == iso_vd_type_t::TERMINATOR) {
+            return;
+        }
+        seek(off() + 2048);
+    }
+}

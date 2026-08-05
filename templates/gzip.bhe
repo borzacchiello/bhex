@@ -79,6 +79,151 @@ struct gzip_member_t
 }
 
 
+// Length of the NUL terminated string at `at`, terminator included, or 0 when
+// it does not end before the file does
+fn gzip_cstring_len(at)
+{
+    disable_print();
+    result = 0;
+
+    local i = 0;
+    while (at + i < remaining_size()) {
+        if (peek_u8(at + i) == 0) {
+            result = i + 1;
+            return;
+        }
+        i = i + 1;
+    }
+}
+
+// Length of the member header at `at`, or 0 when there is no member there. The
+// header is ten fixed bytes plus whatever the flags append, so it is only ten
+// bytes long for a member that carries no name, no comment and no extra field.
+fn gzip_header_len(at)
+{
+    disable_print();
+    result = 0;
+
+    if (at + 10 > remaining_size()) {
+        return;
+    }
+    if (peek_u8(at) != 0x1f || peek_u8(at + 1) != 0x8b ||
+        peek_u8(at + 2) != gzip_compression_method_t::DEFLATE) {
+        return;
+    }
+    local flags = peek_u8(at + 3);
+    if ((flags & 0xe0) != 0) {          // the top three flag bits are reserved
+        return;
+    }
+
+    local n = 10;
+    if (flags & gzip_flags_t::FEXTRA) {
+        if (at + n + 2 > remaining_size()) {
+            return;
+        }
+        n = n + 2 + peek_u16(at + n);
+    }
+    if (flags & gzip_flags_t::FNAME) {
+        local k = gzip_cstring_len(at + n);
+        if (k == 0) {
+            return;
+        }
+        n = n + k;
+    }
+    if (flags & gzip_flags_t::FCOMMENT) {
+        local k = gzip_cstring_len(at + n);
+        if (k == 0) {
+            return;
+        }
+        n = n + k;
+    }
+    if (flags & gzip_flags_t::FHCRC) {
+        n = n + 2;
+    }
+
+    if (at + n > remaining_size()) {
+        return;
+    }
+    result = n;
+}
+
+// The stricter read of a header: the fields a real member gets right and a
+// stray magic inside compressed data usually does not. XFL has three defined
+// values and OS fifteen, and the first deflate block header has to be one
+// deflate would emit -- type 3 is reserved, and a stored block is byte aligned
+// with its length written twice, the second time inverted.
+//
+// This only ever gates how far a member is claimed to reach, never whether it
+// is one, so a member from an unusual encoder ends up under-reported instead
+// of hidden.
+fn gzip_is_plausible_member(at)
+{
+    disable_print();
+    result = 0;
+
+    local hdr_len = gzip_header_len(at);
+    if (hdr_len == 0) {
+        return;
+    }
+
+    local xfl = peek_u8(at + 8);
+    if (xfl != 0 && xfl != 2 && xfl != 4) {
+        return;
+    }
+    local os = peek_u8(at + 9);
+    if (os > 13 && os != 255) {
+        return;
+    }
+
+    if (at + hdr_len + 1 > remaining_size()) {
+        return;
+    }
+    local btype = (peek_u8(at + hdr_len) >> 1) & 3;
+    if (btype == 3) {
+        return;
+    }
+    if (btype == 0) {
+        if (at + hdr_len + 5 > remaining_size()) {
+            return;
+        }
+        if (peek_u16(at + hdr_len + 1) != (peek_u16(at + hdr_len + 3) ^ 0xffff)) {
+            return;
+        }
+    }
+    result = hdr_len;
+}
+
+// Does another member start between `from` and the end of the file? If one
+// does, this member ends before the file does, and a template has no way to
+// say where. The walk is bounded because a candidate that fails the header
+// check still costs a search.
+fn gzip_has_later_member(from)
+{
+    disable_print();
+    result = 0;
+
+    local home = off();
+    local at = home + from;
+    local seen = 0;
+    while (at < size() && seen < 64) {
+        seek(at);
+        local nxt = find_next("\x1f\x8b\x08");
+        if (nxt < 0) {
+            break;
+        }
+        if (gzip_is_plausible_member(nxt - at) > 0) {
+            result = 1;
+            break;
+        }
+        at = nxt + 1;
+        seen = seen + 1;
+    }
+    seek(home);
+    if (seen >= 64) {
+        result = 1;                     // too many candidates to be sure
+    }
+}
+
 // The two magic bytes plus the only compression method ever assigned, all
 // three of which "_identify" requires
 proc _identify_magic
@@ -88,18 +233,56 @@ proc _identify_magic
 
 // \x1f\x8b is only two bytes and shows up constantly inside compressed data,
 // so the two fields that follow it are checked as well: deflate is the only
-// compression method ever assigned, and the top three flag bits are reserved
+// compression method ever assigned, and the top three flag bits are reserved.
+//
+// How far the member reaches is the harder half. A deflate stream only gives
+// up its length to a decoder, which a template is not, so the question this
+// answers is the narrower one: does the member run to the end of the file? The
+// trailer says how many bytes went in, and deflate bounds how far that can be
+// from what came out -- it never compresses better than 1032:1, and never
+// expands its input past zlib's deflateBound. A trailer that agrees with the
+// stream in front of it on both counts, with no other member starting in
+// between, means the member is the rest of the file. Anything else falls back
+// to the header, because under-reporting only costs the scan some work while
+// over-reporting hides whatever follows.
 proc _identify
 {
-    big_endian();
-    if (peek_u16() == 0x1f8b &&
-        peek_u8(2) == gzip_compression_method_t::DEFLATE &&
-        (peek_u8(3) & 0xe0) == 0) {
-        // the length of a member is only known once it has been inflated, so
-        // the hit carries the fixed part of the header and nothing more, and
-        // never more of it than is actually present
-        result = min(10, remaining_size());
+    little_endian();
+
+    local hdr_len = gzip_header_len(0);
+    if (hdr_len == 0) {
+        return;
     }
+    result = hdr_len;
+
+    // the smallest deflate stream is two bytes, and the trailer is eight
+    if (hdr_len + 10 > remaining_size()) {
+        return;
+    }
+
+    if (gzip_is_plausible_member(0) == 0) {
+        return;
+    }
+
+    local deflate_len = remaining_size() - hdr_len - 8;
+    local isize = peek_u32(remaining_size() - 4);
+
+    // a member whose input was 4 GB or more wraps isize, and the bounds below
+    // stop meaning anything
+    if (isize > 0xfffff000) {
+        return;
+    }
+    if (deflate_len > isize + (isize >> 12) + (isize >> 14) + (isize >> 25) + 64) {
+        return;
+    }
+    if (isize > 1032 * deflate_len) {
+        return;
+    }
+    if (gzip_has_later_member(hdr_len) != 0) {
+        return;
+    }
+
+    result = remaining_size();
 }
 
 proc

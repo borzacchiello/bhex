@@ -1,0 +1,220 @@
+// Copyright (c) 2022-2026, bageyelet
+//
+// LZ4 framing. A file is a sequence of independent frames, which come in three
+// kinds: the modern LZ4 frame (a descriptor followed by a chain of blocks
+// closed by a zero end mark), the skippable frame (a length-prefixed region a
+// decoder is told to ignore), and the legacy frame (a bare chain of 8 MB
+// blocks with no descriptor and no terminator, still emitted by the kernel's
+// build tooling).
+//
+// The header, block and content checksums are xxHash-32, which bhex does not
+// implement, so they are shown but not verified.
+
+orenum lz4_flg_t : u8
+{
+    DICT_ID      = 0x01,
+    RESERVED     = 0x02,
+    CONTENT_CSUM = 0x04,
+    CONTENT_SIZE = 0x08,
+    BLOCK_CSUM   = 0x10,
+    BLOCK_INDEP  = 0x20,
+    VERSION_1    = 0x40
+}
+
+// BD names the largest block the frame may contain in bits 6 to 4; every other
+// bit of the byte is reserved and specified as zero, which leaves the whole
+// byte with exactly four legal values
+enum lz4_block_max_size_t : u8
+{
+    MAX_64KB  = 0x40,
+    MAX_256KB = 0x50,
+    MAX_1MB   = 0x60,
+    MAX_4MB   = 0x70
+}
+
+struct lz4_frame_descriptor_t
+{
+    lz4_flg_t            flg;
+    lz4_block_max_size_t bd;
+
+    assert((flg & 0xc0) == 0x40, "unsupported LZ4 frame version");
+    assert((flg & lz4_flg_t::RESERVED) == 0, "reserved FLG bit is set");
+    assert((bd & 0x8f) == 0, "reserved BD bits are set");
+
+    if (flg & lz4_flg_t::CONTENT_SIZE) {
+        u64 content_size;
+    }
+    if (flg & lz4_flg_t::DICT_ID) {
+        u32 dict_id;
+    }
+    u8 header_checksum;                 // second byte of xxh32 of the above
+}
+
+// One data block: a size whose top bit says whether the payload is compressed,
+// the payload, and the optional per block checksum
+fn lz4_data_blocks(has_block_csum)
+{
+    while (1) {
+        assert(remaining_size() >= 4, "truncated LZ4 frame: no room for a block size");
+        u32 block_size;
+        if (block_size == 0) {
+            return;                     // the end mark closes the block chain
+        }
+
+        local n = block_size & 0x7fffffff;
+        if ((block_size >> 31) == 1) {
+            print("  block stored uncompressed:", tostring(n, 10), "bytes");
+        }
+        assert(n <= remaining_size(),
+               "truncated LZ4 frame: block runs past the end of the file");
+        u8 data[n];
+
+        if (has_block_csum) {
+            assert(remaining_size() >= 4,
+                   "truncated LZ4 frame: no room for the block checksum");
+            u32 block_checksum;
+        }
+    }
+}
+
+struct lz4_frame_t
+{
+    u32                     magic;
+    lz4_frame_descriptor_t  descriptor;
+    lz4_data_blocks(descriptor.flg & lz4_flg_t::BLOCK_CSUM);
+    if (descriptor.flg & lz4_flg_t::CONTENT_CSUM) {
+        assert(remaining_size() >= 4,
+               "truncated LZ4 frame: no room for the content checksum");
+        u32 content_checksum;
+    }
+}
+
+// 0x184d2a50 to 0x184d2a5f: a region the decoder skips over, used to carry
+// out of band data such as an index
+struct lz4_skippable_frame_t
+{
+    u32 magic;
+    u32 frame_size;
+    assert(frame_size <= remaining_size(),
+           "truncated skippable frame: it runs past the end of the file");
+    u8  user_data[frame_size];
+}
+
+// A legacy frame has no descriptor and no end mark, so its blocks run until
+// the file ends or another frame magic shows up
+fn lz4_legacy_blocks()
+{
+    while (remaining_size() >= 4) {
+        local next = peek_u32();
+        // a frame magic here means this frame ended rather than another block
+        if (next == 0x184d2204 || next == 0x184c2102 ||
+            (next >= 0x184d2a50 && next <= 0x184d2a5f)) {
+            return;
+        }
+        u32 block_size;
+        local n = block_size & 0x7fffffff;
+        assert(n <= remaining_size(),
+               "truncated legacy frame: block runs past the end of the file");
+        u8 data[n];
+    }
+}
+
+struct lz4_legacy_frame_t
+{
+    u32 magic;
+    lz4_legacy_blocks();
+}
+
+
+// The modern frame magic and the legacy one, the two starts "_identify"
+// accepts. Skippable frames are deliberately left out: on their own they are
+// four bytes of magic and a length, which is not enough to call a file LZ4
+proc _identify_magic
+{
+    magic("\x04\x22\x4d\x18", 0);
+    magic("\x02\x21\x4c\x18", 0);
+}
+
+// The magic is four bytes, so the frame descriptor carries the rest of the
+// weight: the version field has one legal value, two FLG/BD bit groups are
+// reserved and specified as zero, and the block maximum size has four legal
+// values out of eight. For the legacy frame there is no descriptor at all, so
+// the first block length has to look like one
+proc _identify
+{
+    little_endian();
+    local magic = peek_u32();
+
+    if (magic == 0x184c2102) {
+        if (remaining_size() < 8) {
+            return;
+        }
+        local first = peek_u32(4);
+        // a legacy block is never empty and never larger than the 8 MB the
+        // format allows for
+        if (first == 0 || first > 0x800000 || first > remaining_size() - 8) {
+            return;
+        }
+        result = min(8 + first, remaining_size());
+        return;
+    }
+
+    if (magic != 0x184d2204 || remaining_size() < 7) {
+        return;
+    }
+    local flg = peek_u8(4);
+    local bd = peek_u8(5);
+    if ((flg & 0xc0) != 0x40 || (flg & 0x02) != 0) {
+        return;
+    }
+    if ((bd & 0x8f) != 0 || ((bd >> 4) & 0x07) < 4) {
+        return;
+    }
+
+    // walk the block chain to the end mark, so the scan can skip the frame
+    local o = 6;
+    if (flg & 0x08) {
+        o = o + 8;
+    }
+    if (flg & 0x01) {
+        o = o + 4;
+    }
+    o = o + 1;                          // the header checksum
+    while (o + 4 <= remaining_size()) {
+        local block_size = peek_u32(o);
+        o = o + 4;
+        if (block_size == 0) {
+            if (flg & 0x04) {
+                o = o + 4;              // the content checksum
+            }
+            result = min(o, remaining_size());
+            return;
+        }
+        o = o + (block_size & 0x7fffffff);
+        if (flg & 0x10) {
+            o = o + 4;                  // the block checksum
+        }
+    }
+
+    // truncated, or a block length that does not add up: fall back to the
+    // descriptor, which is all that has been verified
+    result = min(7, remaining_size());
+}
+
+proc
+{
+    little_endian();
+
+    while (remaining_size() >= 4) {
+        local magic = peek_u32();
+        if (magic == 0x184d2204) {
+            lz4_frame_t frame;
+        } elif (magic >= 0x184d2a50 && magic <= 0x184d2a5f) {
+            lz4_skippable_frame_t skippable_frame;
+        } elif (magic == 0x184c2102) {
+            lz4_legacy_frame_t legacy_frame;
+        } else {
+            error("not an LZ4 frame magic:", tostring(magic));
+        }
+    }
+}

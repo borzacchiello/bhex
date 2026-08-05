@@ -1,0 +1,311 @@
+// Copyright (c) 2022-2026, bageyelet
+//
+// JFFS2, the journalling flash filesystem. There is no superblock and no
+// central index: the image is a bare log of nodes, and the directory tree is
+// what you get by replaying them in version order. Every node opens with the
+// same twelve byte header, so a walk only needs to trust totlen, which is
+// exactly why that header carries its own CRC.
+//
+// Nodes are four byte aligned and an image may be stored in either byte order,
+// decided here by the two magic bytes. Erased flash reads back as 0xff, so a
+// gap between nodes is normal rather than corruption.
+
+enum jffs2_nodetype_t : u16
+{
+    DIRENT      = 0xe001,
+    INODE       = 0xe002,
+    CLEANMARKER = 0x2003,
+    PADDING     = 0x2004,
+    SUMMARY     = 0x2006,
+    XATTR       = 0xe008,
+    XREF        = 0xe009
+}
+
+enum jffs2_dirent_type_t : u8
+{
+    UNKNOWN = 0,
+    FIFO    = 1,
+    CHR     = 2,
+    DIR     = 4,
+    BLK     = 6,
+    REG     = 8,
+    LNK     = 10,
+    SOCK    = 12
+}
+
+enum jffs2_compr_t : u8
+{
+    NONE      = 0,
+    ZERO      = 1,
+    RTIME     = 2,
+    RUBINMIPS = 3,
+    COPY      = 4,
+    DYNRUBIN  = 5,
+    ZLIB      = 6,
+    LZO       = 7
+}
+
+// JFFS2 seeds the reflected CRC-32 with zero and does not invert the result,
+// which is what the kernel's crc32(0, ...) computes and which no catalogued
+// variant matches -- so it is spelled out here rather than handed to crc().
+fn jffs2_crc32(len, at)
+{
+    disable_print();
+    local crc = 0;
+    local i = 0;
+    while (i < len) {
+        crc = crc ^ peek_u8(at + i);
+        local b = 0;
+        while (b < 8) {
+            if (crc & 1) {
+                crc = (crc >> 1) ^ 0xedb88320;
+            } else {
+                crc = crc >> 1;
+            }
+            b = b + 1;
+        }
+        i = i + 1;
+    }
+    result = crc;
+}
+
+// The twelve byte header every node opens with. hdr_crc covers the eight bytes
+// in front of it, so a bad totlen is caught before it is used to move
+struct jffs2_unknown_node_t
+{
+    u16               magic;
+    jffs2_nodetype_t  nodetype;
+    u32               totlen;
+    u32               hdr_crc;
+
+    if (hdr_crc != jffs2_crc32(8, -12)) {
+        warning("JFFS2 node header CRC mismatch");
+    }
+}
+
+struct jffs2_dirent_t
+{
+    jffs2_unknown_node_t node;
+    u32                  pino;          // inode of the parent directory
+    u32                  version;
+    u32                  ino;           // 0 marks an unlink
+    u32                  mctime;
+    u8                   nsize;
+    jffs2_dirent_type_t  type;
+    u8                   unused[2];
+    u32                  node_crc;
+    u32                  name_crc;
+
+    if (node_crc != jffs2_crc32(32, -40)) {
+        warning("JFFS2 dirent node CRC mismatch");
+    }
+    assert(nsize <= remaining_size(),
+           "truncated JFFS2 dirent: the name runs past the end of the file");
+    char name[nsize];
+    if (name_crc != jffs2_crc32(nsize, 0 - nsize)) {
+        warning("JFFS2 dirent name CRC mismatch");
+    }
+}
+
+struct jffs2_inode_t
+{
+    jffs2_unknown_node_t node;
+    u32                  ino;
+    u32                  version;
+    u32                  mode;
+    u16                  uid;
+    u16                  gid;
+    u32                  isize;         // size of the file this node belongs to
+    u32                  atime;
+    u32                  mtime;
+    u32                  ctime;
+    u32                  offset;        // where this node's data sits in the file
+    u32                  csize;         // compressed size
+    u32                  dsize;         // uncompressed size
+    jffs2_compr_t        compr;
+    u8                   usercompr;
+    u16                  flags;
+    u32                  data_crc;
+    u32                  node_crc;
+
+    // node_crc is crc32(0, ri, sizeof(*ri) - 8), so it stops short of the two
+    // CRC fields themselves: 60 of the 68 bytes
+    if (node_crc != jffs2_crc32(60, -68)) {
+        warning("JFFS2 inode node CRC mismatch");
+    }
+    assert(csize <= remaining_size(),
+           "truncated JFFS2 inode: the data runs past the end of the file");
+    u8 data[csize];
+    // data_crc sits outside the range node_crc covers, so the payload needs
+    // its own check or a corrupted one would go unnoticed
+    if (data_crc != jffs2_crc32(csize, 0 - csize)) {
+        warning("JFFS2 inode data CRC mismatch");
+    }
+}
+
+struct jffs2_xattr_t
+{
+    jffs2_unknown_node_t node;
+    u32                  xid;
+    u32                  version;
+    u8                   xprefix;
+    u8                   name_len;
+    u16                  value_len;
+    u32                  data_crc;
+    u32                  node_crc;
+
+    assert(name_len + value_len <= remaining_size(),
+           "truncated JFFS2 xattr: it runs past the end of the file");
+    char name[name_len];
+    u8   value[value_len];
+}
+
+struct jffs2_xref_t
+{
+    jffs2_unknown_node_t node;
+    u32                  ino;
+    u32                  xid;
+    u32                  xseqno;
+    u32                  node_crc;
+}
+
+
+// The two byte magic, in both byte orders. It is only two bytes, which is why
+// "_identify" leans on the header CRC rather than on this
+proc _identify_magic
+{
+    magic("\x85\x19", 0);
+    magic("\x19\x85", 0);
+}
+
+// A two byte magic is nothing on its own -- 0x1985 turns up roughly every 64 KB
+// of arbitrary data. What makes a hit real is the node header's own CRC over
+// the eight bytes in front of it, backed by a node type from the defined set
+// and a length that is aligned and fits
+proc _identify
+{
+    if (remaining_size() < 12) {
+        return;
+    }
+    if (peek_u8(0) == 0x85 && peek_u8(1) == 0x19) {
+        little_endian();
+    } elif (peek_u8(0) == 0x19 && peek_u8(1) == 0x85) {
+        big_endian();
+    } else {
+        return;
+    }
+
+    local nodetype = peek_u16(2);
+    if (nodetype != jffs2_nodetype_t::DIRENT && nodetype != jffs2_nodetype_t::INODE &&
+        nodetype != jffs2_nodetype_t::CLEANMARKER &&
+        nodetype != jffs2_nodetype_t::PADDING &&
+        nodetype != jffs2_nodetype_t::SUMMARY &&
+        nodetype != jffs2_nodetype_t::XATTR && nodetype != jffs2_nodetype_t::XREF) {
+        return;
+    }
+
+    // totlen is the exact length of the node; only its placement is aligned,
+    // so it is not itself a multiple of four
+    local totlen = peek_u32(4);
+    if (totlen < 12 || totlen > remaining_size()) {
+        return;
+    }
+    if (peek_u32(8) != jffs2_crc32(8, 0)) {
+        return;
+    }
+
+    // walk the node chain, so the scan skips the filesystem rather than
+    // stopping at every node in it
+    local o = 0;
+    while (o + 12 <= remaining_size()) {
+        if (peek_u16(o) != 0x1985) {
+            break;
+        }
+        local len = peek_u32(o + 4);
+        if (len < 12 || len > remaining_size() - o) {
+            break;
+        }
+        if (peek_u32(o + 8) != jffs2_crc32(8, o)) {
+            break;
+        }
+        o = o + align_up(len, 4);
+    }
+    result = min(o, remaining_size());
+}
+
+proc
+{
+    local base = off();
+
+    assert(remaining_size() >= 12, "not a JFFS2 image: too short for a node header");
+    if (peek_u8(0) == 0x85 && peek_u8(1) == 0x19) {
+        little_endian();
+    } elif (peek_u8(0) == 0x19 && peek_u8(1) == 0x85) {
+        big_endian();
+        print("big endian image");
+    } else {
+        error("not a JFFS2 image: bad node magic");
+    }
+
+    while (remaining_size() >= 12) {
+        local magic = peek_u16();
+
+        // erased flash reads back as 0xff, so a gap here is a hole between
+        // nodes rather than the end of the filesystem: step over it to the
+        // next node boundary
+        if (magic != 0x1985) {
+            local gap = off();
+            local found = 0;
+            while (off() + 12 <= size()) {
+                if (peek_u16() == 0x1985) {
+                    found = 1;
+                    break;
+                }
+                seek(off() + 4);
+            }
+            local skipped = off() - gap;
+            if (found == 0) {
+                seek(gap);
+                u8 erased[size() - gap];
+                break;
+            }
+            seek(gap);
+            u8 erased[skipped];
+            continue;
+        }
+
+        local nodetype = peek_u16(2);
+        local totlen = peek_u32(4);
+        assert(totlen >= 12, "malformed JFFS2 node: totlen shorter than a header");
+        assert(totlen <= remaining_size(),
+               "truncated JFFS2 node: it runs past the end of the file");
+        local node_at = off();
+
+        if (nodetype == jffs2_nodetype_t::DIRENT) {
+            jffs2_dirent_t dirent;
+        } elif (nodetype == jffs2_nodetype_t::INODE) {
+            jffs2_inode_t inode;
+        } elif (nodetype == jffs2_nodetype_t::XATTR) {
+            jffs2_xattr_t xattr;
+        } elif (nodetype == jffs2_nodetype_t::XREF) {
+            jffs2_xref_t xref;
+        } else {
+            // cleanmarker, padding and summary carry nothing this template
+            // names: the header plus whatever the length says
+            jffs2_unknown_node_t node;
+            if (totlen > 12) {
+                u8 node_data[totlen - 12];
+            }
+        }
+
+        // nodes are padded out to a four byte boundary
+        local end = node_at + align_up(totlen, 4);
+        assert(end >= off(), "malformed JFFS2 node: it overran its own length");
+        if (end > off()) {
+            if (end > size()) {
+                break;
+            }
+            u8 node_padding[end - off()];
+        }
+    }
+}

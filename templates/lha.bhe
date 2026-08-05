@@ -1,0 +1,315 @@
+// Copyright (c) 2022-2026, bageyelet
+//
+// LHA / LZH archives. An archive is a flat chain of entries, each a header
+// followed by its compressed data, ending at a zero byte where the next header
+// size would be.
+//
+// Four header layouts exist and they disagree about almost everything, but two
+// things sit at fixed offsets in all of them: the five byte method id at 2 and
+// the level byte at 20, which is what this template dispatches on. Levels 0
+// and 1 carry a one byte sum over the header, level 2 replaces it with a CRC16
+// in an extended header, and only level 2 states the compressed size directly
+// -- level 1 states the compressed size plus the size of its extended headers.
+
+enum lha_ext_type_t : u8
+{
+    COMMON          = 0x00,
+    FILENAME        = 0x01,
+    DIRECTORY       = 0x02,
+    COMMENT         = 0x3f,
+    DOS_ATTRIBUTES  = 0x40,
+    WINDOWS_TIMES   = 0x41,
+    UNIX_PERMISSION = 0x50,
+    UNIX_GID_UID    = 0x51,
+    UNIX_GROUP_NAME = 0x52,
+    UNIX_USER_NAME  = 0x53,
+    UNIX_MTIME      = 0x54
+}
+
+enum lha_os_t : u8
+{
+    GENERIC   = 0x00,
+    MSDOS     = 0x4d,
+    OS2       = 0x32,
+    OS9       = 0x39,
+    OS68K     = 0x4b,
+    OS386     = 0x33,
+    HUMAN     = 0x48,
+    UNIX      = 0x55,
+    CPM       = 0x43,
+    FLEX      = 0x46,
+    MAC       = 0x6d,
+    RUNSER    = 0x52,
+    ATARI     = 0x41,
+    AMIGA     = 0x61,
+    WINDOWS95 = 0x77,
+    WINDOWSNT = 0x57,
+    JAVA      = 0x4a
+}
+
+// The level 0 and level 1 header checksum is a plain byte sum over the header,
+// starting just past the size and checksum bytes themselves
+fn lha_header_checksum(header_size, at)
+{
+    disable_print();
+    local sum = 0;
+    local i = 0;
+    while (i < header_size) {
+        sum = sum + peek_u8(at + i);
+        i = i + 1;
+    }
+    result = sum & 0xff;
+}
+
+// The chain of extended headers levels 1 and 2 use. Each one occupies exactly
+// the byte count announced for it, and its last two bytes announce the next
+fn lha_ext_headers(first_size)
+{
+    local total = 0;
+    local next_size = first_size;
+    while (next_size > 0) {
+        assert(next_size >= 3, "malformed LHA extended header: shorter than its own fields");
+        assert(next_size <= remaining_size(),
+               "truncated LHA extended header: it runs past the end of the file");
+
+        lha_ext_type_t ext_type;
+        if (ext_type == lha_ext_type_t::FILENAME ||
+            ext_type == lha_ext_type_t::DIRECTORY ||
+            ext_type == lha_ext_type_t::UNIX_GROUP_NAME ||
+            ext_type == lha_ext_type_t::UNIX_USER_NAME) {
+            char ext_name[next_size - 3];
+        } elif (ext_type == lha_ext_type_t::COMMON) {
+            u16 header_crc16;
+            if (next_size > 5) {
+                u8 ext_data[next_size - 5];
+            }
+        } else {
+            u8 ext_data[next_size - 3];
+        }
+        u16 next_header_size;
+
+        total = total + next_size;
+        next_size = next_header_size;
+    }
+    result = total;
+}
+
+// A stored entry keeps its data verbatim, so the CRC16 the header carries over
+// the uncompressed file can be checked against the bytes on disk
+fn lha_check_stored_crc(method, size, crc16)
+{
+    disable_print();
+    result = 0;
+    if (method != "-lh0-" && method != "-lz4-") {
+        return;
+    }
+    if (size > remaining_size()) {
+        return;
+    }
+    if (crc16 != crc("CRC-16/ARC", size)) {
+        warning("stored entry CRC16 mismatch");
+    }
+}
+
+// The base header levels 0 and 1 share, ending at the file's CRC16. What comes
+// after it is what tells the two levels apart.
+struct lha_base_header_t
+{
+    local start = off();
+
+    u8   header_size;
+    u8   header_checksum;
+    char method[5];
+    u32  packed_size;                   // level 1: plus the extended headers
+    u32  original_size;
+    u32  dos_timestamp;
+    u8   attribute;
+    u8   level_id;
+    u8   name_length;
+    assert(name_length <= remaining_size(),
+           "malformed LHA header: the name runs past the end of the file");
+    char name[name_length];
+    u16  crc16;
+
+    // the sum covers the whole base header, which for level 1 reaches past
+    // this struct to the end of the "next header size" field
+    if (header_checksum != lha_header_checksum(header_size, 0 - (off() - start - 2))) {
+        warning("LHA header checksum mismatch");
+    }
+}
+
+struct lha_level0_entry_t
+{
+    local start = off();
+    lha_base_header_t header;
+
+    // level 0 may carry an OS dependent extension between the header size it
+    // declared and the data
+    local used = off() - start - 2;
+    if (header.header_size > used) {
+        u8 ext_area[header.header_size - used];
+    }
+
+    lha_check_stored_crc(header.method, header.packed_size, header.crc16);
+    assert(header.packed_size <= remaining_size(),
+           "truncated LHA entry: the data runs past the end of the file");
+    u8 data[header.packed_size];
+}
+
+struct lha_level1_entry_t
+{
+    lha_base_header_t header;
+    lha_os_t          os_id;
+    u16               next_header_size;
+
+    // level 1 counts the extended headers inside the packed size, so the data
+    // is what is left of it once they have been walked
+    local ext_total = lha_ext_headers(next_header_size);
+    assert(header.packed_size >= ext_total,
+           "malformed level 1 header: the extended headers do not fit in the packed size");
+    local data_size = header.packed_size - ext_total;
+
+    lha_check_stored_crc(header.method, data_size, header.crc16);
+    assert(data_size <= remaining_size(),
+           "truncated LHA entry: the data runs past the end of the file");
+    u8 data[data_size];
+}
+
+// Level 2 drops the checksum byte and the name field: the size is a 16 bit
+// count of the whole header and the name lives in an extended header
+struct lha_level2_entry_t
+{
+    local start = off();
+
+    u16      total_header_size;
+    char     method[5];
+    u32      packed_size;
+    u32      original_size;
+    u32      unix_timestamp;
+    u8       attribute;
+    u8       level_id;
+    u16      crc16;
+    lha_os_t os_id;
+    u16      next_header_size;
+
+    lha_ext_headers(next_header_size);
+
+    // the header is padded out to the size the first field declared
+    local used = off() - start;
+    assert(total_header_size >= used,
+           "malformed level 2 header: it is shorter than its own fields");
+    if (total_header_size > used) {
+        u8 header_padding[total_header_size - used];
+    }
+
+    lha_check_stored_crc(method, packed_size, crc16);
+    assert(packed_size <= remaining_size(),
+           "truncated LHA entry: the data runs past the end of the file");
+    u8 data[packed_size];
+}
+
+
+// The method id, three bytes into every header. "-lh" covers the whole -lh0- to
+// -lh7- range plus -lhd-; the other compression ids are rare enough that the
+// scan does not chase them
+proc _identify_magic
+{
+    magic("-lh", 2);
+}
+
+// "-lh" is three bytes and the method digit only adds a few more, so the level
+// byte and, for the two levels that have one, the header checksum are what
+// make a hit real: a byte sum over the whole header is not something arbitrary
+// data passes
+proc _identify
+{
+    little_endian();
+    if (remaining_size() < 22 || peek(3, 2) != "-lh") {
+        return;
+    }
+    if (peek_u8(6) != 0x2d) {           // the method id closes with a dash
+        return;
+    }
+
+    local level = peek_u8(20);
+    if (level > 2) {
+        return;
+    }
+
+    if (level == 2) {
+        // level 2 has no checksum byte, so the two sizes have to add up
+        local total = peek_u16(0);
+        if (total < 24 || total > remaining_size()) {
+            return;
+        }
+        if (peek_u32(7) > remaining_size() - total) {
+            return;
+        }
+    } else {
+        local header_size = peek_u8(0);
+        if (header_size < 20 || header_size + 2 > remaining_size()) {
+            return;
+        }
+        local sum = 0;
+        local i = 0;
+        while (i < header_size) {
+            sum = sum + peek_u8(2 + i);
+            i = i + 1;
+        }
+        if ((sum & 0xff) != peek_u8(1)) {
+            return;
+        }
+    }
+
+    // walk the entry chain, so the scan skips the archive as a whole rather
+    // than reporting a hit for every entry inside it. A level 1 packed size
+    // already counts that entry's extended headers, which is why the same sum
+    // works for all three levels
+    local o = 0;
+    while (o + 21 <= remaining_size()) {
+        if (peek(3, o + 2) != "-lh") {
+            break;
+        }
+        local lv = peek_u8(o + 20);
+        if (lv > 2) {
+            break;
+        }
+        local hdr = peek_u8(o) + 2;
+        if (lv == 2) {
+            hdr = peek_u16(o);
+        }
+        if (hdr < 22 || hdr > remaining_size() - o) {
+            break;
+        }
+        local packed = peek_u32(o + 7);
+        if (packed > remaining_size() - o - hdr) {
+            break;
+        }
+        o = o + hdr + packed;
+    }
+    result = min(o, remaining_size());
+}
+
+proc
+{
+    little_endian();
+
+    while (remaining_size() >= 21) {
+        // a zero where the next header size would be ends the archive
+        if (peek_u8() == 0) {
+            break;
+        }
+        // the level byte sits at a fixed offset in all three layouts, which is
+        // what makes it usable to pick one
+        local level = peek_u8(20);
+        if (level == 0) {
+            lha_level0_entry_t entry;
+        } elif (level == 1) {
+            lha_level1_entry_t entry;
+        } elif (level == 2) {
+            lha_level2_entry_t entry;
+        } else {
+            error("unsupported LHA header level:", tostring(level, 10));
+        }
+    }
+}

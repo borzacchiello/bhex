@@ -63,6 +63,17 @@ static void composite_print_cb(const char* name, const char* elname,
     }
 }
 
+// The hooks the 'id' scan calls ("_identify", "_identify_magic") are named
+// procs like any other and stay callable by name, but they are not something
+// a user invokes to look at a file, so the listing leaves them out.
+static void named_proc_print_cb(const char* name, const char* elname,
+                                ASTCtx* ast)
+{
+    if (elname[0] == '_')
+        return;
+    composite_print_cb(name, elname, ast);
+}
+
 static int templatecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 {
     (void)obj;
@@ -91,7 +102,7 @@ static int templatecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
         display_printf("\nAvailable template structs:\n");
         bhengine_vm_iter_structs(vm, composite_print_cb);
         display_printf("\nAvailable template named procs:\n");
-        bhengine_vm_iter_named_procs(vm, composite_print_cb);
+        bhengine_vm_iter_named_procs(vm, named_proc_print_cb);
         return COMMAND_OK;
     }
 

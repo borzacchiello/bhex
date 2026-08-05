@@ -4,6 +4,8 @@
 #include "t_cmd_common.h"
 #include "t.h"
 
+#include "../bhengine/vm.h"
+
 #include "data/sample_squashfs.h"
 #include "data/sample_gzip.h"
 #include "data/sample_gzip_named.h"
@@ -42,6 +44,14 @@
 #include "data/sample_wasm.h"
 #include "data/sample_x509.h"
 #include "data/sample_tar.h"
+#include "data/sample_cab.h"
+#include "data/sample_iso9660.h"
+#include "data/sample_jffs2.h"
+#include "data/sample_lha.h"
+#include "data/sample_luks.h"
+#include "data/sample_lz4.h"
+#include "data/sample_qcow2.h"
+#include "data/sample_rar.h"
 
 #ifndef TEST
 #define TEST(name) test_##name
@@ -1637,6 +1647,66 @@ int TEST(template_list_1)(void)
     bhex_free(out);
 
 end:
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+// The 'id' hooks are named procs, but 't/l' is a menu of what a user can run
+// against a file, and those two are run by the scan. They stay callable.
+int TEST(template_list_hides_identify_procs)(void)
+{
+    // clang-format off
+    const char* expected =
+        "Available templates:\n"
+        "  cab\n"
+        "\nAvailable template structs:\n"
+        "  cab.cab_header_t\n"
+        "  cab.cab_file_t\n"
+        "  cab.cab_data_t\n"
+        "  cab.cab_folder_t\n"
+        "\nAvailable template named procs:\n"
+        "  cab.list_files\n";
+    // clang-format on
+
+    int r = TEST_SUCCEEDED;
+    bhengine_vm_add_template(bhengine_vm_get(), "cab", "./templates/cab.bhe");
+
+    ASSERT(exec_commands("t/l") == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    bhengine_vm_remove_template(bhengine_vm_get(), "cab");
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+// ... and hiding them from the listing must not make them unreachable
+int TEST(template_identify_proc_still_callable)(void)
+{
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_cab, sizeof(sample_cab));
+    ASSERT(tfb != NULL);
+    bhengine_vm_add_template(bhengine_vm_get(), "cab", "./templates/cab.bhe");
+
+    ASSERT(exec_commands_on("t cab._identify", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X("result: 653\n\n", out);
+    bhex_free(out);
+
+end:
+    bhengine_vm_remove_template(bhengine_vm_get(), "cab");
+    dummyfilebuffer_destroy(tfb);
     return r;
 
 fail:
@@ -3467,6 +3537,890 @@ int TEST(template_tar_1)(void)
         dummyfilebuffer_create(sample_tar, sizeof(sample_tar));
     ASSERT(tfb != NULL);
     ASSERT(exec_commands_on("t ./templates/tar.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_cab_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000          header: \n"
+        "b+00000000           signature: 'MSCF'\n"
+        "b+00000004           reserved1: 00000000\n"
+        "b+00000008          cb_cabinet: 0000028d\n"
+        "b+0000000c           reserved2: 00000000\n"
+        "b+00000010          coff_files: 0000002c\n"
+        "b+00000014           reserved3: 00000000\n"
+        "b+00000018       version_minor: 03\n"
+        "b+00000019       version_major: 01\n"
+        "b+0000001a           n_folders: 0001\n"
+        "b+0000001c             n_files: 0002\n"
+        "b+0000001e               flags: NONE\n"
+        "b+00000020              set_id: 1234\n"
+        "b+00000022       cabinet_index: 0000\n"
+        "b+00000024          folder: \n"
+        "b+00000024      coff_cab_start: 00000066\n"
+        "b+00000028              n_data: 0001\n"
+        "b+0000002a         compression: NONE\n"
+        "b+0000002b              window: 00\n"
+        "b+0000002c            file: \n"
+        "b+0000002c             cb_file: 0000001f\n"
+        "b+00000030   uoff_folder_start: 00000000\n"
+        "b+00000034            i_folder: 0000\n"
+        "b+00000036                date: 5d05\n"
+        "b+00000038                time: 645c\n"
+        "b+0000003a             attribs: ARCH\n"
+        "b+0000003c                name: 'hello.txt'\n"
+        "b+00000046            file: \n"
+        "b+00000046             cb_file: 00000200\n"
+        "b+0000004a   uoff_folder_start: 0000001f\n"
+        "b+0000004e            i_folder: 0000\n"
+        "b+00000050                date: 5d05\n"
+        "b+00000052                time: 645c\n"
+        "b+00000054             attribs: ARCH\n"
+        "b+00000056                name: 'data\\nested.bin'\n"
+        "folder 0 data blocks:\n"
+        "b+00000066           block: \n"
+        "b+00000066                csum: 5d09350c\n"
+        "b+0000006a             cb_data: 021f\n"
+        "b+0000006c           cb_uncomp: 021f\n"
+        "b+0000006e            data: 48656c6c6f2066726f6d206120626865...\n"
+        "";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_cab, sizeof(sample_cab));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/cab.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_iso9660_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00008000         volume_descriptor: \n"
+        "b+00008000                          type: PRIMARY\n"
+        "b+00008001                            id: 'CD001'\n"
+        "b+00008006                       version: 01\n"
+        "b+00008007                         flags: 00\n"
+        "b+00008008                     system_id: 'BHEX                            '\n"
+        "b+00008028                     volume_id: 'BHEX_SAMPLE                     '\n"
+        "b+00008048                       unused2: 0000000000000000\n"
+        "b+00008050             volume_space_size: \n"
+        "b+00008050                                le: 0000001b\n"
+        "b+00008054                                be: 0000001b\n"
+        "b+00008058              escape_sequences: 00000000000000000000000000000000...\n"
+        "b+00008078               volume_set_size: \n"
+        "b+00008078                                le: 0001\n"
+        "b+0000807a                                be: 0001\n"
+        "b+0000807c             volume_seq_number: \n"
+        "b+0000807c                                le: 0001\n"
+        "b+0000807e                                be: 0001\n"
+        "b+00008080            logical_block_size: \n"
+        "b+00008080                                le: 0800\n"
+        "b+00008082                                be: 0800\n"
+        "b+00008084               path_table_size: \n"
+        "b+00008084                                le: 00000018\n"
+        "b+00008088                                be: 00000018\n"
+        "b+0000808c             type_l_path_table: 00000013\n"
+        "b+00008090         opt_type_l_path_table: 00000000\n"
+        "b+00008094             type_m_path_table: 00000014\n"
+        "b+00008098         opt_type_m_path_table: 00000000\n"
+        "b+0000809c         root_directory_record: \n"
+        "b+0000809c                            length: 22\n"
+        "b+0000809d                   ext_attr_length: 00\n"
+        "b+0000809e                            extent: \n"
+        "b+0000809e                                    le: 00000015\n"
+        "b+000080a2                                    be: 00000015\n"
+        "b+000080a6                       data_length: \n"
+        "b+000080a6                                    le: 00000800\n"
+        "b+000080aa                                    be: 00000800\n"
+        "b+000080ae                       recorded_at: \n"
+        "b+000080ae                      years_since_1900: 7e\n"
+        "b+000080af                                 month: 08\n"
+        "b+000080b0                                   day: 05\n"
+        "b+000080b1                                  hour: 0c\n"
+        "b+000080b2                                minute: 00\n"
+        "b+000080b3                                second: 00\n"
+        "b+000080b4                            gmt_offset: 00\n"
+        "b+000080b5                             flags: DIRECTORY\n"
+        "b+000080b6                    file_unit_size: 00\n"
+        "b+000080b7                    interleave_gap: 00\n"
+        "b+000080b8                 volume_seq_number: \n"
+        "b+000080b8                                    le: 0001\n"
+        "b+000080ba                                    be: 0001\n"
+        "b+000080bc                    file_id_length: 01\n"
+        "b+000080bd                           file_id: 00\n"
+        "b+000080be                 volume_set_id: 'BHEX_SET                                                                                                                        '\n"
+        "b+0000813e                  publisher_id: 'BHEX                                                                                                                            '\n"
+        "b+000081be              data_preparer_id: 'BHEX TEMPLATE CORPUS                                                                                                            '\n"
+        "b+0000823e                application_id: 'BHEX                                                                                                                            '\n"
+        "b+000082be             copyright_file_id: '                                     '\n"
+        "b+000082e3              abstract_file_id: '                                     '\n"
+        "b+00008308         bibliographic_file_id: '                                     '\n"
+        "b+0000832d                    created_at: \n"
+        "b+0000832d                              year: '2026'\n"
+        "b+00008331                             month: '08'\n"
+        "b+00008333                               day: '05'\n"
+        "b+00008335                              hour: '12'\n"
+        "b+00008337                            minute: '00'\n"
+        "b+00008339                            second: '00'\n"
+        "b+0000833b                      centiseconds: '00'\n"
+        "b+0000833d                        gmt_offset: 00\n"
+        "b+0000833e                   modified_at: \n"
+        "b+0000833e                              year: '2026'\n"
+        "b+00008342                             month: '08'\n"
+        "b+00008344                               day: '05'\n"
+        "b+00008346                              hour: '12'\n"
+        "b+00008348                            minute: '00'\n"
+        "b+0000834a                            second: '00'\n"
+        "b+0000834c                      centiseconds: '00'\n"
+        "b+0000834e                        gmt_offset: 00\n"
+        "b+0000834f                    expires_at: \n"
+        "b+0000834f                              year: '0000'\n"
+        "b+00008353                             month: '00'\n"
+        "b+00008355                               day: '00'\n"
+        "b+00008357                              hour: '00'\n"
+        "b+00008359                            minute: '00'\n"
+        "b+0000835b                            second: '00'\n"
+        "b+0000835d                      centiseconds: '00'\n"
+        "b+0000835f                        gmt_offset: 00\n"
+        "b+00008360                  effective_at: \n"
+        "b+00008360                              year: '2026'\n"
+        "b+00008364                             month: '08'\n"
+        "b+00008366                               day: '05'\n"
+        "b+00008368                              hour: '12'\n"
+        "b+0000836a                            minute: '00'\n"
+        "b+0000836c                            second: '00'\n"
+        "b+0000836e                      centiseconds: '00'\n"
+        "b+00008370                        gmt_offset: 00\n"
+        "b+00008371        file_structure_version: 01\n"
+        "b+00008372                     reserved1: 00\n"
+        "b+00008373              application_used: 00000000000000000000000000000000...\n"
+        "b+00008573                     reserved2: 00000000000000000000000000000000...\n"
+        "b+00008800               boot_record: \n"
+        "b+00008800                          type: BOOT_RECORD\n"
+        "b+00008801                            id: 'CD001'\n"
+        "b+00008806                       version: 01\n"
+        "b+00008807                boot_system_id: 'EL TORITO SPECIFICATION'\n"
+        "b+00008827                       boot_id: ''\n"
+        "b+00008847           boot_catalog_sector: 00000019\n"
+        "b+0000884b               boot_system_use: 00000000000000000000000000000000...\n"
+        "b+00009000  volume_descriptor_header: \n"
+        "b+00009000                          type: TERMINATOR\n"
+        "b+00009001                            id: 'CD001'\n"
+        "b+00009006                       version: 01\n"
+        "b+0000c800           boot_validation: \n"
+        "b+0000c800                     header_id: 01\n"
+        "b+0000c801                   platform_id: 00\n"
+        "b+0000c802                      reserved: 0000\n"
+        "b+0000c804                  manufacturer: 'BHEX'\n"
+        "b+0000c81c                      checksum: b523\n"
+        "b+0000c81e                         key55: 55\n"
+        "b+0000c81f                         keyAA: aa\n"
+        "b+0000c820                boot_entry: \n"
+        "b+0000c820                      bootable: 88\n"
+        "b+0000c821                    media_type: NO_EMULATION\n"
+        "b+0000c822                  load_segment: 0000\n"
+        "b+0000c824                   system_type: 00\n"
+        "b+0000c825                       unused1: 00\n"
+        "b+0000c826                  sector_count: 0004\n"
+        "b+0000c828                      load_rba: 0000001a\n"
+        "b+0000c82c                       unused2: 00000000000000000000000000000000...\n"
+        "b+00009800         path_table_record: \n"
+        "b+00009800                   name_length: 01\n"
+        "b+00009801               ext_attr_length: 00\n"
+        "b+00009802                        extent: 00000015\n"
+        "b+00009806                  parent_index: 0001\n"
+        "b+00009808                          name: 00\n"
+        "b+00009809                       padding: 00\n"
+        "b+0000980a         path_table_record: \n"
+        "b+0000980a                   name_length: 06\n"
+        "b+0000980b               ext_attr_length: 00\n"
+        "b+0000980c                        extent: 00000016\n"
+        "b+00009810                  parent_index: 0001\n"
+        "b+00009812                          name: 'SUBDIR'\n"
+        "path table: 2 directories\n"
+        "directory 1 contents:\n"
+        "b+0000a800                dir_record: \n"
+        "b+0000a800                        length: 22\n"
+        "b+0000a801               ext_attr_length: 00\n"
+        "b+0000a802                        extent: \n"
+        "b+0000a802                                le: 00000015\n"
+        "b+0000a806                                be: 00000015\n"
+        "b+0000a80a                   data_length: \n"
+        "b+0000a80a                                le: 00000800\n"
+        "b+0000a80e                                be: 00000800\n"
+        "b+0000a812                   recorded_at: \n"
+        "b+0000a812                  years_since_1900: 7e\n"
+        "b+0000a813                             month: 08\n"
+        "b+0000a814                               day: 05\n"
+        "b+0000a815                              hour: 0c\n"
+        "b+0000a816                            minute: 00\n"
+        "b+0000a817                            second: 00\n"
+        "b+0000a818                        gmt_offset: 00\n"
+        "b+0000a819                         flags: DIRECTORY\n"
+        "b+0000a81a                file_unit_size: 00\n"
+        "b+0000a81b                interleave_gap: 00\n"
+        "b+0000a81c             volume_seq_number: \n"
+        "b+0000a81c                                le: 0001\n"
+        "b+0000a81e                                be: 0001\n"
+        "b+0000a820                file_id_length: 01\n"
+        "b+0000a821                       file_id: 00\n"
+        "b+0000a822                dir_record: \n"
+        "b+0000a822                        length: 22\n"
+        "b+0000a823               ext_attr_length: 00\n"
+        "b+0000a824                        extent: \n"
+        "b+0000a824                                le: 00000015\n"
+        "b+0000a828                                be: 00000015\n"
+        "b+0000a82c                   data_length: \n"
+        "b+0000a82c                                le: 00000800\n"
+        "b+0000a830                                be: 00000800\n"
+        "b+0000a834                   recorded_at: \n"
+        "b+0000a834                  years_since_1900: 7e\n"
+        "b+0000a835                             month: 08\n"
+        "b+0000a836                               day: 05\n"
+        "b+0000a837                              hour: 0c\n"
+        "b+0000a838                            minute: 00\n"
+        "b+0000a839                            second: 00\n"
+        "b+0000a83a                        gmt_offset: 00\n"
+        "b+0000a83b                         flags: DIRECTORY\n"
+        "b+0000a83c                file_unit_size: 00\n"
+        "b+0000a83d                interleave_gap: 00\n"
+        "b+0000a83e             volume_seq_number: \n"
+        "b+0000a83e                                le: 0001\n"
+        "b+0000a840                                be: 0001\n"
+        "b+0000a842                file_id_length: 01\n"
+        "b+0000a843                       file_id: 01\n"
+        "b+0000a844                dir_record: \n"
+        "b+0000a844                        length: 2e\n"
+        "b+0000a845               ext_attr_length: 00\n"
+        "b+0000a846                        extent: \n"
+        "b+0000a846                                le: 00000017\n"
+        "b+0000a84a                                be: 00000017\n"
+        "b+0000a84e                   data_length: \n"
+        "b+0000a84e                                le: 00000024\n"
+        "b+0000a852                                be: 00000024\n"
+        "b+0000a856                   recorded_at: \n"
+        "b+0000a856                  years_since_1900: 7e\n"
+        "b+0000a857                             month: 08\n"
+        "b+0000a858                               day: 05\n"
+        "b+0000a859                              hour: 0c\n"
+        "b+0000a85a                            minute: 00\n"
+        "b+0000a85b                            second: 00\n"
+        "b+0000a85c                        gmt_offset: 00\n"
+        "b+0000a85d                         flags: NONE\n"
+        "b+0000a85e                file_unit_size: 00\n"
+        "b+0000a85f                interleave_gap: 00\n"
+        "b+0000a860             volume_seq_number: \n"
+        "b+0000a860                                le: 0001\n"
+        "b+0000a862                                be: 0001\n"
+        "b+0000a864                file_id_length: 0c\n"
+        "b+0000a865                       file_id: 'README.TXT;1'\n"
+        "b+0000a871                    system_use: 00\n"
+        "b+0000a872                dir_record: \n"
+        "b+0000a872                        length: 28\n"
+        "b+0000a873               ext_attr_length: 00\n"
+        "b+0000a874                        extent: \n"
+        "b+0000a874                                le: 00000016\n"
+        "b+0000a878                                be: 00000016\n"
+        "b+0000a87c                   data_length: \n"
+        "b+0000a87c                                le: 00000800\n"
+        "b+0000a880                                be: 00000800\n"
+        "b+0000a884                   recorded_at: \n"
+        "b+0000a884                  years_since_1900: 7e\n"
+        "b+0000a885                             month: 08\n"
+        "b+0000a886                               day: 05\n"
+        "b+0000a887                              hour: 0c\n"
+        "b+0000a888                            minute: 00\n"
+        "b+0000a889                            second: 00\n"
+        "b+0000a88a                        gmt_offset: 00\n"
+        "b+0000a88b                         flags: DIRECTORY\n"
+        "b+0000a88c                file_unit_size: 00\n"
+        "b+0000a88d                interleave_gap: 00\n"
+        "b+0000a88e             volume_seq_number: \n"
+        "b+0000a88e                                le: 0001\n"
+        "b+0000a890                                be: 0001\n"
+        "b+0000a892                file_id_length: 06\n"
+        "b+0000a893                       file_id: 'SUBDIR'\n"
+        "b+0000a899                    system_use: 00\n"
+        "directory 2 contents:\n"
+        "b+0000b000                dir_record: \n"
+        "b+0000b000                        length: 22\n"
+        "b+0000b001               ext_attr_length: 00\n"
+        "b+0000b002                        extent: \n"
+        "b+0000b002                                le: 00000016\n"
+        "b+0000b006                                be: 00000016\n"
+        "b+0000b00a                   data_length: \n"
+        "b+0000b00a                                le: 00000800\n"
+        "b+0000b00e                                be: 00000800\n"
+        "b+0000b012                   recorded_at: \n"
+        "b+0000b012                  years_since_1900: 7e\n"
+        "b+0000b013                             month: 08\n"
+        "b+0000b014                               day: 05\n"
+        "b+0000b015                              hour: 0c\n"
+        "b+0000b016                            minute: 00\n"
+        "b+0000b017                            second: 00\n"
+        "b+0000b018                        gmt_offset: 00\n"
+        "b+0000b019                         flags: DIRECTORY\n"
+        "b+0000b01a                file_unit_size: 00\n"
+        "b+0000b01b                interleave_gap: 00\n"
+        "b+0000b01c             volume_seq_number: \n"
+        "b+0000b01c                                le: 0001\n"
+        "b+0000b01e                                be: 0001\n"
+        "b+0000b020                file_id_length: 01\n"
+        "b+0000b021                       file_id: 00\n"
+        "b+0000b022                dir_record: \n"
+        "b+0000b022                        length: 22\n"
+        "b+0000b023               ext_attr_length: 00\n"
+        "b+0000b024                        extent: \n"
+        "b+0000b024                                le: 00000015\n"
+        "b+0000b028                                be: 00000015\n"
+        "b+0000b02c                   data_length: \n"
+        "b+0000b02c                                le: 00000800\n"
+        "b+0000b030                                be: 00000800\n"
+        "b+0000b034                   recorded_at: \n"
+        "b+0000b034                  years_since_1900: 7e\n"
+        "b+0000b035                             month: 08\n"
+        "b+0000b036                               day: 05\n"
+        "b+0000b037                              hour: 0c\n"
+        "b+0000b038                            minute: 00\n"
+        "b+0000b039                            second: 00\n"
+        "b+0000b03a                        gmt_offset: 00\n"
+        "b+0000b03b                         flags: DIRECTORY\n"
+        "b+0000b03c                file_unit_size: 00\n"
+        "b+0000b03d                interleave_gap: 00\n"
+        "b+0000b03e             volume_seq_number: \n"
+        "b+0000b03e                                le: 0001\n"
+        "b+0000b040                                be: 0001\n"
+        "b+0000b042                file_id_length: 01\n"
+        "b+0000b043                       file_id: 01\n"
+        "b+0000b044                dir_record: \n"
+        "b+0000b044                        length: 2e\n"
+        "b+0000b045               ext_attr_length: 00\n"
+        "b+0000b046                        extent: \n"
+        "b+0000b046                                le: 00000018\n"
+        "b+0000b04a                                be: 00000018\n"
+        "b+0000b04e                   data_length: \n"
+        "b+0000b04e                                le: 00000078\n"
+        "b+0000b052                                be: 00000078\n"
+        "b+0000b056                   recorded_at: \n"
+        "b+0000b056                  years_since_1900: 7e\n"
+        "b+0000b057                             month: 08\n"
+        "b+0000b058                               day: 05\n"
+        "b+0000b059                              hour: 0c\n"
+        "b+0000b05a                            minute: 00\n"
+        "b+0000b05b                            second: 00\n"
+        "b+0000b05c                        gmt_offset: 00\n"
+        "b+0000b05d                         flags: NONE\n"
+        "b+0000b05e                file_unit_size: 00\n"
+        "b+0000b05f                interleave_gap: 00\n"
+        "b+0000b060             volume_seq_number: \n"
+        "b+0000b060                                le: 0001\n"
+        "b+0000b062                                be: 0001\n"
+        "b+0000b064                file_id_length: 0c\n"
+        "b+0000b065                       file_id: 'NESTED.BIN;1'\n"
+        "b+0000b071                    system_use: 00\n"
+        "";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_iso9660, sizeof(sample_iso9660));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/iso9660.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_jffs2_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000          node: \n"
+        "b+00000000             magic: 1985\n"
+        "b+00000002          nodetype: CLEANMARKER\n"
+        "b+00000004            totlen: 0000000c\n"
+        "b+00000008           hdr_crc: e41eb0b1\n"
+        "b+0000000c         inode: \n"
+        "b+0000000c              node: \n"
+        "b+0000000c                 magic: 1985\n"
+        "b+0000000e              nodetype: INODE\n"
+        "b+00000010                totlen: 00000044\n"
+        "b+00000014               hdr_crc: 98f7fb1d\n"
+        "b+00000018               ino: 00000001\n"
+        "b+0000001c           version: 00000001\n"
+        "b+00000020              mode: 000041ed\n"
+        "b+00000024               uid: 0000\n"
+        "b+00000026               gid: 0000\n"
+        "b+00000028             isize: 00000000\n"
+        "b+0000002c             atime: 6a64f040\n"
+        "b+00000030             mtime: 6a64f040\n"
+        "b+00000034             ctime: 6a64f040\n"
+        "b+00000038            offset: 00000000\n"
+        "b+0000003c             csize: 00000000\n"
+        "b+00000040             dsize: 00000000\n"
+        "b+00000044             compr: NONE\n"
+        "b+00000045         usercompr: 00\n"
+        "b+00000046             flags: 0000\n"
+        "b+00000048          data_crc: 00000000\n"
+        "b+0000004c          node_crc: 8734003f\n"
+        "b+00000050              data: \n"
+        "b+00000050        dirent: \n"
+        "b+00000050              node: \n"
+        "b+00000050                 magic: 1985\n"
+        "b+00000052              nodetype: DIRENT\n"
+        "b+00000054                totlen: 00000031\n"
+        "b+00000058               hdr_crc: 4282d91d\n"
+        "b+0000005c              pino: 00000001\n"
+        "b+00000060           version: 00000001\n"
+        "b+00000064               ino: 00000002\n"
+        "b+00000068            mctime: 6a64f040\n"
+        "b+0000006c             nsize: 09\n"
+        "b+0000006d              type: REG\n"
+        "b+0000006e            unused: 0000\n"
+        "b+00000070          node_crc: 592bf0ee\n"
+        "b+00000074          name_crc: f469da15\n"
+        "b+00000078              name: 'hello.txt'\n"
+        "b+00000081  node_padding: 000000\n"
+        "b+00000084         inode: \n"
+        "b+00000084              node: \n"
+        "b+00000084                 magic: 1985\n"
+        "b+00000086              nodetype: INODE\n"
+        "b+00000088                totlen: 00000064\n"
+        "b+0000008c               hdr_crc: 38c55423\n"
+        "b+00000090               ino: 00000002\n"
+        "b+00000094           version: 00000001\n"
+        "b+00000098              mode: 000081a4\n"
+        "b+0000009c               uid: 0000\n"
+        "b+0000009e               gid: 0000\n"
+        "b+000000a0             isize: 00000020\n"
+        "b+000000a4             atime: 6a64f040\n"
+        "b+000000a8             mtime: 6a64f040\n"
+        "b+000000ac             ctime: 6a64f040\n"
+        "b+000000b0            offset: 00000000\n"
+        "b+000000b4             csize: 00000020\n"
+        "b+000000b8             dsize: 00000020\n"
+        "b+000000bc             compr: NONE\n"
+        "b+000000bd         usercompr: 00\n"
+        "b+000000be             flags: 0000\n"
+        "b+000000c0          data_crc: d65af04e\n"
+        "b+000000c4          node_crc: 2244834c\n"
+        "b+000000c8              data: 48656c6c6f2066726f6d206120626865...\n"
+        "b+000000e8        dirent: \n"
+        "b+000000e8              node: \n"
+        "b+000000e8                 magic: 1985\n"
+        "b+000000ea              nodetype: DIRENT\n"
+        "b+000000ec                totlen: 0000002e\n"
+        "b+000000f0               hdr_crc: 4af89ed4\n"
+        "b+000000f4              pino: 00000001\n"
+        "b+000000f8           version: 00000001\n"
+        "b+000000fc               ino: 00000003\n"
+        "b+00000100            mctime: 6a64f040\n"
+        "b+00000104             nsize: 06\n"
+        "b+00000105              type: DIR\n"
+        "b+00000106            unused: 0000\n"
+        "b+00000108          node_crc: 93f755b3\n"
+        "b+0000010c          name_crc: 68418c5a\n"
+        "b+00000110              name: 'subdir'\n"
+        "b+00000116  node_padding: 0000\n"
+        "b+00000118         inode: \n"
+        "b+00000118              node: \n"
+        "b+00000118                 magic: 1985\n"
+        "b+0000011a              nodetype: INODE\n"
+        "b+0000011c                totlen: 00000044\n"
+        "b+00000120               hdr_crc: 98f7fb1d\n"
+        "b+00000124               ino: 00000003\n"
+        "b+00000128           version: 00000001\n"
+        "b+0000012c              mode: 000041ed\n"
+        "b+00000130               uid: 0000\n"
+        "b+00000132               gid: 0000\n"
+        "b+00000134             isize: 00000000\n"
+        "b+00000138             atime: 6a64f040\n"
+        "b+0000013c             mtime: 6a64f040\n"
+        "b+00000140             ctime: 6a64f040\n"
+        "b+00000144            offset: 00000000\n"
+        "b+00000148             csize: 00000000\n"
+        "b+0000014c             dsize: 00000000\n"
+        "b+00000150             compr: NONE\n"
+        "b+00000151         usercompr: 00\n"
+        "b+00000152             flags: 0000\n"
+        "b+00000154          data_crc: 00000000\n"
+        "b+00000158          node_crc: fc57d987\n"
+        "b+0000015c              data: \n"
+        "b+0000015c          node: \n"
+        "b+0000015c             magic: 1985\n"
+        "b+0000015e          nodetype: PADDING\n"
+        "b+00000160            totlen: 00000ea4\n"
+        "b+00000164           hdr_crc: 7b5a9ce9\n"
+        "b+00000168     node_data: ffffffffffffffffffffffffffffffff...\n"
+        "";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_jffs2, sizeof(sample_jffs2));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/jffs2.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_lha_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000          entry: \n"
+        "b+00000000             header: \n"
+        "b+00000000            header_size: 22\n"
+        "b+00000001        header_checksum: e3\n"
+        "b+00000002                 method: '-lh0-'\n"
+        "b+00000007            packed_size: 0000001e\n"
+        "b+0000000b          original_size: 0000001e\n"
+        "b+0000000f          dos_timestamp: 5d05645c\n"
+        "b+00000013              attribute: 20\n"
+        "b+00000014               level_id: 01\n"
+        "b+00000015            name_length: 09\n"
+        "b+00000016                   name: 'hello.txt'\n"
+        "b+0000001f                  crc16: 33d3\n"
+        "b+00000021              os_id: UNIX\n"
+        "b+00000022   next_header_size: 0000\n"
+        "b+00000024               data: 48656c6c6f2066726f6d206120626865...\n"
+        "b+00000042          entry: \n"
+        "b+00000042             header: \n"
+        "b+00000042            header_size: 26\n"
+        "b+00000043        header_checksum: df\n"
+        "b+00000044                 method: '-lh0-'\n"
+        "b+00000049            packed_size: 00000021\n"
+        "b+0000004d          original_size: 00000021\n"
+        "b+00000051          dos_timestamp: 5d05645c\n"
+        "b+00000055              attribute: 20\n"
+        "b+00000056               level_id: 01\n"
+        "b+00000057            name_length: 0d\n"
+        "b+00000058                   name: 'docs\\notes.md'\n"
+        "b+00000065                  crc16: 2548\n"
+        "b+00000067              os_id: UNIX\n"
+        "b+00000068   next_header_size: 0000\n"
+        "b+0000006a               data: 23206e6f7465730a0a73746f7265642c...\n"
+        "";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_lha, sizeof(sample_lha));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/lha.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_luks_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000               header: \n"
+        "b+00000000                    magic: 'LUKS\\xba\\xbe'\n"
+        "b+00000006                  version: 0001\n"
+        "b+00000008              cipher_name: 'aes'\n"
+        "b+00000028              cipher_mode: 'xts-plain64'\n"
+        "b+00000048                hash_spec: 'sha256'\n"
+        "b+00000068           payload_offset: 00000808\n"
+        "b+0000006c                key_bytes: 00000020\n"
+        "b+00000070                mk_digest: 000102030405060708090a0b0c0d0e0f...\n"
+        "b+00000084           mk_digest_salt: 00070e151c232a31383f464d545b6269...\n"
+        "b+000000a4     mk_digest_iterations: 0001dadf\n"
+        "b+000000a8                     uuid: 'c9e0f1a2-3b4c-4d5e-8f90-a1b2c3d4e5f6'\n"
+        "b+000000d0                 keyslots: [ \n"
+        "                                    [0]\n"
+        "b+000000d0                       active: ENABLED\n"
+        "b+000000d4                   iterations: 0003d090\n"
+        "b+000000d8                         salt: 000102030405060708090a0b0c0d0e0f...\n"
+        "b+000000f8          key_material_offset: 00000008\n"
+        "b+000000fc                      stripes: 00000fa0\n"
+        "                                    [1]\n"
+        "b+00000100                       active: ENABLED\n"
+        "b+00000104                   iterations: 0003d091\n"
+        "b+00000108                         salt: 0d0e0f101112131415161718191a1b1c...\n"
+        "b+00000128          key_material_offset: 00000108\n"
+        "b+0000012c                      stripes: 00000fa0\n"
+        "                                    [2]\n"
+        "b+00000130                       active: DISABLED\n"
+        "b+00000134                   iterations: 0003d092\n"
+        "b+00000138                         salt: 1a1b1c1d1e1f20212223242526272829...\n"
+        "b+00000158          key_material_offset: 00000208\n"
+        "b+0000015c                      stripes: 00000fa0\n"
+        "                                    [3]\n"
+        "b+00000160                       active: DISABLED\n"
+        "b+00000164                   iterations: 0003d093\n"
+        "b+00000168                         salt: 2728292a2b2c2d2e2f30313233343536...\n"
+        "b+00000188          key_material_offset: 00000308\n"
+        "b+0000018c                      stripes: 00000fa0\n"
+        "                                    [4]\n"
+        "b+00000190                       active: DISABLED\n"
+        "b+00000194                   iterations: 0003d094\n"
+        "b+00000198                         salt: 3435363738393a3b3c3d3e3f40414243...\n"
+        "b+000001b8          key_material_offset: 00000408\n"
+        "b+000001bc                      stripes: 00000fa0\n"
+        "                                    [5]\n"
+        "b+000001c0                       active: DISABLED\n"
+        "b+000001c4                   iterations: 0003d095\n"
+        "b+000001c8                         salt: 4142434445464748494a4b4c4d4e4f50...\n"
+        "b+000001e8          key_material_offset: 00000508\n"
+        "b+000001ec                      stripes: 00000fa0\n"
+        "                                    [6]\n"
+        "b+000001f0                       active: DISABLED\n"
+        "b+000001f4                   iterations: 0003d096\n"
+        "b+000001f8                         salt: 4e4f505152535455565758595a5b5c5d...\n"
+        "b+00000218          key_material_offset: 00000608\n"
+        "b+0000021c                      stripes: 00000fa0\n"
+        "                                    [7]\n"
+        "b+00000220                       active: DISABLED\n"
+        "b+00000224                   iterations: 0003d097\n"
+        "b+00000228                         salt: 5b5c5d5e5f606162636465666768696a...\n"
+        "b+00000248          key_material_offset: 00000708\n"
+        "b+0000024c                      stripes: 00000fa0 ]\n"
+        "";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_luks, sizeof(sample_luks));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/luks.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_lz4_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000            frame: \n"
+        "b+00000000                magic: 184d2204\n"
+        "b+00000004           descriptor: \n"
+        "b+00000004                      flg: CONTENT_CSUM | CONTENT_SIZE | BLOCK_CSUM | BLOCK_INDEP | VERSION_1\n"
+        "b+00000005                       bd: MAX_64KB\n"
+        "b+00000006             content_size: 000000000000071f\n"
+        "b+0000000e          header_checksum: 10\n"
+        "b+0000000f           block_size: 00000052\n"
+        "b+00000013                 data: f12662686578206c7a34206672616d65...\n"
+        "b+00000065       block_checksum: 00375aae\n"
+        "b+00000069           block_size: 00000000\n"
+        "b+0000006d     content_checksum: 95f6cae9\n"
+        "";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_lz4, sizeof(sample_lz4));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/lz4.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_qcow2_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000               header: \n"
+        "b+00000000                    magic: 'QFI\\xfb'\n"
+        "b+00000004                  version: 00000003\n"
+        "b+00000008      backing_file_offset: 0000000000000000\n"
+        "b+00000010        backing_file_size: 00000000\n"
+        "b+00000014             cluster_bits: 00000009\n"
+        "b+00000018                     size: 0000000000010000\n"
+        "b+00000020             crypt_method: NONE\n"
+        "b+00000024                  l1_size: 00000002\n"
+        "b+00000028          l1_table_offset: 0000000000000600\n"
+        "b+00000030    refcount_table_offset: 0000000000000200\n"
+        "b+00000038  refcount_table_clusters: 00000001\n"
+        "b+0000003c             nb_snapshots: 00000000\n"
+        "b+00000040         snapshots_offset: 0000000000000000\n"
+        "b+00000048    incompatible_features: NONE\n"
+        "b+00000050      compatible_features: NONE\n"
+        "b+00000058       autoclear_features: NONE\n"
+        "b+00000060           refcount_order: 00000004\n"
+        "b+00000064            header_length: 00000068\n"
+        "cluster size: 512 bytes\n"
+        "b+00000068            extension: \n"
+        "b+00000068                     type: FEATURE_NAME_TABLE\n"
+        "b+0000006c                   length: 00000060\n"
+        "b+00000070             features: [ \n"
+        "                                [0]\n"
+        "b+00000070             feature_type: 00\n"
+        "b+00000071               bit_number: 00\n"
+        "b+00000072                     name: 'dirty bit'\n"
+        "                                [1]\n"
+        "b+000000a0             feature_type: 00\n"
+        "b+000000a1               bit_number: 01\n"
+        "b+000000a2                     name: 'corrupt bit' ]\n"
+        "b+000000d0            extension: \n"
+        "b+000000d0                     type: END\n"
+        "b+000000d4                   length: 00000000\n"
+        "L1 table: 1 of 2 entries allocated\n"
+        "b+00000600             l1_table: [ 8000000000000800, 0000000000000000 ]\n"
+        "refcount table: 1 of 64 entries allocated\n"
+        "b+00000200       refcount_table: [ 0000000000000400, 0000000000000000, 0000000000000000, 0000000000000000, 0000000000000000, 0000000000000000, 0000000000000000, 0000000000000000, ... ]\n"
+        "";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_qcow2, sizeof(sample_qcow2));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/qcow2.bhe", tfb) == 0);
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    r = TEST_FAILED;
+    goto end;
+}
+
+int TEST(template_rar_1)(void)
+{
+    // clang-format off
+    const char* expected =
+        "b+00000000    signature: 526172211a070100\n"
+        "b+00000008       record: \n"
+        "b+00000008     header_crc32: 32331ac5\n"
+        "b+0000000c      header_size: 03\n"
+        "b+0000000d      header_type: MAIN\n"
+        "b+0000000e     header_flags: NONE\n"
+        "b+0000000f      main_header: \n"
+        "b+0000000f        archive_flags: NONE\n"
+        "b+00000010       record: \n"
+        "b+00000010     header_crc32: 373940b8\n"
+        "b+00000014      header_size: 1a\n"
+        "b+00000015      header_type: FILE\n"
+        "b+00000016     header_flags: DATA_AREA\n"
+        "b+00000017  data_size_field: 1e\n"
+        "b+00000018      file_header: \n"
+        "b+00000018           file_flags: MTIME | CRC32\n"
+        "b+00000019        unpacked_size: 1e\n"
+        "b+0000001a           attributes: 20\n"
+        "b+0000001b                mtime: 68900000\n"
+        "b+0000001f           data_crc32: 9a9e0111\n"
+        "b+00000023     compression_info: 00\n"
+        "    = version 0 method 0 dictionary 128 KB\n"
+        "b+00000024              host_os: WINDOWS\n"
+        "b+00000025            name_size: 09\n"
+        "b+00000026                 name: 'hello.txt'\n"
+        "b+0000002f             data: 48656c6c6f2066726f6d206120626865...\n"
+        "b+0000004d       record: \n"
+        "b+0000004d     header_crc32: 036017cd\n"
+        "b+00000051      header_size: 1e\n"
+        "b+00000052      header_type: FILE\n"
+        "b+00000053     header_flags: DATA_AREA\n"
+        "b+00000054  data_size_field: 21\n"
+        "b+00000055      file_header: \n"
+        "b+00000055           file_flags: MTIME | CRC32\n"
+        "b+00000056        unpacked_size: 21\n"
+        "b+00000057           attributes: 20\n"
+        "b+00000058                mtime: 68900000\n"
+        "b+0000005c           data_crc32: 956a0e80\n"
+        "b+00000060     compression_info: 00\n"
+        "    = version 0 method 0 dictionary 128 KB\n"
+        "b+00000061              host_os: WINDOWS\n"
+        "b+00000062            name_size: 0d\n"
+        "b+00000063                 name: 'docs\\notes.md'\n"
+        "b+00000070             data: 23206e6f7465730a0a73746f7265642c...\n"
+        "b+00000091       record: \n"
+        "b+00000091     header_crc32: 353ab219\n"
+        "b+00000095      header_size: 03\n"
+        "b+00000096      header_type: END\n"
+        "b+00000097     header_flags: NONE\n"
+        "b+00000098   end_of_archive: \n"
+        "b+00000098            end_flags: NONE\n"
+        "";
+    // clang-format on
+
+    int              r = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create(sample_rar, sizeof(sample_rar));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/rar.bhe", tfb) == 0);
 
     char* out = strbuilder_reset(sb);
     r         = compare_strings_ignoring_X(expected, out);

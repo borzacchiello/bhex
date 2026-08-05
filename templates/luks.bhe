@@ -1,0 +1,175 @@
+// Copyright (c) 2022-2026, bageyelet
+//
+// LUKS disk encryption headers, both versions. Everything is big endian.
+//
+// LUKS1 is one 592 byte header: the cipher parameters, a digest of the master
+// key, and eight fixed size key slots, each pointing at its own anti-forensic
+// key material area. LUKS2 keeps only the essentials in binary and moves
+// everything else -- slots, digests, segments, tokens -- into a JSON document,
+// stored twice so that a torn update cannot lose the header. The binary part
+// carries a checksum over itself and the JSON area, computed with that field
+// zeroed, which is why this template cannot verify it: the bytes to hash are
+// not the bytes on disk.
+//
+// No key material is decodable without a passphrase; what a template can do is
+// say how the volume is configured and where its data starts.
+
+enum luks1_key_state_t : u32
+{
+    DISABLED = 0x0000dead,
+    ENABLED  = 0x00ac71f3
+}
+
+struct luks1_keyslot_t
+{
+    luks1_key_state_t active;
+    u32               iterations;       // PBKDF2 rounds for this slot
+    u8                salt[32];
+    u32               key_material_offset;   // in 512 byte sectors
+    u32               stripes;          // anti-forensic stripes, normally 4000
+}
+
+struct luks1_header_t
+{
+    char             magic[6];
+    u16              version;
+    char             cipher_name[32];
+    char             cipher_mode[32];
+    char             hash_spec[32];
+    u32              payload_offset;    // in 512 byte sectors
+    u32              key_bytes;
+    u8               mk_digest[20];
+    u8               mk_digest_salt[32];
+    u32              mk_digest_iterations;
+    char             uuid[40];
+    luks1_keyslot_t  keyslots[8];
+}
+
+// The 4096 byte binary header. Field sizes follow cryptsetup's luks2_hdr_disk:
+// label and subsystem are both 48 bytes, which puts csum at 448 and the JSON
+// area at 4096.
+struct luks2_header_t
+{
+    char magic[6];                      // "LUKS" primary, "SKUL" secondary
+    u16  version;
+    u64  hdr_size;                      // binary header plus JSON area
+    u64  seqid;                         // the newer of the two headers wins
+    char label[48];
+    char checksum_alg[32];
+    u8   salt[64];
+    char uuid[40];
+    char subsystem[48];
+    u64  hdr_offset;                    // where this copy claims to live
+    u8   padding[184];
+    u8   csum[64];
+    u8   padding4096[7 * 512];
+}
+
+
+// The LUKS magic. The secondary LUKS2 header is deliberately left out: it
+// carries "SKUL" and sits inside a container the primary already claims, so
+// declaring it would report a second hit for every healthy volume
+proc _identify_magic
+{
+    magic("LUKS\xba\xbe", 0);
+}
+
+// Six bytes of magic is a good start, and the version pins it down further.
+// Past that the two versions are checked on what they specify exactly: LUKS1
+// on its key size and on a payload that starts behind the header, LUKS2 on a
+// header size the spec restricts to powers of two from 16 KB up, and on the
+// offset the header states for itself
+proc _identify
+{
+    big_endian();
+    if (remaining_size() < 512 || peek(6) != "LUKS\xba\xbe") {
+        return;
+    }
+    local version = peek_u16(6);
+
+    if (version == 1) {
+        local key_bytes = peek_u32(108);
+        if (key_bytes != 16 && key_bytes != 32 && key_bytes != 64) {
+            return;
+        }
+        // the payload cannot start inside the header
+        local payload_offset = peek_u32(104);
+        if (payload_offset < 2) {
+            return;
+        }
+        result = min(payload_offset * 512, remaining_size());
+        return;
+    }
+
+    if (version != 2 || remaining_size() < 4096) {
+        return;
+    }
+    local hdr_size = peek_u64(8);
+    if (hdr_size < 16384 || hdr_size > 4194304 || (hdr_size & (hdr_size - 1)) != 0) {
+        return;
+    }
+    // a primary header states its own offset as zero
+    if (peek_u64(256) != 0) {
+        return;
+    }
+    // both copies belong to the container
+    result = min(hdr_size * 2, remaining_size());
+}
+
+proc
+{
+    big_endian();
+    local base = off();
+
+    assert(remaining_size() >= 592, "not a LUKS header: too short");
+    assert(peek(6) == "LUKS\xba\xbe", "not a LUKS header: bad magic");
+    local version = peek_u16(6);
+
+    if (version == 1) {
+        luks1_header_t header;
+    } elif (version == 2) {
+        assert(remaining_size() >= 4096, "truncated LUKS2 header");
+        luks2_header_t primary_header;
+        assert(primary_header.hdr_size >= 4096,
+               "malformed LUKS2 header: it is smaller than its binary part");
+
+        local json_size = primary_header.hdr_size - 4096;
+        assert(json_size <= remaining_size(),
+               "truncated LUKS2 header: the JSON area runs past the end of the file");
+
+        // The area is NUL padded out to its full size and bhengine reads at
+        // most 4096 bytes into a string, so the document is read as text up to
+        // that cap and the rest of the area skipped. A document longer than the
+        // cap is shown truncated rather than in full.
+        local json_shown = json_size;
+        if (json_shown > 4096) {
+            json_shown = 4096;
+        }
+        char primary_json[json_shown];
+
+        if (json_size > json_shown) {
+            u8 primary_json_rest[json_size - json_shown];
+        }
+
+        // the second copy, which a torn update leaves behind at hdr_size
+        if (base + primary_header.hdr_size * 2 <= size()) {
+            seek(base + primary_header.hdr_size);
+            luks2_header_t secondary_header;
+            if (secondary_header.magic != "SKUL\xba\xbe") {
+                warning("the secondary LUKS2 header does not carry the SKUL magic");
+            }
+            char secondary_json[json_shown];
+            if (json_size > json_shown) {
+                u8 secondary_json_rest[json_size - json_shown];
+            }
+
+            if (secondary_header.seqid != primary_header.seqid) {
+                warning("the two LUKS2 headers disagree on seqid: the higher one is current");
+            }
+        } else {
+            warning("no room for the secondary LUKS2 header: the image is truncated");
+        }
+    } else {
+        error("unsupported LUKS version:", tostring(version, 10));
+    }
+}
