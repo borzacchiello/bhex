@@ -373,6 +373,32 @@ int TEST(graph_merges_contiguous_code_chunks)(void)
     return ok ? TEST_SUCCEEDED : TEST_FAILED;
 }
 
+// A region that is not a whole number of chunks ends with a short one, and the
+// range it belongs to has to end at the data rather than one full chunk past
+// it -- otherwise the prediction for that range reads off the end of the file
+// and the whole graph fails. Every other graph test uses an exact multiple of
+// the chunk size, which is what let this through.
+int TEST(graph_range_ends_at_partial_last_chunk)(void)
+{
+    enum { CHUNK = 1024, TAIL = 448 };
+    u8_t  buffer[CHUNK * 2 + TAIL];
+    char* out = NULL;
+    int   ok;
+
+    fill_repeating(buffer, sizeof(buffer), snippet_x64, sizeof(snippet_x64));
+
+    ok = run_command_capture_output("ii/g", buffer, sizeof(buffer), &out);
+    if (!ok)
+        return TEST_FAILED;
+
+    /* 2 * 1024 + 448 == 0x9c0, the size of the buffer */
+    ok = strstr(out, "ERROR") == NULL &&
+         strstr(out, "0x00000000000009c0)") != NULL;
+
+    bhex_free(out);
+    return ok ? TEST_SUCCEEDED : TEST_FAILED;
+}
+
 int TEST(dataset_baseline)(void)
 {
     static const IsaBaseline baselines[] = {

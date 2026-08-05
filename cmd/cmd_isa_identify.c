@@ -548,15 +548,24 @@ static int isa_identifycmd_exec_graph(IsaIdentifyCmdCtx* ctx, FileBuffer* fb,
 
     /* --- Pass 3: print contiguous ranges --- */
     for (i = 0; i < num_chunks; ++i) {
-        off = start + i * (u64_t)BINEXEC_CHUNK_SIZE;
+        /* The last chunk is short whenever the analyzed region is not a whole
+         * number of chunks, exactly as pass 1 read it. Growing the range by a
+         * full chunk regardless would end it past the data and make the
+         * prediction read off the end of the file. */
+        u64_t chunk_end;
+
+        off       = start + i * (u64_t)BINEXEC_CHUNK_SIZE;
+        chunk_end = off + (u64_t)BINEXEC_CHUNK_SIZE;
+        if (chunk_end > end)
+            chunk_end = end;
 
         if (!have_range) {
             have_range   = 1;
             current_type = chunks[i].contains_code;
             range_start  = off;
-            range_end    = off + (u64_t)BINEXEC_CHUNK_SIZE;
+            range_end    = chunk_end;
         } else if (chunks[i].contains_code == current_type) {
-            range_end += (u64_t)BINEXEC_CHUNK_SIZE;
+            range_end = chunk_end;
         } else {
             if (current_type != 0) {
                 rc = print_code_range(ctx, fb, range_start, range_end);
@@ -568,7 +577,7 @@ static int isa_identifycmd_exec_graph(IsaIdentifyCmdCtx* ctx, FileBuffer* fb,
             }
             current_type = chunks[i].contains_code;
             range_start  = off;
-            range_end    = off + (u64_t)BINEXEC_CHUNK_SIZE;
+            range_end    = chunk_end;
         }
     }
 
