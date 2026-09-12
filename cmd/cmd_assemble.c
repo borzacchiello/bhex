@@ -131,6 +131,7 @@ static int do_assemble(int arch, const char* code_str, u8_t** code,
     size_t count;
     if (ks_asm(ks, code_str, 0, &encode, &size, &count) != KS_ERR_OK) {
         error("ks_asm() failed & count = %lu, error = %u", count, ks_errno(ks));
+        ks_close(ks);
         return 0;
     }
 
