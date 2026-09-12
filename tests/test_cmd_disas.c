@@ -960,14 +960,12 @@ end:
 // "ds <arch>" with no count runs to the end of the function. What that means
 // is one thing per architecture, see common/disassemble
 
-// Runs the command on `bytes` and gives back what it printed, for the caller
-// to free, or NULL when the command failed
-__attribute__((unused)) static char*
-disas_until_return(const char* arch, const u8_t* bytes, size_t size)
+// Runs `cmd` on `bytes` and gives back what it printed, for the caller to
+// free, or NULL when the command failed
+__attribute__((unused)) static char* disas_on(const char* cmd,
+                                              const u8_t* bytes, size_t size)
 {
     DummyFilebuffer* tfb = dummyfilebuffer_create(bytes, size);
-    char             cmd[64];
-    snprintf(cmd, sizeof(cmd), "ds %s", arch);
 
     char* out = NULL;
     if (exec_commands_on(cmd, tfb) == 0)
@@ -975,6 +973,14 @@ disas_until_return(const char* arch, const u8_t* bytes, size_t size)
 
     dummyfilebuffer_destroy(tfb);
     return out;
+}
+
+__attribute__((unused)) static char*
+disas_until_return(const char* arch, const u8_t* bytes, size_t size)
+{
+    char cmd[64];
+    snprintf(cmd, sizeof(cmd), "ds %s", arch);
+    return disas_on(cmd, bytes, size);
 }
 
 // the rows of a listing: every one of them starts with the address
@@ -1183,6 +1189,122 @@ int TEST(arm32_conditional_return_is_not_the_end)(void)
     const u8_t bytes[] = {0x1e, 0xff, 0x2f, 0x01, 0x00, 0xf0, 0x20, 0xe3,
                           0x1e, 0xff, 0x2f, 0xe1, 0x00, 0xf0, 0x20, 0xe3};
     return until_return_is("arm32", bytes, sizeof(bytes), 3, "bxeq");
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+// An operand counted from the program counter is printed as the offset it
+// carries: the address it resolves to is added as a comment
+
+__attribute__((unused)) static int resolves_to(const char* cmd,
+                                               const u8_t* bytes, size_t size,
+                                               const char* comment)
+{
+    char* out = disas_on(cmd, bytes, size);
+    int   r   = out != NULL && strstr(out, comment) != NULL;
+    bhex_free(out);
+    return r ? TEST_SUCCEEDED : TEST_FAILED;
+}
+
+int TEST(x64_rip_relative_is_resolved)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // "lea rdi, [rip + 0x10]", seven bytes long: rip is worth the address of
+    // the instruction that follows, so the operand lands at 0x7 + 0x10
+    const u8_t bytes[] = {0x48, 0x8d, 0x3d, 0x10, 0x00, 0x00, 0x00, 0xc3};
+    return resolves_to("ds x64 1", bytes, sizeof(bytes),
+                       "[rip + 0x10] ; 0x00000017");
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(x64_rip_relative_follows_the_base_address)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // the same instruction under a base address: what is resolved is the
+    // address the listing prints, not the offset into the file
+    const u8_t bytes[] = {0x48, 0x8d, 0x3d, 0x10, 0x00, 0x00, 0x00, 0xc3};
+    return resolves_to("sb 0x400000; ds x64 1", bytes, sizeof(bytes),
+                       "[rip + 0x10] ; 0x00400017");
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(x64_without_rip_gets_no_comment)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // "mov eax, dword ptr [rbx + 0x10]" reaches its data through a register:
+    // there is nothing to resolve
+    const u8_t bytes[] = {0x8b, 0x43, 0x10, 0xc3};
+    char*      out     = disas_on("ds x64 1", bytes, sizeof(bytes));
+    int        r       = out != NULL && strstr(out, ";") == NULL;
+    bhex_free(out);
+    return r ? TEST_SUCCEEDED : TEST_FAILED;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(arm32_literal_pool_is_resolved)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // "ldr r0, [pc, #8]" then "add r0, pc, #8": in arm mode the program
+    // counter runs two instructions ahead, so 0x0 + 8 + 8 and 0x4 + 8 + 8
+    const u8_t bytes[] = {0x08, 0x00, 0x9f, 0xe5, 0x08, 0x00, 0x8f, 0xe2};
+    char*      out     = disas_on("ds arm32 2", bytes, sizeof(bytes));
+    int r = out != NULL && strstr(out, "[pc, #8] ; 0x00000010") != NULL &&
+            strstr(out, "r0, pc, #8 ; 0x00000014") != NULL;
+    bhex_free(out);
+    return r ? TEST_SUCCEEDED : TEST_FAILED;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(arm32_thumb_literal_pool_is_resolved)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // the same two in thumb mode, where the program counter runs one
+    // instruction ahead and is rounded down to a word first: the "adr" at
+    // 0x2 counts from 0x4, not from 0x6
+    const u8_t bytes[] = {0x02, 0x48, 0x02, 0xa0};
+    char*      out     = disas_on("ds arm32-thumb 2", bytes, sizeof(bytes));
+    int r = out != NULL && strstr(out, "[pc, #8] ; 0x0000000c") != NULL &&
+            strstr(out, "adr     r0, #8 ; 0x0000000c") != NULL;
+    bhex_free(out);
+    return r ? TEST_SUCCEEDED : TEST_FAILED;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(riscv64_auipc_is_resolved)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // "auipc a0, 1" adds the immediate shifted twelve bits up to the address
+    // of the instruction itself
+    const u8_t bytes[] = {0x17, 0x15, 0x00, 0x00, 0x67, 0x80, 0x00, 0x00};
+    return resolves_to("ds riscv64 1", bytes, sizeof(bytes),
+                       "auipc   a0, 1 ; 0x00001000");
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(aarch64_resolves_its_own_addresses)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // capstone prints the address an "adrp" builds, so there is no comment to
+    // add to it
+    const u8_t bytes[] = {0x40, 0x00, 0x00, 0x90, 0xc0, 0x03, 0x5f, 0xd6};
+    char*      out     = disas_on("ds aarch64 1", bytes, sizeof(bytes));
+    int        r = out != NULL && strstr(out, "adrp") != NULL &&
+                   strstr(out, "0x8000") != NULL && strstr(out, ";") == NULL;
+    bhex_free(out);
+    return r ? TEST_SUCCEEDED : TEST_FAILED;
 #else
     return TEST_SKIPPED;
 #endif

@@ -61,4 +61,52 @@ int disas_arm_is_return(csh handle, const cs_insn* insn)
     }
 }
 
+// What the program counter is worth while `insn` runs: two instructions
+// ahead of it in arm mode, one in thumb mode -- and there rounded down to a
+// word, as that is what the literal loads and "adr" are counted from
+static u64_t arm_pc(cs_mode mode, const cs_insn* insn)
+{
+    if (mode & CS_MODE_THUMB)
+        return (insn->address + 4) & ~(u64_t)3;
+    return insn->address + 8;
+}
+
+// arm reaches its constants through the literal pool sitting in the middle of
+// the code: "ldr r0, [pc, #8]" and the "adr" that takes the address of it
+int disas_arm_pc_relative(cs_mode mode, csh handle, const cs_insn* insn,
+                          u64_t* out)
+{
+    (void)handle;
+
+    const cs_detail* d = insn->detail;
+    if (d == NULL)
+        return 0;
+
+    const cs_arm* arm = &d->arm;
+    for (int i = 0; i < arm->op_count; ++i) {
+        const cs_arm_op* o = &arm->operands[i];
+
+        // "ldr r0, [pc, #8]": the constant itself
+        if (o->type == ARM_OP_MEM && o->mem.base == ARM_REG_PC &&
+            o->mem.index == ARM_REG_INVALID) {
+            *out = arm_pc(mode, insn) + (u64_t)(s64_t)o->mem.disp;
+            return 1;
+        }
+
+        // "adr r0, #8", and the "add r0, pc, #8" it is written as in arm
+        // mode: the address of the constant rather than the constant
+        if (o->type == ARM_OP_IMM &&
+            (insn->id == ARM_INS_ADR ||
+             ((insn->id == ARM_INS_ADD || insn->id == ARM_INS_SUB) && i > 0 &&
+              arm->operands[i - 1].type == ARM_OP_REG &&
+              arm->operands[i - 1].reg == ARM_REG_PC))) {
+            u64_t pc = arm_pc(mode, insn);
+            *out     = insn->id == ARM_INS_SUB ? pc - (u64_t)o->imm
+                                               : pc + (u64_t)o->imm;
+            return 1;
+        }
+    }
+    return 0;
+}
+
 #endif

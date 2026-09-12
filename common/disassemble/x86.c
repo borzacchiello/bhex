@@ -24,4 +24,29 @@ int disas_x86_is_return(csh handle, const cs_insn* insn)
     }
 }
 
+// "[rip + 0xcd96b]", the way x86-64 code reaches its own data. The program
+// counter is worth the address of the *next* instruction while this one runs,
+// which is what the assembler counted the displacement from
+int disas_x86_pc_relative(csh handle, const cs_insn* insn, u64_t* out)
+{
+    (void)handle;
+
+    const cs_detail* d = insn->detail;
+    if (d == NULL)
+        return 0;
+
+    for (int i = 0; i < d->x86.op_count; ++i) {
+        const cs_x86_op* o = &d->x86.operands[i];
+        if (o->type != X86_OP_MEM)
+            continue;
+        // eip is the base of the same thing under an address-size override
+        if (o->mem.base != X86_REG_RIP && o->mem.base != X86_REG_EIP)
+            continue;
+
+        *out = insn->address + insn->size + (u64_t)o->mem.disp;
+        return 1;
+    }
+    return 0;
+}
+
 #endif

@@ -34,6 +34,24 @@ int disas_is_return(cs_arch arch, csh handle, const cs_insn* insn)
     }
 }
 
+int disas_pc_relative(cs_arch arch, cs_mode mode, csh handle,
+                      const cs_insn* insn, u64_t* out)
+{
+    switch (arch) {
+        case CS_ARCH_X86:
+            return disas_x86_pc_relative(handle, insn, out);
+        case CS_ARCH_ARM:
+            return disas_arm_pc_relative(mode, handle, insn, out);
+        case CS_ARCH_RISCV:
+            return disas_riscv_pc_relative(handle, insn, out);
+        default:
+            // aarch64, m68k and s390x print the resolved address themselves,
+            // and the rest (ppc, mips, sparc, alpha, bpf) reach their data
+            // through a register rather than through the program counter
+            return 0;
+    }
+}
+
 int disas_delay_slots(cs_arch arch)
 {
     // the instruction after a branch is executed before the branch is taken,

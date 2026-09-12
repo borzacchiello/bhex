@@ -286,7 +286,9 @@ static Color mnemonic_color(csh handle, const cs_insn* insn, int detail)
                                       CS_GRP_RET,  CS_GRP_INT,
                                       CS_GRP_IRET, CS_GRP_BRANCH_RELATIVE};
 
-    if (!detail || insn->detail == NULL)
+    // the details are always asked for now, so this is where the group
+    // lookups are skipped when nothing would be painted with them
+    if (!detail || insn->detail == NULL || !colors_enabled())
         return COLOR_MNEMONIC;
 
     for (size_t i = 0; i < sizeof(flow_groups) / sizeof(flow_groups[0]); ++i)
@@ -684,6 +686,7 @@ static const char* gutter_row(Gutter* g, size_t row, char* buf)
 typedef struct {
     csh     handle;
     cs_arch arch;
+    cs_mode mode;
     int     detail;
     int     arrows;
     size_t  mnemonic_width;
@@ -733,6 +736,14 @@ static void print_block(const DisasCtx* ctx, const cs_insn* insn, size_t nrows)
         if (insn[j].op_str[0] != '\0')
             display_printf("%*s%s", (int)(len < width ? width - len : 0) + 1,
                            "", insn[j].op_str);
+
+        // an operand counted from the program counter says nothing about
+        // where it lands: the address it resolves to is printed as a comment
+        u64_t target;
+        if (disas_pc_relative(ctx->arch, ctx->mode, ctx->handle, &insn[j],
+                              &target))
+            display_printf(" %s; 0x%08llx%s", color_str(COLOR_HEADER), target,
+                           color_str(COLOR_RESET));
         display_printf("\n");
     }
 
@@ -768,15 +779,15 @@ static int do_disas(int arch, FileBuffer* fb, u64_t nopcodes, int arrows)
         return COMMAND_INTERNAL_ERROR;
     }
 
-    // detail mode costs memory and time for every instruction: it is only
-    // asked for when it is of use, to color the control flow instructions and
-    // to know where the branches go
+    // the details are what the pc-relative operands are resolved from, what
+    // says where a branch goes and what tells a return from the rest, so
+    // every listing needs them
     int until_ret = nopcodes == DISAS_UNTIL_RETURN;
-    int detail    = (colors_enabled() || arrows || until_ret) &&
-                    cs_option(handle, CS_OPT_DETAIL, CS_OPT_ON) == CS_ERR_OK;
+    int detail    = cs_option(handle, CS_OPT_DETAIL, CS_OPT_ON) == CS_ERR_OK;
 
     DisasCtx ctx = {.handle         = handle,
                     .arch           = map_arch[arch].arch,
+                    .mode           = map_arch[arch].mode,
                     .detail         = detail,
                     .arrows         = arrows,
                     .mnemonic_width = MNEMONIC_MIN_WIDTH,

@@ -476,6 +476,22 @@ has a `ret`, arm writes the return address into the program counter, ppc branche
 register, mips and sparc jump through the register holding the return address and execute the
 instruction in the delay slot on the way out.
 
+An operand counted from the program counter -- x86's `[rip + 0xcd96b]`, the literal pools of
+arm, riscv's `auipc` -- is printed by capstone as the offset it carries, which says nothing about
+where it lands. The address it resolves to follows the instruction as a comment:
+
+```
+[0x0021110] $ ds x64 3
+0x00021110: f3 0f 1e fa           endbr64
+0x00021114: 85 ff                 test    edi, edi
+0x00021116: 8b 3d c0 03 10 00     mov     edi, dword ptr [rip + 0x1003c0] ; 0x001214dc
+```
+
+A base address set with `setbase` is part of it, as it is part of every other address of the
+listing. The architectures that resolve their own get no comment: capstone already prints the
+address an aarch64 `adrp`, an m68k `(pc)` operand or an s390x `larl` builds, and the target of a
+branch is always printed absolute.
+
 With `/a`, every branch whose target is disassembled too is drawn as a line going from the jump
 to the instruction it lands on, so that the loops and the early exits of a function can be seen
 without following the addresses by hand:
