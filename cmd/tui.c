@@ -243,8 +243,13 @@ int sw_end_line(ScreenWriter* sw)
     if (sw->curr_row >= sw->rows)
         return 1;
 
-    size_t row_len = sw->cols - sw->curr_col;
-    char*  new     = bhex_realloc(sw->lines, sw->len + row_len + 2);
+    /* curr_col is only ever reset to zero or advanced by an amount sw_append
+     * has already clamped to the row, so it stays within cols. Saturate here
+     * anyway: cols and curr_col are ints, and a negative difference would
+     * wrap into a huge size_t and ask realloc for an impossible size. */
+    size_t row_len =
+        sw->curr_col < sw->cols ? (size_t)(sw->cols - sw->curr_col) : 0;
+    char* new = bhex_realloc(sw->lines, sw->len + row_len + 2);
 
     for (size_t i = 0; i < row_len; ++i)
         new[sw->len++] = ' ';
