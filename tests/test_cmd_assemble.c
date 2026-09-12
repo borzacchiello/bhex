@@ -225,3 +225,83 @@ end:
     return TEST_SKIPPED;
 #endif
 }
+
+int TEST(riscv64_forward_branch)(void)
+{
+#ifndef DISABLE_KEYSTONE
+    /*
+     * A branch to a label defined later in the same block leaves a fixup for
+     * the assembler to resolve. adjustFixupValue() used to run its range
+     * checks without braces, so the `return -1` was unconditional and every
+     * forward branch came out as FFFFFFFF.
+     * "nop" assembles to the 2-byte c.nop, so L sits at offset 6:
+     * beq a0, a1, 6 == 0x00b50363, little endian.
+     */
+    const char* expected = "6303B500\n";
+
+    int r = TEST_FAILED;
+    if (exec_commands("as riscv64 \"beq a0, a1, L; nop; L: nop\" ; p/r 4 ; u") !=
+        0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    return r;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(riscv64_forward_jal)(void)
+{
+#ifndef DISABLE_KEYSTONE
+    /* Same unconditional-return bug in the jal fixup case.
+     * jal ra, 6 == 0x006000ef, little endian. */
+    const char* expected = "EF006000\n";
+
+    int r = TEST_FAILED;
+    if (exec_commands("as riscv64 \"jal L; nop; L: nop\" ; p/r 4 ; u") != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    return r;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(riscv64_branch_out_of_range)(void)
+{
+#ifndef DISABLE_KEYSTONE
+    /*
+     * A conditional branch reaches +-4KiB. Beyond that the fixup is invalid,
+     * and keystone must say so: adjustFixupValue() took its error out-param
+     * by value, so KS_ERR_ASM_FIXUP_INVALID never reached the caller and
+     * ks_asm() reported success while handing back garbage bytes.
+     */
+    /* 161 == KS_ERR_ASM_FIXUP_INVALID */
+    const char* expected =
+        "[  ERROR  ] ks_asm() failed & count = X, error = 161\n";
+
+    int r = TEST_FAILED;
+    if (exec_commands(
+            "as riscv64 \"beq a0, a1, L; .space 5000; L: nop\"") == 0)
+        goto end;
+
+    char* out = strbuilder_reset(err_sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    return r;
+#else
+    return TEST_SKIPPED;
+#endif
+}
