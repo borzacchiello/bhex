@@ -99,7 +99,7 @@ bhex -2nc "e 16"                 file   # entropy graph, 16 rows
 bhex -2nc 'hh sha256; cr "*"'    file   # a hash, then every known CRC
 bhex -2nc "t png"                file   # decode with a shipped template (t/l lists them)
 bhex -2nc "ds x64 20"            file   # disassemble 20 instructions at the cursor
-bhex -2nc "ds/a m68k 40"         file   # ... with the branches drawn as arrows
+bhex -2nc "ds x64"               file   # ... or the whole function, up to its "ret"
 ```
 
 `src` scans the **whole file** regardless of the current offset (it is multithreaded, so match

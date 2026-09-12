@@ -464,8 +464,17 @@ disas: disassemble code at current offset
          target that is not part of the listing
 
   arch:   the architecture to use
-  nbytes: number of opcodes to disassemble (default: 8)
+  nbytes: number of opcodes to disassemble (default: up to the
+          instruction that returns)
 ```
+
+With no count, the listing is the function at the current offset: it ends with the first
+instruction that gives control back to the caller, or with the file (or with the first bytes that
+decode to nothing) when there is none. What a return looks like is one thing per architecture and
+capstone is of little help there, so each of them has its own answer in `common/disassemble`: x86
+has a `ret`, arm writes the return address into the program counter, ppc branches to the link
+register, mips and sparc jump through the register holding the return address and execute the
+instruction in the delay slot on the way out.
 
 With `/a`, every branch whose target is disassembled too is drawn as a line going from the jump
 to the instruction it lands on, so that the loops and the early exits of a function can be seen

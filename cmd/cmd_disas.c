@@ -5,6 +5,7 @@
 #include "cmd_arg_handler.h"
 #include "cmd_disas.h"
 
+#include <disassemble/disassemble.h>
 #include <util/byte_to_num.h>
 #include <util/byte_to_str.h>
 #include <display.h>
@@ -19,7 +20,10 @@
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 
-#define DEFAULT_DISAS_OPCODES 8
+// with no count given the listing runs to the end of the function: to the
+// first instruction that returns, or to the end of the file (or of what can
+// be decoded) when there is none
+#define DISAS_UNTIL_RETURN ((u64_t) - 1)
 
 // the longest instruction of the supported architectures (x86 tops out at 15
 // bytes), used to size the window read for a given number of opcodes
@@ -222,9 +226,9 @@ static void disascmd_help(void* obj)
         "         target that is not part of the listing\n"
         "\n"
         "  arch:   the architecture to use\n"
-        "  nbytes: number of opcodes to disassemble (default: %d)\n",
-        marks[MARK_FROM], marks[MARK_TO], marks[MARK_DOWN], marks[MARK_UP],
-        DEFAULT_DISAS_OPCODES);
+        "  nbytes: number of opcodes to disassemble (default: up to the\n"
+        "          instruction that returns)\n",
+        marks[MARK_FROM], marks[MARK_TO], marks[MARK_DOWN], marks[MARK_UP]);
 }
 
 static void disascmd_dispose(void* obj) { (void)obj; }
@@ -686,6 +690,18 @@ typedef struct {
     int     fixed_gutter;
 } DisasCtx;
 
+// The row a listing that runs to the end of the function stops at: the index
+// of the first instruction that returns, or `nrows` when this block holds
+// none
+static size_t first_return(const DisasCtx* ctx, const cs_insn* insn,
+                           size_t nrows)
+{
+    for (size_t i = 0; i < nrows; ++i)
+        if (disas_is_return(ctx->arch, ctx->handle, &insn[i]))
+            return i;
+    return nrows;
+}
+
 static void print_block(const DisasCtx* ctx, const cs_insn* insn, size_t nrows)
 {
     Gutter gutter;
@@ -736,7 +752,12 @@ static void print_block(const DisasCtx* ctx, const cs_insn* insn, size_t nrows)
 //
 // What a block does not see is the rest of the listing, which is what "/a"
 // costs here: a branch is drawn as a line only when its target is part of the
-// same block, and gets the marker of its direction when it is not
+// same block, and gets the marker of its direction when it is not.
+//
+// `nopcodes` of DISAS_UNTIL_RETURN asks for the function rather than for a
+// number of rows: the listing then ends with the first instruction that gives
+// control back to the caller, which is one thing per architecture (see
+// common/disassemble)
 static int do_disas(int arch, FileBuffer* fb, u64_t nopcodes, int arrows)
 {
     csh handle;
@@ -750,8 +771,9 @@ static int do_disas(int arch, FileBuffer* fb, u64_t nopcodes, int arrows)
     // detail mode costs memory and time for every instruction: it is only
     // asked for when it is of use, to color the control flow instructions and
     // to know where the branches go
-    int detail = (colors_enabled() || arrows) &&
-                 cs_option(handle, CS_OPT_DETAIL, CS_OPT_ON) == CS_ERR_OK;
+    int until_ret = nopcodes == DISAS_UNTIL_RETURN;
+    int detail    = (colors_enabled() || arrows || until_ret) &&
+                    cs_option(handle, CS_OPT_DETAIL, CS_OPT_ON) == CS_ERR_OK;
 
     DisasCtx ctx = {.handle         = handle,
                     .arch           = map_arch[arch].arch,
@@ -763,6 +785,8 @@ static int do_disas(int arch, FileBuffer* fb, u64_t nopcodes, int arrows)
     int   r       = COMMAND_OK;
     u64_t off     = fb->off;
     u64_t printed = 0;
+    // rows left to print once the return was found, zero while it was not
+    size_t tail = 0;
 
     while (printed < nopcodes && off < fb->size) {
         u64_t remaining = nopcodes - printed;
@@ -796,12 +820,28 @@ static int do_disas(int arch, FileBuffer* fb, u64_t nopcodes, int arrows)
         int    is_last = off + size >= fb->size;
         size_t usable  = (!is_last && count > 1) ? count - 1 : count;
         size_t nrows   = min(usable, remaining);
+        int    done    = 0;
+
+        if (until_ret) {
+            if (tail == 0) {
+                size_t i = first_return(&ctx, insn, nrows);
+                if (i < nrows)
+                    // the return, and what its delay slot still owes it: the
+                    // slot can fall in the next block, hence the counter
+                    tail = i + 1 + disas_delay_slots(ctx.arch);
+            }
+            if (tail != 0) {
+                nrows = min(nrows, tail);
+                tail -= nrows;
+                done = tail == 0;
+            }
+        }
 
         if (printed == 0) {
             ctx.mnemonic_width = mnemonic_width(insn, nrows);
             // a listing that fits in one block is printed as it always was:
             // the gutter is the one the listing needs, no wider
-            ctx.fixed_gutter = !is_last && nrows < remaining;
+            ctx.fixed_gutter = !done && !is_last && nrows < remaining;
         }
 
         print_block(&ctx, insn, nrows);
@@ -809,6 +849,9 @@ static int do_disas(int arch, FileBuffer* fb, u64_t nopcodes, int arrows)
         printed += nrows;
         off = insn[nrows - 1].address + insn[nrows - 1].size - fb->base_addr;
         cs_free(insn, count);
+
+        if (done)
+            break;
     }
 
     cs_close(&handle);
@@ -848,7 +891,7 @@ static int disascmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
         return COMMAND_INVALID_ARG;
 
     int         arch     = 0;
-    u64_t       nopcodes = DEFAULT_DISAS_OPCODES;
+    u64_t       nopcodes = DISAS_UNTIL_RETURN;
     const char* arch_str = (const char*)pc->args.head->data;
 
     if (!parse_arch(arch_str, &arch))
@@ -856,11 +899,11 @@ static int disascmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 
     if (pc->args.size == 2) {
         const char* size_str = (const char*)pc->args.head->next->data;
-        if (!str_to_uint64(size_str, &nopcodes))
+        if (!str_to_uint64(size_str, &nopcodes) || nopcodes == 0)
             return COMMAND_INVALID_ARG;
     }
 
-    if (nopcodes == 0 || fb->off >= fb->size)
+    if (fb->off >= fb->size)
         return COMMAND_INVALID_ARG;
 
     return do_disas(arch, fb, nopcodes, arrows == MOD_SET);

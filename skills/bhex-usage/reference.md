@@ -15,7 +15,7 @@ bhex [ options ] inputfile
   -2  --no_warning  disable warnings
   -n  --no_history  do not save command history
   -C  --no_color    do not use colors (--no-color is accepted too)
-  -U  --no_unicode  draw with ASCII only (the branch arrows of "ds/a")
+  -U  --no_unicode  draw with ASCII only
   -c  "c1; c2; ..." run the commands and exit (mutually exclusive with -s)
   -s  --script      read one command per line from stdin
 ```
@@ -30,10 +30,6 @@ names of `hh`/`cs`/`cr`, disassembly -- where jumps, calls and returns are paint
 other mnemonics -- and the entropy graph, by band) only when the
 standard output is a terminal and `NO_COLOR` is unset: a pipe or a redirect already yields plain
 text, `-C` covers the remaining case. `df/n` and `tui/n` remain as per-command overrides.
-
-The box drawing characters of the `ds/a` arrows are used only when `LC_ALL`/`LC_CTYPE`/`LANG`
-name a UTF-8 locale and `TERM` is not `dumb`; `-U` forces the ASCII drawings. Unlike the colors,
-this does not depend on the output being a terminal: a redirected listing keeps its arrows.
 
 Exit code is 1 only for those startup failures (bad command line, missing/unopenable input file);
 once the file is open, every command error still exits 0.
@@ -70,7 +66,7 @@ Modifiers are alternatives within `{}`, independent otherwise. All offsets/sizes
 | delete | `d` | `d [<nbytes>]` | omitted = to EOF |
 | undo | `u` | `u[/a]` | `a` undo everything |
 | commit | `c` | `c[/l]` | `l` lists pending changes without writing; the bytes are colored like a diff (green added, red removed) |
-| disas | `ds` | `ds[/l\|/a] <arch> [<n>]` | Capstone; `n` = instruction count (8); control flow instructions are highlighted; `a` draws the branches as arrows left of the mnemonics (`◂` jump, `▸` target, `▾`/`▴` target outside the listing), up to 5 nested ones; ASCII (`<`, `>`, `v`, `^`) without a UTF-8 locale or with `-U`; `n` is unbounded, the listing being printed one 4096 bytes block at a time, and the arrows only join a branch and its target when both fall in the same block |
+| disas | `ds` | `ds[/l] <arch> [<n>]` | Capstone; `l` lists the architectures; `n` = instruction count, unbounded (the listing is read and printed one 4096 bytes block at a time); with no `n` the listing is the function at the cursor, ending at the first instruction that returns (per architecture: `ret`, `blr`, `jr $ra` + its delay slot, a write of the return address into the program counter, ...), or at the end of the file or the first bytes that decode to nothing (printed as `invalid`); control flow instructions are highlighted |
 | assemble | `as` | `as[/l/i/s] <arch> '<code>'` | Keystone; writes at the cursor, `i` insert, `s` seek to the end |
 | isa_identify | `ii` | `ii[/g] [<size>]` | bundled models; `g` = per-1024-byte-chunk code ranges; the confidence is colored by band |
 | findbase | `fba` | `fba[/{32,64}/{le,be}]` | binbloom base-address guess for raw firmware; the certainty of the guess is colored |

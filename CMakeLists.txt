@@ -118,7 +118,19 @@ set(common_src
     common/ml/model_locator.c
     common/ml/isadetect_features.c
     common/ml/isadetect.c
-    common/ml/binexec.c)
+    common/ml/binexec.c
+    common/disassemble/disassemble.c
+    common/disassemble/x86.c
+    common/disassemble/arm.c
+    common/disassemble/aarch64.c
+    common/disassemble/mips.c
+    common/disassemble/ppc.c
+    common/disassemble/m68k.c
+    common/disassemble/alpha.c
+    common/disassemble/riscv.c
+    common/disassemble/systemz.c
+    common/disassemble/sparc.c
+    common/disassemble/bpf.c)
 
 set(command_src
     cmd/cmd_arg_handler.c

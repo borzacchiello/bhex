@@ -956,3 +956,234 @@ end:
     return TEST_SKIPPED;
 #endif
 }
+
+// "ds <arch>" with no count runs to the end of the function. What that means
+// is one thing per architecture, see common/disassemble
+
+// Runs the command on `bytes` and gives back what it printed, for the caller
+// to free, or NULL when the command failed
+__attribute__((unused)) static char*
+disas_until_return(const char* arch, const u8_t* bytes, size_t size)
+{
+    DummyFilebuffer* tfb = dummyfilebuffer_create(bytes, size);
+    char             cmd[64];
+    snprintf(cmd, sizeof(cmd), "ds %s", arch);
+
+    char* out = NULL;
+    if (exec_commands_on(cmd, tfb) == 0)
+        out = strbuilder_reset(sb);
+
+    dummyfilebuffer_destroy(tfb);
+    return out;
+}
+
+// the rows of a listing: every one of them starts with the address
+__attribute__((unused)) static size_t count_rows(const char* out)
+{
+    size_t n = strncmp(out, "0x", 2) == 0 ? 1 : 0;
+    return n + count_occurrences(out, "\n0x");
+}
+
+__attribute__((unused)) static int until_return_is(const char* arch,
+                                                   const u8_t* bytes,
+                                                   size_t size, size_t rows,
+                                                   const char* last)
+{
+    char* out = disas_until_return(arch, bytes, size);
+    int   r   = out != NULL && count_rows(out) == rows &&
+                strstr(out, last) != NULL && strstr(out, "invalid") == NULL;
+    bhex_free(out);
+    return r ? TEST_SUCCEEDED : TEST_FAILED;
+}
+
+int TEST(x64_until_return)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // two nops, a ret, and instructions that are not part of the function
+    const u8_t bytes[] = {0x90, 0x90, 0xc3, 0x90, 0x90, 0x90, 0x90};
+    return until_return_is("x64", bytes, sizeof(bytes), 3, "ret");
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(m68k_until_return)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // nop, rts
+    const u8_t bytes[] = {0x4e, 0x71, 0x4e, 0x75, 0x4e, 0x71, 0x4e, 0x71};
+    return until_return_is("m68k", bytes, sizeof(bytes), 2, "rts");
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(ppc32_until_return)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // "blr" is a "bclr" that capstone prints as its alias, so the mnemonic is
+    // what says the branch to the link register is the unconditional one
+    const u8_t bytes[] = {0x60, 0x00, 0x00, 0x00, 0x4e, 0x80, 0x00, 0x20,
+                          0x60, 0x00, 0x00, 0x00, 0x60, 0x00, 0x00, 0x00};
+    return until_return_is("ppc32", bytes, sizeof(bytes), 2, "blr");
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(mips32_until_return_takes_the_delay_slot)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // "jr $ra" is a return, and the instruction in its delay slot runs
+    // before it is taken: the listing ends with that one
+    const u8_t bytes[] = {0x00, 0x00, 0x00, 0x00, 0x03, 0xe0, 0x00, 0x08,
+                          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    return until_return_is("mips32", bytes, sizeof(bytes), 3, "jr");
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(mips32_jump_through_another_register_is_not_a_return)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // the same "jr", through $t9: a jump like any other, and the listing
+    // carries on to the end of the file
+    const u8_t bytes[] = {0x03, 0x20, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00,
+                          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    return until_return_is("mips32", bytes, sizeof(bytes), 4, "jr");
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(sparc_until_return_takes_the_delay_slot)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // "retl" is a "jmpl" printed as its alias, and it has a delay slot too
+    const u8_t bytes[] = {0x01, 0x00, 0x00, 0x00, 0x81, 0xc3, 0xe0, 0x08,
+                          0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00};
+    return until_return_is("sparc", bytes, sizeof(bytes), 3, "retl");
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(aarch64_until_return)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    const u8_t bytes[] = {0x1f, 0x20, 0x03, 0xd5, 0xc0, 0x03, 0x5f, 0xd6,
+                          0x1f, 0x20, 0x03, 0xd5, 0x1f, 0x20, 0x03, 0xd5};
+    return until_return_is("aarch64", bytes, sizeof(bytes), 2, "ret");
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(arm32_thumb_until_return)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // capstone puts a "bx lr" in its return group in arm mode but not in
+    // thumb mode, which is why the operand is looked at rather than the group
+    const u8_t bytes[] = {0x00, 0xbf, 0x70, 0x47, 0x00, 0xbf, 0x00, 0xbf};
+    return until_return_is("arm32-thumb", bytes, sizeof(bytes), 2, "bx");
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(arm32_until_return_pops_the_program_counter)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // "pop {r4, pc}": the epilogue that restores the registers and returns
+    const u8_t bytes[] = {0x00, 0xf0, 0x20, 0xe3, 0x10, 0x80, 0xbd, 0xe8,
+                          0x00, 0xf0, 0x20, 0xe3, 0x00, 0xf0, 0x20, 0xe3};
+    return until_return_is("arm32", bytes, sizeof(bytes), 2, "pop");
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(riscv64_until_return)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // riscv returns with a "jalr" that capstone prints as "ret"
+    const u8_t bytes[] = {0x13, 0x00, 0x00, 0x00, 0x67, 0x80, 0x00, 0x00,
+                          0x13, 0x00, 0x00, 0x00, 0x13, 0x00, 0x00, 0x00};
+    return until_return_is("riscv64", bytes, sizeof(bytes), 2, "ret");
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(s390x_until_return)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // a branch to %r14, the register holding the return address
+    const u8_t bytes[] = {0x07, 0xfe, 0x07, 0x07, 0x07, 0x07};
+    return until_return_is("s390x", bytes, sizeof(bytes), 1, "br");
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(alpha_until_return)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    const u8_t bytes[] = {0x01, 0x80, 0xfa, 0x6b, 0x00, 0x00,
+                          0xfe, 0x2f, 0x00, 0x00, 0xfe, 0x2f};
+    return until_return_is("alpha", bytes, sizeof(bytes), 1, "ret");
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(ebpf_until_return)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    const u8_t bytes[] = {0x95, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    return until_return_is("ebpf", bytes, sizeof(bytes), 1, "exit");
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(until_return_runs_to_the_end_of_the_file)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // no return anywhere: the listing ends with the file
+    const u8_t bytes[] = {0x90, 0x90, 0x90, 0x90};
+    return until_return_is("x64", bytes, sizeof(bytes), 4, "nop");
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(until_return_stops_at_an_invalid_instruction)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // ff ff decodes as nothing: the listing says so and stops
+    const u8_t bytes[] = {0x90, 0xff, 0xff, 0xff, 0xff};
+    char*      out     = disas_until_return("x64", bytes, sizeof(bytes));
+    int        r =
+        out != NULL && count_rows(out) == 1 && strstr(out, "invalid") != NULL;
+    bhex_free(out);
+    return r ? TEST_SUCCEEDED : TEST_FAILED;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(arm32_conditional_return_is_not_the_end)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // "bxeq lr" returns only when the condition holds, so the function goes
+    // on: the listing ends with the unconditional "bx lr" below it
+    const u8_t bytes[] = {0x1e, 0xff, 0x2f, 0x01, 0x00, 0xf0, 0x20, 0xe3,
+                          0x1e, 0xff, 0x2f, 0xe1, 0x00, 0xf0, 0x20, 0xe3};
+    return until_return_is("arm32", bytes, sizeof(bytes), 3, "bxeq");
+#else
+    return TEST_SKIPPED;
+#endif
+}
