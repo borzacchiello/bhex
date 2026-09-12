@@ -131,6 +131,53 @@ jobs:
           path: bhex-*
           retention-days: 7
 
+  build-cosmopolitan:
+    runs-on: ubuntu-24.04
+
+    env:
+      # cosmocc is pinned: an APE toolchain bump changes the shape of every
+      # binary we ship, so it should be a deliberate commit.
+      COSMOCC_VERSION: 4.0.2
+      COSMOCC_HOME: ${{ github.workspace }}/cosmocc
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: submodules
+        run: git submodule update --init
+
+      - name: dependencies
+        run: sudo apt-get update -y && sudo apt-get --assume-yes install python3 python3-dev python-is-python3 build-essential cmake unzip
+
+      - name: cosmocc toolchain
+        run: >
+          curl -fsSL -o /tmp/cosmocc.zip https://cosmo.zip/pub/cosmocc/cosmocc-${COSMOCC_VERSION}.zip &&
+          unzip -q /tmp/cosmocc.zip -d "$COSMOCC_HOME" &&
+          rm /tmp/cosmocc.zip
+
+      - name: build
+        run: >
+          mkdir release-cosmopolitan &&
+          cd release-cosmopolitan &&
+          cmake
+          -DCMAKE_TOOLCHAIN_FILE=../cmake/cosmopolitan.cmake
+          -DCMAKE_BUILD_TYPE=Release
+          -DPython_EXECUTABLE=$(which python3)
+          -DENABLE_CAPSTONE=on
+          -DENABLE_KEYSTONE=on
+          .. &&
+          make -j$(nproc)
+
+      - name: copy executable
+        run: cp release-cosmopolitan/bhex bhex.exe
+
+      - name: upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-cosmopolitan
+          path: bhex.exe
+          retention-days: 7
+
   package:
     runs-on: ubuntu-24.04
     steps:
@@ -149,7 +196,7 @@ jobs:
           retention-days: 7
 
   release:
-    needs: [ build, package ]
+    needs: [ build, build-cosmopolitan, package ]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -157,4 +204,4 @@ jobs:
       - uses: actions/download-artifact@v4
       - uses: ncipollo/release-action@v1
         with:
-          artifacts: "build-*/bhex-*"
+          artifacts: "build-*/bhex-*,build-cosmopolitan/bhex.exe"

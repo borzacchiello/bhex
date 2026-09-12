@@ -63,6 +63,22 @@ To enable fuzz test binaries, use "-DENABLE_FUZZ_TESTS=on".
 
 To statically link libc, use "-DSTATIC_BUILD=on".
 
+## Cosmopolitan build
+
+The [cosmocc](https://cosmo.zip/pub/cosmocc/) toolchain builds bhex as a single
+APE binary (`bhex.exe` in the releases) that runs on Linux, macOS, Windows,
+FreeBSD, OpenBSD and NetBSD, on both x86_64 and aarch64:
+
+```
+$ mkdir build_cosmopolitan
+$ cd build_cosmopolitan
+$ cmake -DCMAKE_TOOLCHAIN_FILE=../cmake/cosmopolitan.cmake -DCMAKE_BUILD_TYPE=Release ..
+$ make
+```
+
+The toolchain is located from "-DCOSMOCC_HOME=<dir>", the COSMOCC_HOME
+environment variable, or a cosmocc on PATH.
+
 # Command Format
 
 Every command has the following structure:
