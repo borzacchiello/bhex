@@ -278,6 +278,7 @@ enum PhdrType : u32
     PT_GNU_STACK    = 0x6474e551,
     PT_GNU_RELRO    = 0x6474e552,
     PT_GNU_PROPERTY = 0x6474e553,
+    PT_GNU_SFRAME   = 0x6474e554,
     PT_HIOS         = 0x6fffffff,
     PT_LOPROC       = 0x70000000,
     PT_HIPROC       = 0x7fffffff
@@ -333,6 +334,7 @@ enum ShdrType : u32
     SHT_PREINIT_ARRAY  = 16,
     SHT_GROUP          = 17,
     SHT_SYMTAB_SHNDX   = 18,
+    SHT_RELR           = 19,
     SHT_LOOS           = 0x60000000,
     SHT_LOSUNW         = 0x6ffffffa,
     SHT_SUNW_capchain  = 0x6fffffef,
