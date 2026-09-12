@@ -149,7 +149,7 @@ static const char* const marks_ascii[MARK_COUNT]   = {" ", "<", ">", "v", "^"};
 #define BPF_ARCH         21
 #define EBPF_ARCH        22
 
-#define HINT_STR "[/l|/a] <arch> [<nbytes>]"
+#define HINT_STR "[/l|/a/o] <arch> [<nbytes>]"
 
 typedef struct {
     cs_arch arch;
@@ -224,6 +224,7 @@ static void disascmd_help(void* obj)
         "     a:  draw the branches as arrows on the left of the mnemonics.\n"
         "         '%s' marks a jump, '%s' where it lands, '%s' and '%s' a\n"
         "         target that is not part of the listing\n"
+        "     o:  print the bytes of every instruction\n"
         "\n"
         "  arch:   the architecture to use\n"
         "  nbytes: number of opcodes to disassemble (default: up to the\n"
@@ -689,6 +690,7 @@ typedef struct {
     cs_mode mode;
     int     detail;
     int     arrows;
+    int     opcodes;
     size_t  mnemonic_width;
     int     fixed_gutter;
 } DisasCtx;
@@ -720,10 +722,11 @@ static void print_block(const DisasCtx* ctx, const cs_insn* insn, size_t nrows)
         Color  mnemonic = mnemonic_color(ctx->handle, &insn[j], ctx->detail);
         size_t len      = strlen(insn[j].mnemonic);
 
-        display_printf("%s0x%08llx:%s %s%s%s ", color_str(COLOR_ADDR),
-                       (u64_t)insn[j].address, color_str(COLOR_RESET),
-                       color_str(COLOR_HEADER), bytes_str(&insn[j], 21),
-                       color_str(COLOR_RESET));
+        display_printf("%s0x%08llx:%s ", color_str(COLOR_ADDR),
+                       (u64_t)insn[j].address, color_str(COLOR_RESET));
+        if (ctx->opcodes)
+            display_printf("%s%s%s ", color_str(COLOR_HEADER),
+                           bytes_str(&insn[j], 21), color_str(COLOR_RESET));
         if (gutter_width > 0)
             display_printf("%s%s%s ", color_str(COLOR_MNEMONIC_FLOW),
                            gutter_row(&gutter, j, gutter_buf),
@@ -769,7 +772,8 @@ static void print_block(const DisasCtx* ctx, const cs_insn* insn, size_t nrows)
 // number of rows: the listing then ends with the first instruction that gives
 // control back to the caller, which is one thing per architecture (see
 // common/disassemble)
-static int do_disas(int arch, FileBuffer* fb, u64_t nopcodes, int arrows)
+static int do_disas(int arch, FileBuffer* fb, u64_t nopcodes, int arrows,
+                    int opcodes)
 {
     csh handle;
     if (cs_open(map_arch[arch].arch, map_arch[arch].mode, &handle) !=
@@ -790,6 +794,7 @@ static int do_disas(int arch, FileBuffer* fb, u64_t nopcodes, int arrows)
                     .mode           = map_arch[arch].mode,
                     .detail         = detail,
                     .arrows         = arrows,
+                    .opcodes        = opcodes,
                     .mnemonic_width = MNEMONIC_MIN_WIDTH,
                     .fixed_gutter   = 0};
 
@@ -878,12 +883,13 @@ static int disascmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 
     int list_archs = MOD_UNSET;
     int arrows     = MOD_UNSET;
-    if (handle_mods(pc, "l|a", &list_archs, &arrows) != 0)
+    int opcodes    = MOD_UNSET;
+    if (handle_mods(pc, "l|a|o", &list_archs, &arrows, &opcodes) != 0)
         return COMMAND_INVALID_MOD;
 
     // listing the architectures and disassembling are two different things to
     // ask for: "ds/l/a" is a mistake, not a listing
-    if (list_archs == MOD_SET && arrows == MOD_SET)
+    if (list_archs == MOD_SET && (arrows == MOD_SET || opcodes == MOD_SET))
         return COMMAND_INVALID_MOD;
 
     if (list_archs == MOD_SET) {
@@ -917,7 +923,7 @@ static int disascmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     if (fb->off >= fb->size)
         return COMMAND_INVALID_ARG;
 
-    return do_disas(arch, fb, nopcodes, arrows == MOD_SET);
+    return do_disas(arch, fb, nopcodes, arrows == MOD_SET, opcodes == MOD_SET);
 }
 
 Cmd* disascmd_create(void)

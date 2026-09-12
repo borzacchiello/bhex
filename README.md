@@ -457,11 +457,12 @@ assemble: assemble code and write it at current offset
 
 disas: disassemble code at current offset
 
-  ds[/l|/a] <arch> [<nbytes>]
+  ds[/l|/a/o] <arch> [<nbytes>]
      l:  list supported architectures
      a:  draw the branches as arrows on the left of the mnemonics.
          '◂' marks a jump, '▸' where it lands, '▾' and '▴' a
          target that is not part of the listing
+     o:  print the bytes of every instruction
 
   arch:   the architecture to use
   nbytes: number of opcodes to disassemble (default: up to the
@@ -482,9 +483,9 @@ where it lands. The address it resolves to follows the instruction as a comment:
 
 ```
 [0x0021110] $ ds x64 3
-0x00021110: f3 0f 1e fa           endbr64
-0x00021114: 85 ff                 test    edi, edi
-0x00021116: 8b 3d c0 03 10 00     mov     edi, dword ptr [rip + 0x1003c0] ; 0x001214dc
+0x00021110: endbr64
+0x00021114: test    edi, edi
+0x00021116: mov     edi, dword ptr [rip + 0x1003c0] ; 0x001214dc
 ```
 
 A base address set with `setbase` is part of it, as it is part of every other address of the
@@ -492,12 +493,22 @@ listing. The architectures that resolve their own get no comment: capstone alrea
 address an aarch64 `adrp`, an m68k `(pc)` operand or an s390x `larl` builds, and the target of a
 branch is always printed absolute.
 
+With `/o` the bytes of every instruction are printed between the address and the mnemonic, the
+way a dump prints them:
+
+```
+[0x0021110] $ ds/o x64 3
+0x00021110: f3 0f 1e fa           endbr64
+0x00021114: 85 ff                 test    edi, edi
+0x00021116: 8b 3d c0 03 10 00     mov     edi, dword ptr [rip + 0x1003c0] ; 0x001214dc
+```
+
 With `/a`, every branch whose target is disassembled too is drawn as a line going from the jump
 to the instruction it lands on, so that the loops and the early exits of a function can be seen
 without following the addresses by hand:
 
 ```
-[0x0215800] $ ds/a m68k 40
+[0x0215800] $ ds/a/o m68k 40
 [...]
 0x00215832: 6e 08                    ╭◂ bgt.b   $21583c
 0x00215834: 20 3c ff ff fb b5        │  move.l  #$fffffbb5, d0

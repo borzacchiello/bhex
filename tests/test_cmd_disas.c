@@ -129,8 +129,7 @@ int TEST(x64_colors)(void)
     const u8_t       nop_bytes[] = {0x90, 0x90};
     DummyFilebuffer* tfb = dummyfilebuffer_create(nop_bytes, sizeof(nop_bytes));
     const char*      expected =
-        c_addr "0x00000000:" c_off " " c_dim "90                   " c_off
-               " " c_mnem "nop" c_off "\n";
+        c_addr "0x00000000:" c_off " " c_mnem "nop" c_off "\n";
 
     // the colors are off by default in the tests, as they are whenever the
     // output is not a terminal
@@ -563,10 +562,10 @@ int TEST(x64_no_arrows_without_mod)(void)
     // that has one keeps printing what it always did
     const u8_t       bytes[]  = {0xeb, 0x02, 0x90, 0x90, 0x90, 0x90};
     DummyFilebuffer* tfb      = dummyfilebuffer_create(bytes, sizeof(bytes));
-    const char*      expected = "0x00000000: eb 02                 jmp     4\n"
-                                "0x00000002: 90                    nop\n"
-                                "0x00000003: 90                    nop\n"
-                                "0x00000004: 90                    nop\n";
+    const char*      expected = "0x00000000: jmp     4\n"
+                                "0x00000002: nop\n"
+                                "0x00000003: nop\n"
+                                "0x00000004: nop\n";
 
     int r = TEST_FAILED;
     if (exec_commands_on("ds x64 4", tfb) != 0)
@@ -1303,6 +1302,64 @@ int TEST(aarch64_resolves_its_own_addresses)(void)
     char*      out     = disas_on("ds aarch64 1", bytes, sizeof(bytes));
     int        r = out != NULL && strstr(out, "adrp") != NULL &&
                    strstr(out, "0x8000") != NULL && strstr(out, ";") == NULL;
+    bhex_free(out);
+    return r ? TEST_SUCCEEDED : TEST_FAILED;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(x64_opcodes_mod)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // "/o" puts the bytes of every instruction back between the address and
+    // the mnemonic, painted like the other dumps
+    const u8_t       nop_bytes[] = {0x90, 0x90};
+    DummyFilebuffer* tfb = dummyfilebuffer_create(nop_bytes, sizeof(nop_bytes));
+    const char*      expected =
+        c_addr "0x00000000:" c_off " " c_dim "90                   " c_off
+               " " c_mnem "nop" c_off "\n";
+
+    colors_set_enabled(1);
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("ds/o x64 1", tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = strcmp(out, expected) == 0 ? TEST_SUCCEEDED : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    colors_set_enabled(0);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(opcodes_and_arch_list_do_not_go_together)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // "/l" lists the architectures, it disassembles nothing: asking it for
+    // the opcode bytes is a mistake, not a listing
+    return exec_commands("ds/l/o") != 0;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(x64_opcodes_with_arrows)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // the two modifiers are independent: the gutter goes between the bytes
+    // and the mnemonics, where it always was
+    const u8_t bytes[] = {0xeb, 0x02, 0x90, 0x90, 0x90, 0x90};
+    char*      out     = disas_on("ds/a/o x64 4", bytes, sizeof(bytes));
+    int r = out != NULL &&
+            strstr(out, "0x00000000: eb 02                 /< jmp") != NULL &&
+            strstr(out, "0x00000004: 90                    \\> nop") != NULL;
     bhex_free(out);
     return r ? TEST_SUCCEEDED : TEST_FAILED;
 #else
