@@ -70,7 +70,7 @@ Modifiers are alternatives within `{}`, independent otherwise. All offsets/sizes
 | delete | `d` | `d [<nbytes>]` | omitted = to EOF |
 | undo | `u` | `u[/a]` | `a` undo everything |
 | commit | `c` | `c[/l]` | `l` lists pending changes without writing; the bytes are colored like a diff (green added, red removed) |
-| disas | `ds` | `ds[/l\|/a] <arch> [<n>]` | Capstone; `n` = instruction count (8); control flow instructions are highlighted; `a` draws the branches as arrows left of the mnemonics (`◂` jump, `▸` target, `▾`/`▴` target outside the listing), up to 5 nested ones; ASCII (`<`, `>`, `v`, `^`) without a UTF-8 locale or with `-U` |
+| disas | `ds` | `ds[/l\|/a] <arch> [<n>]` | Capstone; `n` = instruction count (8); control flow instructions are highlighted; `a` draws the branches as arrows left of the mnemonics (`◂` jump, `▸` target, `▾`/`▴` target outside the listing), up to 5 nested ones; ASCII (`<`, `>`, `v`, `^`) without a UTF-8 locale or with `-U`; `n` is unbounded, the listing being printed one 4096 bytes block at a time, and the arrows only join a branch and its target when both fall in the same block |
 | assemble | `as` | `as[/l/i/s] <arch> '<code>'` | Keystone; writes at the cursor, `i` insert, `s` seek to the end |
 | isa_identify | `ii` | `ii[/g] [<size>]` | bundled models; `g` = per-1024-byte-chunk code ranges; the confidence is colored by band |
 | findbase | `fba` | `fba[/{32,64}/{le,be}]` | binbloom base-address guess for raw firmware; the certainty of the guess is colored |

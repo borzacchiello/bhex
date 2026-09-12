@@ -495,6 +495,12 @@ several branches land on the same instruction the lines join, as they do on the 
 The arrows need the branch targets that capstone reports for the architecture: bpf and ebpf get
 none, as capstone does not tell their jumps apart from the rest.
 
+There is no limit to the number of opcodes that can be asked for: a listing is read, disassembled
+and printed one 4096 bytes block at a time, so a long one costs no more memory than a short one
+and starts printing right away. The arrows are drawn one block at a time as well, which is what a
+long listing costs: a branch is joined to its target only when the two fall in the same block, and
+is marked with `▾` or `▴` when they do not.
+
 The drawings need a UTF-8 locale, which is looked up in `LC_ALL`, `LC_CTYPE` and `LANG`. Any
 other locale, a `TERM` of `dumb`, or `-U` on the command line, and the same arrows are drawn
 with ASCII instead:

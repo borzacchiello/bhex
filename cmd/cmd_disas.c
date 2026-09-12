@@ -21,6 +21,10 @@
 
 #define DEFAULT_DISAS_OPCODES 8
 
+// the longest instruction of the supported architectures (x86 tops out at 15
+// bytes), used to size the window read for a given number of opcodes
+#define MAX_INSN_SIZE 16
+
 // Branch arrows ("/a"): the gutter drawn between the opcode bytes and the
 // mnemonic, where every branch whose target is printed too becomes a line
 // going from the jump to the instruction it lands on.
@@ -33,9 +37,10 @@
 // the lanes, the column of the direction markers, the column of the heads
 #define MAX_GUTTER (MAX_ARROW_LANES + 2)
 // how many branches can be given a lane: assigning them costs
-// O(branches * MAX_ARROWS), and the cap sizes the scratch array. A listing
-// cannot hold more branches than this today (fb_read stops at 4096 bytes), so
-// this only guards against that limit being raised
+// O(branches * MAX_ARROWS), and the cap sizes the scratch array. The arrows
+// are drawn one block at a time (see do_disas), and a block holds at most
+// fb_block_size bytes of code, so this is only reached by a block made of
+// very short branches
 #define MAX_ARROWS 1024
 
 // The lines of the gutter are drawn cell by cell, a cell being one column of
@@ -603,9 +608,14 @@ static void gutter_dispose(Gutter* g)
 }
 
 // Returns the width of the gutter, zero when the listing holds no branch: a
-// listing of straight line code is then printed exactly as it is without "/a"
+// listing of straight line code is then printed exactly as it is without "/a".
+//
+// `fixed` asks for the whole gutter (every lane, plus the column of the
+// markers) whatever this block happens to hold: a listing printed block by
+// block would otherwise have its mnemonics move sideways from one block to
+// the next, as the number of lanes in use changes
 static size_t gutter_init(Gutter* g, csh handle, cs_arch arch,
-                          const cs_insn* insn, size_t nrows)
+                          const cs_insn* insn, size_t nrows, int fixed)
 {
     memset(g, 0, sizeof(*g));
     if (nrows == 0)
@@ -613,17 +623,22 @@ static size_t gutter_init(Gutter* g, csh handle, cs_arch arch,
 
     g->arrows  = bhex_malloc(nrows * sizeof(Arrow));
     g->narrows = collect_arrows(handle, arch, insn, nrows, g->arrows);
-    if (g->narrows == 0) {
+    if (g->narrows == 0 && !fixed) {
         gutter_dispose(g);
         return 0;
     }
 
     int markers = 0;
     assign_lanes(g->arrows, g->narrows, &g->nlanes, &markers);
-    g->width = g->nlanes + (markers ? 1 : 0) + 1;
+    if (fixed) {
+        g->nlanes = MAX_ARROW_LANES;
+        g->width  = MAX_GUTTER;
+    } else {
+        g->width = g->nlanes + (markers ? 1 : 0) + 1;
+    }
 
     g->row_first  = bhex_malloc(nrows * sizeof(size_t));
-    g->next       = bhex_malloc(g->narrows * sizeof(size_t));
+    g->next       = bhex_malloc((g->narrows ? g->narrows : 1) * sizeof(size_t));
     g->row_marker = bhex_calloc(nrows * sizeof(ArrowMark));
     for (size_t r = 0; r < nrows; ++r)
         g->row_first[r] = NO_ARROW;
@@ -660,18 +675,76 @@ static const char* gutter_row(Gutter* g, size_t row, char* buf)
     return r;
 }
 
-static void do_disas(int arch, u64_t addr, const u8_t* code, size_t code_size,
-                     u64_t nopcodes, int arrows)
-{
-    csh      handle;
-    cs_insn* insn;
-    size_t   count;
+// What has to stay the same from the first row of a listing to the last, and
+// is therefore decided once rather than per block (see do_disas)
+typedef struct {
+    csh     handle;
+    cs_arch arch;
+    int     detail;
+    int     arrows;
+    size_t  mnemonic_width;
+    int     fixed_gutter;
+} DisasCtx;
 
+static void print_block(const DisasCtx* ctx, const cs_insn* insn, size_t nrows)
+{
+    Gutter gutter;
+    char   gutter_buf[MAX_GUTTER_BYTES];
+    size_t gutter_width = 0;
+
+    if (ctx->arrows && ctx->detail)
+        gutter_width = gutter_init(&gutter, ctx->handle, ctx->arch, insn, nrows,
+                                   ctx->fixed_gutter);
+
+    size_t width = ctx->mnemonic_width;
+    for (size_t j = 0; j < nrows; j++) {
+        Color  mnemonic = mnemonic_color(ctx->handle, &insn[j], ctx->detail);
+        size_t len      = strlen(insn[j].mnemonic);
+
+        display_printf("%s0x%08llx:%s %s%s%s ", color_str(COLOR_ADDR),
+                       (u64_t)insn[j].address, color_str(COLOR_RESET),
+                       color_str(COLOR_HEADER), bytes_str(&insn[j], 21),
+                       color_str(COLOR_RESET));
+        if (gutter_width > 0)
+            display_printf("%s%s%s ", color_str(COLOR_MNEMONIC_FLOW),
+                           gutter_row(&gutter, j, gutter_buf),
+                           color_str(COLOR_RESET));
+
+        // the color escapes have no width on screen: the mnemonic is
+        // padded by hand, a format width would count them in
+        display_printf("%s%s%s", color_str(mnemonic), insn[j].mnemonic,
+                       color_str(COLOR_RESET));
+        if (insn[j].op_str[0] != '\0')
+            display_printf("%*s%s", (int)(len < width ? width - len : 0) + 1,
+                           "", insn[j].op_str);
+        display_printf("\n");
+    }
+
+    if (gutter_width > 0)
+        gutter_dispose(&gutter);
+}
+
+// A listing is read, disassembled and printed one block at a time, a block
+// being as much code as a single fb_read() can serve: asking for a million
+// instructions costs the same memory as asking for eight, and the rows start
+// appearing without waiting for the last block to be read.
+//
+// A block ends at an arbitrary byte, so its last instruction may be one that
+// the cut has truncated into something that still decodes: unless the block
+// ends with the file, that instruction is left out and decoded again as the
+// first one of the next block.
+//
+// What a block does not see is the rest of the listing, which is what "/a"
+// costs here: a branch is drawn as a line only when its target is part of the
+// same block, and gets the marker of its direction when it is not
+static int do_disas(int arch, FileBuffer* fb, u64_t nopcodes, int arrows)
+{
+    csh handle;
     if (cs_open(map_arch[arch].arch, map_arch[arch].mode, &handle) !=
         CS_ERR_OK) {
         error("unable to disassemble with given arch, maybe it is not "
               "included in your capstone version");
-        return;
+        return COMMAND_INTERNAL_ERROR;
     }
 
     // detail mode costs memory and time for every instruction: it is only
@@ -680,52 +753,66 @@ static void do_disas(int arch, u64_t addr, const u8_t* code, size_t code_size,
     int detail = (colors_enabled() || arrows) &&
                  cs_option(handle, CS_OPT_DETAIL, CS_OPT_ON) == CS_ERR_OK;
 
-    count = cs_disasm(handle, code, code_size - 1, addr, 0, &insn);
-    if (count > 0) {
-        size_t j;
-        size_t nprinted = min(count, nopcodes);
-        size_t width    = mnemonic_width(insn, nprinted);
-        Gutter gutter;
-        char   gutter_buf[MAX_GUTTER_BYTES];
-        size_t gutter_width = 0;
+    DisasCtx ctx = {.handle         = handle,
+                    .arch           = map_arch[arch].arch,
+                    .detail         = detail,
+                    .arrows         = arrows,
+                    .mnemonic_width = MNEMONIC_MIN_WIDTH,
+                    .fixed_gutter   = 0};
 
-        if (arrows && detail)
-            gutter_width = gutter_init(&gutter, handle, map_arch[arch].arch,
-                                       insn, nprinted);
+    int   r       = COMMAND_OK;
+    u64_t off     = fb->off;
+    u64_t printed = 0;
 
-        for (j = 0; j < nprinted; j++) {
-            Color  mnemonic = mnemonic_color(handle, &insn[j], detail);
-            size_t len      = strlen(insn[j].mnemonic);
+    while (printed < nopcodes && off < fb->size) {
+        u64_t remaining = nopcodes - printed;
+        // assume max instruction size <= MAX_INSN_SIZE bytes for sizing the
+        // input window: reading more than the remaining opcodes can possibly
+        // need would only be thrown away. An instruction longer than that
+        // simply makes the block yield fewer rows, and the loop reads again
+        u64_t size = min((u64_t)fb_block_size, fb->size - off);
+        if (remaining < (u64_t)fb_block_size)
+            size = min(size, remaining * MAX_INSN_SIZE);
 
-            display_printf("%s0x%08llx:%s %s%s%s ", color_str(COLOR_ADDR),
-                           (u64_t)insn[j].address, color_str(COLOR_RESET),
-                           color_str(COLOR_HEADER), bytes_str(&insn[j], 21),
-                           color_str(COLOR_RESET));
-            if (gutter_width > 0)
-                display_printf("%s%s%s ", color_str(COLOR_MNEMONIC_FLOW),
-                               gutter_row(&gutter, j, gutter_buf),
-                               color_str(COLOR_RESET));
-
-            // the color escapes have no width on screen: the mnemonic is
-            // padded by hand, a format width would count them in
-            display_printf("%s%s%s", color_str(mnemonic), insn[j].mnemonic,
-                           color_str(COLOR_RESET));
-            if (insn[j].op_str[0] != '\0')
-                display_printf("%*s%s",
-                               (int)(len < width ? width - len : 0) + 1, "",
-                               insn[j].op_str);
-            display_printf("\n");
+        const u8_t* code = fb_read_at(fb, off, size);
+        if (code == NULL) {
+            // the file shrank under us, and fb_read_at() said so
+            r = COMMAND_INTERNAL_ERROR;
+            break;
         }
 
-        if (gutter_width > 0)
-            gutter_dispose(&gutter);
+        cs_insn* insn;
+        size_t   count =
+            cs_disasm(handle, code, size, off + fb->base_addr, 0, &insn);
+        if (count == 0) {
+            // nothing decodes at this address, so the listing stops here,
+            // short of what was asked for: say it, rather than leaving the
+            // rows that were printed looking like the whole answer
+            display_printf("%sinvalid%s\n", color_str(COLOR_HIGHLIGHT),
+                           color_str(COLOR_RESET));
+            break;
+        }
+
+        int    is_last = off + size >= fb->size;
+        size_t usable  = (!is_last && count > 1) ? count - 1 : count;
+        size_t nrows   = min(usable, remaining);
+
+        if (printed == 0) {
+            ctx.mnemonic_width = mnemonic_width(insn, nrows);
+            // a listing that fits in one block is printed as it always was:
+            // the gutter is the one the listing needs, no wider
+            ctx.fixed_gutter = !is_last && nrows < remaining;
+        }
+
+        print_block(&ctx, insn, nrows);
+
+        printed += nrows;
+        off = insn[nrows - 1].address + insn[nrows - 1].size - fb->base_addr;
         cs_free(insn, count);
-    } else {
-        display_printf("%sinvalid%s\n", color_str(COLOR_HIGHLIGHT),
-                       color_str(COLOR_RESET));
     }
 
     cs_close(&handle);
+    return r;
 }
 
 #define MOD_UNSET -1
@@ -762,7 +849,6 @@ static int disascmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 
     int         arch     = 0;
     u64_t       nopcodes = DEFAULT_DISAS_OPCODES;
-    const u8_t* bytes    = NULL;
     const char* arch_str = (const char*)pc->args.head->data;
 
     if (!parse_arch(arch_str, &arch))
@@ -777,15 +863,7 @@ static int disascmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     if (nopcodes == 0 || fb->off >= fb->size)
         return COMMAND_INVALID_ARG;
 
-    /* assume max instruction size <= 10 bytes for sizing the input window */
-    u64_t size = min(nopcodes * 10, fb->size - fb->off);
-    bytes      = fb_read(fb, size);
-    if (!bytes)
-        return COMMAND_INVALID_ARG;
-
-    do_disas(arch, fb->off + fb->base_addr, bytes, size, nopcodes,
-             arrows == MOD_SET);
-    return COMMAND_OK;
+    return do_disas(arch, fb, nopcodes, arrows == MOD_SET);
 }
 
 Cmd* disascmd_create(void)

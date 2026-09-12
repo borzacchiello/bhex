@@ -827,3 +827,132 @@ end:
     return TEST_SKIPPED;
 #endif
 }
+
+// A listing longer than what a single fb_read() can serve is read,
+// disassembled and printed one block at a time
+#define LONG_LISTING_BYTES 5000
+// the address of its last instruction, all of them being one byte long
+#define LONG_LISTING_LAST "0x00001387:"
+
+__attribute__((unused)) static u8_t* nop_buffer(size_t size)
+{
+    u8_t* b = bhex_malloc(size);
+    memset(b, 0x90, size); /* x64 nop */
+    return b;
+}
+
+__attribute__((unused)) static size_t count_occurrences(const char* s,
+                                                        const char* what)
+{
+    size_t n = 0;
+    for (const char* p = strstr(s, what); p != NULL; p = strstr(p + 1, what))
+        n += 1;
+    return n;
+}
+
+// The column the mnemonic of the row of `addr` starts at, or -1 when that row
+// is not part of the output. Only the rows holding a nop can be asked for
+__attribute__((unused)) static int mnemonic_column(const char* out,
+                                                   const char* addr)
+{
+    const char* line = strstr(out, addr);
+    if (line == NULL)
+        return -1;
+
+    const char* end = strchr(line, '\n');
+    const char* m   = strstr(line, "nop");
+    if (m == NULL || (end != NULL && m > end))
+        return -1;
+    return (int)(m - line);
+}
+
+int TEST(x64_listing_longer_than_a_block)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // more nops than one block holds: every one of them must be printed
+    // exactly once, the instruction the blocks are cut at included
+    u8_t*            bytes = nop_buffer(LONG_LISTING_BYTES);
+    DummyFilebuffer* tfb   = dummyfilebuffer_create(bytes, LONG_LISTING_BYTES);
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("ds x64 5000", tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = (count_occurrences(out, "nop") == LONG_LISTING_BYTES &&
+                 strstr(out, "0x00000000:") != NULL &&
+                 strstr(out, LONG_LISTING_LAST) != NULL &&
+                 count_occurrences(out, "0x00000fff:") == 1)
+                    ? TEST_SUCCEEDED
+                    : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    bhex_free(bytes);
+    return r;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(x64_listing_stops_at_the_end_of_the_file)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // asking for more instructions than the file holds is not an error: the
+    // listing simply ends with the file
+    const u8_t       bytes[] = {0x90, 0x90};
+    DummyFilebuffer* tfb     = dummyfilebuffer_create(bytes, sizeof(bytes));
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("ds x64 1000", tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r = (count_occurrences(out, "nop") == 2 && strstr(out, "invalid") == NULL)
+            ? TEST_SUCCEEDED
+            : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(x64_arrows_across_blocks)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // the same listing, with a jump near the end of the first block landing
+    // in the second one: the arrows of a block are drawn without seeing the
+    // rest of the listing, so the target is an off-listing one
+    u8_t* bytes          = nop_buffer(LONG_LISTING_BYTES);
+    bytes[0x0fe0]        = 0xeb; /* jmp $+0x81 */
+    bytes[0x0fe1]        = 0x7f;
+    DummyFilebuffer* tfb = dummyfilebuffer_create(bytes, LONG_LISTING_BYTES);
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("ds/a x64 5000", tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    // and the gutter keeps the width it has on the first row all the way
+    // down, so that the mnemonics of every block stay in the same column
+    r = (strstr(out, "v< jmp") != NULL &&
+         mnemonic_column(out, "0x00000000:") > 0 &&
+         mnemonic_column(out, "0x00000000:") ==
+             mnemonic_column(out, LONG_LISTING_LAST))
+            ? TEST_SUCCEEDED
+            : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    bhex_free(bytes);
+    return r;
+#else
+    return TEST_SKIPPED;
+#endif
+}
