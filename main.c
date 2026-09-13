@@ -16,6 +16,13 @@
 #include "completion.h"
 #include "cmd/cmd.h"
 
+// Exit codes: 1 is a startup failure (bad command line, unusable input file),
+// 2 a command that failed while running a '-c' batch or a '-s' script. They are
+// kept apart so that a script can tell "bhex could not start" from "the patch
+// did not apply"
+#define EXIT_STARTUP_FAILED 1
+#define EXIT_CMD_FAILED     2
+
 const char* const   short_options  = "hw2bnsCUc:";
 const struct option long_options[] = {
     {"help", no_argument, NULL, 'h'},
@@ -56,6 +63,10 @@ static void usage(const char* prog, int exit_code)
            "  -c  \"c1; c2; ...\" Execute the commands given as "
            "argument and exit\n"
            "  -s  --script      Script mode (commands from raw stdin)\n"
+           "\n"
+           "exit code is 1 when bhex cannot start (bad command line, "
+           "missing or unopenable input file) and 2 when a command of a '-c' "
+           "batch or of a '-s' script fails\n"
            "\n"
            "command history is saved in \"$HOME/.bhex_history\", it can be "
            "changed setting BHEX_HISTORY_FILE environment variable\n"
@@ -182,7 +193,9 @@ static void main_loop(FileBuffer* fb, CmdContext* cc)
     }
 }
 
-static void command_loop(FileBuffer* fb, CmdContext* cc, const char* commands)
+// Returns 0 when every command ran, EXIT_CMD_FAILED when the batch was cut
+// short by a parse error, a failed expression or a command that errored out
+static int command_loop(FileBuffer* fb, CmdContext* cc, const char* commands)
 {
     int            r;
     ParsedCommand* pc;
@@ -193,30 +206,33 @@ static void command_loop(FileBuffer* fb, CmdContext* cc, const char* commands)
         if ((r = cmdline_parse(token, &pc)) != PARSER_OK) {
             error("%s", parser_err_to_string(r));
             bhex_free(token);
-            return;
+            return EXIT_CMD_FAILED;
         }
         bhex_free(token);
 
         int expr_r = parsed_command_resolve_expressions(pc, fb);
         if (expr_r != EXPR_EVAL_OK) {
             parsed_command_destroy(pc);
-            return;
+            return EXIT_CMD_FAILED;
         }
         if ((r = cmdctx_run(cc, pc, fb)) != COMMAND_OK &&
             r != COMMAND_SILENT_ERROR) {
             error("%s", cmdctx_err_to_string(r));
             parsed_command_destroy(pc);
-            return;
+            return EXIT_CMD_FAILED;
         }
         token = cmdline_next_command(&curr);
         parsed_command_destroy(pc);
     }
+    return 0;
 }
 
-static void stdin_loop(FileBuffer* fb, CmdContext* cc)
+// Same contract as command_loop(): the first failing line stops the script
+static int stdin_loop(FileBuffer* fb, CmdContext* cc)
 {
     int            r;
     ParsedCommand* pc;
+    int            exit_code = 0;
 
     size_t  len = 0;
     ssize_t nread;
@@ -225,22 +241,26 @@ static void stdin_loop(FileBuffer* fb, CmdContext* cc)
     while ((nread = getline(&lineptr, &len, stdin)) != -1) {
         if ((r = cmdline_parse(lineptr, &pc)) != PARSER_OK) {
             error("%s", parser_err_to_string(r));
+            exit_code = EXIT_CMD_FAILED;
             break;
         }
         int expr_r = parsed_command_resolve_expressions(pc, fb);
         if (expr_r != EXPR_EVAL_OK) {
             parsed_command_destroy(pc);
+            exit_code = EXIT_CMD_FAILED;
             break;
         }
         if ((r = cmdctx_run(cc, pc, fb)) != COMMAND_OK &&
             r != COMMAND_SILENT_ERROR) {
             error("%s", cmdctx_err_to_string(r));
             parsed_command_destroy(pc);
+            exit_code = EXIT_CMD_FAILED;
             break;
         }
         parsed_command_destroy(pc);
     }
     free(lineptr);
+    return exit_code;
 }
 
 static int file_exists(const char* path) { return access(path, F_OK) == 0; }
@@ -303,7 +323,7 @@ int main(int argc, char* argv[])
             }
         } else {
             if (path != NULL)
-                usage(progname, 1);
+                usage(progname, EXIT_STARTUP_FAILED);
             path = argv[optind++];
         }
     }
@@ -314,14 +334,14 @@ int main(int argc, char* argv[])
         bhex_free(commands);
 
         error("missing input file");
-        return 1;
+        return EXIT_STARTUP_FAILED;
     }
 
     if (commands && script_mode) {
         bhex_free(commands);
 
         error("cannot have both -c and -s");
-        return 1;
+        return EXIT_STARTUP_FAILED;
     }
 
     if (save_history && !commands) {
@@ -336,7 +356,7 @@ int main(int argc, char* argv[])
     FileBuffer* fb = filebuffer_create(path, !write_mode);
     if (!fb) {
         bhex_free(commands);
-        return 1;
+        return EXIT_STARTUP_FAILED;
     }
 
     if (backup) {
@@ -362,10 +382,11 @@ int main(int argc, char* argv[])
     linenoiseSetFreeHintsCallback(bhex_free);
     linenoiseSetMultiLine(1);
 
+    int exit_code = 0;
     if (commands)
-        command_loop(fb, cc, commands);
+        exit_code = command_loop(fb, cc, commands);
     else if (script_mode)
-        stdin_loop(fb, cc);
+        exit_code = stdin_loop(fb, cc);
     else
         main_loop(fb, cc);
     cmdctx_destroy(cc);
@@ -380,5 +401,5 @@ int main(int argc, char* argv[])
 
     bhex_free(commands);
     filebuffer_destroy(fb);
-    return 0;
+    return exit_code;
 }

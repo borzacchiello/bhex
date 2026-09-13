@@ -131,10 +131,11 @@ bhex -2nwbc 's 0x10; w/x "90 90"; c' file   # patch two bytes, keeping file.bk
 
 ## Gotchas
 
-- Exit status only reports startup problems (unusable command line, missing/unopenable file). Any
-  error from a *command* — `no such command`, a bad argument, a template exception — still exits 0,
-  so grep the output for `[  ERROR  ]` if you need to detect failure.
-- A failing backtick expression (`expr error: ...`) aborts the rest of a `-c` batch too.
+- Exit status is 1 for a startup problem (unusable command line, missing/unopenable file) and 2
+  when a command of the batch failed — `no such command`, a bad argument, a failed expression, a
+  template exception. So `bhex -2nc "..." f && next-step` is safe.
+- A failing backtick expression (`expr error: ...`) aborts the rest of a `-c` batch too, and is
+  reported the same way.
 - `e <rows> <len>` takes the **row count first** — `e 8` is an 8-row graph of the whole file,
   `e - 8` is a one-row graph of 8 bytes.
 - `p <n>` counts *elements*, not bytes: `p/q 4` prints 32 bytes.

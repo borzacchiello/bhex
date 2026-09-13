@@ -35,6 +35,8 @@ Usage:  bhex [ options ] inputfile
   -c  "c1; c2; ..." Execute the commands given as argument and exit
   -s  --script      Script mode (commands from raw stdin)
 
+exit code is 1 when bhex cannot start (bad command line, missing or unopenable input file) and 2 when a command of a "-c" batch or of a "-s" script fails
+
 command history is saved in "$HOME/.bhex_history", it can be changed setting BHEX_HISTORY_FILE environment variable
 
 colors are disabled automatically when the output is not a terminal, or when the NO_COLOR environment variable is set (set CLICOLOR_FORCE to keep them through a pipe); unicode only when the locale of the environment is a UTF-8 one

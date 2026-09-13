@@ -31,8 +31,8 @@ other mnemonics -- and the entropy graph, by band) only when the
 standard output is a terminal and `NO_COLOR` is unset: a pipe or a redirect already yields plain
 text, `-C` covers the remaining case. `df/n` and `tui/n` remain as per-command overrides.
 
-Exit code is 1 only for those startup failures (bad command line, missing/unopenable input file);
-once the file is open, every command error still exits 0.
+Exit code is 1 for those startup failures (bad command line, missing/unopenable input file) and 2
+when a command of a `-c` batch or of a `-s` script fails; the interactive shell always exits 0.
 
 History goes to `$HOME/.bhex_history`, or `$BHEX_HISTORY_FILE` if set; it is neither loaded nor
 saved when `-c` is used. In the interactive shell, Tab completes the command name in the first
@@ -82,7 +82,7 @@ commands above, which is what you want when driving bhex.
 - `;` separates commands in the interactive line as well as in `-c`, and is ignored inside quotes
   and backticks.
 - Errors: a bad command, a bad modifier, a bad argument or a failed expression stops a `-c` batch
-  and the `-s` loop. The process still exits 0 — only the startup failures listed above set 1.
+  and the `-s` loop, and the process exits 2.
 
 ## Expression grammar (backticks)
 
