@@ -168,3 +168,127 @@ end:
     colors_set_enabled(0);
     return r;
 }
+
+// Runs "df/c <other>" on `self` and compares the emitted script
+static int check_script(DummyFilebuffer* self, DummyFilebuffer* other,
+                        const char* expected)
+{
+    char cmd[128] = {0};
+    if (snprintf(cmd, sizeof(cmd) - 1, "df/c %s", other->fname) < 0)
+        panic("snprintf failed");
+
+    int r = TEST_FAILED;
+    if (exec_commands_on(cmd, self) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    return r;
+}
+
+int TEST(script_one_run)(void)
+{
+    // one run of differing bytes becomes a seek and an overwrite
+    DummyFilebuffer* a =
+        dummyfilebuffer_create((const u8_t*)"AAAABBBBCCCC", 12);
+    DummyFilebuffer* b =
+        dummyfilebuffer_create((const u8_t*)"AAAAXXXXCCCC", 12);
+
+    int r = check_script(a, b,
+                         "s 0x4\n"
+                         "w/x \"58 58 58 58\"\n"
+                         "c\n");
+
+    dummyfilebuffer_destroy(a);
+    dummyfilebuffer_destroy(b);
+    return r;
+}
+
+int TEST(script_two_runs)(void)
+{
+    // the bytes that agree in between split the patch in two
+    DummyFilebuffer* a =
+        dummyfilebuffer_create((const u8_t*)"AAAABBBBCCCC", 12);
+    DummyFilebuffer* b =
+        dummyfilebuffer_create((const u8_t*)"XAAABBBBCCCX", 12);
+
+    int r = check_script(a, b,
+                         "s 0x0\n"
+                         "w/x \"58\"\n"
+                         "s 0xb\n"
+                         "w/x \"58\"\n"
+                         "c\n");
+
+    dummyfilebuffer_destroy(a);
+    dummyfilebuffer_destroy(b);
+    return r;
+}
+
+int TEST(script_append)(void)
+{
+    // a longer other file is appended with an insert
+    DummyFilebuffer* a = dummyfilebuffer_create((const u8_t*)"AAAA", 4);
+    DummyFilebuffer* b = dummyfilebuffer_create((const u8_t*)"AAAABB", 6);
+
+    int r = check_script(a, b,
+                         "s 0x4\n"
+                         "w/i/x \"42 42\"\n"
+                         "c\n");
+
+    dummyfilebuffer_destroy(a);
+    dummyfilebuffer_destroy(b);
+    return r;
+}
+
+int TEST(script_truncate)(void)
+{
+    // a shorter one drops the tail
+    DummyFilebuffer* a = dummyfilebuffer_create((const u8_t*)"AAAABB", 6);
+    DummyFilebuffer* b = dummyfilebuffer_create((const u8_t*)"AAAA", 4);
+
+    int r = check_script(a, b,
+                         "s 0x4\n"
+                         "d\n"
+                         "c\n");
+
+    dummyfilebuffer_destroy(a);
+    dummyfilebuffer_destroy(b);
+    return r;
+}
+
+int TEST(script_identical)(void)
+{
+    // nothing to do, but the commit is emitted all the same
+    DummyFilebuffer* a = dummyfilebuffer_create((const u8_t*)"AAAA", 4);
+    DummyFilebuffer* b = dummyfilebuffer_create((const u8_t*)"AAAA", 4);
+
+    int r = check_script(a, b, "c\n");
+
+    dummyfilebuffer_destroy(a);
+    dummyfilebuffer_destroy(b);
+    return r;
+}
+
+int TEST(script_ignores_the_base_address)(void)
+{
+    // the script is replayed on a file with no base, so the offsets it
+    // carries are raw ones
+    DummyFilebuffer* a =
+        dummyfilebuffer_create((const u8_t*)"AAAABBBBCCCC", 12);
+    DummyFilebuffer* b =
+        dummyfilebuffer_create((const u8_t*)"AAAAXXXXCCCC", 12);
+
+    a->fb->base_addr = 0x400000;
+    int r            = check_script(a, b,
+                                    "s 0x4\n"
+                                    "w/x \"58 58 58 58\"\n"
+                                    "c\n");
+    a->fb->base_addr = 0;
+
+    dummyfilebuffer_destroy(a);
+    dummyfilebuffer_destroy(b);
+    return r;
+}

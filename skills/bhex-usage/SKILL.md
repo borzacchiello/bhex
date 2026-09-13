@@ -148,5 +148,10 @@ bhex -2nwbc 's 0x10; w/x "90 90"; c' file   # patch two bytes, keeping file.bk
   Keystone, not that you mistyped.
 - Some output (the `df` byte diff) contains ANSI colour even when piped; use `df/p/n` to get plain
   text instead of stripping the escapes (differing bytes are then not marked in any way).
+- `df/c` turns a diff into a patch: it prints the commands that make the current file into the
+  other one, one per line, which `-s` replays —
+  `bhex -2nc "df/c new.bin" old.bin > patch.bhx` then `bhex -2nwbs old.bin < patch.bhx`. The
+  script is commands only (no comments, and `-s` rejects a blank line), it ends with its own `c`,
+  and its offsets are raw, so do not replay it under a `sb`.
 - The `t` search path for template *names* is `/usr/local/share/bhex/templates`, `../templates`,
   `.` — the first match wins. Use an explicit `t ./x.bhe` when it matters.

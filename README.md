@@ -588,10 +588,15 @@ print: display the data at current offset in various formats
 
 diff: prints the differences with another file
 
-  df[/p/w/n] <file>
+  df[/p/w/n/c] <file>
      p:  print different bytes
      w:  wide print (rows are 16 bytes)
      n:  do not use colors
+     c:  print the differences as a bhex command script that
+         turns the current file into the other one, instead of
+         the report. Replay it with '-s':
+             bhex -2nc "df/c new.bin" old.bin > patch.bhx
+             bhex -2nwbs old.bin < patch.bhx
 
   file: path to the file to compare
 ```

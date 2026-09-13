@@ -59,7 +59,7 @@ Modifiers are alternatives within `{}`, independent otherwise. All offsets/sizes
 | checksum | `cs` | `cs[/l] <name> [<size> <off>]` | partial names and `*` accepted |
 | crc | `cr` | `cr[/l] <name> [<size> <off>]` | names look like `CRC-32/ISO-HDLC` |
 | template | `t` | `t[/l/i/x] <name\|path\|filter\|code>` | `l` list, `x` XML output, `i` inline bhengine statements |
-| diff | `df` | `df[/p/w/n] <file>` | `p` print differing bytes, `w` 16-byte rows, `n` no colors even on a terminal |
+| diff | `df` | `df[/p/w/n/c] <file>` | `p` print differing bytes, `w` 16-byte rows, `n` no colors even on a terminal; `c` prints, instead of the report, the `s`/`w/x`/`w/i/x`/`d` commands that turn the current file into the other one, ending with `c` — one per line, so `-s` replays them, and the offsets are raw whatever `sb` says |
 | export | `ex` | `ex <ofile> [<size>]` | writes from the cursor |
 | import | `im` | `im[/{i,ovw}] <file> [<size> <offset>]` | `i` insert (default), `ovw` overwrite; `offset` is into the *imported* file |
 | write | `w` | `w[/{s,x,b,w,d,q}/{le,be}/u/i/a] <data>` | `s` string (default), `x` hex string, `b/w/d/q` sized number, `i` insert instead of overwrite, `a` advance the offset past the data written |
