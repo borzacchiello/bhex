@@ -62,7 +62,7 @@ Modifiers are alternatives within `{}`, independent otherwise. All offsets/sizes
 | diff | `df` | `df[/p/w/n] <file>` | `p` print differing bytes, `w` 16-byte rows, `n` no colors even on a terminal |
 | export | `ex` | `ex <ofile> [<size>]` | writes from the cursor |
 | import | `im` | `im[/{i,ovw}] <file> [<size> <offset>]` | `i` insert (default), `ovw` overwrite; `offset` is into the *imported* file |
-| write | `w` | `w[/{s,x,b,w,d,q}/{le,be}/u/i] <data>` | `s` string (default), `x` hex string, `b/w/d/q` sized number, `i` insert instead of overwrite |
+| write | `w` | `w[/{s,x,b,w,d,q}/{le,be}/u/i/a] <data>` | `s` string (default), `x` hex string, `b/w/d/q` sized number, `i` insert instead of overwrite, `a` advance the offset past the data written |
 | delete | `d` | `d [<nbytes>]` | omitted = to EOF |
 | undo | `u` | `u[/a]` | `a` undo everything |
 | commit | `c` | `c[/l]` | `l` lists pending changes without writing; the bytes are colored like a diff (green added, red removed) |

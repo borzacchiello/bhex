@@ -625,7 +625,7 @@ import: import the content of <file> at current offset
 
 write: write data at current offset
 
-  w[/{s,x,b,w,d,q}/{le,be}/u/i] <data>
+  w[/{s,x,b,w,d,q}/{le,be}/u/i/a] <data>
      s:   string input (default)
      x:   hex input
      b:   byte
@@ -636,6 +636,7 @@ write: write data at current offset
      be:  big-endian
      u:   unsigned
      i:   insert
+     a:   advance the offset past the data written
 
   data: the data to write. The format depends on the type of
         write. Here are some examples:

@@ -394,3 +394,53 @@ end:
     dummyfilebuffer_destroy(tfb);
     return r;
 }
+
+int TEST(advance)(void)
+{
+    // '/a' leaves the cursor past the data, so the three writes end up one
+    // after the other instead of on top of each other
+    const char* expected = "41414141414141414141414141414141\n"
+                           "0x6\n"
+                           "AABBCCDDEEFF41414141414141414141\n";
+
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create((const u8_t*)"AAAAAAAAAAAAAAAA", 16);
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("p/r 16; w/x/a AABB; w/x/a CCDD; w/x/a EEFF; s; s 0; "
+                         "p/r 16",
+                         tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+}
+
+int TEST(advance_insert)(void)
+{
+    // the same with '/i': every insert lands after the previous one
+    const char* expected = "41414141414141414141414141414141\n"
+                           "0x4\n"
+                           "AABBCCDD41414141414141414141414141414141\n";
+
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create((const u8_t*)"AAAAAAAAAAAAAAAA", 16);
+
+    int r = TEST_FAILED;
+    if (exec_commands_on("p/r 16; w/i/x/a AABB; w/i/x/a CCDD; s; s 0; p/r 20",
+                         tfb) != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    dummyfilebuffer_destroy(tfb);
+    return r;
+}

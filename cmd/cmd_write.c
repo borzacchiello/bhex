@@ -11,7 +11,7 @@
 #include <string.h>
 #include <alloc.h>
 
-#define HINT_STR "[/{s,x,b,w,d,q}/{le,be}/u/i] <data>"
+#define HINT_STR "[/{s,x,b,w,d,q}/{le,be}/u/i/a] <data>"
 
 #define INPUT_TYPE_UNSET  -1
 #define INPUT_TYPE_STRING 0
@@ -31,10 +31,14 @@
 #define INSERT_UNSET -1
 #define INSERT_SET   0
 
+#define ADVANCE_UNSET -1
+#define ADVANCE_SET   0
+
 typedef struct WriteArg {
     u8_t*  data;
     size_t size;
     int    insert;
+    int    advance;
 } WriteArg;
 
 static void writecmd_help(void* obj)
@@ -53,6 +57,7 @@ static void writecmd_help(void* obj)
         "     be:  big-endian\n"
         "     u:   unsigned\n"
         "     i:   insert\n"
+        "     a:   advance the offset past the data written\n"
         "\n"
         "  data: the data to write. The format depends on the type of \n"
         "        write. Here are some examples:\n"
@@ -67,12 +72,14 @@ static int parse_write_arg(ParsedCommand* pc, WriteArg* o_arg)
     int endianess  = ENDIANESS_LITTLE;
     int unsign     = UNSIGN_UNSET;
     int insert     = INSERT_UNSET;
+    int advance    = ADVANCE_UNSET;
 
-    if (handle_mods(pc, "s,x,b,w,d,q|le,be|u|i", &input_type, &endianess,
-                    &unsign, &insert) != 0)
+    if (handle_mods(pc, "s,x,b,w,d,q|le,be|u|i|a", &input_type, &endianess,
+                    &unsign, &insert, &advance) != 0)
         return COMMAND_INVALID_MOD;
-    unsign = unsign == UNSIGN_SET ? 1 : 0;
-    insert = insert == UNSIGN_SET ? 1 : 0;
+    unsign  = unsign == UNSIGN_SET ? 1 : 0;
+    insert  = insert == INSERT_SET ? 1 : 0;
+    advance = advance == ADVANCE_SET ? 1 : 0;
 
     o_arg->data = NULL;
     if (handle_args(pc, 1, 1, &o_arg->data) != 0)
@@ -168,7 +175,8 @@ static int parse_write_arg(ParsedCommand* pc, WriteArg* o_arg)
             break;
     }
 
-    o_arg->insert = insert;
+    o_arg->insert  = insert;
+    o_arg->advance = advance;
     return COMMAND_OK;
 
 invalid_arg:
@@ -201,6 +209,10 @@ static int writecmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
             return COMMAND_INVALID_ARG;
         }
     }
+    // with '/a' a sequence of writes lays the data out one field after the
+    // other, instead of every one of them landing on the previous
+    if (arg.advance)
+        fb_seek(fb, fb->off + arg.size);
     return COMMAND_OK;
 }
 
