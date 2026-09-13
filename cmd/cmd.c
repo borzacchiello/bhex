@@ -14,6 +14,7 @@
 #include "cmd_print.h"
 #include "cmd_seek.h"
 #include "cmd_write.h"
+#include "cmd_transform.h"
 #include "cmd_delete.h"
 #include "cmd_undo.h"
 #include "cmd_commit.h"
@@ -71,6 +72,7 @@ CmdContext* cmdctx_init(void)
     ll_add(&cc->commands, (uptr_t)undocmd_create());
     ll_add(&cc->commands, (uptr_t)deletecmd_create());
     ll_add(&cc->commands, (uptr_t)writecmd_create());
+    ll_add(&cc->commands, (uptr_t)transformcmd_create());
 #ifndef DISABLE_CAPSTONE
     ll_add(&cc->commands, (uptr_t)disascmd_create());
 #endif

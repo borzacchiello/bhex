@@ -144,6 +144,7 @@ set(command_src
     cmd/cmd_findbase.c
     cmd/cmd_info.c
     cmd/cmd_write.c
+    cmd/cmd_transform.c
     cmd/cmd_delete.c
     cmd/cmd_print.c
     cmd/cmd_disas.c

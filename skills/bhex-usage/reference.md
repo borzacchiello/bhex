@@ -63,6 +63,7 @@ Modifiers are alternatives within `{}`, independent otherwise. All offsets/sizes
 | export | `ex` | `ex <ofile> [<size>]` | writes from the cursor |
 | import | `im` | `im[/{i,ovw}] <file> [<size> <offset>]` | `i` insert (default), `ovw` overwrite; `offset` is into the *imported* file |
 | write | `w` | `w[/{s,x,b,w,d,q}/{le,be}/u/i/a] <data>` | `s` string (default), `x` hex string, `b/w/d/q` sized number, `i` insert instead of overwrite, `a` advance the offset past the data written |
+| transform | `tr` | `tr[/{xor,and,or,add,sub,not,rol,ror,rev,swap}/{x,s}] [<arg>] [<size>]` | transforms `size` bytes at the cursor (omitted = to EOF) as one pending overwrite; `xor` is the default, `arg` is the key (hex, `/s` for a string) repeated over the region, the bit count of `rol`/`ror`, or the group size of `swap` (2, 4 or 8, and the region has to be a multiple of it); `not` and `rev` take no `arg`, so their only argument is the size |
 | delete | `d` | `d [<nbytes>]` | omitted = to EOF |
 | undo | `u` | `u[/a]` | `a` undo everything |
 | commit | `c` | `c[/l]` | `l` lists pending changes without writing; the bytes are colored like a diff (green added, red removed) |

@@ -46,8 +46,8 @@ or `-2nwbc "..."`. Two rules make clustering safe:
 name/mod1/mod2 arg1 "arg with spaces" `expression`
 ```
 
-- **Aliases are the normal form**: `p`, `s`, `src`, `str`, `hh`, `cr`, `cs`, `t`, `w`, `c`, `u`,
-  `df`, `ex`, `im`, `ds`, `e`, `i`, `sb`, `ec`, `ii`, `fba`.
+- **Aliases are the normal form**: `p`, `s`, `src`, `str`, `hh`, `cr`, `cs`, `t`, `w`, `tr`, `c`,
+  `u`, `df`, `ex`, `im`, `ds`, `e`, `i`, `sb`, `ec`, `ii`, `fba`.
 - **Modifiers must come before the first space.** After it, `/` is an ordinary character — which is
   why `t ./myfmt.bhe` and `df ../other.bin` parse fine.
 - Quote any argument containing spaces: `w/x "00 01 02 03"`. Inside quotes only `\"` and `\\` are
@@ -130,6 +130,9 @@ bhex -2nwbc 's 0x10; w/x "90 90"; c' file   # patch two bytes, keeping file.bk
   Building a file from nothing is a sequence of `w/i` at explicit offsets.
 - `d <n>` deletes n bytes at the cursor (all the remaining ones if omitted), `ex out.bin <n>`
   carves n bytes out to another file.
+- `tr` rewrites a range instead of replacing it with a literal: `tr/xor "de ad be ef"`,
+  `tr/not 0x40`, `tr/swap 4`, `tr/rev`, `tr/add "10"`, `tr/rol 3`. It is a single pending
+  overwrite, so `u` takes the whole thing back.
 
 ## Gotchas
 

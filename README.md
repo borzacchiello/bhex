@@ -10,6 +10,7 @@ Minimalistic and lightweight shell-based hex editor.
 
 - Print file content in various formats.
 - Write/overwrite data into the file.
+- Transform a range of bytes in place (xor, add, rotate, byte-swap, reverse, ...).
 - Undo writes until committed.
 - Enumerate (ASCII) strings.
 - Search strings or binary data.
@@ -123,6 +124,7 @@ Available commands:
     assemble [as]
     disas [ds]
     write [w]
+    transform [tr]
     delete [d]
     undo [u]
     commit [c]
@@ -648,6 +650,43 @@ write: write data at current offset
             w/x "00 01 02 03"
             w/s "a string"
             w/q/be 0x1234
+```
+
+### Transform
+
+```
+[0x0000000] $ tr?
+
+transform: transform the bytes at current offset in place
+
+  tr[/{xor,and,or,add,sub,not,rol,ror,rev,swap}/{x,s}] [<arg>] [<size>]
+     xor:  xor every byte with the key (default)
+     and:  bitwise and with the key
+     or:   bitwise or with the key
+     add:  add the key to every byte
+     sub:  subtract the key from every byte
+     not:  complement every byte (takes no arg)
+     rol:  rotate every byte left by <arg> bits
+     ror:  rotate every byte right by <arg> bits
+     rev:  reverse the order of the bytes (takes no arg)
+     swap: reverse the byte order of every group of <arg> bytes
+     x:    the key is a hex string (default)
+     s:    the key is a string
+
+  arg:  the key of xor/and/or/add/sub, the number of bits of
+        rol/ror, or the group size of swap (2, 4 or 8). The key
+        is repeated over the region, the others are plain numbers
+  size: number of bytes to transform (if omitted, all the
+        remaining bytes)
+
+  The result is an ordinary pending write: 'c/l' lists it, 'u'
+  undoes it and nothing reaches the file until 'c'
+
+  Here are some examples:
+      tr/xor "de ad be ef"
+      tr/xor/s mykey 0x100
+      tr/not
+      tr/swap 4 0x40
 ```
 
 ### Delete
