@@ -153,12 +153,20 @@ static void main_loop(FileBuffer* fb, CmdContext* cc)
     printf("Write '?' after a command to read the relative help\n\n");
 
     while (1) {
+        // a '*' before the '$' marks the writes that are still in the
+        // overlay: without it nothing on screen says that leaving now would
+        // throw them away
+        int         dirty    = fb->modifications.size != 0;
+        const char* mark     = dirty ? "* " : "";
+        const char* mark_col = dirty ? color_str(COLOR_WARNING) : "";
+        const char* mark_rst = dirty ? color_str(COLOR_RESET) : "";
+
         // the escapes are zero-width for linenoise, so they do not confuse the
         // cursor positioning of the line editor
-        snprintf(prompt, sizeof(prompt), "%s[0x%07llX]%s %s$%s ",
+        snprintf(prompt, sizeof(prompt), "%s[0x%07llX]%s %s%s%s%s$%s ",
                  color_str(COLOR_ADDR), fb->off + fb->base_addr,
-                 color_str(COLOR_RESET), color_str(COLOR_PROMPT),
-                 color_str(COLOR_RESET));
+                 color_str(COLOR_RESET), mark_col, mark, mark_rst,
+                 color_str(COLOR_PROMPT), color_str(COLOR_RESET));
         char* inp = linenoise(prompt);
         if (!inp || strcmp(inp, "exit") == 0) {
             bhex_free(inp);

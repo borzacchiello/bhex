@@ -93,6 +93,8 @@ where the _modifiers_ (e.g., mod1) are optional parameters of the command.
 
 The documentation for each command can be accessed by typing "?" after the name of the command.
 
+In the shell, a "*" before the "$" of the prompt (`[0x0000000] * $`) means that there are writes that have not been committed yet.
+
 # Commands
 
 If you type "help" (or "h"), you get the list of commands:

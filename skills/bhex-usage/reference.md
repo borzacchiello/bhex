@@ -37,7 +37,8 @@ when a command of a `-c` batch or of a `-s` script fails; the interactive shell 
 History goes to `$HOME/.bhex_history`, or `$BHEX_HISTORY_FILE` if set; it is neither loaded nor
 saved when `-c` is used. In the interactive shell, Tab completes the command name in the first
 word and file paths in the following ones, and a hint of the expected arguments is shown as you
-type; `exit` (or EOF) quits.
+type; `exit` (or EOF) quits. A `*` between the offset and the `$` of the prompt
+(`[0x0000004] * $`) means there are uncommitted writes.
 
 ## Command table
 

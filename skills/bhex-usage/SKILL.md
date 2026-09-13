@@ -120,7 +120,8 @@ bhex -2nwbc 's 0x10; w/x "90 90"; c' file   # patch two bytes, keeping file.bk
 ```
 
 - **`c` is not optional.** Writes live in an in-memory overlay; exiting without `c` silently
-  discards them. `c/l` shows what is pending, `u` undoes the last write, `u/a` all of them.
+  discards them. `c/l` shows what is pending, `u` undoes the last write, `u/a` all of them. In the
+  interactive shell a `*` before the `$` of the prompt marks an overlay that is not empty.
 - Without `-w` writes still *appear* to work in the buffer — you only get a warning and a refusal
   at commit time. If a patch seems to have done nothing, check for `-w`.
 - **`w` does not advance the offset.** Writing several fields means seeking between them, or the
