@@ -102,10 +102,12 @@ bhex -2nc "ds x64 20"            file   # disassemble 20 instructions at the cur
 bhex -2nc "ds x64"               file   # ... or the whole function, up to its "ret"
 ```
 
-`src` scans the **whole file** regardless of the current offset (it is multithreaded, so match
-order is not guaranteed); `src/sk` leaves you on the last match it reported, not necessarily the
-first. `hh`, `cs`, `cr` accept a partial name or `*` (`cr crc32` matches nothing — the names are
-`CRC-32/ISO-HDLC` and friends, list them with `cr/l`).
+`src` scans the **whole file** regardless of the current offset unless a `<len>` is given, which
+makes it a window starting at the cursor. It is multithreaded, so match order is not guaranteed and
+`src/sk` leaves you on the last match it reported — `src/1` stops at the first one and is ordered.
+A hex needle may carry `?` in place of a digit, matching any value for that nibble
+(`src/x "e8 ?? ?? ?? ??"`). `hh`, `cs`, `cr` accept a partial name or `*` (`cr crc32` matches
+nothing — the names are `CRC-32/ISO-HDLC` and friends, list them with `cr/l`).
 
 `t` also runs one struct or one named proc of a template: `t elf.Elf_Ehdr`, `t zip.list_files`
 (`t/l <filter>` lists both). `t/x` emits XML for machine consumption, `t/i "stmts"` runs inline

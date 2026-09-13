@@ -139,6 +139,52 @@ ERR_OUT:
     return 0;
 }
 
+int hex_to_bytes_masked(char* hex_string, u8_t** o_buf, u8_t** o_mask,
+                        size_t* o_size)
+{
+    size_t str_len = strlen(hex_string);
+
+    u8_t* res  = bhex_malloc(str_len);
+    u8_t* mask = bhex_malloc(str_len);
+
+    int    high = 1;
+    size_t i, j = 0;
+    for (i = 0; i < str_len; ++i) {
+        char c = hex_string[i];
+        if (c == ' ' || c == '\t')
+            continue;
+
+        u8_t v = 0;
+        u8_t m = 0xf;
+        if (c == '?')
+            // a wildcard nibble: the value is irrelevant, the mask clears it
+            m = 0;
+        else if (!hex_nibble_to_num(c, &v))
+            goto ERR_OUT;
+
+        if (high) {
+            res[j]  = v << 4;
+            mask[j] = m << 4;
+        } else {
+            res[j] |= v;
+            mask[j++] |= m;
+        }
+        high = !high;
+    }
+    if (!high)
+        goto ERR_OUT;
+
+    *o_size = j;
+    *o_buf  = res;
+    *o_mask = mask;
+    return 1;
+
+ERR_OUT:
+    bhex_free(res);
+    bhex_free(mask);
+    return 0;
+}
+
 size_t count_chars_in_str(char* s, char c)
 {
     if (!s)

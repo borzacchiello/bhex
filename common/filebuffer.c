@@ -898,6 +898,7 @@ static inline BlockInfo* get_block_at(SearchIndex* ctx, u64_t addr)
 typedef struct {
     FileBuffer*    fb;
     const u8_t*    data;
+    const u8_t*    mask; // NULL for an exact comparison
     size_t         data_size;
     u64_t          start;
     u64_t          end;
@@ -913,13 +914,21 @@ static void* search_worker(void* arg)
     FbReader reader;
     fb_reader_init(&reader, task->fb);
 
-    u8_t data_min = task->data[0];
-    u8_t data_max = task->data[0];
-    for (size_t i = 1; i < task->data_size; ++i) {
+    // The [min, max] prefilter can only speak for the bytes the needle pins
+    // down: a byte carrying a wildcard nibble matches values outside the range
+    // its own byte suggests, so it is left out. With no fully fixed byte there
+    // is nothing to prefilter on and the index is skipped altogether.
+    u8_t data_min  = 255;
+    u8_t data_max  = 0;
+    int  can_index = 0;
+    for (size_t i = 0; i < task->data_size; ++i) {
+        if (task->mask != NULL && task->mask[i] != 0xff)
+            continue;
         if (task->data[i] < data_min)
             data_min = task->data[i];
         if (task->data[i] > data_max)
             data_max = task->data[i];
+        can_index = 1;
     }
 
     size_t buf_size = max(task->data_size * 2, fb_block_size * 2);
@@ -931,7 +940,7 @@ static void* search_worker(void* arg)
     u64_t        addr = task->start;
 
     while (addr + task->data_size <= task->end && !*task->stop) {
-        if (ctx->has_index) {
+        if (ctx->has_index && can_index) {
             BlockInfo* binfo = get_block_at(ctx, addr);
             if (!(binfo->min <= data_min && data_max <= binfo->max)) {
                 addr    = (addr / ctx->block_size) * ctx->block_size +
@@ -951,10 +960,20 @@ static void* search_worker(void* arg)
         }
 
         int match = 1;
-        for (size_t j = 0; j < task->data_size; ++j) {
-            if (task->data[j] != buf[buf_off + j]) {
-                match = 0;
-                break;
+        if (task->mask == NULL) {
+            for (size_t j = 0; j < task->data_size; ++j) {
+                if (task->data[j] != buf[buf_off + j]) {
+                    match = 0;
+                    break;
+                }
+            }
+        } else {
+            for (size_t j = 0; j < task->data_size; ++j) {
+                if ((task->data[j] & task->mask[j]) !=
+                    (buf[buf_off + j] & task->mask[j])) {
+                    match = 0;
+                    break;
+                }
             }
         }
 
@@ -1128,6 +1147,13 @@ __attribute__((unused)) static void print_block_info(FileBuffer* fb)
 void fb_search(FileBuffer* fb, const u8_t* data, size_t size, fb_search_cb_t cb,
                void* user_data, int nthreads)
 {
+    fb_search_ex(fb, data, NULL, size, 0, UINT64_MAX, cb, user_data, nthreads);
+}
+
+void fb_search_ex(FileBuffer* fb, const u8_t* data, const u8_t* mask,
+                  size_t size, u64_t start, u64_t end, fb_search_cb_t cb,
+                  void* user_data, int nthreads)
+{
     if (size == 0)
         return;
 
@@ -1141,11 +1167,13 @@ void fb_search(FileBuffer* fb, const u8_t* data, size_t size, fb_search_cb_t cb,
     u64_t file_size = fb->size;
     fb_unlock(fb);
 
-    if (file_size < size)
+    if (end > file_size)
+        end = file_size;
+    if (start >= end || end - start < size)
         return;
 
     // Number of candidate start positions to scan.
-    u64_t total = file_size - size + 1;
+    u64_t total = end - start - size + 1;
     if ((u64_t)nthreads > total)
         nthreads = (int)total;
 
@@ -1154,16 +1182,17 @@ void fb_search(FileBuffer* fb, const u8_t* data, size_t size, fb_search_cb_t cb,
     SearchTask*  tasks   = bhex_malloc(sizeof(SearchTask) * (size_t)nthreads);
 
     for (int t = 0; t < nthreads; ++t) {
-        size_t begin, end;
-        split_work(total, nthreads, t, &begin, &end);
+        size_t begin, tend;
+        split_work(total, nthreads, t, &begin, &tend);
         // Extend the range so a pattern straddling the split is still found.
-        end += (size - 1);
+        tend += (size - 1);
 
         tasks[t].fb        = fb;
         tasks[t].data      = data;
+        tasks[t].mask      = mask;
         tasks[t].data_size = size;
-        tasks[t].start     = (u64_t)begin;
-        tasks[t].end       = (u64_t)end;
+        tasks[t].start     = start + (u64_t)begin;
+        tasks[t].end       = start + (u64_t)tend;
         tasks[t].cb        = cb;
         tasks[t].user_data = user_data;
         tasks[t].stop      = &stop;

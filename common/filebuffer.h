@@ -89,6 +89,14 @@ void fb_commit(FileBuffer* fb);
 void fb_search(FileBuffer* fb, const u8_t* data, size_t size, fb_search_cb_t cb,
                void* user_data, int nthreads);
 
+// Searches only the [start, end) range of the file, and compares through
+// `mask`: a byte matches when (candidate & mask[i]) == (data[i] & mask[i]).
+// `mask` may be NULL, which is an exact comparison, and `end` is clamped to the
+// file size. With nthreads == 1 the matches are reported in ascending order.
+void fb_search_ex(FileBuffer* fb, const u8_t* data, const u8_t* mask,
+                  size_t size, u64_t start, u64_t end, fb_search_cb_t cb,
+                  void* user_data, int nthreads);
+
 // Calling this APIs two times will invalidate the old buffer
 // and the returned pointer must not be shared across threads.
 const u8_t* fb_read(FileBuffer* fb, size_t size);

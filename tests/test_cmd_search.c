@@ -100,3 +100,131 @@ end:
     dummyfilebuffer_destroy(tfb);
     return r;
 }
+
+int TEST(hex_wildcard)(void)
+{
+    // '?' matches any value for that nibble: B8 01 00 00 is at 0x74
+    const char* expected = " >> Match @ 0x0000074\n";
+
+    int r = TEST_FAILED;
+    if (exec_commands("src/x \"B8 ?1 0? ??\"") != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    return r;
+}
+
+int TEST(hex_wildcard_no_match)(void)
+{
+    // the nibbles that are pinned down still have to agree
+    const char* expected = "";
+
+    int r = TEST_FAILED;
+    if (exec_commands("src/x \"B8 ?2 0? ??\"") != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    return r;
+}
+
+int TEST(hex_bad_wildcard)(void)
+{
+    // a lone '?' leaves the needle with half a byte
+    if (exec_commands("src/x \"B8 ?\"") == 0)
+        return TEST_FAILED;
+    return TEST_SUCCEEDED;
+}
+
+int TEST(range)(void)
+{
+    // "hello" is at 0x80, out of a 0x40 bytes window opened at 0x10
+    const char* expected = "";
+
+    int r = TEST_FAILED;
+    if (exec_commands("s 0x10; src hello 0x40") != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    return r;
+}
+
+int TEST(range_hit)(void)
+{
+    // ... and inside one that covers it
+    const char* expected = " >> Match @ 0x0000080\n";
+
+    int r = TEST_FAILED;
+    if (exec_commands("s 0x70; src hello 0x40") != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    return r;
+}
+
+int TEST(range_stops_at_eof)(void)
+{
+    // a length past the end of the file is clamped, not an error
+    const char* expected = " >> Match @ 0x0000080\n";
+
+    int r = TEST_FAILED;
+    if (exec_commands("s 0x70; src hello 0xffffff") != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    return r;
+}
+
+int TEST(first_only)(void)
+{
+    // '/1' stops at the first match, which is also the lowest one: the elf
+    // header holds several 0x00 0x00 pairs
+    const char* expected = " >> Match @ 0x0000007\n";
+
+    int r = TEST_FAILED;
+    if (exec_commands("src/1/x \"00 00 00\"") != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    return r;
+}
+
+int TEST(first_only_seek)(void)
+{
+    // and with '/sk' the cursor lands on it, not on the last match reported
+    const char* expected = " >> Match @ 0x0000007\n0x7\n";
+
+    int r = TEST_FAILED;
+    if (exec_commands("src/1/sk/x \"00 00 00\" ; s ; s 0") != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    return r;
+}

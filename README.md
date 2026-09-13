@@ -226,13 +226,18 @@ Start an interactive session.
 
 search: search a string or a sequence of bytes in the file
 
-  src[/{x, s}/sk/p] <what>
+  src[/{x, s}/sk/p/1] <what> [<len>]
      x:  data is a hex string
      s:  data is a string (default)
      sk: seek to first match
-     c:  print context
+     p:  print context
+     1:  stop at the first match
 
-  what: either a string or a hex string
+  what: either a string or a hex string. A hex string may carry '?'
+        in place of a digit, matching any value for that nibble
+        (e.g. "e8 ?? ?? ?? ??")
+  len:  number of bytes to search starting from the current offset
+        (if omitted, search the whole file)
 ```
 
 ### Strings
