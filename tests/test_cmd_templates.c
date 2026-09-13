@@ -1930,9 +1930,8 @@ int TEST(template_sevenzip_1)(void)
         "";
     // clang-format on
 
-    int              r = TEST_SUCCEEDED;
-    DummyFilebuffer* tfb =
-        dummyfilebuffer_create(sample_7z, sizeof(sample_7z));
+    int              r   = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb = dummyfilebuffer_create(sample_7z, sizeof(sample_7z));
     ASSERT(tfb != NULL);
     ASSERT(exec_commands_on("t ./templates/7z.bhe", tfb) == 0);
 
@@ -2238,9 +2237,8 @@ int TEST(template_xz_1)(void)
         "";
     // clang-format on
 
-    int              r = TEST_SUCCEEDED;
-    DummyFilebuffer* tfb =
-        dummyfilebuffer_create(sample_xz, sizeof(sample_xz));
+    int              r   = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb = dummyfilebuffer_create(sample_xz, sizeof(sample_xz));
     ASSERT(tfb != NULL);
     ASSERT(exec_commands_on("t ./templates/xz.bhe", tfb) == 0);
 
@@ -2319,9 +2317,8 @@ int TEST(template_ar_1)(void)
         "";
     // clang-format on
 
-    int              r = TEST_SUCCEEDED;
-    DummyFilebuffer* tfb =
-        dummyfilebuffer_create(sample_ar, sizeof(sample_ar));
+    int              r   = TEST_SUCCEEDED;
+    DummyFilebuffer* tfb = dummyfilebuffer_create(sample_ar, sizeof(sample_ar));
     ASSERT(tfb != NULL);
     ASSERT(exec_commands_on("t ./templates/ar.bhe", tfb) == 0);
 

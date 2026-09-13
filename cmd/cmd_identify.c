@@ -65,7 +65,8 @@ typedef struct Prefilter {
 static void identifycmd_help(void* obj)
 {
     display_printf(
-        "identify: scan the file for known formats. One pass finds every magic\n"
+        "identify: scan the file for known formats. One pass finds every "
+        "magic\n"
         "          the templates declared ('" BHENGINE_IDENTIFY_MAGIC_PROC
         "'), and only where\n"
         "          one matched is a template asked ('" BHENGINE_IDENTIFY_PROC

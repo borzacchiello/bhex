@@ -350,7 +350,8 @@ static BHEngineValue* process_type(InterpreterContext* ctx, const char* varname,
         // would mention which template was meant to hold the type
         if (imported_cb == NULL) {
             bhengine_raise_exception(
-                ctx, "cannot import from '%s': no template loader is configured",
+                ctx,
+                "cannot import from '%s': no template loader is configured",
                 type->bhe_name);
             return NULL;
         }

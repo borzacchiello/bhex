@@ -119,11 +119,11 @@
 #include "linenoise.h"
 
 #define LINENOISE_DEFAULT_HISTORY_MAX_LEN 100
-#define LINENOISE_MAX_LINE                (1024 * 1024) // That will get dynamically allocated
-#define LINENOISE_INITIAL_BUFLEN          4096
-#define PASTE_FOLD_THRESHOLD              200 // Min bytes to fold a single-line paste.
-#define PASTE_FOLD_CONTEXT                8 // Context chars kept around generic folds.
-#define PASTE_MAX_BYTES                   LINENOISE_MAX_LINE
+#define LINENOISE_MAX_LINE (1024 * 1024) // That will get dynamically allocated
+#define LINENOISE_INITIAL_BUFLEN 4096
+#define PASTE_FOLD_THRESHOLD     200 // Min bytes to fold a single-line paste.
+#define PASTE_FOLD_CONTEXT       8   // Context chars kept around generic folds.
+#define PASTE_MAX_BYTES          LINENOISE_MAX_LINE
 static char* unsupported_term[] = {"dumb", "cons25", "emacs", NULL};
 static linenoiseCompletionCallback* completionCallback = NULL;
 static linenoiseHintsCallback*      hintsCallback      = NULL;

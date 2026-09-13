@@ -83,10 +83,10 @@ fail:
 
 int TEST(init_clicolor_force_env)(void)
 {
-    int   r         = TEST_FAILED;
-    char* saved     = getenv("CLICOLOR_FORCE");
-    char* saved_cp  = saved ? strdup(saved) : NULL;
-    char* saved_nc  = getenv("NO_COLOR");
+    int   r           = TEST_FAILED;
+    char* saved       = getenv("CLICOLOR_FORCE");
+    char* saved_cp    = saved ? strdup(saved) : NULL;
+    char* saved_nc    = getenv("NO_COLOR");
     char* saved_nc_cp = saved_nc ? strdup(saved_nc) : NULL;
 
     if (saved_nc_cp)

@@ -240,8 +240,8 @@ int TEST(riscv64_forward_branch)(void)
     const char* expected = "6303B500\n";
 
     int r = TEST_FAILED;
-    if (exec_commands("as riscv64 \"beq a0, a1, L; nop; L: nop\" ; p/r 4 ; u") !=
-        0)
+    if (exec_commands(
+            "as riscv64 \"beq a0, a1, L; nop; L: nop\" ; p/r 4 ; u") != 0)
         goto end;
 
     char* out = strbuilder_reset(sb);
@@ -291,8 +291,7 @@ int TEST(riscv64_branch_out_of_range)(void)
         "[  ERROR  ] ks_asm() failed & count = X, error = 161\n";
 
     int r = TEST_FAILED;
-    if (exec_commands(
-            "as riscv64 \"beq a0, a1, L; .space 5000; L: nop\"") == 0)
+    if (exec_commands("as riscv64 \"beq a0, a1, L; .space 5000; L: nop\"") == 0)
         goto end;
 
     char* out = strbuilder_reset(err_sb);
