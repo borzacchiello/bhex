@@ -124,6 +124,7 @@ Available commands:
     info [i]
     interactive [tui]
     isa_identify [ii]
+    map [m]
     print [p]
     search [src]
     seek [s]
@@ -257,6 +258,38 @@ hist: draw the distribution of the byte values in a range
 A value that never occurs is left out unless `/z` asks for it, and `/s` sorts by count, putting the
 most frequent value last so that the prompt does not push it off the screen. The rows are colored
 the way the bytes of a dump are: gray for `00`, red for `ff`, green for printable ASCII.
+
+### Map
+
+The whole file as one character per slice, each named after what the bytes in
+it look like. Where `e` gives a number per region and `hist` the distribution
+of the whole, this says *what kind of thing* is where — and the distinction it
+makes that entropy alone cannot is text against structured binary, which sit
+at the same entropy.
+
+```
+[0x0000000] $ m 6
+[ 00000000 ] ······················································░▒▒▒▒▒▒▒▒▒
+[ 00009580 ] ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒░░░░░░░░░░░░░░░░░░░
+[ 00012b00 ] ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░████████████████████████████
+[ 0001c040 ] ████████████████████████████████████████████████████████████████
+[ 00025580 ] ██████████████████░▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+[ 0002eac0 ] ▓▓▓▓▓▓▓▓▓░······················································
+
+  · zeroes  ▓ 0xff  ▒ text  █ high entropy  ░ mixed
+  597 bytes per cell, 384 cells
+```
+
+A slice is called after what fills it: nine tenths `00` or `ff` makes it
+padding or filler, 85% printable makes it text, and bytes that cannot be told
+apart from random make it compressed or encrypted. Everything else — headers,
+tables, code — is "mixed".
+
+The bar for "random" moves with the size of a slice. A short slice has too few
+bytes to visit all 256 values, so it cannot score 8 bits however random it is:
+64 bytes top out near 5.8. A fixed threshold would call none of them
+compressed, so the map compares each slice against what random bytes of that
+size would actually measure, and does not guess at all below 64 bytes.
 
 ### Interactive
 

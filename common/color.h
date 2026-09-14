@@ -49,6 +49,15 @@ typedef enum Color {
     COLOR_LABEL,
     // bytes that differ (diff) and matches (search, strings)
     COLOR_HIGHLIGHT,
+    // the map, by what a slice of the file turned out to hold. Five roles of
+    // its own rather than borrowed ones: the kinds have to stay apart at a
+    // glance, and the roles they would otherwise share put 0xff and the
+    // compressed data in the same red
+    COLOR_MAP_ZERO,
+    COLOR_MAP_FF,
+    COLOR_MAP_TEXT,
+    COLOR_MAP_MIXED,
+    COLOR_MAP_HIGH,
     COLOR_COUNT
 } Color;
 

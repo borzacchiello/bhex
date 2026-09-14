@@ -96,6 +96,7 @@ bhex -2nc "p/a -"                file   # /- = whole file (default: 256 bytes)
 bhex -2nc "str/n VERSION 4"      file   # NUL-terminated strings containing VERSION, len >= 4
 bhex -2nc "src/x/p 89504e47"     file   # find hex bytes, print context around each match
 bhex -2nc "e 16"                 file   # entropy graph, 16 rows
+bhex -2nc "m"                    file   # map: what kind of data is where
 bhex -2nc "hi 4096"              file   # byte histogram of the first 4096 bytes
 bhex -2nc 'hh sha256; cr "*"'    file   # a hash, then every known CRC
 bhex -2nc "hh xxh64"             file   # the checksum a Zstandard frame carries

@@ -25,6 +25,7 @@
 #include "cmd_info.h"
 #include "cmd_interactive.h"
 #include "cmd_isa_identify.h"
+#include "cmd_map.h"
 #include "cmd_print.h"
 #include "cmd_search.h"
 #include "cmd_seek.h"
@@ -95,6 +96,7 @@ CmdContext* cmdctx_init(void)
     ll_add_tail(&cc->commands, (uptr_t)infocmd_create());
     ll_add_tail(&cc->commands, (uptr_t)interactivecmd_create());
     ll_add_tail(&cc->commands, (uptr_t)isa_identifycmd_create());
+    ll_add_tail(&cc->commands, (uptr_t)mapcmd_create());
     ll_add_tail(&cc->commands, (uptr_t)printcmd_create());
     ll_add_tail(&cc->commands, (uptr_t)searchcmd_create());
     ll_add_tail(&cc->commands, (uptr_t)seekcmd_create());

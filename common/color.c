@@ -39,6 +39,11 @@ static const char* const colors[COLOR_COUNT] = {
     [COLOR_MOD_DELETE]      = "\x1b[0;31m",      /* red */
     [COLOR_LABEL]           = "\x1b[0;36m",      /* cyan */
     [COLOR_HIGHLIGHT]       = "\x1b[31;49;1m",   /* bold red */
+    [COLOR_MAP_ZERO]        = "\x1b[0;90m",      /* gray: padding recedes */
+    [COLOR_MAP_FF]          = "\x1b[0;33m",      /* yellow: 0xff filler */
+    [COLOR_MAP_TEXT]        = "\x1b[0;32m",      /* green: text */
+    [COLOR_MAP_MIXED]       = "\x1b[0;36m",      /* cyan: everything else */
+    [COLOR_MAP_HIGH]        = "\x1b[0;31m",      /* red: worth a look */
 };
 
 void colors_init(int disable)

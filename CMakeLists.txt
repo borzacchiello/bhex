@@ -170,6 +170,7 @@ set(command_src
     cmd/cmd_import.c
     cmd/cmd_entropy.c
     cmd/cmd_hist.c
+    cmd/cmd_map.c
     cmd/cmd_echo.c
     cmd/cmd_setbase.c
     cmd/cmd_interactive.c

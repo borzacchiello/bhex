@@ -9,6 +9,31 @@
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 
+u64_t calculate_histogram_buckets(FileBuffer* fb, u64_t off, u64_t size,
+                                  u64_t nbuckets, histogram_bucket_cb cb,
+                                  void* user)
+{
+    if (nbuckets == 0)
+        return 0;
+
+    u64_t counts[256];
+    // spread the remainder one byte at a time over the first buckets, rather
+    // than multiplying an index by the size: the product would overflow on a
+    // range this code is otherwise happy to take
+    u64_t base = size / nbuckets;
+    u64_t rem  = size % nbuckets;
+
+    u64_t curr  = off;
+    u64_t total = 0;
+    for (u64_t i = 0; i < nbuckets; ++i) {
+        u64_t bsize = base + (i < rem ? 1 : 0);
+        total += calculate_histogram(fb, curr, bsize, counts);
+        cb(curr, bsize, counts, user);
+        curr += bsize;
+    }
+    return total;
+}
+
 u64_t calculate_histogram(FileBuffer* fb, u64_t off, u64_t size,
                           u64_t counts[256])
 {
