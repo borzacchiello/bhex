@@ -19,6 +19,7 @@
 #include <hash/fnv.h>
 #include <hash/murmur3.h>
 #include <hash/xxhash.h>
+#include <hash/xxh3.h>
 #include <hash/blake3.h>
 #include <hash/groestl-ref.h>
 #include <hash/haval.h>
@@ -205,6 +206,10 @@ GEN_HANDLE_FUNC(xxh32, XxhCtx, xxh32_init, xxh_update, xxh_final,
                 XXH32_DIGEST_LENGTH)
 GEN_HANDLE_FUNC(xxh64, XxhCtx, xxh64_init, xxh_update, xxh_final,
                 XXH64_DIGEST_LENGTH)
+GEN_HANDLE_FUNC(xxh3_64, Xxh3Ctx, xxh3_64_init, xxh3_update, xxh3_final,
+                XXH3_64_DIGEST_LENGTH)
+GEN_HANDLE_FUNC(xxh3_128, Xxh3Ctx, xxh3_128_init, xxh3_update, xxh3_final,
+                XXH3_128_DIGEST_LENGTH)
 GEN_HANDLE_FUNC(murmur3_32, Murmur3Ctx, murmur3_x86_32_init, murmur3_update,
                 murmur3_final, MURMUR3_32_DIGEST_LENGTH)
 GEN_HANDLE_FUNC(murmur3_128, Murmur3Ctx, murmur3_x64_128_init, murmur3_update,
@@ -293,6 +298,8 @@ static hash_handler_t hash_handlers[] = {{"md2", handle_md2},
                                          {"haval-256-5", handle_haval_256_5},
                                          {"xxh32", handle_xxh32},
                                          {"xxh64", handle_xxh64},
+                                         {"xxh3-64", handle_xxh3_64},
+                                         {"xxh3-128", handle_xxh3_128},
                                          {"murmur3-32", handle_murmur3_32},
                                          {"murmur3-128", handle_murmur3_128},
                                          {"fnv1-32", handle_fnv1_32},

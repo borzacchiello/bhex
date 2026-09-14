@@ -117,6 +117,7 @@ set(common_src
     common/hash/fnv.c
     common/hash/murmur3.c
     common/hash/xxhash.c
+    common/hash/xxh3.c
     common/hash/groestl-ref.c
     common/hash/haval.c
     common/hash/shash.c
