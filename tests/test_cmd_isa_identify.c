@@ -231,8 +231,8 @@ int TEST(no_size_defaults_to_whole_file)(void)
 {
     char top[ISA_TOPK][64];
 
-    if (!run_isa_identify_command("ii", elf_not_kitty, sizeof(elf_not_kitty), 0,
-                                  top))
+    if (!run_isa_identify_command("ii/s", elf_not_kitty, sizeof(elf_not_kitty),
+                                  0, top))
         return TEST_FAILED;
 
     return (strcmp(top[0], "unavailable") == 0 &&
@@ -249,11 +249,11 @@ int TEST(invalid_size)(void)
     return exec_commands("ii nope") != 0 && exec_commands("ii 0") != 0;
 }
 
-int TEST(alias_produces_output)(void) { return check_command_output("ii"); }
+int TEST(alias_produces_output)(void) { return check_command_output("ii/s"); }
 
 int TEST(full_name_produces_output)(void)
 {
-    return check_command_output("isa_identify");
+    return check_command_output("isa_identify/s");
 }
 
 int TEST(help_output)(void)
@@ -283,7 +283,7 @@ int TEST(streaming_across_chunks)(void)
                sizeof(snippet_x64));
     }
 
-    if (!run_isa_identify_command("ii", buffer, sizeof(buffer), 1, top))
+    if (!run_isa_identify_command("ii/s", buffer, sizeof(buffer), 1, top))
         return TEST_FAILED;
 
     return strcmp(top[0], "x64") == 0 ? TEST_SUCCEEDED : TEST_FAILED;
@@ -303,7 +303,7 @@ int TEST(graph_detects_code_ranges_and_isas)(void)
     fill_repeating(buffer + (CHUNK * 2), CHUNK, snippet_x86,
                    sizeof(snippet_x86));
 
-    ok = run_command_capture_output("ii/g 3072", buffer, sizeof(buffer), &out);
+    ok = run_command_capture_output("ii 3072", buffer, sizeof(buffer), &out);
     if (!ok)
         return TEST_FAILED;
 
@@ -329,7 +329,7 @@ int TEST(graph_colors)(void)
     // the colors are off by default in the tests, as they are whenever the
     // output is not a terminal
     colors_set_enabled(1);
-    ok = run_command_capture_output("ii/g 2048", buffer, sizeof(buffer), &out);
+    ok = run_command_capture_output("ii 2048", buffer, sizeof(buffer), &out);
     colors_set_enabled(0);
     if (!ok)
         return TEST_FAILED;
@@ -360,7 +360,7 @@ int TEST(graph_merges_contiguous_code_chunks)(void)
 
     fill_repeating(buffer, sizeof(buffer), snippet_x64, sizeof(snippet_x64));
 
-    ok = run_command_capture_output("ii/g 2048", buffer, sizeof(buffer), &out);
+    ok = run_command_capture_output("ii 2048", buffer, sizeof(buffer), &out);
     if (!ok)
         return TEST_FAILED;
 
@@ -387,7 +387,7 @@ int TEST(graph_range_ends_at_partial_last_chunk)(void)
 
     fill_repeating(buffer, sizeof(buffer), snippet_x64, sizeof(snippet_x64));
 
-    ok = run_command_capture_output("ii/g", buffer, sizeof(buffer), &out);
+    ok = run_command_capture_output("ii", buffer, sizeof(buffer), &out);
     if (!ok)
         return TEST_FAILED;
 
@@ -464,7 +464,7 @@ int TEST(dataset_baseline)(void)
         char top[ISA_TOPK][64];
         int  rank;
 
-        if (!run_isa_identify_command("ii", baselines[i].data,
+        if (!run_isa_identify_command("ii/s", baselines[i].data,
                                       baselines[i].size, 1, top)) {
             printf("[!] ii failed on sample '%s'\n", baselines[i].name);
             return TEST_FAILED;

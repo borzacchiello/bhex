@@ -18,7 +18,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#define HINT_STR           "[/g] [<size>]"
+#define HINT_STR           "[/s] [<size>]"
+#define SUMMARY_SET        0
 #define ISA_MODEL_NAME     "isadetect_model.bin"
 #define BINEXEC_MODEL_NAME "binexec_model_1024.bin"
 #define ISA_TOPK           3
@@ -52,7 +53,7 @@ static void isa_identifycmd_help(void* obj)
         "AI models\n"
         "\n"
         "  ii" HINT_STR "\n"
-        "     g:  graph mode; scan the input in 1024-byte chunks, detect code "
+        "     s:  name one ISA for the whole range, without looking for "
         "ranges\n"
         "\n"
         "  size: number of bytes to analyze starting from the current "
@@ -602,16 +603,20 @@ static int isa_identifycmd_exec_graph(IsaIdentifyCmdCtx* ctx, FileBuffer* fb,
 static int isa_identifycmd_exec(IsaIdentifyCmdCtx* ctx, FileBuffer* fb,
                                 ParsedCommand* pc)
 {
-    int    graph_mode = -1;
-    char*  size_str   = NULL;
+    int    summary  = -1;
+    char*  size_str = NULL;
     u64_t  requested_size;
     u64_t  remaining;
     u64_t  analyzed_u64;
     size_t analyzed_size;
 
-    if (handle_mods(pc, "g", &graph_mode) != 0)
+    if (handle_mods(pc, "s", &summary) != 0)
         return COMMAND_INVALID_MOD;
-    graph_mode = graph_mode == 0;
+
+    // The ranges are the answer worth having on a file: one ISA for the whole
+    // of it only means anything when the range is known to be code already,
+    // which is what '/s' is for
+    int graph_mode = summary != SUMMARY_SET;
 
     if (handle_args(pc, 1, 0, &size_str) != 0)
         return COMMAND_INVALID_ARG;

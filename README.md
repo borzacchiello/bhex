@@ -144,24 +144,26 @@ Based on [isadetect](https://github.com/kairis/isadetect).
 
 isa_identify: identify the ISA of a block of bytes using bundled AI models
 
-  ii[/g] [<size>]
-     g:  graph mode; scan the input in 1024-byte chunks, detect code ranges
+  ii[/s] [<size>]
+     s:  name one ISA for the whole range, without looking for ranges
 
   size: number of bytes to analyze starting from the current offset
         (if omitted, use the whole file)
 ```
 
-Normal mode prints the top ISA candidates for the selected byte range.
+By default the region is scanned in 1024-byte chunks: each chunk is classified
+as code or not, contiguous chunks of the same kind are merged, and only the
+code ranges are printed, each with the top ISA for that range. On a whole file
+that is the useful answer — naming one ISA for a file that is mostly headers,
+strings and data says little.
 
-Graph mode (`ii/g`) scans the selected region in 1024-byte chunks, classifies
-which chunks likely contain executable code, merges contiguous chunks of the
-same type, and prints only the detected code ranges together with the top ISA
-for each range.
+`/s` is the other question: given a range already known to hold code, what is
+it? It prints the top ISA candidates for the range as a whole.
 
 Example:
 
 ```
-[0x0000000] $ ii/g 4096
+[0x0000000] $ ii 4096
 ISA graph (4096 bytes analyzed, 1024-byte chunks):
   [0x0000000000000000, 0x0000000000000800):      x64, le (confidence: 96.42%)
   [0x0000000000000c00, 0x0000000000001000):      x86, le (confidence: 91.87%)
