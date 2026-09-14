@@ -302,6 +302,16 @@ static u64_t SHA512_H0[] = {0x6A09E667F3BCC908ll, 0xBB67AE8584CAA73Bll,
                             0x510E527FADE682D1ll, 0x9B05688C2B3E6C1Fll,
                             0x1F83D9ABFB41BD6Bll, 0x5BE0CD19137E2179ll};
 
+/* FIPS 180-4 section 5.3.6 */
+static u64_t SHA512_224_H0[] = {0x8C3D37C819544DA2ll, 0x73E1996689DCD4D6ll,
+                                0x1DFAB7AE32FF9C82ll, 0x679DD514582F9FCFll,
+                                0x0F6D2B697BD44DA8ll, 0x77E36F7304C48942ll,
+                                0x3F9D85A86A1D36C8ll, 0x1112E6AD91D692A1ll};
+static u64_t SHA512_256_H0[] = {0x22312194FC2BF72Cll, 0x9F555FA3C84C64C2ll,
+                                0x2393B86B6F53B151ll, 0x963877195940EABDll,
+                                0x96283EE2A88EFFE3ll, 0xBE5E1E2553863992ll,
+                                0x2B0199FC2C85B8AAll, 0x0EB72DDC81C52CA2ll};
+
 #endif /* USE_32BIT_ONLY */
 
 /*
@@ -399,6 +409,37 @@ int SHA384FinalBits(SHA384Context* context, u8_t message_bits,
 int SHA384Result(u8_t Message_Digest[SHA384HashSize], SHA384Context* context)
 {
     return SHA384_512ResultN(context, Message_Digest, SHA384HashSize);
+}
+
+/*
+ * SHA512_224Reset / SHA512_256Reset
+ *
+ * Description:
+ *   Initialize the context for one of the truncated SHA-512 variants of
+ *   FIPS 180-4 section 5.3.6. Only the initial hash values and the length
+ *   of the digest set them apart from SHA-512.
+ *
+ */
+int SHA512_224Reset(SHA512Context* context)
+{
+    return SHA384_512Reset(context, SHA512_224_H0);
+}
+
+int SHA512_224Result(u8_t           Message_Digest[SHA512_224HashSize],
+                     SHA512Context* context)
+{
+    return SHA384_512ResultN(context, Message_Digest, SHA512_224HashSize);
+}
+
+int SHA512_256Reset(SHA512Context* context)
+{
+    return SHA384_512Reset(context, SHA512_256_H0);
+}
+
+int SHA512_256Result(u8_t           Message_Digest[SHA512_256HashSize],
+                     SHA512Context* context)
+{
+    return SHA384_512ResultN(context, Message_Digest, SHA512_256HashSize);
 }
 
 /*

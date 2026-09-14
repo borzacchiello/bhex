@@ -90,6 +90,10 @@ GEN_HANDLE_FUNC(sha384, SHA384Context, SHA384Reset, SHA384Input, SHA384Result,
                 SHA384HashSize)
 GEN_HANDLE_FUNC(sha512, SHA512Context, SHA512Reset, SHA512Input, SHA512Result,
                 SHA512HashSize)
+GEN_HANDLE_FUNC(sha512_224, SHA512Context, SHA512_224Reset, SHA512Input,
+                SHA512_224Result, SHA512_224HashSize)
+GEN_HANDLE_FUNC(sha512_256, SHA512Context, SHA512_256Reset, SHA512Input,
+                SHA512_256Result, SHA512_256HashSize)
 GEN_HANDLE_FUNC(sha3_128, sha3_context, SHA3_128_Init, SHA3Update, SHA3Finalize,
                 SHA3_128_DIGEST_LENGTH)
 GEN_HANDLE_FUNC(sha3_224, sha3_context, SHA3_224_Init, SHA3Update, SHA3Finalize,
@@ -198,6 +202,8 @@ static hash_handler_t hash_handlers[] = {{"md2", handle_md2},
                                          {"sha256", handle_sha256},
                                          {"sha384", handle_sha384},
                                          {"sha512", handle_sha512},
+                                         {"sha512-224", handle_sha512_224},
+                                         {"sha512-256", handle_sha512_256},
                                          {"sha3-128", handle_sha3_128},
                                          {"sha3-224", handle_sha3_224},
                                          {"sha3-256", handle_sha3_256},

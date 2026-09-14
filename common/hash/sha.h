@@ -98,12 +98,16 @@ enum {
     SHA512_Message_Block_Size   = 128,
     USHA_Max_Message_Block_Size = SHA512_Message_Block_Size,
 
-    SHA1HashSize    = 20,
-    SHA224HashSize  = 28,
-    SHA256HashSize  = 32,
-    SHA384HashSize  = 48,
-    SHA512HashSize  = 64,
-    USHAMaxHashSize = SHA512HashSize,
+    SHA1HashSize   = 20,
+    SHA224HashSize = 28,
+    SHA256HashSize = 32,
+    SHA384HashSize = 48,
+    SHA512HashSize = 64,
+    /* FIPS 180-4 section 5.3.6: SHA-512 truncated, with its own initial hash
+       values -- not the first bytes of a SHA-512 digest */
+    SHA512_224HashSize = 28,
+    SHA512_256HashSize = 32,
+    USHAMaxHashSize    = SHA512HashSize,
 
     SHA1HashSizeBits    = 160,
     SHA224HashSizeBits  = 224,
@@ -270,5 +274,15 @@ extern int SHA512Input(SHA512Context*, const u8_t* bytes,
                        unsigned int bytecount);
 extern int SHA512FinalBits(SHA512Context*, u8_t bits, unsigned int bit_count);
 extern int SHA512Result(u8_t Message_Digest[SHA512HashSize], SHA512Context*);
+
+/* SHA-512/224 and SHA-512/256: the SHA-512 rounds over different initial hash
+   values, truncated to 224 or 256 bits. They take the same context, and the
+   input function of SHA-512 drives them */
+extern int SHA512_224Reset(SHA512Context*);
+extern int SHA512_224Result(u8_t Message_Digest[SHA512_224HashSize],
+                            SHA512Context*);
+extern int SHA512_256Reset(SHA512Context*);
+extern int SHA512_256Result(u8_t Message_Digest[SHA512_256HashSize],
+                            SHA512Context*);
 
 #endif /* _SHA_H_ */
