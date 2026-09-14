@@ -283,7 +283,8 @@ static int identifycmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     Candidate* cands   = NULL;
     u64_t      ncands  = 0;
     u64_t      prefilt = 0;
-    DList*     brute   = DList_new();
+    u64_t*     brute   = NULL; // indices into 'entries'
+    u64_t      nbrute  = 0;
 
     int r = COMMAND_OK;
     if (entries->size == 0) {
@@ -334,10 +335,11 @@ static int identifycmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     // a floor under the whole scan. Note nothing is lost by prefiltering the
     // others: an "_identify" re-checks its own magic, so the patterns only say
     // where it is worth asking
+    brute = bhex_malloc(sizeof(u64_t) * entries->size);
     for (u64_t i = 0; i < entries->size; ++i) {
         IdentifyEntry* e = (IdentifyEntry*)entries->data[i];
         if (exhaustive || e->magics == NULL || e->magics->size == 0)
-            DList_add(brute, (void*)i);
+            brute[nbrute++] = i;
     }
 
     // The identify procs are the ones reporting hits; nothing else they may
@@ -361,7 +363,7 @@ static int identifycmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     // With nothing to ask at every offset, the walk starts at the first
     // candidate rather than at the beginning of the range -- and does not start
     // at all when there is none
-    if (brute->size == 0)
+    if (nbrute == 0)
         off = ncands > 0 ? cands[0].off : end_off;
 
     while (off < end_off) {
@@ -389,8 +391,8 @@ static int identifycmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
         }                                                                      \
     } while (0)
 
-        for (u64_t i = 0; i < brute->size; ++i)
-            RUN_ENTRY((u64_t)(uptr_t)brute->data[i]);
+        for (u64_t i = 0; i < nbrute; ++i)
+            RUN_ENTRY(brute[i]);
 
         // the prefiltered templates, only where a pattern of theirs matched
         while (ci < ncands && cands[ci].off < off)
@@ -410,7 +412,7 @@ static int identifycmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
             break;
         off += skip;
 
-        if (brute->size == 0) {
+        if (nbrute == 0) {
             // nothing has to be asked at every offset, so walk candidate to
             // candidate instead of byte to byte
             while (ci < ncands && cands[ci].off < off)
@@ -439,9 +441,9 @@ static int identifycmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
                 "prefilter: %llu pattern%s -> %llu candidate%s in %.3fs",
                 pf.npatterns, pf.npatterns == 1 ? "" : "s", ncands,
                 ncands == 1 ? "" : "s", (double)prefilt / 1e9);
-            if (brute->size > 0)
+            if (nbrute > 0)
                 display_printf(", %llu template%s with no magic (every offset)",
-                               brute->size, brute->size == 1 ? "" : "s");
+                               nbrute, nbrute == 1 ? "" : "s");
             display_printf("\n");
         }
         display_printf("%llu offsets, %llu runs in %.3fs", noffsets, nruns,
@@ -465,7 +467,7 @@ static int identifycmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 end:
     prefilter_deinit(&pf);
     bhex_free(cands);
-    DList_destroy(brute, NULL);
+    bhex_free(brute);
     DList_destroy(entries, IdentifyEntry_delete);
     return r;
 }
