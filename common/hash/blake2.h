@@ -142,4 +142,39 @@ int blake2b_final(blake2b_state* S, void* out, size_t outlen);
         panic("blake2b_final failed");                                         \
     }
 
+/* BLAKE2 is parameterised by the length of its digest, and a shorter one is
+ * not a truncation of the longer: the length goes into the parameter block,
+ * so every size is a function of its own. RFC 7693 names them "BLAKE2b-256"
+ * and so on; "blake2b" and "blake2s" alone stay the full 512 and 256 bits. */
+#define simple_blake2s_init_n(state, n)                                        \
+    if (blake2s_init(state, n) < 0) {                                          \
+        panic("blake2s_init failed");                                          \
+    }
+#define simple_blake2s_final_n(out, state, n)                                  \
+    if (blake2s_final(state, out, n) < 0) {                                    \
+        panic("blake2s_final failed");                                         \
+    }
+#define simple_blake2b_init_n(state, n)                                        \
+    if (blake2b_init(state, n) < 0) {                                          \
+        panic("blake2b_init failed");                                          \
+    }
+#define simple_blake2b_final_n(out, state, n)                                  \
+    if (blake2b_final(state, out, n) < 0) {                                    \
+        panic("blake2b_final failed");                                         \
+    }
+
+#define simple_blake2s_128_init(s)     simple_blake2s_init_n(s, 16)
+#define simple_blake2s_128_final(o, s) simple_blake2s_final_n(o, s, 16)
+#define simple_blake2s_160_init(s)     simple_blake2s_init_n(s, 20)
+#define simple_blake2s_160_final(o, s) simple_blake2s_final_n(o, s, 20)
+#define simple_blake2s_224_init(s)     simple_blake2s_init_n(s, 28)
+#define simple_blake2s_224_final(o, s) simple_blake2s_final_n(o, s, 28)
+
+#define simple_blake2b_160_init(s)     simple_blake2b_init_n(s, 20)
+#define simple_blake2b_160_final(o, s) simple_blake2b_final_n(o, s, 20)
+#define simple_blake2b_256_init(s)     simple_blake2b_init_n(s, 32)
+#define simple_blake2b_256_final(o, s) simple_blake2b_final_n(o, s, 32)
+#define simple_blake2b_384_init(s)     simple_blake2b_init_n(s, 48)
+#define simple_blake2b_384_final(o, s) simple_blake2b_final_n(o, s, 48)
+
 #endif

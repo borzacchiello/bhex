@@ -130,6 +130,18 @@ GEN_HANDLE_FUNC(blake2b, blake2b_state, simple_blake2b_init,
                 simple_blake2b_update, simple_blake2b_final, BLAKE2B_OUTBYTES)
 GEN_HANDLE_FUNC(gost, GostHashCtx, GOSTInit, GOSTUpdate, GOSTFinal,
                 GOST_DIGEST_LENGTH)
+GEN_HANDLE_FUNC(blake2s_128, blake2s_state, simple_blake2s_128_init,
+                simple_blake2s_update, simple_blake2s_128_final, 16)
+GEN_HANDLE_FUNC(blake2s_160, blake2s_state, simple_blake2s_160_init,
+                simple_blake2s_update, simple_blake2s_160_final, 20)
+GEN_HANDLE_FUNC(blake2s_224, blake2s_state, simple_blake2s_224_init,
+                simple_blake2s_update, simple_blake2s_224_final, 28)
+GEN_HANDLE_FUNC(blake2b_160, blake2b_state, simple_blake2b_160_init,
+                simple_blake2b_update, simple_blake2b_160_final, 20)
+GEN_HANDLE_FUNC(blake2b_256, blake2b_state, simple_blake2b_256_init,
+                simple_blake2b_update, simple_blake2b_256_final, 32)
+GEN_HANDLE_FUNC(blake2b_384, blake2b_state, simple_blake2b_384_init,
+                simple_blake2b_update, simple_blake2b_384_final, 48)
 GEN_HANDLE_FUNC(blake3, blake3_hasher, blake3_hasher_init, blake3_hasher_update,
                 blake3_hasher_finalize_std, BLAKE3_OUT_LEN)
 GEN_HANDLE_FUNC(groestl_224, GroestlCtx, groestl_224_init, groestl_update,
@@ -225,6 +237,12 @@ static hash_handler_t hash_handlers[] = {{"md2", handle_md2},
                                          {"RipeMD-320", handle_ripemd320},
                                          {"blake2s", handle_blake2s},
                                          {"blake2b", handle_blake2b},
+                                         {"blake2s-128", handle_blake2s_128},
+                                         {"blake2s-160", handle_blake2s_160},
+                                         {"blake2s-224", handle_blake2s_224},
+                                         {"blake2b-160", handle_blake2b_160},
+                                         {"blake2b-256", handle_blake2b_256},
+                                         {"blake2b-384", handle_blake2b_384},
                                          {"blake3", handle_blake3},
                                          {"gost", handle_gost},
                                          {"groestl-224", handle_groestl_224},
