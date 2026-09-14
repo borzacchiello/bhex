@@ -130,8 +130,9 @@ int TEST(zeros_lists_every_value)(void)
     for (const char* p = out; *p; ++p)
         if (*p == '\n')
             rows += 1;
+    int has_str = strstr(out, "  01      0    0.00%") != NULL;
     ASSERT(rows == 256);
-    ASSERT(strstr(out, "  01      0    0.00%") != NULL);
+    ASSERT(has_str);
     r = TEST_SUCCEEDED;
 
 end:
