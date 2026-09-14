@@ -19,12 +19,13 @@
 #include <defs.h>
 #include <log.h>
 
-#define HINT_STR "[/l/v/n/e] [<len>]"
+#define HINT_STR "[/l/v/vv/n/e] [<len>]"
 
-#define MODE_LIST      0
-#define VERBOSE_SET    0
-#define NOSKIP_SET     0
-#define EXHAUSTIVE_SET 0
+#define MODE_LIST        0
+#define VERBOSE_SET      0
+#define VERY_VERBOSE_SET 1
+#define NOSKIP_SET       0
+#define EXHAUSTIVE_SET   0
 
 // How much of the file the prefilter reads at a time
 #define PREFILTER_CHUNK (1u << 20)
@@ -35,7 +36,7 @@ typedef struct IdentifyEntry {
     BHEngineIdentifier* id;
     const DList*        magics; // of BHEngineMagic*, empty = no prefilter
     u64_t               nhits;
-    u64_t               nanos; // only measured in verbose mode
+    u64_t               nanos; // only measured with '/vv'
 } IdentifyEntry;
 
 // A pattern, and the template that declared it
@@ -74,21 +75,21 @@ static void identifycmd_help(void* obj)
         "\n"
         "  id" HINT_STR "\n"
         "     l: list the templates that take part in the scan\n"
-        "     v: report the time each template cost (measuring it is not "
-        "free,\n"
-        "        the scan itself gets slower)\n"
+        "     v: report the numbers of the scan (templates, candidates, "
+        "timings)\n"
+        "     vv: also report the time each template cost (measuring it is "
+        "not\n"
+        "         free, the scan itself gets slower)\n"
         "     n: do not skip over what was identified\n"
         "     e: exhaustive: ignore the declared magics and ask every "
         "template\n"
-        "        at every offset. Comparing 'id/n' with 'id/n/e' is how a "
-        "wrong\n"
-        "        magic declaration gets caught\n"
+        "        at every offset\n"
         "\n"
         "  len: number of bytes to scan starting from the current offset\n"
         "       (if omitted, scan up to the end of the file)\n"
         "\n"
         "  A hit reports the size the template gave for what it recognised,\n"
-        "  and the scan resumes past it -- so a format embedded in something\n"
+        "  and the scan resumes past it, so a format embedded in something\n"
         "  already identified is only found with '/n'\n");
 }
 
@@ -256,13 +257,18 @@ static int identifycmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     int verbose = -1;
     int noskip  = -1;
     int exhaust = -1;
-    if (handle_mods(pc, "l|v|n|e", &mode, &verbose, &noskip, &exhaust) != 0)
+    if (handle_mods(pc, "l|v,vv|n|e", &mode, &verbose, &noskip, &exhaust) != 0)
         return COMMAND_INVALID_MOD;
 
     // Two independent things, and keeping them apart is what makes either one
     // usable as a reference: '/e' drops the prefilter, '/n' drops the skip
     int exhaustive = exhaust == EXHAUSTIVE_SET;
     int no_skip    = noskip == NOSKIP_SET;
+
+    // '/v' is what the scan did, '/vv' adds what each template cost -- and
+    // only the latter pays for the clock calls around every run
+    int stats        = verbose == VERBOSE_SET || verbose == VERY_VERBOSE_SET;
+    int per_template = verbose == VERY_VERBOSE_SET;
 
     // asked for here and not when the command was built: the VM scans the
     // template folders as it comes up, and a session that never identifies
@@ -367,9 +373,9 @@ static int identifycmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 #define RUN_ENTRY(idx)                                                         \
     do {                                                                       \
         IdentifyEntry* e   = (IdentifyEntry*)entries->data[idx];               \
-        u64_t          t   = verbose == VERBOSE_SET ? now_nanos() : 0;         \
+        u64_t          t   = per_template ? now_nanos() : 0;                   \
         u64_t          hit = bhengine_identifier_run(e->id, off);              \
-        if (verbose == VERBOSE_SET)                                            \
+        if (per_template)                                                      \
             e->nanos += now_nanos() - t;                                       \
         nruns += 1;                                                            \
         if (hit != 0) {                                                        \
@@ -419,30 +425,35 @@ static int identifycmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     disable_warning = saved_disable_warning;
     fb_seek(fb, start);
 
-    display_printf("\n%llu hit%s in %llu byte%s, %llu template%s\n", nhits,
-                   nhits == 1 ? "" : "s", len, len == 1 ? "" : "s",
-                   entries->size, entries->size == 1 ? "" : "s");
-    if (exhaustive) {
-        display_printf("exhaustive: magics ignored, every template at every "
-                       "offset\n");
-    } else {
-        display_printf("prefilter: %llu pattern%s -> %llu candidate%s in %.3fs",
-                       pf.npatterns, pf.npatterns == 1 ? "" : "s", ncands,
-                       ncands == 1 ? "" : "s", (double)prefilt / 1e9);
-        if (brute->size > 0)
-            display_printf(", %llu template%s with no magic (every offset)",
-                           brute->size, brute->size == 1 ? "" : "s");
+    // the hits are the answer, everything else is how the scan got there: it
+    // is only worth the lines when it is asked for
+    if (stats) {
+        display_printf("\n%llu hit%s in %llu byte%s, %llu template%s\n", nhits,
+                       nhits == 1 ? "" : "s", len, len == 1 ? "" : "s",
+                       entries->size, entries->size == 1 ? "" : "s");
+        if (exhaustive) {
+            display_printf("exhaustive: magics ignored, every template at "
+                           "every offset\n");
+        } else {
+            display_printf(
+                "prefilter: %llu pattern%s -> %llu candidate%s in %.3fs",
+                pf.npatterns, pf.npatterns == 1 ? "" : "s", ncands,
+                ncands == 1 ? "" : "s", (double)prefilt / 1e9);
+            if (brute->size > 0)
+                display_printf(", %llu template%s with no magic (every offset)",
+                               brute->size, brute->size == 1 ? "" : "s");
+            display_printf("\n");
+        }
+        display_printf("%llu offsets, %llu runs in %.3fs", noffsets, nruns,
+                       (double)elapsed / 1e9);
+        if (nruns > 0 && elapsed > 0)
+            display_printf(" (%.0f runs/s, %.0f ns/run)",
+                           (double)nruns * 1e9 / (double)elapsed,
+                           (double)elapsed / (double)nruns);
         display_printf("\n");
     }
-    display_printf("%llu offsets, %llu runs in %.3fs", noffsets, nruns,
-                   (double)elapsed / 1e9);
-    if (nruns > 0 && elapsed > 0)
-        display_printf(" (%.0f runs/s, %.0f ns/run)",
-                       (double)nruns * 1e9 / (double)elapsed,
-                       (double)elapsed / (double)nruns);
-    display_printf("\n");
 
-    if (verbose == VERBOSE_SET) {
+    if (per_template) {
         display_printf("\nPer template:\n");
         for (u64_t i = 0; i < entries->size; ++i) {
             IdentifyEntry* e = (IdentifyEntry*)entries->data[i];

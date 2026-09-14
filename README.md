@@ -362,23 +362,24 @@ what it found, and the scan resumes past it.
 ```
 [0x0000000] $ id?
 
-identify: scan the file for known formats, running the '_identify' proc of
-          every template that declares one at every offset
+identify: scan the file for known formats. One pass finds every magic
+          the templates declared ('_identify_magic'), and only where
+          one matched is a template asked ('_identify')
 
-  id[/l/v/n/e] [<len>]
+  id[/l/v/vv/n/e] [<len>]
      l: list the templates that take part in the scan
-     v: report the time each template cost (measuring it is not free,
-        the scan itself gets slower)
+     v: report the numbers of the scan (templates, candidates, timings)
+     vv: also report the time each template cost (measuring it is not
+         free, the scan itself gets slower)
      n: do not skip over what was identified
      e: exhaustive: ignore the declared magics and ask every template
-        at every offset. Comparing 'id/n' with 'id/n/e' is how a wrong
-        magic declaration gets caught
+        at every offset
 
   len: number of bytes to scan starting from the current offset
        (if omitted, scan up to the end of the file)
 
   A hit reports the size the template gave for what it recognised,
-  and the scan resumes past it -- so a format embedded in something
+  and the scan resumes past it, so a format embedded in something
   already identified is only found with '/n'
 
 [0x0000000] $ id
@@ -390,6 +391,14 @@ identify: scan the file for known formats, running the '_identify' proc of
   0x00600747  mp4          262 bytes
   0x0070084d  squashfs     623 bytes
   0x0080184d  rpm          96 bytes
+```
+
+A plain scan prints the hits and nothing else. What it took to find them is behind `/v`:
+
+```
+[0x0000000] $ id/v
+  0x00100000  png          218 bytes
+  ...
 
 12 hits in 8395032 bytes, 46 templates
 prefilter: 72 patterns -> 157 candidates in 0.030s
@@ -397,7 +406,7 @@ prefilter: 72 patterns -> 157 candidates in 0.030s
 ```
 
 A template with no `_identify_magic` has to be tried at every offset, which puts a floor under the
-whole scan; `id/l` shows which templates are prefiltered and `id/v` what each one costs.
+whole scan; `id/l` shows which templates are prefiltered and `id/vv` what each one costs.
 
 ### Seek
 

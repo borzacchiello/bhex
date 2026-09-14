@@ -31,8 +31,8 @@ static void identify_unload_templates(void)
     bhengine_vm_remove_template(bhengine_vm_get(), "gzip");
 }
 
-// The summary of a scan carries timings, so only the hit lines -- everything
-// up to the blank line that follows them -- can be compared
+// The summary a '/v' scan prints carries timings, so only the hit lines --
+// everything up to the blank line that follows them -- can be compared
 static char* hits_only(char* out)
 {
     char* sep = strstr(out, "\n\n");
@@ -123,7 +123,7 @@ int TEST(identify_no_match)(void)
 
     tfb = dummyfilebuffer_create(buf, sizeof(buf));
     ASSERT(tfb != NULL);
-    ASSERT(exec_commands_on("id", tfb) == 0);
+    ASSERT(exec_commands_on("id/v", tfb) == 0);
 
     out = strbuilder_reset(sb);
     ASSERT(strstr(out, "0 hits in 256 bytes") != NULL);
@@ -150,14 +150,14 @@ int TEST(identify_skips_what_it_found)(void)
     ASSERT(tfb != NULL);
 
     // the PNG covers the whole buffer, so the scan is one offset long
-    ASSERT(exec_commands_on("id", tfb) == 0);
+    ASSERT(exec_commands_on("id/v", tfb) == 0);
     out = strbuilder_reset(sb);
     ASSERT(strstr(out, "1 offsets") != NULL);
     bhex_free(out);
 
     // ... unless both the prefilter and the skip are turned off, and then
     // every byte is looked at
-    ASSERT(exec_commands_on("id/n/e", tfb) == 0);
+    ASSERT(exec_commands_on("id/v/n/e", tfb) == 0);
     out = strbuilder_reset(sb);
     ASSERT(strstr(out, "218 offsets") != NULL);
 
@@ -188,7 +188,7 @@ int TEST(identify_len_arg)(void)
     ASSERT(tfb != NULL);
 
     // the scan stops before the PNG starts, so there is nothing to report
-    ASSERT(exec_commands_on("id 100", tfb) == 0);
+    ASSERT(exec_commands_on("id/v 100", tfb) == 0);
     out = strbuilder_reset(sb);
     ASSERT(strstr(out, "0 hits in 100 bytes") != NULL);
 
@@ -257,9 +257,9 @@ int TEST(identify_prefilter_agrees_with_exhaustive)(void)
     tfb = dummyfilebuffer_create(buf, size);
     ASSERT(tfb != NULL);
 
-    ASSERT(exec_commands_on("id/n", tfb) == 0);
+    ASSERT(exec_commands_on("id/v/n", tfb) == 0);
     fast = strbuilder_reset(sb);
-    ASSERT(exec_commands_on("id/n/e", tfb) == 0);
+    ASSERT(exec_commands_on("id/v/n/e", tfb) == 0);
     slow = strbuilder_reset(sb);
 
     // the hit lines have to be identical; the summaries differ on purpose
@@ -298,7 +298,7 @@ int TEST(identify_prefilter_narrows_the_scan)(void)
     ASSERT(tfb != NULL);
 
     // no template's magic occurs, so there is nothing to ask and no hit
-    ASSERT(exec_commands_on("id", tfb) == 0);
+    ASSERT(exec_commands_on("id/v", tfb) == 0);
     out = strbuilder_reset(sb);
     ASSERT(strstr(out, "0 hits in 4096 bytes") != NULL);
     ASSERT(strstr(out, "0 candidates") != NULL);
@@ -343,7 +343,7 @@ int TEST(identify_archive_reported_once)(void)
     // ... and the entries behind the first are only reported with the skip
     // turned off (the first one starts where the archive does, and one offset
     // is one hit)
-    ASSERT(exec_commands_on("id/n", tfb) == 0);
+    ASSERT(exec_commands_on("id/v/n", tfb) == 0);
     out = strbuilder_reset(sb);
     ASSERT(strstr(out, "5 hits in 877 bytes") != NULL);
     ASSERT(strstr(out, "0x00000000  zip          877 bytes") != NULL);
