@@ -54,10 +54,13 @@ static int entropycmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     if (handle_args(pc, 2, 0, &rows_str, &len_str) != 0)
         return COMMAND_INVALID_ARG;
 
-    u32_t len  = fb->size - fb->off;
+    // the length is 64 bit like the file itself: truncating it here used to
+    // graph the first (size mod 4 GB) bytes of a big file and label them as
+    // the whole of it
+    u64_t len  = fb->size - fb->off;
     u32_t rows = 0;
     if (len_str) {
-        if (!str_to_uint32(len_str, &len)) {
+        if (!str_to_uint64(len_str, &len)) {
             warning("not a number: '%s'", len_str);
             return COMMAND_INVALID_ARG;
         }
@@ -75,14 +78,17 @@ static int entropycmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     }
     if (rows == 0) {
         // choose a number so that we have at least 4096 values for each point,
-        // with min: 1 and max: AUTO_MAX_ROWS.
-        rows = len / 4096;
-        if (rows == 0) {
+        // with min: 1 and max: AUTO_MAX_ROWS. Counted in 64 bit and clamped
+        // before it is narrowed, so that a huge file does not wrap to a few
+        // rows (or to none)
+        u64_t auto_rows = len / 4096;
+        if (auto_rows == 0) {
             warning("the file is too small for entropy to be meaningful");
-            rows = 1;
+            auto_rows = 1;
         }
-        if (rows > AUTO_MAX_ROWS)
-            rows = AUTO_MAX_ROWS;
+        if (auto_rows > AUTO_MAX_ROWS)
+            auto_rows = AUTO_MAX_ROWS;
+        rows = (u32_t)auto_rows;
     }
     u64_t last_addr = fb->off + len;
 
@@ -91,7 +97,7 @@ static int entropycmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     if (rows == 0)
         return COMMAND_OK;
 
-    u32_t bytes_per_raw = len / rows;
+    u64_t bytes_per_raw = len / rows;
     u64_t addr          = fb->off;
     for (u32_t i = 0; i < rows; ++i) {
         if (i == rows - 1)

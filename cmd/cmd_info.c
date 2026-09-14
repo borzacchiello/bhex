@@ -4,6 +4,7 @@
 
 #include <util/byte_to_str.h>
 #include <util/math.h>
+#include <entropy.h>
 #include <hash/md5.h>
 #include <display.h>
 #include <color.h>
@@ -44,8 +45,11 @@ static void calc_values(FileBuffer* fb, char** md5, float* entropy)
     MD5_CTX ctx;
     MD5Init(&ctx);
 
-    static u32_t counts[256];
-    memset(counts, 0, sizeof(counts));
+    // 64 bit: a byte value occurs more than 2^32 times in a file bigger than
+    // 4 GB, and a counter that wraps there reports a plausible wrong entropy
+    // rather than an error
+    u64_t counts[256] = {0};
+    u64_t total       = 0;
 
     u64_t curr_off = 0;
     while (curr_off < fb->size) {
@@ -67,6 +71,7 @@ static void calc_values(FileBuffer* fb, char** md5, float* entropy)
         for (i = 0; i < len; ++i) {
             counts[buf[i]] += 1;
         }
+        total += len;
 
         curr_off += len;
     }
@@ -76,18 +81,10 @@ static void calc_values(FileBuffer* fb, char** md5, float* entropy)
     MD5Final(digest, &ctx);
     *md5 = bytes_to_hex(digest, sizeof(digest));
 
-    // Entropy
-    *entropy = 0;
-    u32_t i;
-    for (i = 0; i < 256; ++i) {
-        float px = (float)counts[i] / fb->size;
-        if (px > 0) {
-            *entropy += -px * _log2(px);
-        }
-    }
+    // Entropy: counted over the bytes actually read, which is the whole file
+    // unless it shrank under us
+    *entropy = entropy_from_counts(counts, total);
 
-    if (*entropy < 0.0f)
-        *entropy = 0.0f;
     fb_seek(fb, orig_off);
 }
 
