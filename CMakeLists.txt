@@ -3,6 +3,12 @@ cmake_minimum_required(VERSION 3.19)
 set(CMAKE_POLICY_DEFAULT_CMP0063 NEW)
 set(CMAKE_POLICY_DEFAULT_CMP0075 NEW)
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+# the LLVM bundled in keystone passes a backslash-heavy source to a macro, and
+# only the new behaviour is quiet about it (the probe answers the same either
+# way). Guarded: the policy is younger than the cmake this project asks for
+if (POLICY CMP0219)
+    set(CMAKE_POLICY_DEFAULT_CMP0219 NEW)
+endif()
 
 project(bhex)
 
