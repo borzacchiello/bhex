@@ -79,6 +79,7 @@ set(common_src
     common/crc.c
     common/checksums.c
     common/entropy.c
+    common/histogram.c
     common/dlist.c
     common/ll.c
     common/log.c
@@ -161,6 +162,7 @@ set(command_src
     cmd/cmd_export.c
     cmd/cmd_import.c
     cmd/cmd_entropy.c
+    cmd/cmd_hist.c
     cmd/cmd_echo.c
     cmd/cmd_setbase.c
     cmd/cmd_interactive.c

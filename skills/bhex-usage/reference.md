@@ -54,6 +54,7 @@ Modifiers are alternatives within `{}`, independent otherwise. All offsets/sizes
 | seek | `s` | `s[/{+,-}] [<off>]` | no arg prints the offset; `s -` returns to the previous one; `/+` `/-` are relative and wrap |
 | print | `p` | `p[/{x,w,d,q,a,C}/{le,be}/r/W/{+,-}] [<nelements>]` | default 256 bytes, `-` = whole file; `r` raw, `W` 32 bytes/line, `/+` `/-` seek after printing |
 | entropy | `e` | `e [<rows> <len>]` | **rows first**; `-` or omitted = auto rows; rows are colored by band (>= 7 red, >= 5 yellow) |
+| hist | `hi` | `hi[/z/s] [<len>]` | byte-value distribution, one row per value (count, share, bar); `z` keeps the values that never occur, `s` sorts by count with the most frequent last; rows colored like the bytes of a dump |
 | search | `src` | `src[/{s,x}/sk/p/1] <what> [<len>]` | `s` string (default, `\xNN` accepted), `x` hex string (`?` in place of a digit matches any value for that nibble), `sk` seek to a match, `p` print context, `1` stop at the first match; `len` counts from the cursor, without it the whole file is searched |
 | strings | `str` | `str[/n/{a,w}] [<pattern> <num>]` | `n` NUL-terminated only, `a` 8-bit, `w` 16-bit; `pattern` may use `*`; `num` = min length (3) |
 | hash | `hh` | `hh[/l] <algo> [<size> <off>]` | `off` relative to the cursor; `size` 0/omitted = to EOF; `*` = all; `/l` lists |

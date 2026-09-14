@@ -19,6 +19,7 @@
 #include "cmd_export.h"
 #include "cmd_findbase.h"
 #include "cmd_hash.h"
+#include "cmd_hist.h"
 #include "cmd_identify.h"
 #include "cmd_import.h"
 #include "cmd_info.h"
@@ -88,6 +89,7 @@ CmdContext* cmdctx_init(void)
     ll_add_tail(&cc->commands, (uptr_t)exportcmd_create());
     ll_add_tail(&cc->commands, (uptr_t)findbasecmd_create());
     ll_add_tail(&cc->commands, (uptr_t)hashcmd_create());
+    ll_add_tail(&cc->commands, (uptr_t)histcmd_create());
     ll_add_tail(&cc->commands, (uptr_t)identifycmd_create());
     ll_add_tail(&cc->commands, (uptr_t)importcmd_create());
     ll_add_tail(&cc->commands, (uptr_t)infocmd_create());

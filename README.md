@@ -118,6 +118,7 @@ Available commands:
     findbase [fba]
     hash [hh]
     help [h]
+    hist [hi]
     identify [id]
     import [im]
     info [i]
@@ -220,6 +221,40 @@ entropy: display an entropy graph
 [ 000eceb0 - 00114678 ] (6.495) ------------------------------------+
 [ 00114678 - 0013be40 ] (4.388) ------------------------+
 ```
+
+### Hist
+
+The distribution of the byte values in a range: one row per value, with the count, the share of the
+range it takes and a bar scaled against the most frequent value. Where `e` summarises a range into
+one number, this is the whole picture that number came from, so a block of text, a table of pointers
+and a compressed blob look nothing alike here.
+
+```
+[0x0000000] $ hi?
+
+hist: draw the distribution of the byte values in a range
+
+  hi[/z/s] [<len>]
+     z: include the values that never occur
+     s: sort by count
+
+  len: number of bytes to include starting from the current offset (if omitted, use the whole file)
+
+[0x0000000] $ hi 64
+  00      16   25.00%  ########################################
+  03       1    1.56%  ##
+  08       1    1.56%  ##
+  0a       2    3.12%  #####
+  0d       2    3.12%  #####
+  19       1    1.56%  ##
+  1a       1    1.56%  ##
+  20 ' '   3    4.69%  #######
+  ...
+```
+
+A value that never occurs is left out unless `/z` asks for it, and `/s` sorts by count, putting the
+most frequent value last so that the prompt does not push it off the screen. The rows are colored
+the way the bytes of a dump are: gray for `00`, red for `ff`, green for printable ASCII.
 
 ### Interactive
 
