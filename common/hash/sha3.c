@@ -128,6 +128,12 @@ void SHA3Init(sha3_context* ctx, u32_t bitSize)
     ctx->bitsize       = bitSize;
 }
 
+void KECCAKInit(sha3_context* ctx, u32_t bitSize)
+{
+    SHA3Init(ctx, bitSize);
+    SHA3SetFlags(ctx, SHA3_FLAGS_KECCAK);
+}
+
 void SHA3Update(sha3_context* ctx, const u8_t* bufIn, u32_t len)
 {
     /* 0...7 -- how much is needed to have a word */

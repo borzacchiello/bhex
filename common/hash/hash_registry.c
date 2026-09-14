@@ -100,6 +100,14 @@ GEN_HANDLE_FUNC(sha3_384, sha3_context, SHA3_384_Init, SHA3Update, SHA3Finalize,
                 SHA3_384_DIGEST_LENGTH)
 GEN_HANDLE_FUNC(sha3_512, sha3_context, SHA3_512_Init, SHA3Update, SHA3Finalize,
                 SHA3_512_DIGEST_LENGTH)
+GEN_HANDLE_FUNC(keccak_224, sha3_context, KECCAK_224_Init, SHA3Update,
+                SHA3Finalize, SHA3_224_DIGEST_LENGTH)
+GEN_HANDLE_FUNC(keccak_256, sha3_context, KECCAK_256_Init, SHA3Update,
+                SHA3Finalize, SHA3_256_DIGEST_LENGTH)
+GEN_HANDLE_FUNC(keccak_384, sha3_context, KECCAK_384_Init, SHA3Update,
+                SHA3Finalize, SHA3_384_DIGEST_LENGTH)
+GEN_HANDLE_FUNC(keccak_512, sha3_context, KECCAK_512_Init, SHA3Update,
+                SHA3Finalize, SHA3_512_DIGEST_LENGTH)
 GEN_HANDLE_FUNC(ripemd128, struct ripemd_ctx, ripemd128_init, ripemd_update,
                 ripemd_final, RIPEMD128_DIGESTSIZE)
 GEN_HANDLE_FUNC(ripemd160, struct ripemd_ctx, ripemd160_init, ripemd_update,
@@ -195,6 +203,10 @@ static hash_handler_t hash_handlers[] = {{"md2", handle_md2},
                                          {"sha3-256", handle_sha3_256},
                                          {"sha3-384", handle_sha3_384},
                                          {"sha3-512", handle_sha3_512},
+                                         {"keccak-224", handle_keccak_224},
+                                         {"keccak-256", handle_keccak_256},
+                                         {"keccak-384", handle_keccak_384},
+                                         {"keccak-512", handle_keccak_512},
                                          {"RipeMD-128", handle_ripemd128},
                                          {"RipeMD-160", handle_ripemd160},
                                          {"RipeMD-256", handle_ripemd256},

@@ -62,6 +62,17 @@ enum SHA3_FLAGS SHA3SetFlags(sha3_context*, enum SHA3_FLAGS flags);
 #define SHA3_384_Init(ctx) SHA3Init(ctx, SHA3_384_DIGEST_LENGTH * 8)
 #define SHA3_512_Init(ctx) SHA3Init(ctx, SHA3_512_DIGEST_LENGTH * 8)
 
+/* The original Keccak, as submitted to the SHA-3 competition: the same sponge,
+ * with the padding NIST replaced on standardisation (0x01 instead of 0x06).
+ * Software written before FIPS 202, Ethereum included, calls this one "SHA-3",
+ * so the two have to be told apart rather than aliased. */
+void KECCAKInit(sha3_context*, u32_t bitSize);
+
+#define KECCAK_224_Init(ctx) KECCAKInit(ctx, SHA3_224_DIGEST_LENGTH * 8)
+#define KECCAK_256_Init(ctx) KECCAKInit(ctx, SHA3_256_DIGEST_LENGTH * 8)
+#define KECCAK_384_Init(ctx) KECCAKInit(ctx, SHA3_384_DIGEST_LENGTH * 8)
+#define KECCAK_512_Init(ctx) KECCAKInit(ctx, SHA3_512_DIGEST_LENGTH * 8)
+
 /* Single-call hashing */
 void SHA3Hash(u32_t bitSize, enum SHA3_FLAGS flags, const void* in,
               u32_t inBytes, void* out,
