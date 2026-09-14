@@ -20,6 +20,11 @@ size_t      count_chars_in_str(char* s, char c);
 char*       str_indent(char* s, u32_t spaces);
 void        strip_chars(char* s, const char* chars);
 const char* stristr(const char* haystack, const char* needle);
-char*       _strsep(char** stringp, const char* delim);
+// Case-insensitive equality, and the same over the first `n` characters:
+// rolled here rather than taken from strings.h, like stristr above, so that
+// every target builds the same code
+int   striequal(const char* a, const char* b);
+int   striprefix(const char* s, const char* prefix);
+char* _strsep(char** stringp, const char* delim);
 
 #endif

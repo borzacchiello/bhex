@@ -234,6 +234,28 @@ const char* stristr(const char* haystack, const char* needle)
     return NULL;
 }
 
+int striequal(const char* a, const char* b)
+{
+    while (*a && *b) {
+        if (tolower((unsigned char)*a) != tolower((unsigned char)*b))
+            return 0;
+        a++;
+        b++;
+    }
+    return *a == *b;
+}
+
+int striprefix(const char* s, const char* prefix)
+{
+    while (*prefix) {
+        if (tolower((unsigned char)*s) != tolower((unsigned char)*prefix))
+            return 0;
+        s++;
+        prefix++;
+    }
+    return 1;
+}
+
 char* _strsep(char** stringp, const char* delim)
 {
     char* s = *stringp;

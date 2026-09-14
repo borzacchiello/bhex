@@ -323,7 +323,7 @@ hash: calculate the hash of <size> bytes at current offset + <off>
   hash /l <algorithm> [ <size> <off> ]
      l:  list the supported hashing algorithms
 
-  algorithm: hashing algorithm (or '*' to use all supported algorithms)
+  algorithm: hashing algorithm, or a part of one to run a family ('md' runs md2 to md6-512), or '*' for all of them
   size: number of bytes to include in the hash (if omitted or zero, hash the whole file starting from current offset)
   off:  starting offset wrt to current offset (default 0)
 
