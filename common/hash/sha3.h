@@ -73,6 +73,21 @@ void KECCAKInit(sha3_context*, u32_t bitSize);
 #define KECCAK_384_Init(ctx) KECCAKInit(ctx, SHA3_384_DIGEST_LENGTH * 8)
 #define KECCAK_512_Init(ctx) KECCAKInit(ctx, SHA3_512_DIGEST_LENGTH * 8)
 
+/* SHAKE128 and SHAKE256, the two extendable-output functions of FIPS 202.
+ * Same sponge and same rates as SHA3-128 and SHA3-256, with the suffix 1111
+ * (0x1f once padded) and an output of any length: the finalize squeezes as
+ * many blocks as it is asked for.
+ *
+ * An XOF has no natural digest size, so the registry names the length it
+ * wants: "shake128-256" is SHAKE128 squeezed to 256 bits. */
+#define SHAKE128_Init(ctx) SHA3Init(ctx, 128)
+#define SHAKE256_Init(ctx) SHA3Init(ctx, 256)
+
+void SHAKEFinalize(u8_t* out, u32_t outBytes, sha3_context*);
+
+void SHAKE128_256Final(u8_t* out, sha3_context*);
+void SHAKE256_512Final(u8_t* out, sha3_context*);
+
 /* Single-call hashing */
 void SHA3Hash(u32_t bitSize, enum SHA3_FLAGS flags, const void* in,
               u32_t inBytes, void* out,

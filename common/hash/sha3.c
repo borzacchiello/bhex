@@ -274,6 +274,47 @@ void SHA3Finalize(u8_t* hash, sha3_context* ctx)
     memcpy(hash, ctx->u.sb, ctx->bitsize / 8);
 }
 
+void SHAKEFinalize(u8_t* out, u32_t outBytes, sha3_context* ctx)
+{
+    const u32_t rate =
+        (u32_t)(SHA3_KECCAK_SPONGE_WORDS - SHA3_CW(ctx->capacityWords)) * 8;
+
+    /* the SHAKE suffix is 1111, which together with the leading padding bit
+     * is the byte 0x1f -- where SHA-3 has 0x06 and Keccak 0x01 */
+    ctx->u.s[ctx->wordIndex] ^=
+        ctx->saved ^ ((u64_t)0x1f << (ctx->byteIndex * 8));
+    ctx->u.s[SHA3_KECCAK_SPONGE_WORDS - SHA3_CW(ctx->capacityWords) - 1] ^=
+        SHA3_CONST(0x8000000000000000UL);
+    keccakf(ctx->u.s);
+
+    /* Squeeze one rate-sized block at a time, permuting in between, so that
+     * an output longer than the rate is still the right one. The bytes are
+     * pulled out of the state explicitly little-endian instead of reusing
+     * ctx->u.sb: the conversion SHA3Finalize does is in place, and a second
+     * permutation could not follow it on a big-endian machine. */
+    u32_t done = 0;
+    while (done < outBytes) {
+        u32_t n = outBytes - done;
+        if (n > rate)
+            n = rate;
+        for (u32_t i = 0; i < n; ++i)
+            out[done + i] = (u8_t)(ctx->u.s[i >> 3] >> (8 * (i & 7)));
+        done += n;
+        if (done < outBytes)
+            keccakf(ctx->u.s);
+    }
+}
+
+void SHAKE128_256Final(u8_t* out, sha3_context* ctx)
+{
+    SHAKEFinalize(out, 32, ctx);
+}
+
+void SHAKE256_512Final(u8_t* out, sha3_context* ctx)
+{
+    SHAKEFinalize(out, 64, ctx);
+}
+
 void SHA3Hash(u32_t bitSize, enum SHA3_FLAGS flags, const void* in,
               u32_t inBytes, void* out, u32_t outBytes)
 {
