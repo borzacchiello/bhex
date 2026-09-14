@@ -16,6 +16,7 @@
 #include <hash/ripemd.h>
 #include <hash/blake2.h>
 #include <hash/gost.h>
+#include <hash/streebog.h>
 #include <hash/fnv.h>
 #include <hash/murmur3.h>
 #include <hash/xxhash.h>
@@ -134,6 +135,10 @@ GEN_HANDLE_FUNC(blake2b, blake2b_state, simple_blake2b_init,
                 simple_blake2b_update, simple_blake2b_final, BLAKE2B_OUTBYTES)
 GEN_HANDLE_FUNC(gost, GostHashCtx, GOSTInit, GOSTUpdate, GOSTFinal,
                 GOST_DIGEST_LENGTH)
+GEN_HANDLE_FUNC(streebog_256, StreebogCtx, streebog_256_init, streebog_update,
+                streebog_final, STREEBOG_256_DIGEST_LENGTH)
+GEN_HANDLE_FUNC(streebog_512, StreebogCtx, streebog_512_init, streebog_update,
+                streebog_final, STREEBOG_512_DIGEST_LENGTH)
 GEN_HANDLE_FUNC(blake2s_128, blake2s_state, simple_blake2s_128_init,
                 simple_blake2s_update, simple_blake2s_128_final, 16)
 GEN_HANDLE_FUNC(blake2s_160, blake2s_state, simple_blake2s_160_init,
@@ -269,6 +274,8 @@ static hash_handler_t hash_handlers[] = {{"md2", handle_md2},
                                          {"blake2b-384", handle_blake2b_384},
                                          {"blake3", handle_blake3},
                                          {"gost", handle_gost},
+                                         {"streebog-256", handle_streebog_256},
+                                         {"streebog-512", handle_streebog_512},
                                          {"groestl-224", handle_groestl_224},
                                          {"groestl-256", handle_groestl_256},
                                          {"groestl-384", handle_groestl_384},
