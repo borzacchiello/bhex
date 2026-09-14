@@ -155,7 +155,7 @@ isa_identify: identify the ISA of a block of bytes using bundled AI models
 By default the region is scanned in 1024-byte chunks: each chunk is classified
 as code or not, contiguous chunks of the same kind are merged, and only the
 code ranges are printed, each with the top ISA for that range. On a whole file
-that is the useful answer — naming one ISA for a file that is mostly headers,
+that is the useful answer -- naming one ISA for a file that is mostly headers,
 strings and data says little.
 
 `/s` is the other question: given a range already known to hold code, what is
@@ -257,33 +257,34 @@ hist: draw the distribution of the byte values in a range
 
 A value that never occurs is left out unless `/z` asks for it, and `/s` sorts by count, putting the
 most frequent value last so that the prompt does not push it off the screen. The rows are colored
-the way the bytes of a dump are: gray for `00`, red for `ff`, green for printable ASCII.
+the way the bytes of a dump are: gray for `00`, red for `ff`, green for printable ASCII. The bars
+are drawn with `#` here and with full blocks on a UTF-8 terminal.
 
 ### Map
 
 The whole file as one character per slice, each named after what the bytes in
 it look like. Where `e` gives a number per region and `hist` the distribution
-of the whole, this says *what kind of thing* is where — and the distinction it
+of the whole, this says *what kind of thing* is where -- and the distinction it
 makes that entropy alone cannot is text against structured binary, which sit
 at the same entropy.
 
 ```
 [0x0000000] $ m 6
-[ 00000000 ] ······················································░▒▒▒▒▒▒▒▒▒
-[ 00009580 ] ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒░░░░░░░░░░░░░░░░░░░
-[ 00012b00 ] ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░████████████████████████████
-[ 0001c040 ] ████████████████████████████████████████████████████████████████
-[ 00025580 ] ██████████████████░▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
-[ 0002eac0 ] ▓▓▓▓▓▓▓▓▓░······················································
+[ 00000000 ] ......................................................:AAAAAAAAA
+[ 00009580 ] AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA:::::::::::::::::::
+[ 00012b00 ] ::::::::::::::::::::::::::::::::::::############################
+[ 0001c040 ] ################################################################
+[ 00025580 ] ##################:FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+[ 0002eac0 ] FFFFFFFFF:......................................................
 
-  · zeroes  ▓ 0xff  ▒ text  █ high entropy  ░ mixed
+  . zeroes  F 0xff  A text  # high entropy  : mixed
   597 bytes per cell, 384 cells
 ```
 
 A slice is called after what fills it: nine tenths `00` or `ff` makes it
 padding or filler, 85% printable makes it text, and bytes that cannot be told
-apart from random make it compressed or encrypted. Everything else — headers,
-tables, code — is "mixed".
+apart from random make it compressed or encrypted. Everything else (headers,
+tables, code) is "mixed".
 
 The bar for "random" moves with the size of a slice. A short slice has too few
 bytes to visit all 256 values, so it cannot score 8 bits however random it is:
@@ -400,7 +401,7 @@ hash: calculate the hash of <size> bytes at current offset + <off>
 ```
 
 The list runs to 86 entries. Alongside the cryptographic families it carries the fast,
-non-cryptographic hashes that turn up *inside* file formats — `xxh32` is what an LZ4 frame
+non-cryptographic hashes that turn up *inside* file formats, `xxh32` is what an LZ4 frame
 checksums its content with, `xxh64` what a Zstandard one uses, and `murmur3`/`fnv1a` are what
 indices and shellcode import resolvers tend to use. Note that `keccak-256` is the original
 padding (what Ethereum and pre-FIPS-202 software call "SHA-3") and differs from `sha3-256`,
