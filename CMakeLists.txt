@@ -115,6 +115,7 @@ set(common_src
     common/hash/blake3_impl.c
     common/hash/gost.c
     common/hash/fnv.c
+    common/hash/murmur3.c
     common/hash/groestl-ref.c
     common/hash/haval.c
     common/hash/shash.c

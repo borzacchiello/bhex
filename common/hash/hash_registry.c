@@ -17,6 +17,7 @@
 #include <hash/blake2.h>
 #include <hash/gost.h>
 #include <hash/fnv.h>
+#include <hash/murmur3.h>
 #include <hash/blake3.h>
 #include <hash/groestl-ref.h>
 #include <hash/haval.h>
@@ -199,6 +200,10 @@ GEN_HANDLE_FUNC(haval_256_4, HavalCtx, haval_256_4_init, haval_update,
                 haval_final, HAVAL_256_DIGEST_LENGTH)
 GEN_HANDLE_FUNC(haval_256_5, HavalCtx, haval_256_5_init, haval_update,
                 haval_final, HAVAL_256_DIGEST_LENGTH)
+GEN_HANDLE_FUNC(murmur3_32, Murmur3Ctx, murmur3_x86_32_init, murmur3_update,
+                murmur3_final, MURMUR3_32_DIGEST_LENGTH)
+GEN_HANDLE_FUNC(murmur3_128, Murmur3Ctx, murmur3_x64_128_init, murmur3_update,
+                murmur3_final, MURMUR3_128_DIGEST_LENGTH)
 GEN_HANDLE_FUNC(fnv1_32, FnvCtx, fnv1_32_init, fnv_update, fnv_final,
                 FNV_32_DIGEST_LENGTH)
 GEN_HANDLE_FUNC(fnv1a_32, FnvCtx, fnv1a_32_init, fnv_update, fnv_final,
@@ -281,6 +286,8 @@ static hash_handler_t hash_handlers[] = {{"md2", handle_md2},
                                          {"haval-256-3", handle_haval_256_3},
                                          {"haval-256-4", handle_haval_256_4},
                                          {"haval-256-5", handle_haval_256_5},
+                                         {"murmur3-32", handle_murmur3_32},
+                                         {"murmur3-128", handle_murmur3_128},
                                          {"fnv1-32", handle_fnv1_32},
                                          {"fnv1a-32", handle_fnv1a_32},
                                          {"fnv1-64", handle_fnv1_64},
