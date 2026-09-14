@@ -174,11 +174,12 @@ int Skein1024_Output(Skein1024_Ctxt_t* ctx, u08b_t* hashVal);
 #define SKEIN_T1_TREE_LEVEL(n) (((u64b_t)(n)) << SKEIN_T1_POS_TREE_LVL)
 
 /* tweak word T[1]: block type field */
-#define SKEIN_BLK_TYPE_KEY  (0)  /* key, for MAC and KDF */
-#define SKEIN_BLK_TYPE_CFG  (4)  /* configuration block */
-#define SKEIN_BLK_TYPE_PERS (8)  /* personalization string */
-#define SKEIN_BLK_TYPE_PK   (12) /* public key (for digital signature hashing) \
-                                  */
+#define SKEIN_BLK_TYPE_KEY  (0) /* key, for MAC and KDF */
+#define SKEIN_BLK_TYPE_CFG  (4) /* configuration block */
+#define SKEIN_BLK_TYPE_PERS (8) /* personalization string */
+#define SKEIN_BLK_TYPE_PK                                                      \
+    (12) /* public key (for digital signature hashing)                         \
+          */
 #define SKEIN_BLK_TYPE_KDF   (16) /* key identifier for KDF */
 #define SKEIN_BLK_TYPE_NONCE (20) /* nonce for PRNG */
 #define SKEIN_BLK_TYPE_MSG   (48) /* message processing */
@@ -187,7 +188,8 @@ int Skein1024_Output(Skein1024_Ctxt_t* ctx, u08b_t* hashVal);
 
 #define SKEIN_T1_BLK_TYPE(T)                                                   \
     (((u64b_t)(SKEIN_BLK_TYPE_##T)) << SKEIN_T1_POS_BLK_TYPE)
-#define SKEIN_T1_BLK_TYPE_KEY SKEIN_T1_BLK_TYPE(KEY) /* key, for MAC and KDF   \
+#define SKEIN_T1_BLK_TYPE_KEY                                                  \
+    SKEIN_T1_BLK_TYPE(KEY)                           /* key, for MAC and KDF   \
                                                       */
 #define SKEIN_T1_BLK_TYPE_CFG SKEIN_T1_BLK_TYPE(CFG) /* configuration block */
 #define SKEIN_T1_BLK_TYPE_PERS                                                 \
@@ -316,7 +318,7 @@ int Skein1024_Output(Skein1024_Ctxt_t* ctx, u08b_t* hashVal);
     {                                                                          \
         if (!(x))                                                              \
             return retCode;                                                    \
-    }                             /*  caller  error */
+    } /*  caller  error */
 #define Skein_assert(x) assert(x) /* internal error */
 #endif
 

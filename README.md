@@ -337,23 +337,39 @@ hash: calculate the hash of <size> bytes at current offset + <off>
   sha1
   sha256
   sha512
+  sha512-256
   sha3-256
+  shake128-256
+  keccak-256
   RipeMD-160
   blake2s
   blake2b
+  blake2b-256
   blake3
   gost
+  streebog-256
   groestl-256
   jh-256
+  skein-512
   snefru-128
   spectral-256
   haval-128-5
-  haval-256-5
   tiger
-  tiger2
   whirlpool
+  xxh32
+  xxh64
+  xxh3-64
+  murmur3-32
+  fnv1a-32
   ...
 ```
+
+The list runs to 86 entries. Alongside the cryptographic families it carries the fast,
+non-cryptographic hashes that turn up *inside* file formats — `xxh32` is what an LZ4 frame
+checksums its content with, `xxh64` what a Zstandard one uses, and `murmur3`/`fnv1a` are what
+indices and shellcode import resolvers tend to use. Note that `keccak-256` is the original
+padding (what Ethereum and pre-FIPS-202 software call "SHA-3") and differs from `sha3-256`,
+and that `streebog-*` is GOST R 34.11-2012 while plain `gost` is the superseded 34.11-94.
 
 ### Template
 

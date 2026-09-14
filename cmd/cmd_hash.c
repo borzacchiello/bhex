@@ -101,7 +101,7 @@ static int hashcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
             if (hash) {
                 // the escapes wrap the padded name, so that they do not
                 // eat into the width of the column
-                display_printf("  %s%12s%s : %s\n", color_str(COLOR_LABEL),
+                display_printf("  %s%13s%s : %s\n", color_str(COLOR_LABEL),
                                hashes[i].name, color_str(COLOR_RESET), hash);
                 bhex_free(hash);
             } else {
