@@ -463,6 +463,71 @@ end:
     return r;
 }
 
+// The digests of "abc" as the standards that define them publish them. The
+// big listings above pin every algorithm, but they pin it to what this code
+// produces; these few are worth writing down separately, traceable to the
+// document rather than to us
+int TEST(published_vectors_abc)(void)
+{
+    static const char abc[] = "abc";
+
+    // clang-format off
+    const char* expected =
+    "       sha3-256 : 3a985da74fe225b2045c172d6bd390bd855f086e3e9d525b46bfe24511431532\n" // FIPS 202
+    "     keccak-256 : 4e03657aea45a94fc7d47ba826c8d667c0d1e6e33a64a036ec44f58fa12d6c45\n" // the original padding
+    "     sha512-256 : 53048e2681941ef99b2e29b76b4c7dabe4c2d0c634fc6d46e0e2f13107e7af23\n" // FIPS 180-4
+    "          xxh32 : 32d153ff\n"                                                         // xxHash spec
+    "          xxh64 : 44bc2cf5ad770999\n";
+    // clang-format on
+
+    int              r   = TEST_FAILED;
+    char*            out = NULL;
+    DummyFilebuffer* tfb =
+        dummyfilebuffer_create((const u8_t*)abc, sizeof(abc) - 1);
+    if (tfb == NULL)
+        goto end;
+
+    if (exec_commands_on("hh sha3-256 ; hh keccak-256 ; hh sha512-256 ; "
+                         "hh xxh32 ; hh xxh64",
+                         tfb) != 0)
+        goto end;
+
+    out = strbuilder_reset(sb);
+    r   = compare_strings_ignoring_X(expected, out);
+
+end:
+    bhex_free(out);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+}
+
+// Keccak is not SHA-3: the padding NIST changed on standardisation makes them
+// different functions, and the whole point of carrying both is that a digest
+// from one never passes for the other
+int TEST(keccak_is_not_sha3)(void)
+{
+    int   r    = TEST_FAILED;
+    char* out  = NULL;
+    char* sha3 = NULL;
+
+    if (exec_commands("hh sha3-256") != 0)
+        goto end;
+    sha3 = strbuilder_reset(sb);
+
+    if (exec_commands("hh keccak-256") != 0)
+        goto end;
+    out = strbuilder_reset(sb);
+
+    // same length, different value
+    r = (strlen(sha3) == strlen(out) && strcmp(sha3, out) != 0) ? TEST_SUCCEEDED
+                                                                : TEST_FAILED;
+
+end:
+    bhex_free(out);
+    bhex_free(sha3);
+    return r;
+}
+
 int TEST(notkitty_only_md_family)(void)
 {
     // clang-format off
