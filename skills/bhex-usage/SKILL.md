@@ -99,6 +99,7 @@ bhex -2nc "e 16"                 file   # entropy graph, 16 rows
 bhex -2nc "hi 4096"              file   # byte histogram of the first 4096 bytes
 bhex -2nc 'hh sha256; cr "*"'    file   # a hash, then every known CRC
 bhex -2nc "t png"                file   # decode with a shipped template (t/l lists them)
+bhex -2nc "id"                   file   # scan for every format the templates know
 bhex -2nc "ds x64 20"            file   # disassemble 20 instructions at the cursor
 bhex -2nc "ds x64"               file   # ... or the whole function, up to its "ret"
 ```
