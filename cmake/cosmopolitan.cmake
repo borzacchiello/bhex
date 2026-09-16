@@ -73,3 +73,9 @@ set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS "")
 # through the compiler driver rather than through CMake, so restricting finds
 # buys nothing and breaks discovery of host build tools -- keystone's LLVM
 # needs a host Python interpreter to run LLVMBuild.py at configure time.
+
+# A release APE otherwise carries .symtab.amd64 and .symtab.arm64 as zip
+# members, so that --ftrace and crash backtraces can name functions. The GNU
+# release builds are stripped by the release workflow; strip this one too
+# rather than ship the one binary that is not. Worth about 340KB.
+string(APPEND CMAKE_EXE_LINKER_FLAGS_RELEASE_INIT " -s")

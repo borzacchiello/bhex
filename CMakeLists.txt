@@ -22,6 +22,16 @@ option(STATIC_BUILD "Statically link libc" OFF)
 
 set(CMAKE_C_STANDARD 99)
 
+# Section splitting has to be in place before the vendored subdirectories are
+# added: capstone and keystone are where nearly all of the code lives, and
+# compiling them without it leaves --gc-sections nothing to drop. cosmocc
+# already links with --gc-sections of its own accord; a GNU ld link needs the
+# flag spelled out.
+add_compile_options(
+    "$<$<CONFIG:Release>:-ffunction-sections>"
+    "$<$<CONFIG:Release>:-fdata-sections>")
+add_link_options("$<$<CONFIG:Release>:-Wl,--gc-sections>")
+
 include_directories("${CMAKE_SOURCE_DIR}/common")
 include_directories("${CMAKE_SOURCE_DIR}/common/ml")
 
@@ -195,9 +205,8 @@ set(bhengine_src
 # NULL returns, signed/unsigned mix-ups in size computations, and bad formats.
 set(BHEX_WARNINGS "-Wall -Wsign-compare -Wnull-dereference -Wformat -Wformat-security")
 
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} ${BHEX_WARNINGS} -ffunction-sections")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wall -ffunction-sections")
-set(CMAKE_LINKER_FLAGS_RELEASE "${CMAKE_LINKER_FLAGS_RELEASE} -Wl,--gc-sections")
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} ${BHEX_WARNINGS}")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wall")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fno-omit-frame-pointer ${BHEX_WARNINGS}")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-omit-frame-pointer -Wall")
 
@@ -210,7 +219,7 @@ set_source_files_properties(bhengine/lexer.c PROPERTIES COMPILE_OPTIONS
 if(ASAN)
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fsanitize=address,undefined")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address,undefined")
-    set(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fsanitize=address,undefined")
+    set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} -fsanitize=address,undefined")
 endif()
 
 file(GLOB MODEL_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/models/*.bin)
