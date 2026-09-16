@@ -23,12 +23,12 @@ static u8_t hist_sample[] = {0x00, 0xff, 0xff, 0x41, 0x41, 0x41};
 int TEST(distribution)(void)
 {
     // the bar of the most frequent value is full, and the others are scaled
-    // against it: 1/3 and 2/3 of 40 columns
+    // against it: 1/3 and 2/3 of 45 columns
     // clang-format off
     const char* expected =
-        "  00      1   16.67%  #############\n"
-        "  41 'A'  3   50.00%  ########################################\n"
-        "  ff      2   33.33%  ##########################\n";
+        "  00      1   16.67%  ---------------+\n"
+        "  41 'A'  3   50.00%  ---------------------------------------------+\n"
+        "  ff      2   33.33%  ------------------------------+\n";
     // clang-format on
 
     int              r   = TEST_FAILED;
@@ -54,9 +54,9 @@ int TEST(sorted_rarest_first)(void)
     // the most frequent value goes last, where the prompt leaves it in sight
     // clang-format off
     const char* expected =
-        "  00      1   16.67%  #############\n"
-        "  ff      2   33.33%  ##########################\n"
-        "  41 'A'  3   50.00%  ########################################\n";
+        "  00      1   16.67%  ---------------+\n"
+        "  ff      2   33.33%  ------------------------------+\n"
+        "  41 'A'  3   50.00%  ---------------------------------------------+\n";
     // clang-format on
 
     int              r   = TEST_FAILED;
@@ -83,8 +83,8 @@ int TEST(len_arg)(void)
     // shares are counted against 3 bytes rather than 6
     // clang-format off
     const char* expected =
-        "  00      1   33.33%  ####################\n"
-        "  ff      2   66.67%  ########################################\n";
+        "  00      1   33.33%  ----------------------+\n"
+        "  ff      2   66.67%  ---------------------------------------------+\n";
     // clang-format on
 
     int              r   = TEST_FAILED;

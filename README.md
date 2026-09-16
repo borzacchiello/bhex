@@ -244,21 +244,22 @@ hist: draw the distribution of the byte values in a range
   len: number of bytes to include starting from the current offset (if omitted, use the whole file)
 
 [0x0000000] $ hi 64
-  00      16   25.00%  ########################################
-  03       1    1.56%  ##
-  08       1    1.56%  ##
-  0a       2    3.12%  #####
-  0d       2    3.12%  #####
-  19       1    1.56%  ##
-  1a       1    1.56%  ##
-  20 ' '   3    4.69%  #######
+  00      16   25.00%  ---------------------------------------------+
+  03       1    1.56%  --+
+  08       1    1.56%  --+
+  0a       2    3.12%  -----+
+  0d       2    3.12%  -----+
+  19       1    1.56%  --+
+  1a       1    1.56%  --+
+  20 ' '   3    4.69%  --------+
   ...
 ```
 
 A value that never occurs is left out unless `/z` asks for it, and `/s` sorts by count, putting the
 most frequent value last so that the prompt does not push it off the screen. The rows are colored
 the way the bytes of a dump are: gray for `00`, red for `ff`, green for printable ASCII. The bars
-are drawn with `#` here and with full blocks on a UTF-8 terminal.
+are drawn like the ones of the entropy graph, `-` up to a `+` tip and on the same 45 column scale,
+so that the two commands can be read side by side.
 
 ### Map
 

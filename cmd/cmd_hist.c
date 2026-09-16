@@ -12,7 +12,6 @@
 #include <filebuffer.h>
 #include <histogram.h>
 #include <display.h>
-#include <unicode.h>
 #include <color.h>
 #include <alloc.h>
 #include <defs.h>
@@ -23,8 +22,9 @@
 #define ZEROS_SET  0
 #define SORTED_SET 0
 
-// How wide the bar of the most frequent value is
-#define BAR_WIDTH 40
+// How many dashes the bar of the most frequent value gets: the same scale the
+// entropy graph draws on, so that the two commands line up on the screen
+#define BAR_WIDTH 45
 
 // One byte value and how many times it occurred
 typedef struct Bucket {
@@ -128,8 +128,7 @@ static int histcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 
     // every count is printed in the column of the largest one, so that the
     // digits line up and the bars start where the eye expects them
-    u32_t       count_width = decimal_width(max);
-    const char* block       = unicode_enabled() ? "█" : "#";
+    u32_t count_width = decimal_width(max);
 
     for (u32_t i = 0; i < 256; ++i) {
         u64_t count = buckets[i].count;
@@ -147,15 +146,13 @@ static int histcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
         display_printf("  %*llu  %6.2f%%  ", count_width, count,
                        (double)count * 100.0 / (double)total);
 
-        // the most frequent value fills the bar, and a value that occurs at
-        // all gets at least one block: a row that is there has to be visible
+        // the most frequent value fills the bar, and the '+' tip closes every
+        // row, so that a value that barely occurs is still drawn
         u32_t bar = (u32_t)(count * BAR_WIDTH / max);
-        if (bar == 0 && count > 0)
-            bar = 1;
         display_printf("%s", color_str(value_color(v)));
         for (u32_t k = 0; k < bar; ++k)
-            display_printf("%s", block);
-        display_printf("%s\n", color_str(COLOR_RESET));
+            display_printf("-");
+        display_printf("+%s\n", color_str(COLOR_RESET));
     }
 
     return COMMAND_OK;
