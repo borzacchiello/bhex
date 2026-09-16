@@ -36,40 +36,124 @@ int TEST(invalid_arch)(void)
 #endif
 }
 
+// The listing is the whole of capstone's table (see cmd/disas_archs.inc), so
+// pinning all of it here would only restate the generated file. What is worth
+// holding still is the shape: the names bhex has always had, in the order it
+// has always printed them, followed by the ones taken from capstone
 int TEST(list_archs)(void)
 {
 #ifndef DISABLE_CAPSTONE
-    const char* expected = "Supported architectures:\n"
-                           "    x64\n"
-                           "    x86\n"
-                           "    i8086\n"
-                           "    arm32\n"
-                           "    aarch64\n"
-                           "    arm32-thumb\n"
-                           "    mips32\n"
-                           "    mips64\n"
-                           "    mipsel32\n"
-                           "    mipsel64\n"
-                           "    ppc32\n"
-                           "    ppc64\n"
-                           "    ppcle32\n"
-                           "    ppcle64\n"
-                           "    m68k\n"
-                           "    alpha\n"
-                           "    riscv32\n"
-                           "    riscv64\n"
-                           "    s390x\n"
-                           "    sparc\n"
-                           "    sparc64\n"
-                           "    bpf\n"
-                           "    ebpf\n";
+    const char* head = "    x64               x86 64-bit mode\n"
+                       "    x86               x86 32-bit mode\n"
+                       "    i8086             x86 16-bit mode\n"
+                       "    arm32             ARM, little endian\n"
+                       "    aarch64           AArch64\n"
+                       "    arm32-thumb       ARM Thumb, little endian\n";
 
     int r = TEST_FAILED;
     if (exec_commands("ds/l") != 0)
         goto end;
 
     char* out = strbuilder_reset(sb);
-    r         = compare_strings_ignoring_X(expected, out);
+    r = out != NULL && strstr(out, "Supported architectures (") != NULL &&
+                strstr(out, head) != NULL &&
+                // the ones the mirror added, one per family
+                strstr(out, "loongarch64") != NULL &&
+                strstr(out, "tms320c64x") != NULL &&
+                strstr(out, "hppa20w") != NULL &&
+                strstr(out, "sh4al-dsp") != NULL &&
+                strstr(out, "m68kcfv5") != NULL
+            ? TEST_SUCCEEDED
+            : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    return r;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+// "ds/l <filter>" reads its argument the way "hash" reads an algorithm name:
+// the one called exactly that, else the ones starting with it, else the ones
+// mentioning it anywhere
+int TEST(list_archs_filter_prefers_the_exact_name)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // "sh" is also inside sh2, sh4, sh4al-dsp and fourteen more, and names
+    // one of them exactly
+    int r = TEST_FAILED;
+    if (exec_commands("ds/l sh") != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r = out != NULL && strstr(out, "(1 of ") != NULL &&
+                strstr(out, "SuperH SH1") != NULL && strstr(out, "sh4") == NULL
+            ? TEST_SUCCEEDED
+            : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    return r;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(list_archs_filter_falls_back_to_prefix)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // nothing is called "loongarch", so the two that start with it answer
+    int r = TEST_FAILED;
+    if (exec_commands("ds/l loongarch") != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = out != NULL && strstr(out, "(2 of ") != NULL &&
+                        strstr(out, "loongarch32") != NULL &&
+                        strstr(out, "loongarch64") != NULL
+                    ? TEST_SUCCEEDED
+                    : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    return r;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(list_archs_filter_falls_back_to_the_description)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // no name holds "thumb", but a description does
+    int r = TEST_FAILED;
+    if (exec_commands("ds/l thumb") != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r = out != NULL && strstr(out, "arm32-thumb") != NULL ? TEST_SUCCEEDED
+                                                          : TEST_FAILED;
+    bhex_free(out);
+
+end:
+    return r;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(list_archs_filter_matching_nothing)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    int r = TEST_FAILED;
+    if (exec_commands("ds/l nosucharchitecture") != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = out != NULL && strstr(out, "Supported architectures") == NULL
+                    ? TEST_SUCCEEDED
+                    : TEST_FAILED;
     bhex_free(out);
 
 end:
@@ -1362,6 +1446,170 @@ int TEST(x64_opcodes_with_arrows)(void)
             strstr(out, "0x00000004: 90                    \\> nop") != NULL;
     bhex_free(out);
     return r ? TEST_SUCCEEDED : TEST_FAILED;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+// The architectures added when the table was mirrored from capstone. Each one
+// is a return capstone really decodes (the bytes are checked against its own
+// output), followed by instructions that are not part of the function: the
+// listing has to stop at the return, and take its delay slot with it where
+// there is one
+
+int TEST(xtensa_until_return)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    const u8_t bytes[] = {0x80, 0x00, 0x00, 0x80, 0x00, 0x00};
+    return until_return_is("esp32", bytes, sizeof(bytes), 1, "ret");
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(tricore_until_return)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    const u8_t bytes[] = {0x00, 0x90, 0x00, 0x90};
+    return until_return_is("tc162", bytes, sizeof(bytes), 1, "ret");
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(loongarch_until_return)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // jirl $zero, $ra, 0, which capstone prints under its "ret" alias
+    const u8_t bytes[] = {0x20, 0x00, 0x00, 0x4c, 0x20, 0x00, 0x00, 0x4c};
+    return until_return_is("loongarch64", bytes, sizeof(bytes), 1, "ret");
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(arc_until_return)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // a jump through blink is the return; one through any other register is
+    // not, and the listing would carry on
+    const u8_t bytes[] = {0x20, 0x20, 0xe0, 0x07, 0x20, 0x20, 0xe0, 0x07};
+    return until_return_is("arc", bytes, sizeof(bytes), 1, "blink");
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(xcore_until_return)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    const u8_t bytes[] = {0xc0, 0x77, 0xc0, 0x77};
+    return until_return_is("xcore", bytes, sizeof(bytes), 1, "retsp");
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(mos6502_until_return)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    const u8_t bytes[] = {0xea, 0x60, 0xea, 0xea};
+    return until_return_is("6502", bytes, sizeof(bytes), 2, "rts");
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(m680x_until_return)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    const u8_t bytes[] = {0x12, 0x39, 0x12, 0x12};
+    return until_return_is("m6809", bytes, sizeof(bytes), 2, "rts");
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(evm_until_return)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // "return" ends the call frame; so do stop, revert and selfdestruct
+    const u8_t bytes[] = {0x01, 0xf3, 0x01, 0x01};
+    return until_return_is("evm", bytes, sizeof(bytes), 2, "return");
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(wasm_until_return)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    const u8_t bytes[] = {0x01, 0x0f, 0x01, 0x01};
+    return until_return_is("wasm", bytes, sizeof(bytes), 2, "return");
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(sh_rts_runs_its_delay_slot)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // nop, rts, and the nop in the delay slot that is executed before the
+    // jump is taken: three rows, not two
+    const u8_t bytes[] = {0x00, 0x09, 0x00, 0x0b, 0x00, 0x09, 0x00, 0x09};
+    return until_return_is("sh4be", bytes, sizeof(bytes), 3, "nop");
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(sh2a_rts_n_has_no_delay_slot)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // "/n" is SH2A's undelayed spelling of the same return: the listing ends
+    // on it
+    const u8_t bytes[] = {0x00, 0x09, 0x00, 0x6b, 0x00, 0x09, 0x00, 0x09};
+    return until_return_is("sh2a", bytes, sizeof(bytes), 2, "rts/n");
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(hppa_bv_runs_its_delay_slot)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // a branch through rp is the return, and it executes the instruction
+    // behind it on the way out
+    const u8_t bytes[] = {0xe8, 0x41, 0xc0, 0x00, 0x08, 0x00,
+                          0x02, 0x40, 0x08, 0x00, 0x02, 0x40};
+    return until_return_is("hppa20be", bytes, sizeof(bytes), 2, "or");
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(hppa_nullified_bv_has_no_delay_slot)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // the ",n" nullifies the slot, so the listing ends on the branch itself
+    const u8_t bytes[] = {0xe8, 0x40, 0xc0, 0x02, 0x08, 0x00,
+                          0x02, 0x40, 0x08, 0x00, 0x02, 0x40};
+    return until_return_is("hppa20be", bytes, sizeof(bytes), 1, "bv,n");
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(tms320c64x_return_runs_five_delay_slots)(void)
+{
+#ifndef DISABLE_CAPSTONE
+    // "b .s2 b3" is the return, and a c64x branch is taken five instructions
+    // later: all five of them belong to the function
+    const u8_t bytes[] = {0x00, 0x0c, 0x03, 0x62, 0x00, 0x00, 0x00,
+                          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    return until_return_is("tms320c64x", bytes, sizeof(bytes), 6, "NOP");
 #else
     return TEST_SKIPPED;
 #endif

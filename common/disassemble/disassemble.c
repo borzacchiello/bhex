@@ -29,6 +29,30 @@ int disas_is_return(cs_arch arch, csh handle, const cs_insn* insn)
             return disas_sparc_is_return(handle, insn);
         case CS_ARCH_BPF:
             return disas_bpf_is_return(handle, insn);
+        case CS_ARCH_XCORE:
+            return disas_xcore_is_return(handle, insn);
+        case CS_ARCH_TMS320C64X:
+            return disas_tms320c64x_is_return(handle, insn);
+        case CS_ARCH_M680X:
+            return disas_m680x_is_return(handle, insn);
+        case CS_ARCH_EVM:
+            return disas_evm_is_return(handle, insn);
+        case CS_ARCH_MOS65XX:
+            return disas_mos65xx_is_return(handle, insn);
+        case CS_ARCH_WASM:
+            return disas_wasm_is_return(handle, insn);
+        case CS_ARCH_SH:
+            return disas_sh_is_return(handle, insn);
+        case CS_ARCH_TRICORE:
+            return disas_tricore_is_return(handle, insn);
+        case CS_ARCH_HPPA:
+            return disas_hppa_is_return(handle, insn);
+        case CS_ARCH_LOONGARCH:
+            return disas_loongarch_is_return(handle, insn);
+        case CS_ARCH_XTENSA:
+            return disas_xtensa_is_return(handle, insn);
+        case CS_ARCH_ARC:
+            return disas_arc_is_return(handle, insn);
         default:
             return 0;
     }
@@ -52,11 +76,30 @@ int disas_pc_relative(cs_arch arch, cs_mode mode, csh handle,
     }
 }
 
-int disas_delay_slots(cs_arch arch)
+int disas_delay_slots(cs_arch arch, csh handle, const cs_insn* insn)
 {
+    (void)handle;
+
     // the instruction after a branch is executed before the branch is taken,
     // so it is part of the function the return leaves
-    return arch == CS_ARCH_MIPS || arch == CS_ARCH_SPARC ? 1 : 0;
+    switch (arch) {
+        case CS_ARCH_MIPS:
+        case CS_ARCH_SPARC:
+            return 1;
+        // a c64x branch is taken five instructions later, and all five of
+        // them run
+        case CS_ARCH_TMS320C64X:
+            return 5;
+        // these two say for themselves whether their slot runs
+        case CS_ARCH_SH:
+            return disas_sh_delay_slots(insn);
+        case CS_ARCH_HPPA:
+            return disas_hppa_delay_slots(insn);
+        // arc has delayed jumps too, but capstone's printer does not carry
+        // the ".d" that tells them apart, so there is nothing to read here
+        default:
+            return 0;
+    }
 }
 
 #endif

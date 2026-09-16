@@ -300,3 +300,25 @@ char* str_indent(char* s, u32_t spaces)
     s[newlen] = 0;
     return s;
 }
+
+int str_matches_at(const char* name, const char* query, MatchTier tier)
+{
+    switch (tier) {
+        case MATCH_EXACT:
+            return striequal(name, query);
+        case MATCH_PREFIX:
+            return striprefix(name, query);
+        default:
+            return stristr(name, query) != NULL;
+    }
+}
+
+MatchTier str_pick_tier(const char* query, size_t n, match_name_at_t get,
+                        void* ctx)
+{
+    for (MatchTier t = MATCH_EXACT; t < MATCH_ANYWHERE; ++t)
+        for (size_t i = 0; i < n; ++i)
+            if (str_matches_at(get(i, ctx), query, t))
+                return t;
+    return MATCH_ANYWHERE;
+}

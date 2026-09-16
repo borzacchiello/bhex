@@ -40,26 +40,36 @@ if (ENABLE_CAPSTONE)
     set(BUILD_LIBS_ONLY ON)
 
     set(CAPSTONE_X86_ATT_DISABLE ON)
-    set(CAPSTONE_PPC_SUPPORT ON)
-    set(CAPSTONE_SPARC_SUPPORT ON)
-    set(CAPSTONE_SYSZ_SUPPORT OFF)
-    set(CAPSTONE_XCORE_SUPPORT OFF)
-    set(CAPSTONE_M68K_SUPPORT ON)
-    set(CAPSTONE_TMS320C64X_SUPPORT OFF)
-    set(CAPSTONE_M680X_SUPPORT OFF)
-    set(CAPSTONE_EVM_SUPPORT OFF)
-    set(CAPSTONE_WASM_SUPPORT OFF)
-    set(CAPSTONE_MOS65XX_SUPPORT OFF)
-    set(CAPSTONE_RISCV_SUPPORT ON)
     set(CAPSTONE_OSXKERNEL_SUPPORT OFF)
-    set(CAPSTONE_SYSTEMZ_SUPPORT ON)
-    set(CAPSTONE_SH_SUPPORT OFF)
-    set(CAPSTONE_TRICORE_SUPPORT OFF)
-    set(CAPSTONE_ALPHA_SUPPORT ON)
-    set(CAPSTONE_HPPA_SUPPORT OFF)
-    set(CAPSTONE_LOONGARCH_SUPPORT OFF)
-    set(CAPSTONE_XTENSA_SUPPORT OFF)
-    set(CAPSTONE_ARC_SUPPORT OFF)
+
+    # Every architecture capstone ships, so that 'disas' can name every one of
+    # them. Setting CAPSTONE_<arch>_SUPPORT for a name capstone does not have
+    # is silently ignored -- CAPSTONE_SYSZ_SUPPORT sat here doing nothing for
+    # years, the option being called CAPSTONE_SYSTEMZ_SUPPORT -- so the names
+    # are checked against capstone's own list first. It cannot be read out of
+    # capstone's scope after the fact: under CMP0077 NEW the set() below stops
+    # capstone's option() from ever declaring the cache entry.
+    set(BHEX_CAPSTONE_ARCHS
+        AARCH64 ALPHA ARC ARM BPF EVM HPPA LOONGARCH M680X M68K MIPS MOS65XX
+        PPC RISCV SH SPARC SYSTEMZ TMS320C64X TRICORE WASM X86 XCORE XTENSA)
+
+    file(STRINGS "${CMAKE_SOURCE_DIR}/capstone/CMakeLists.txt" _cs_arch_line
+         REGEX "^set\\(SUPPORTED_ARCHITECTURES ")
+    if (NOT _cs_arch_line)
+        message(FATAL_ERROR
+            "cannot find SUPPORTED_ARCHITECTURES in capstone/CMakeLists.txt")
+    endif()
+    string(REGEX REPLACE "^set\\(SUPPORTED_ARCHITECTURES |\\)$" ""
+           _cs_archs "${_cs_arch_line}")
+    string(REPLACE " " ";" _cs_archs "${_cs_archs}")
+    foreach(a ${BHEX_CAPSTONE_ARCHS})
+        if (NOT a IN_LIST _cs_archs)
+            message(FATAL_ERROR
+                "capstone does not support '${a}': the submodule renamed or "
+                "dropped it, fix BHEX_CAPSTONE_ARCHS. capstone has: ${_cs_archs}")
+        endif()
+        set(CAPSTONE_${a}_SUPPORT ON)
+    endforeach()
 
     # Disable coverage for capstone to avoid gcov link errors
     # and to collect coverage only for bhex code
@@ -67,6 +77,25 @@ if (ENABLE_CAPSTONE)
     set(ENABLE_COVERAGE OFF)
     add_subdirectory(capstone)
     set(ENABLE_COVERAGE ${BHEX_SAVED_ENABLE_COVERAGE})
+
+    # capstone's SH decoder names two enumerators "read" and "write" (enum
+    # direction, SHDisassembler.c). That builds against a libc whose headers
+    # capstone happens not to pull in, but cosmopolitan has the POSIX read()
+    # and write() declared by the time the enum is reached and gcc rejects the
+    # redeclaration, so SH alone of the 23 does not compile for the APE.
+    #
+    # The two are told apart by the parentheses: every declaration of the
+    # functions is followed by its argument list, and none of the 74 uses of
+    # the enumerators in that file is -- nothing there calls either function.
+    # So a function-like macro renames the declarations and leaves the enum
+    # alone, which keeps SH in without touching the submodule. An object-like
+    # -Dread=... would rename both and clash all over again. It goes through
+    # COMPILE_OPTIONS because COMPILE_DEFINITIONS drops function-style ones.
+    set_source_files_properties(
+        "${CMAKE_SOURCE_DIR}/capstone/arch/SH/SHDisassembler.c"
+        TARGET_DIRECTORY capstone
+        PROPERTIES COMPILE_OPTIONS
+                   "-Dread(a,b,c)=cs_sh_unused_read(a,b,c);-Dwrite(a,b,c)=cs_sh_unused_write(a,b,c)")
 
     include_directories("${CMAKE_SOURCE_DIR}/capstone/include")
 else()
@@ -76,7 +105,14 @@ endif()
 if (ENABLE_KEYSTONE)
     set(BUILD_SHARED_LIBS OFF)
     set(BUILD_LIBS_ONLY ON)
-    set(LLVM_TARGETS_TO_BUILD AArch64 ARM Mips RISCV Sparc SystemZ X86)
+    # keystone's llvm/CMakeLists.txt does set(LLVM_TARGETS_TO_BUILD "all" CACHE
+    # ...), which under CMP0126 OLD drops a plain variable of the same name --
+    # so a normal set() here is silently ignored and every target gets built.
+    # Write the cache entry instead, and list all of them, since 'assemble'
+    # names all of them.
+    set(LLVM_TARGETS_TO_BUILD
+        "AArch64;ARM;Hexagon;Mips;PowerPC;RISCV;Sparc;SystemZ;X86"
+        CACHE STRING "LLVM targets keystone assembles for" FORCE)
     add_subdirectory(keystone EXCLUDE_FROM_ALL)
 
     include_directories("${CMAKE_SOURCE_DIR}/keystone/include")
@@ -153,7 +189,19 @@ set(common_src
     common/disassemble/riscv.c
     common/disassemble/systemz.c
     common/disassemble/sparc.c
-    common/disassemble/bpf.c)
+    common/disassemble/bpf.c
+    common/disassemble/xcore.c
+    common/disassemble/tms320c64x.c
+    common/disassemble/m680x.c
+    common/disassemble/evm.c
+    common/disassemble/mos65xx.c
+    common/disassemble/wasm.c
+    common/disassemble/sh.c
+    common/disassemble/tricore.c
+    common/disassemble/hppa.c
+    common/disassemble/loongarch.c
+    common/disassemble/xtensa.c
+    common/disassemble/arc.c)
 
 set(command_src
     cmd/cmd_arg_handler.c

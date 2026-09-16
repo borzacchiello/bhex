@@ -25,9 +25,18 @@
 // them off, those answer 0
 int disas_is_return(cs_arch arch, csh handle, const cs_insn* insn);
 
-// How many instructions following a return still belong to the function:
-// mips and sparc execute the one in the delay slot before leaving
-int disas_delay_slots(cs_arch arch);
+/*
+   How many instructions following `insn` still belong to the function it
+   returns from: mips and sparc execute the one in their delay slot before
+   leaving, tms320c64x the next five.
+
+   It takes the instruction and not just the architecture because two of them
+   answer per instruction rather than per architecture: a hppa "bv" runs its
+   delay slot and a "bv,n" nullifies it, and SH2A's "rts/n" is the undelayed
+   spelling of "rts". `insn` must be the return itself -- what
+   disas_is_return() just said yes to.
+*/
+int disas_delay_slots(cs_arch arch, csh handle, const cs_insn* insn);
 
 /*
    The address a pc-relative operand points at.
@@ -64,6 +73,23 @@ int disas_riscv_is_return(csh handle, const cs_insn* insn);
 int disas_systemz_is_return(csh handle, const cs_insn* insn);
 int disas_sparc_is_return(csh handle, const cs_insn* insn);
 int disas_bpf_is_return(csh handle, const cs_insn* insn);
+int disas_xcore_is_return(csh handle, const cs_insn* insn);
+int disas_tms320c64x_is_return(csh handle, const cs_insn* insn);
+int disas_m680x_is_return(csh handle, const cs_insn* insn);
+int disas_evm_is_return(csh handle, const cs_insn* insn);
+int disas_mos65xx_is_return(csh handle, const cs_insn* insn);
+int disas_wasm_is_return(csh handle, const cs_insn* insn);
+int disas_sh_is_return(csh handle, const cs_insn* insn);
+int disas_tricore_is_return(csh handle, const cs_insn* insn);
+int disas_hppa_is_return(csh handle, const cs_insn* insn);
+int disas_loongarch_is_return(csh handle, const cs_insn* insn);
+int disas_xtensa_is_return(csh handle, const cs_insn* insn);
+int disas_arc_is_return(csh handle, const cs_insn* insn);
+
+// The per architecture answers behind disas_delay_slots(). Only the two whose
+// return says for itself whether its slot runs have one
+int disas_sh_delay_slots(const cs_insn* insn);
+int disas_hppa_delay_slots(const cs_insn* insn);
 
 // The per architecture answers behind disas_pc_relative(). Only the
 // architectures that leave something to resolve have one; arm needs the mode

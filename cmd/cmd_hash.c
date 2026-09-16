@@ -31,41 +31,12 @@
     "zero, hash the whole file starting from current offset)\n"                \
     "  off:  starting offset wrt to current offset (default 0)\n"
 
-// How a name given on the command line is matched against the registry. The
-// narrowest tier that matches anything is the one used, so that the obvious
-// reading wins: "skein-512" names one algorithm even though it is also the
-// start of "skein-512-256", and "md" is the MD family and not RipeMD too.
-// Matching anywhere in the name is still there, for "hh 256" and the like.
-typedef enum MatchTier {
-    MATCH_EXACT = 0,
-    MATCH_PREFIX,
-    MATCH_ANYWHERE,
-    MATCH_TIER_COUNT
-} MatchTier;
-
-static int name_matches(const char* name, const char* query, MatchTier tier)
+// The registry read by name, on str_pick_tier()'s terms: "skein-512" names
+// one algorithm even though it is also the start of "skein-512-256", and "md"
+// is the MD family and not RipeMD too
+static const char* hash_name_at(size_t i, void* ctx)
 {
-    switch (tier) {
-        case MATCH_EXACT:
-            return striequal(name, query);
-        case MATCH_PREFIX:
-            return striprefix(name, query);
-        default:
-            return stristr(name, query) != NULL;
-    }
-}
-
-// The tier the query ends up being read at: the first one that names
-// something. A query that matches nothing anywhere reports no algorithm, as
-// it did before.
-static MatchTier pick_tier(const hash_handler_t* hashes, size_t n_hashes,
-                           const char* query)
-{
-    for (MatchTier t = MATCH_EXACT; t < MATCH_ANYWHERE; ++t)
-        for (size_t i = 0; i < n_hashes; ++i)
-            if (name_matches(hashes[i].name, query, t))
-                return t;
-    return MATCH_ANYWHERE;
+    return ((const hash_handler_t*)ctx)[i].name;
 }
 
 static void hashcmd_dispose(void* obj) { return; }
@@ -133,10 +104,11 @@ static int hashcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
 
     int       all = strcmp(algorithm, "*") == 0;
     MatchTier tier =
-        all ? MATCH_ANYWHERE : pick_tier(hashes, n_hashes, algorithm);
+        all ? MATCH_ANYWHERE
+            : str_pick_tier(algorithm, n_hashes, hash_name_at, (void*)hashes);
 
     for (size_t i = 0; i < n_hashes; ++i) {
-        if (all || name_matches(hashes[i].name, algorithm, tier)) {
+        if (all || str_matches_at(hashes[i].name, algorithm, tier)) {
             char* hash = NULL;
             hashes[i].handler(fb, real_off, size, &hash);
             if (hash) {

@@ -560,6 +560,10 @@ assemble: assemble code and write it at current offset
   code: assembly code string (e.g., "inc eax; inc ecx; ret")
 ```
 
+All ten architectures keystone assembles for are named, `hexagon` and `evm` among them. The
+latter is not an LLVM target at all: keystone looks its opcodes up in a table of its own, one
+mnemonic per call, so `as evm push1` writes the single byte `0x60`.
+
 ### Disassemble
 
 ```
@@ -567,8 +571,10 @@ assemble: assemble code and write it at current offset
 
 disas: disassemble code at current offset
 
-  ds[/l|/a/o] <arch> [<nbytes>]
-     l:  list supported architectures
+  ds[/l [<filter>]|/a/o] <arch> [<nbytes>]
+     l:  list the supported architectures, or those <filter>
+         names: the one called that, else the ones starting
+         with it, else the ones mentioning it anywhere
      a:  draw the branches as arrows on the left of the mnemonics.
          '◂' marks a jump, '▸' where it lands, '▾' and '▴' a
          target that is not part of the listing
@@ -579,13 +585,38 @@ disas: disassemble code at current offset
           instruction that returns)
 ```
 
+Every architecture capstone can decode is named, all 23 of them, down to the variant: the table
+is generated from capstone's own `cstool` list by `scripts/gen_disas_archs.py`, so a submodule
+bump cannot leave bhex naming an instruction set that capstone has renamed or re-tuned. That is
+168 names, which is why `/l` takes a filter:
+
+```
+[0x0000000] $ ds/l loongarch
+Supported architectures matching 'loongarch' (2 of 168):
+    loongarch32  LoongArch 32-bit
+    loongarch64  LoongArch 64-bit
+```
+
+The filter is read the way `hash` reads an algorithm: the name spelled exactly wins, then the
+names starting with it, then the ones mentioning it anywhere -- in their description too, so
+`ds/l endian` and `ds/l thumb` are worth asking. The names bhex has always used keep their
+meaning where capstone now uses the same string for something else: `ppc32` and `ppc64` stay big
+endian (capstone means the little endian pair, which is bhex's `ppcle32` and `ppcle64`), `riscv32`
+and `riscv64` stay without the compressed encodings, and `m68k` stays pinned to the 68000.
+
 With no count, the listing is the function at the current offset: it ends with the first
 instruction that gives control back to the caller, or with the file (or with the first bytes that
 decode to nothing) when there is none. What a return looks like is one thing per architecture and
 capstone is of little help there, so each of them has its own answer in `common/disassemble`: x86
 has a `ret`, arm writes the return address into the program counter, ppc branches to the link
-register, mips and sparc jump through the register holding the return address and execute the
-instruction in the delay slot on the way out.
+register, mips and sparc jump through the register holding the return address, c64x and hppa and
+arc through B3 and `rp` and `blink`, evm ends the call frame with any of four opcodes, and the
+handful capstone does fill `CS_GRP_RET` for -- m680x, mos65xx, loongarch, xtensa -- just ask it.
+
+The delay slot goes with it, and it is not a property of the architecture alone: mips and sparc
+run the one instruction behind the return, c64x the next five, a hppa `bv` runs its slot while a
+`bv,n` nullifies it, and SH2A's `rts/n` is the undelayed spelling of `rts`. So the listing ends
+where control really leaves, whichever of those it is.
 
 An operand counted from the program counter -- x86's `[rip + 0xcd96b]`, the literal pools of
 arm, riscv's `auipc` -- is printed by capstone as the offset it carries, which says nothing about

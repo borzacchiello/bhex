@@ -48,7 +48,9 @@ int TEST(list_archs)(void)
                            "    riscv64\n"
                            "    s390x\n"
                            "    sparc\n"
-                           "    sparc64\n";
+                           "    sparc64\n"
+                           "    hexagon\n"
+                           "    evm\n";
 
     int r = TEST_FAILED;
     if (exec_commands("as/l") != 0)
@@ -295,6 +297,49 @@ int TEST(riscv64_branch_out_of_range)(void)
         goto end;
 
     char* out = strbuilder_reset(err_sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    return r;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+// The two keystone assembles for that bhex did not name until the tables were
+// filled in. hexagon groups its instructions into packets, and evm is not an
+// llvm target at all: keystone looks its opcodes up in a table of its own
+int TEST(hexagon_add)(void)
+{
+#ifndef DISABLE_KEYSTONE
+    const char* expected = "01C302F3\n";
+
+    int r = TEST_FAILED;
+    if (exec_commands("as hexagon \"{ r1 = add(r2,r3) }\" ; p/r 4 ; u") != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    return r;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+int TEST(evm_push1)(void)
+{
+#ifndef DISABLE_KEYSTONE
+    const char* expected = "60\n";
+
+    int r = TEST_FAILED;
+    if (exec_commands("as evm \"push1\" ; p/r 1 ; u") != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
     r         = compare_strings_ignoring_X(expected, out);
     bhex_free(out);
 

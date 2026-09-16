@@ -34,6 +34,8 @@
 #define S390X_ARCH       16
 #define SPARC_ARCH       17
 #define SPARC64_ARCH     18
+#define HEXAGON_ARCH     19
+#define EVM_ARCH         20
 
 #define HINT_STR "[/l/i/s] <arch> 'instr1; instr2; ...'"
 
@@ -62,6 +64,11 @@ static KeystoneArchInfo map_arch[] = {
     {KS_ARCH_SYSTEMZ, KS_MODE_BIG_ENDIAN},                    // S390X_ARCH
     {KS_ARCH_SPARC, KS_MODE_SPARC32 + KS_MODE_BIG_ENDIAN},    // SPARC_ARCH
     {KS_ARCH_SPARC, KS_MODE_SPARC64 + KS_MODE_BIG_ENDIAN},    // SPARC64_ARCH
+    // the last two keystone assembles for. Neither takes a mode: hexagon
+    // accepts only the endianness bit and evm is not an llvm target at all,
+    // ks_asm() looking its opcodes up in a table of its own
+    {KS_ARCH_HEXAGON, KS_MODE_LITTLE_ENDIAN}, // HEXAGON_ARCH
+    {KS_ARCH_EVM, KS_MODE_LITTLE_ENDIAN},     // EVM_ARCH
 };
 
 static const char* map_arch_names[] = {
@@ -84,6 +91,8 @@ static const char* map_arch_names[] = {
     "s390x",       // S390X_ARCH
     "sparc",       // SPARC_ARCH
     "sparc64",     // SPARC64_ARCH
+    "hexagon",     // HEXAGON_ARCH
+    "evm",         // EVM_ARCH
 };
 
 static void assemblecmd_help(void* obj)
@@ -126,9 +135,11 @@ static int do_assemble(int arch, const char* code_str, u8_t** code,
         return 0;
     }
 
-    u8_t*  encode;
-    size_t size;
-    size_t count;
+    u8_t* encode;
+    // ks_asm() leaves these alone on the paths that fail before assembling
+    // anything, and the error below reads them
+    size_t size  = 0;
+    size_t count = 0;
     if (ks_asm(ks, code_str, 0, &encode, &size, &count) != KS_ERR_OK) {
         error("ks_asm() failed & count = %lu, error = %u", count, ks_errno(ks));
         ks_close(ks);

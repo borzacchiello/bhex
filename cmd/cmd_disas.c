@@ -8,6 +8,7 @@
 #include <disassemble/disassemble.h>
 #include <util/byte_to_num.h>
 #include <util/byte_to_str.h>
+#include <util/str.h>
 #include <display.h>
 #include <unicode.h>
 #include <color.h>
@@ -125,88 +126,31 @@ static const char* const marks_ascii[MARK_COUNT]   = {" ", "<", ">", "v", "^"};
 #define MNEMONIC_MIN_WIDTH 7
 #define MNEMONIC_MAX_WIDTH 16
 
-#define X86_64_ARCH      0
-#define X86_ARCH         1
-#define X86_16_ARCH      2
-#define ARM32_ARCH       3
-#define AARCH64_ARCH     4
-#define ARM32_THUMB_ARCH 5
-#define MIPS32_ARCH      6
-#define MIPS64_ARCH      7
-#define MIPSEL32_ARCH    8
-#define MIPSEL64_ARCH    9
-#define PPC32_ARCH       10
-#define PPC64_ARCH       11
-#define PPCLE32_ARCH     12
-#define PPCLE64_ARCH     13
-#define M68K_ARCH        14
-#define ALPHA_ARCH       15
-#define RISCV32_ARCH     16
-#define RISCV64_ARCH     17
-#define S390X_ARCH       18
-#define SPARC_ARCH       19
-#define SPARC64_ARCH     20
-#define BPF_ARCH         21
-#define EBPF_ARCH        22
-
-#define HINT_STR "[/l|/a/o] <arch> [<nbytes>]"
+#define HINT_STR "[/l [<filter>]|/a/o] <arch> [<nbytes>]"
 
 typedef struct {
-    cs_arch arch;
-    cs_mode mode;
+    const char* name;
+    const char* descr;
+    cs_arch     arch;
+    cs_mode     mode;
 } CapstoneArchInfo;
 
+/*
+   Every architecture capstone can decode, mirrored from its own cstool table
+   so that a submodule bump cannot leave bhex naming an instruction set that
+   capstone has renamed or re-tuned. Regenerate with:
+
+       scripts/gen_disas_archs.py
+
+   The names bhex has always had come first and keep their meaning even where
+   capstone now uses the same string for something else; see the generated
+   file for which those are.
+*/
 static const CapstoneArchInfo map_arch[] = {
-    {CS_ARCH_X86, CS_MODE_64},                              // X86_64_ARCH
-    {CS_ARCH_X86, CS_MODE_32},                              // X86_ARCH
-    {CS_ARCH_X86, CS_MODE_16},                              // X86_16_ARCH
-    {CS_ARCH_ARM, CS_MODE_ARM},                             // ARM32_ARCH
-    {CS_ARCH_AARCH64, CS_MODE_ARM},                         // AARCH64_ARCH
-    {CS_ARCH_ARM, CS_MODE_THUMB},                           // ARM32_THUMB_ARCH
-    {CS_ARCH_MIPS, CS_MODE_MIPS32 + CS_MODE_BIG_ENDIAN},    // MIPS32_ARCH
-    {CS_ARCH_MIPS, CS_MODE_MIPS64 + CS_MODE_BIG_ENDIAN},    // MIPS64_ARCH
-    {CS_ARCH_MIPS, CS_MODE_MIPS32 + CS_MODE_LITTLE_ENDIAN}, // MIPSEL32_ARCH
-    {CS_ARCH_MIPS, CS_MODE_MIPS64 + CS_MODE_LITTLE_ENDIAN}, // MIPSEL64_ARCH
-    {CS_ARCH_PPC, CS_MODE_BIG_ENDIAN},                      // PPC32_ARCH
-    {CS_ARCH_PPC, CS_MODE_64 + CS_MODE_BIG_ENDIAN},         // PPC64_ARCH
-    {CS_ARCH_PPC, CS_MODE_LITTLE_ENDIAN},                   // PPCLE32_ARCH
-    {CS_ARCH_PPC, CS_MODE_64 + CS_MODE_LITTLE_ENDIAN},      // PPCLE64_ARCH
-    {CS_ARCH_M68K, CS_MODE_BIG_ENDIAN | CS_MODE_M68K_000},  // M68K_ARCH
-    {CS_ARCH_ALPHA, CS_MODE_LITTLE_ENDIAN},                 // ALPHA_ARCH
-    {CS_ARCH_RISCV, CS_MODE_RISCV32 + CS_MODE_LITTLE_ENDIAN}, // RISCV32_ARCH
-    {CS_ARCH_RISCV, CS_MODE_RISCV64 + CS_MODE_LITTLE_ENDIAN}, // RISCV64_ARCH
-    {CS_ARCH_SYSTEMZ, CS_MODE_BIG_ENDIAN},                    // S390X_ARCH
-    {CS_ARCH_SPARC, CS_MODE_BIG_ENDIAN},                      // SPARC_ARCH
-    {CS_ARCH_SPARC, CS_MODE_BIG_ENDIAN | CS_MODE_V9},         // SPARC64_ARCH
-    {CS_ARCH_BPF, CS_MODE_BPF_CLASSIC},                       // BPF_ARCH
-    {CS_ARCH_BPF, CS_MODE_BPF_EXTENDED},                      // EBPF_ARCH
+#include "disas_archs.inc"
 };
 
-static const char* map_arch_names[] = {
-    "x64",         // X86_64_ARCH
-    "x86",         // X86_ARCH
-    "i8086",       // X86_16_ARCH
-    "arm32",       // ARM32_ARCH
-    "aarch64",     // AARCH64_ARCH
-    "arm32-thumb", // ARM32_THUMB_ARCH
-    "mips32",      // MIPS32_ARCH
-    "mips64",      // MIPS64_ARCH
-    "mipsel32",    // MIPSEL32_ARCH
-    "mipsel64",    // MIPSEL64_ARCH
-    "ppc32",       // PPC32_ARCH
-    "ppc64",       // PPC64_ARCH
-    "ppcle32",     // PPCLE32_ARCH
-    "ppcle64",     // PPCLE64_ARCH
-    "m68k",        // M68K_ARCH
-    "alpha",       // ALPHA_ARCH
-    "riscv32",     // RISCV32_ARCH
-    "riscv64",     // RISCV64_ARCH
-    "s390x",       // S390X_ARCH
-    "sparc",       // SPARC_ARCH
-    "sparc64",     // SPARC64_ARCH
-    "bpf",         // BPF_ARCH
-    "ebpf",        // EBPF_ARCH
-};
+#define N_ARCHS (sizeof(map_arch) / sizeof(map_arch[0]))
 
 static void disascmd_help(void* obj)
 {
@@ -220,7 +164,9 @@ static void disascmd_help(void* obj)
         "disas: disassemble code at current offset\n"
         "\n"
         "  ds" HINT_STR "\n"
-        "     l:  list supported architectures\n"
+        "     l:  list the supported architectures, or those <filter>\n"
+        "         names: the one called that, else the ones starting\n"
+        "         with it, else the ones mentioning it anywhere\n"
         "     a:  draw the branches as arrows on the left of the mnemonics.\n"
         "         '%s' marks a jump, '%s' where it lands, '%s' and '%s' a\n"
         "         target that is not part of the listing\n"
@@ -234,11 +180,37 @@ static void disascmd_help(void* obj)
 
 static void disascmd_dispose(void* obj) { (void)obj; }
 
+// The table read by name, on str_pick_tier()'s terms: "sh" is the one SuperH
+// SH1 entry rather than the eighteen names it appears in, and "arm" is ARM
+// rather than every name with "arm" in it
+static const char* arch_name_at(size_t i, void* ctx)
+{
+    (void)ctx;
+    return map_arch[i].name;
+}
+
+// Whether `a` belongs in a "ds/l <query>" listing read at `tier`. A NULL
+// query lists everything.
+//
+// The description is searched only at the widest tier, where the question
+// being asked is already a vague one ("ds/l endian", "ds/l thumb"): matching
+// it any earlier would let a word in someone else's description outrank a
+// name that is spelled exactly right.
+static int arch_matches(const CapstoneArchInfo* a, const char* query,
+                        MatchTier tier)
+{
+    if (query == NULL)
+        return 1;
+    if (str_matches_at(a->name, query, tier))
+        return 1;
+    return tier == MATCH_ANYWHERE && stristr(a->descr, query) != NULL;
+}
+
 static int parse_arch(const char* a, int* out_arch)
 {
     size_t i;
-    for (i = 0; i < sizeof(map_arch_names) / sizeof(map_arch_names[0]); ++i) {
-        if (strcmp(map_arch_names[i], a) == 0) {
+    for (i = 0; i < N_ARCHS; ++i) {
+        if (strcmp(map_arch[i].name, a) == 0) {
             *out_arch = (int)i;
             return 1;
         }
@@ -373,6 +345,12 @@ static int branch_target(cs_arch arch, const cs_insn* insn, u64_t* out)
         case CS_ARCH_ALPHA:
             LAST_IMM(alpha);
             break;
+        case CS_ARCH_LOONGARCH:
+            LAST_IMM(loongarch);
+            break;
+        case CS_ARCH_ARC:
+            LAST_IMM(arc);
+            break;
         case CS_ARCH_M68K:
             for (int i = (int)d->m68k.op_count - 1; i >= 0; --i)
                 if (d->m68k.operands[i].type == M68K_OP_BR_DISP) {
@@ -384,8 +362,25 @@ static int branch_target(cs_arch arch, const cs_insn* insn, u64_t* out)
                 }
             break;
         default:
-            // bpf/ebpf end up here: capstone reports no group at all for
-            // their jumps, so is_branch() never lets them through anyway
+            /*
+               No arrow, for one of three reasons.
+
+               bpf/ebpf, tricore, tms320c64x and xcore never get here at all:
+               capstone reports no group for their jumps, so is_branch() does
+               not let them through.
+
+               evm and wasm have no branch with an address in it to begin
+               with -- they jump to a value on the stack, or to the end of a
+               structured block.
+
+               The rest are reached but say where they go in a way this
+               cannot read: xtensa's immediate is a displacement rather than
+               the address capstone prints ("j . +5"), sh keeps a
+               displacement too, and mos65xx, m680x and hppa put the target
+               somewhere other than an operand of type CS_OP_IMM. Drawing
+               those would mean resolving each one, and an arrow to the wrong
+               instruction is worse than no arrow
+            */
             break;
     }
 
@@ -844,7 +839,8 @@ static int do_disas(int arch, FileBuffer* fb, u64_t nopcodes, int arrows,
                 if (i < nrows)
                     // the return, and what its delay slot still owes it: the
                     // slot can fall in the next block, hence the counter
-                    tail = i + 1 + disas_delay_slots(ctx.arch);
+                    tail = i + 1 +
+                           disas_delay_slots(ctx.arch, ctx.handle, &insn[i]);
             }
             if (tail != 0) {
                 nrows = min(nrows, tail);
@@ -893,14 +889,44 @@ static int disascmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
         return COMMAND_INVALID_MOD;
 
     if (list_archs == MOD_SET) {
-        if (pc->args.size != 0)
+        // a couple of hundred names is more than anyone wants to read to find
+        // "the arm ones", so the listing takes an optional filter
+        char* query = NULL;
+        if (handle_args(pc, 1, 0, &query) != 0)
             return COMMAND_INVALID_ARG;
 
-        display_printf("Supported architectures:\n");
-        for (size_t i = 0;
-             i < sizeof(map_arch_names) / sizeof(map_arch_names[0]); ++i)
-            display_printf("    %s%s%s\n", color_str(COLOR_CMD),
-                           map_arch_names[i], color_str(COLOR_RESET));
+        MatchTier tier = query
+                             ? str_pick_tier(query, N_ARCHS, arch_name_at, NULL)
+                             : MATCH_ANYWHERE;
+        size_t    width  = 0;
+        size_t    nmatch = 0;
+        for (size_t i = 0; i < N_ARCHS; ++i) {
+            if (!arch_matches(&map_arch[i], query, tier))
+                continue;
+            size_t l = strlen(map_arch[i].name);
+            if (l > width)
+                width = l;
+            nmatch += 1;
+        }
+
+        if (nmatch == 0) {
+            warning("no architecture matches '%s'", query);
+            return COMMAND_OK;
+        }
+
+        // the name alone is not enough to pick one by: "tc161" and "hd6309"
+        // say nothing on their own
+        if (query == NULL)
+            display_printf("Supported architectures (%zu):\n", N_ARCHS);
+        else
+            display_printf(
+                "Supported architectures matching '%s' (%zu of %zu):\n", query,
+                nmatch, N_ARCHS);
+        for (size_t i = 0; i < N_ARCHS; ++i)
+            if (arch_matches(&map_arch[i], query, tier))
+                display_printf("    %s%-*s%s  %s\n", color_str(COLOR_CMD),
+                               (int)width, map_arch[i].name,
+                               color_str(COLOR_RESET), map_arch[i].descr);
         return COMMAND_OK;
     }
 
