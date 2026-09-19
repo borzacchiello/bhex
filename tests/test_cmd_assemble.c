@@ -349,3 +349,30 @@ end:
     return TEST_SKIPPED;
 #endif
 }
+
+int TEST(aarch64_add)(void)
+{
+#ifndef DISABLE_KEYSTONE
+    /*
+     * ARM64_ARCH used to ask ks_open() for KS_MODE_ARM, which is an arm32
+     * mode bit (1 << 0): arm64 takes nothing but KS_MODE_LITTLE_ENDIAN and
+     * answers KS_ERR_MODE to everything else, so the engine never opened and
+     * every 'as aarch64' failed.
+     * add x0, x1, x2 == 0x8b020020, little endian.
+     */
+    const char* expected = "2000028B\n";
+
+    int r = TEST_FAILED;
+    if (exec_commands("as aarch64 \"add x0, x1, x2\" ; p/r 4 ; u") != 0)
+        goto end;
+
+    char* out = strbuilder_reset(sb);
+    r         = compare_strings_ignoring_X(expected, out);
+    bhex_free(out);
+
+end:
+    return r;
+#else
+    return TEST_SKIPPED;
+#endif
+}

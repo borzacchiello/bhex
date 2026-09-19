@@ -49,7 +49,9 @@ static KeystoneArchInfo map_arch[] = {
     {KS_ARCH_X86, KS_MODE_32},                              // X86_ARCH
     {KS_ARCH_X86, KS_MODE_16},                              // X86_16_ARCH
     {KS_ARCH_ARM, KS_MODE_ARM},                             // ARM32_ARCH
-    {KS_ARCH_ARM64, KS_MODE_ARM},                           // ARM64_ARCH
+    // KS_MODE_ARM is an arm32 bit: ks_open() takes nothing but
+    // KS_MODE_LITTLE_ENDIAN for arm64 and answers KS_ERR_MODE to the rest
+    {KS_ARCH_ARM64, KS_MODE_LITTLE_ENDIAN},                 // ARM64_ARCH
     {KS_ARCH_ARM, KS_MODE_THUMB},                           // ARM32_THUMB_ARCH
     {KS_ARCH_MIPS, KS_MODE_MIPS32 + KS_MODE_BIG_ENDIAN},    // MIPS32_ARCH
     {KS_ARCH_MIPS, KS_MODE_MIPS64 + KS_MODE_BIG_ENDIAN},    // MIPS64_ARCH
