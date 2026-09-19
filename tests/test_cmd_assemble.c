@@ -42,7 +42,6 @@ int TEST(list_archs)(void)
                            "    mipsel64\n"
                            "    ppc32\n"
                            "    ppc64\n"
-                           "    ppcle32\n"
                            "    ppcle64\n"
                            "    riscv32\n"
                            "    riscv64\n"
@@ -369,6 +368,78 @@ int TEST(aarch64_add)(void)
     char* out = strbuilder_reset(sb);
     r         = compare_strings_ignoring_X(expected, out);
     bhex_free(out);
+
+end:
+    return r;
+#else
+    return TEST_SKIPPED;
+#endif
+}
+
+// One instruction per architecture 'as' names, to assemble them all and catch
+// the arch that is advertised but cannot be opened -- aarch64 was asking for
+// an arm32 mode bit, and ppcle32 named a triple keystone refuses outright.
+// Encodings are checked by the tests above; here only the exit status matters.
+static const struct {
+    const char* arch;
+    const char* code;
+} arch_probes[] = {
+    {"x64", "ret"},
+    {"x86", "ret"},
+    {"i8086", "ret"},
+    {"arm32", "mov r0, r1"},
+    {"aarch64", "add x0, x1, x2"},
+    {"arm32-thumb", "movs r0, r1"},
+    {"mips32", "nop"},
+    {"mips64", "nop"},
+    {"mipsel32", "nop"},
+    {"mipsel64", "nop"},
+    {"ppc32", "addi 3, 4, 8"},
+    {"ppc64", "addi 3, 4, 8"},
+    {"ppcle64", "addi 3, 4, 8"},
+    {"riscv32", "addi a0, a1, 4"},
+    {"riscv64", "addi a0, a1, 4"},
+    {"s390x", "lgr %r1, %r2"},
+    {"sparc", "nop"},
+    {"sparc64", "nop"},
+    {"hexagon", "{ r0 = add(r1, r2) }"},
+    {"evm", "add"},
+};
+
+int TEST(every_listed_arch_assembles)(void)
+{
+#ifndef DISABLE_KEYSTONE
+    const size_t n = sizeof(arch_probes) / sizeof(arch_probes[0]);
+
+    int r = TEST_FAILED;
+    if (exec_commands("as/l") != 0)
+        goto end;
+
+    // the table has to name every arch 'as/l' prints, so that an arch added
+    // to the command without a probe here fails rather than going untested
+    char*  out    = strbuilder_reset(sb);
+    size_t listed = 0;
+    for (const char* p = out; (p = strstr(p, "\n    ")) != NULL; p += 5)
+        listed += 1;
+    bhex_free(out);
+
+    if (listed != n) {
+        printf("[!] 'as/l' names %zu archs, arch_probes has %zu\n", listed, n);
+        goto end;
+    }
+
+    size_t i;
+    for (i = 0; i < n; ++i) {
+        char cmd[256];
+        snprintf(cmd, sizeof(cmd), "as %s \"%s\"", arch_probes[i].arch,
+                 arch_probes[i].code);
+        if (exec_commands(cmd) != 0) {
+            printf("[!] '%s' failed\n", cmd);
+            goto end;
+        }
+    }
+
+    r = TEST_SUCCEEDED;
 
 end:
     return r;

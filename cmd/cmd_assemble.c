@@ -27,15 +27,14 @@
 #define MIPSEL64_ARCH    9
 #define PPC32_ARCH       10
 #define PPC64_ARCH       11
-#define PPCLE32_ARCH     12
-#define PPCLE64_ARCH     13
-#define RISCV32_ARCH     14
-#define RISCV64_ARCH     15
-#define S390X_ARCH       16
-#define SPARC_ARCH       17
-#define SPARC64_ARCH     18
-#define HEXAGON_ARCH     19
-#define EVM_ARCH         20
+#define PPCLE64_ARCH     12
+#define RISCV32_ARCH     13
+#define RISCV64_ARCH     14
+#define S390X_ARCH       15
+#define SPARC_ARCH       16
+#define SPARC64_ARCH     17
+#define HEXAGON_ARCH     18
+#define EVM_ARCH         19
 
 #define HINT_STR "[/l/i/s] <arch> 'instr1; instr2; ...'"
 
@@ -59,7 +58,8 @@ static KeystoneArchInfo map_arch[] = {
     {KS_ARCH_MIPS, KS_MODE_MIPS64 + KS_MODE_LITTLE_ENDIAN}, // MIPSEL64_ARCH
     {KS_ARCH_PPC, KS_MODE_PPC32 + KS_MODE_BIG_ENDIAN},      // PPC32_ARCH
     {KS_ARCH_PPC, KS_MODE_PPC64 + KS_MODE_BIG_ENDIAN},      // PPC64_ARCH
-    {KS_ARCH_PPC, KS_MODE_PPC32 + KS_MODE_LITTLE_ENDIAN},   // PPCLE32_ARCH
+    // no ppcle32: ks_open() answers KS_ERR_MODE to a little-endian ppc32,
+    // the only powerpc triples this llvm knows being ppc32, ppc64 and ppc64le
     {KS_ARCH_PPC, KS_MODE_PPC64 + KS_MODE_LITTLE_ENDIAN},   // PPCLE64_ARCH
     {KS_ARCH_RISCV, KS_MODE_RISCV32 + KS_MODE_LITTLE_ENDIAN}, // RISCV32_ARCH
     {KS_ARCH_RISCV, KS_MODE_RISCV64 + KS_MODE_LITTLE_ENDIAN}, // RISCV64_ARCH
@@ -86,7 +86,6 @@ static const char* map_arch_names[] = {
     "mipsel64",    // MIPSEL64_ARCH
     "ppc32",       // PPC32_ARCH
     "ppc64",       // PPC64_ARCH
-    "ppcle32",     // PPCLE32_ARCH
     "ppcle64",     // PPCLE64_ARCH
     "riscv32",     // RISCV32_ARCH
     "riscv64",     // RISCV64_ARCH
