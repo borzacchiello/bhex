@@ -20,6 +20,11 @@ Minimalistic and lightweight shell-based hex editor.
 - Assemble opcodes (using Keystone).
 - Identify the ISA of a byte block using bundled AI models, or graph code ranges across a file.
 
+Bundled resources can be placed in `templates/` and `models/` beside the `bhex`
+executable, so they are found regardless of the current working directory.
+`BHEX_TEMPLATES_PATH` takes priority over the bundled templates; existing local
+and system search locations remain available as fallbacks.
+
 Just run `bhex <file>` to start the shell.
 
 Supported flags:

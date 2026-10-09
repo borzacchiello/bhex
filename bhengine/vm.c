@@ -5,6 +5,12 @@
 #include <dirent.h>
 #include <alloc.h>
 #include <log.h>
+#include <limits.h>
+#include "util/executable.h"
+
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
 
 #include "interpreter.h"
 #include "filebuffer.h"
@@ -73,7 +79,7 @@ static void vm_load_dir(BHEngineVM* ctx, const char* dirpath)
     if (dir == NULL)
         return;
 
-    char tmp[1024];
+    char tmp[PATH_MAX];
 
     struct dirent* entry;
     while ((entry = readdir(dir)) != NULL) {
@@ -86,7 +92,9 @@ static void vm_load_dir(BHEngineVM* ctx, const char* dirpath)
             continue;
 
         memset(tmp, 0, sizeof(tmp));
-        snprintf(tmp, sizeof(tmp) - 1, "%s/%s", dirpath, entry->d_name);
+        int n = snprintf(tmp, sizeof(tmp), "%s/%s", dirpath, entry->d_name);
+        if (n < 0 || (size_t)n >= sizeof(tmp))
+            continue;
 
         // Remove extension
         entry->d_name[d_namelen - 4] = '\0';
@@ -193,14 +201,19 @@ BHEngineVM* bhengine_vm_get(void)
     // can be tested without its templates being shadowed by an older copy
     // installed system wide
     const char* env_dir = getenv("BHEX_TEMPLATES_PATH");
-    if (env_dir == NULL) {
-        g_vm = bhengine_vm_create(search_folders);
-        return g_vm;
+    char exe_dir[PATH_MAX];
+    char exe_templates[PATH_MAX];
+    const char* dirs[SEARCH_FOLDERS_N + 2];
+    size_t count = 0;
+    if (env_dir != NULL)
+        dirs[count++] = env_dir;
+    if (bhex_executable_dir(exe_dir, sizeof(exe_dir))) {
+        int n = snprintf(exe_templates, sizeof(exe_templates),
+                         "%s/templates", exe_dir);
+        if (n >= 0 && (size_t)n < sizeof(exe_templates))
+            dirs[count++] = exe_templates;
     }
-
-    const char* dirs[SEARCH_FOLDERS_N + 1];
-    dirs[0] = env_dir;
-    memcpy(&dirs[1], search_folders, sizeof(search_folders));
+    memcpy(&dirs[count], search_folders, sizeof(search_folders));
     g_vm = bhengine_vm_create(dirs);
     return g_vm;
 }

@@ -175,6 +175,7 @@ set(common_src
     common/hash/whirlpool.c
     common/ml/rf_model.c
     common/ml/model_locator.c
+    common/util/executable.c
     common/ml/isadetect_features.c
     common/ml/isadetect.c
     common/ml/binexec.c
@@ -277,6 +278,12 @@ add_custom_target(copy_models_to_build ALL
         COMMAND ${CMAKE_COMMAND} -E copy_if_different ${MODEL_FILES} ${CMAKE_CURRENT_BINARY_DIR}/models
         COMMENT "Copying models to build")
 
+add_custom_target(copy_templates_to_build ALL
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/templates
+        ${CMAKE_CURRENT_BINARY_DIR}/templates
+        COMMENT "Copying templates to build")
+
 if (ENABLE_TESTS)
     include(CTest)
     find_package(Python COMPONENTS Interpreter Development)
@@ -296,12 +303,6 @@ if (ENABLE_TESTS)
 
     add_custom_target(gen_test_main ALL
         DEPENDS ${CMAKE_SOURCE_DIR}/tests/main.c)
-
-    add_custom_target(copy_templates_to_build ALL
-            COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CMAKE_SOURCE_DIR}/templates
-            ${CMAKE_CURRENT_BINARY_DIR}/templates
-            COMMENT "Copying templates to build")
 
     add_executable(bhex_tests
         ${common_src}
@@ -362,6 +363,7 @@ add_executable(bhex
     main.c)
 
 add_dependencies(bhex copy_models_to_build)
+add_dependencies(bhex copy_templates_to_build)
 
 if (STATIC_BUILD)
     set_target_properties(bhex PROPERTIES LINK_SEARCH_START_STATIC ON)
