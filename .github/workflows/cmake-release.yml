@@ -150,10 +150,26 @@ jobs:
         run: sudo apt-get update -y && sudo apt-get --assume-yes install python3 python3-dev python-is-python3 build-essential cmake unzip zip
 
       - name: cosmocc toolchain
-        run: >
-          curl -fsSL -o /tmp/cosmocc.zip https://cosmo.zip/pub/cosmocc/cosmocc-${COSMOCC_VERSION}.zip &&
-          unzip -q /tmp/cosmocc.zip -d "$COSMOCC_HOME" &&
-          rm /tmp/cosmocc.zip
+        run: |
+          archive="$RUNNER_TEMP/cosmocc.zip"
+          downloaded=false
+          for url in \
+            "https://cosmo.zip/pub/cosmocc/cosmocc-${COSMOCC_VERSION}.zip" \
+            "https://github.com/jart/cosmopolitan/releases/download/${COSMOCC_VERSION}/cosmocc-${COSMOCC_VERSION}.zip"
+          do
+            if curl -fsSL --connect-timeout 15 --max-time 300 \
+              --retry 2 --retry-delay 5 --retry-all-errors \
+              -o "$archive" "$url" && unzip -tq "$archive"; then
+              downloaded=true
+              break
+            fi
+          done
+          if [ "$downloaded" != true ]; then
+            echo "Could not download Cosmocc ${COSMOCC_VERSION} from either source" >&2
+            exit 1
+          fi
+          unzip -q "$archive" -d "$COSMOCC_HOME"
+          rm "$archive"
 
       - name: build
         run: >
