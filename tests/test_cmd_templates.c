@@ -4431,3 +4431,42 @@ fail:
     r = TEST_FAILED;
     goto end;
 }
+
+int TEST(template_emsixbundle_1)(void)
+{
+    // Minimal unsigned bundle: a 100-byte header, four opaque payload bytes,
+    // and one plaintext, stored footer entry pointing back to the payload.
+    const u8_t sample[144] = {
+        [0] = 'E', 'X', 'B', 'H', 100,
+        [13] = 1, // version 1.0.0.0
+        [14] = 104, // footer offset
+        [22] = 40, // footer length
+        [30] = 1, // file count
+        [100] = 1, 2, 3, 4,
+        [104] = 'E', 'F', 40, 0, 0xff, 0xff,
+        [112] = 1, // file id
+        [120] = 100, // payload offset
+        [128] = 4, // uncompressed length
+        [136] = 4, // stored length
+    };
+    int r = TEST_FAILED;
+    char* out = NULL;
+    DummyFilebuffer* tfb = dummyfilebuffer_create(sample, sizeof(sample));
+    ASSERT(tfb != NULL);
+    ASSERT(exec_commands_on("t ./templates/emsixbundle.bhe", tfb) == 0);
+    out = strbuilder_reset(sb);
+    ASSERT(strstr(out, "'EXBH'") != NULL);
+    ASSERT(strstr(out, "AppX bundle footers and payload:") != NULL);
+    ASSERT(strstr(out, "'EF'") != NULL);
+    ASSERT(strstr(out, "APPX_COMPRESSION_NONE") != NULL);
+    ASSERT(strstr(out, "compressed_length: 0000000000000004") != NULL);
+    r = TEST_SUCCEEDED;
+
+end:
+    bhex_free(out);
+    dummyfilebuffer_destroy(tfb);
+    return r;
+
+fail:
+    goto end;
+}

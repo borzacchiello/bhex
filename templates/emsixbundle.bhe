@@ -1,0 +1,267 @@
+// Microsoft Store encrypted MSIX / AppX containers
+//   .emsixbundle  -> "EXBH": a bundle whose payload is nested "EXPH" packages
+//   .emsix        -> "EXPH": a single package
+//   .exsh / EXSH  -> an unsigned package variant
+//
+// Layout of a container:
+//   [container start]
+//     header            (variable length, `header_size` bytes)
+//     payload           `file_count` blobs, one per footer entry
+//     footer table      `file_count` * 40 bytes at `footer_offset`
+//     signature         DEFLATE compressed, at `signature_offset`
+//
+// A bundle is not a ZIP: the top level only stores whole encrypted packages,
+// plus the bundle manifest and the bundle block map as plaintext DEFLATE blobs.
+// A bundle and a single package share the same header/footer pair, and every
+// offset in them is relative to the start of the container, so one parser
+// handles both (and a package nested inside a bundle).
+
+// {BB1755DB-5052-4B10-B2AB-F3ABF5CA5B41} marks a 16 byte key id. Any other
+// provider GUID is followed by a second GUID, making the key id 32 bytes.
+struct appx_key_id_t
+{
+    local sentinel = peek(16) ==
+        "\xdb\x55\x17\xbb\x52\x50\x10\x4b\xb2\xab\xf3\xab\xf5\xca\x5b\x41";
+    if (sentinel) {
+        u8 provider_guid[16];   // the constant sentinel GUID above
+        u8 key_id[16];
+    } else {
+        u8 key_id[32];          // both GUIDs together are the key id
+    }
+}
+
+enum appx_compression_t : u16
+{
+    APPX_COMPRESSION_NONE    = 0,   // stored; encrypted when key_id_index != 0xffff
+    APPX_COMPRESSION_DEFLATE = 1    // raw DEFLATE stream
+}
+
+// Container header. The key ids and the UTF-16 strings after the fixed fields
+// make it variable length; `header_size` covers all of it and is exactly where
+// the first payload blob starts.
+struct appx_header_t
+{
+    local header_start = off();
+
+    char magic[4];                  // EXBH, EXPH or EXSH
+    assert(magic == "EXBH" || magic == "EXPH" || magic == "EXSH",
+           "not an EAppX/MSIX container: bad magic");
+    u16  header_size;
+    u64  version;                   // version quad 1.0.0.0, packed high to low
+    u64  footer_offset;             // relative to the start of this container
+    u64  footer_length;             // file_count * sizeof(appx_footer_t)
+    u64  file_count;
+    u64  signature_offset;          // offset in the file, zero when unsigned
+    appx_compression_t signature_compression;
+    u32  signature_uncompressed_length;
+    u32  signature_length;
+    u64  code_integrity_offset;     // always zero for EXPH
+    appx_compression_t code_integrity_compression;
+    u32  code_integrity_uncompressed_len;
+    u32  code_integrity_length;
+    u64  block_map_file_id;         // file id of the AppxBlockMap.xml blob
+    u32  key_length;                // 0x20 for XTS-AES-256
+    u16  key_id_count;
+    assert(key_id_count <= 0x100, "implausible key id count");
+    appx_key_id_t key_ids[key_id_count];
+
+    // UTF-16 strings, each preceded by a character count and a byte count
+    u16 name_length;
+    u16 name_bytes;
+    assert(name_bytes == name_length * 2 && name_bytes <= 0x1000,
+           "implausible package full name length");
+    wchar package_full_name[name_bytes / 2];
+
+    u16 crypto_algo_bytes;
+    assert(crypto_algo_bytes % 2 == 0 && crypto_algo_bytes <= 0x100,
+           "implausible crypto algorithm length");
+    wchar crypto_algo[crypto_algo_bytes / 2];
+
+    u16 diffusion_support_enabled;
+
+    u16 block_map_hash_algo_bytes;
+    assert(block_map_hash_algo_bytes % 2 == 0 && block_map_hash_algo_bytes <= 0x100,
+           "implausible block map hash algorithm length");
+    wchar block_map_hash_algo[block_map_hash_algo_bytes / 2];
+
+    u16 block_map_hash_size;
+    assert(block_map_hash_size <= 128, "implausible block map hash size");
+    u8  block_map_hash[block_map_hash_size];
+
+    // every field above is accounted for by the size the header declares
+    assert(off() - header_start == header_size, "header size does not match its fields");
+}
+
+// One entry of the footer table: a payload blob plus the key/compression needed
+// to turn it back into a file.
+struct appx_footer_t
+{
+    char magic[2];                  // "EF"
+    assert(magic == "EF", "bad footer magic");
+    u16  footer_size;               // 0x28
+    u16  key_id_index;              // 0xffff: plaintext, else index into key_ids
+    appx_compression_t compression;
+    u64  file_id;
+    u64  offset;                    // relative to the start of this container
+    u64  uncompressed_length;
+    u64  compressed_length;
+}
+
+// Parses the footer table that belongs to the header just read and then walks
+// the payload. `base` is the start of the container; `nested_tables` asks for
+// each nested package's own footer table as well (the packages view).
+fn parse_payload(base, footer_offset, file_count, nested_tables)
+{
+    local table_at = base + footer_offset;
+
+    // a footer table entry is 40 bytes, and the table cannot leave the file
+    assert(footer_offset > 0 && file_count > 0, "container has no footer table");
+    assert(footer_offset < size() - base &&
+           table_at + file_count * 40 <= size(),
+           "footer table runs past the end of the file");
+
+    seek(table_at);
+    max_array_print(16);
+    appx_footer_t footers[file_count];
+
+    local i = 0;
+    while (i < file_count) {
+        seek(table_at + i * 40);
+        local blob_rel = peek_u64(16);
+        local blob_len = peek_u64(32);
+        local blob_comp = peek_u16(6);
+
+        local blob_at = base + blob_rel;
+        assert(blob_at + blob_len <= size(),
+               "payload blob runs past the end of the file");
+
+        seek(blob_at);
+        local head4 = peek(4);
+        if (head4 == "EXPH" || head4 == "EXSH" || head4 == "EXBH") {
+            // a nested package: show its identity and validate its own table
+            local package_at = off();
+            appx_header_t package;
+            assert(package.footer_offset + package.footer_length <= blob_len,
+                   "nested package footer table runs past its blob");
+            if (nested_tables) {
+                seek(package_at + package.footer_offset);
+                appx_footer_t package_files[package.file_count];
+            }
+        } elif (blob_comp == appx_compression_t::APPX_COMPRESSION_DEFLATE) {
+            // plaintext DEFLATE (bundle manifest, block map, signature, ...):
+            // the stream is not expanded, only its first bytes are shown
+            print("entry", tostring(i, 10), ": plaintext DEFLATE block,",
+                  tostring(blob_len, 10), "bytes");
+            local head_length = min(blob_len, 32);
+            u8 head[head_length];
+            fwd(blob_len - head_length);
+        } else {
+            // XTS-AES ciphertext (or an unknown stored scheme): opaque
+            seek(blob_at + blob_len);
+        }
+        i = i + 1;
+    }
+}
+
+// Top level: the container header, then its payload and footer table.
+proc
+{
+    little_endian();
+    local base = off();
+
+    appx_header_t header;
+
+    if (header.magic == "EXBH") {
+        print("AppX bundle footers and payload:");
+    } else {
+        print("AppX package footers and payload:");
+    }
+    disable_print();
+    local footer_offset = header.footer_offset;
+    local file_count = header.file_count;
+    local signature_offset = header.signature_offset;
+    local signature_length = header.signature_length;
+    enable_print();
+
+    parse_payload(base, footer_offset, file_count, 0);
+
+    // the signature is a DEFLATE compressed PKCS#7 blob at the end of the file
+    if (signature_offset > 0 && signature_length > 0) {
+        if (signature_offset + signature_length > size()) {
+            warning("signature offset/length lie outside the file");
+        } else {
+            print("signature:");
+            seek(signature_offset);
+            local head_length = min(signature_length, 32);
+            u8 head[head_length];
+            fwd(signature_length - head_length);
+        }
+    }
+}
+
+// Every nested package with its own header and full footer table, i.e. the
+// bundle manifest/block map view of each split (scale-100, x64, ...).
+proc packages
+{
+    enable_print();
+    little_endian();
+    local base = off();
+
+    appx_header_t header;
+    assert(header.magic == "EXBH", "not an AppX bundle: no nested packages");
+    parse_payload(base, header.footer_offset, header.file_count, 1);
+}
+
+// The EXBH/EXPH/EXSH magic itself. Everything else a container needs sits in
+// the fields the probe re-checks, so matching three ASCII strings is enough to
+// avoid asking at every offset.
+proc _identify_magic
+{
+    magic("EXBH", 0);
+    magic("EXPH", 0);
+    magic("EXSH", 0);
+}
+
+// A container is only accepted when the header is self-consistent and the
+// footer table it points at really starts with a footer entry.
+proc _identify
+{
+    little_endian();
+
+    local m = peek(4);
+    if (m != "EXBH" && m != "EXPH" && m != "EXSH") {
+        return;
+    }
+
+    local header_size = peek_u16(4);
+    if (header_size < 0x40 || header_size > 0x4000 || header_size > remaining_size()) {
+        return;
+    }
+
+    local footer_offset = peek_u64(0x0e);
+    local footer_length = peek_u64(0x16);
+    local file_count = peek_u64(0x1e);
+    if (file_count == 0 || file_count > 0x100000 ||
+        footer_length != file_count * 40 ||
+        footer_offset < header_size ||
+        footer_offset + footer_length > remaining_size()) {
+        return;
+    }
+
+    // the table must begin with a well formed footer, not just any bytes
+    if (peek(2, footer_offset) != "EF" || peek_u16(footer_offset + 2) != 0x28) {
+        return;
+    }
+
+    // a bundle can end after its footers or, when signed, at its signature
+    local extent = footer_offset + footer_length;
+    if (m == "EXBH") {
+        local signature_offset = peek_u64(0x26);
+        local signature_length = peek_u32(0x34);
+        if (signature_offset >= extent &&
+            signature_offset + signature_length <= remaining_size()) {
+            extent = signature_offset + signature_length;
+        }
+    }
+    result = extent;
+}
