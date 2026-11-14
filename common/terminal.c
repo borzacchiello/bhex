@@ -17,11 +17,24 @@
 static struct termios g_orig_termios; /* In order to restore at exit.*/
 static int            g_rawmode;      /* Terminal raw mode is enabled */
 
+void terminal_write(const char* data, size_t size)
+{
+    while (size > 0) {
+        ssize_t written = write(STDOUT_FILENO, data, size);
+        if (written < 0 && errno == EINTR)
+            continue;
+        if (written <= 0)
+            return;
+        data += written;
+        size -= (size_t)written;
+    }
+}
+
 void disable_raw_mode(void)
 {
     /* Don't even check the return value as it's too late. */
     if (g_rawmode) {
-        write(1, "\x1b[?25h", 6); /* Show cursor. */
+        terminal_write("\x1b[?25h", 6); /* Show cursor. */
         tcsetattr(STDIN_FILENO, TCSAFLUSH, &g_orig_termios);
         g_rawmode = 0;
     }
@@ -58,7 +71,7 @@ int enable_raw_mode(void)
     if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) < 0)
         goto fatal;
 
-    write(1, "\x1b[?25l", 6); /* Hide cursor. */
+    terminal_write("\x1b[?25l", 6); /* Hide cursor. */
     g_rawmode = 1;
     return 0;
 

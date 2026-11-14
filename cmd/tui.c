@@ -276,7 +276,7 @@ void sw_flush(ScreenWriter* sw)
     while (sw_end_line(sw) == 0)
         ;
 
-    write(STDOUT_FILENO, sw->lines, sw->len);
+    terminal_write(sw->lines, sw->len);
     bhex_free(sw->lines);
 }
 

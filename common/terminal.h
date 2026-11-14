@@ -3,6 +3,8 @@
 #ifndef TERMINAL_H
 #define TERMINAL_H
 
+#include <stddef.h>
+
 //                   Low-level terminal APIs
 //   *** Most of these functions are taken from KILO by antirez ***
 //                   https://github.com/antirez/kilo
@@ -68,6 +70,8 @@ enum KEY_ACTION {
 };
 
 void disable_raw_mode(void);
+/* Best-effort terminal output, retrying partial and interrupted writes. */
+void terminal_write(const char* data, size_t size);
 int  enable_raw_mode(void);
 int  terminal_read_key(void);
 int  get_window_size(int* rows, int* cols);
