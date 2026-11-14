@@ -147,7 +147,7 @@ jobs:
         run: git submodule update --init
 
       - name: dependencies
-        run: sudo apt-get update -y && sudo apt-get --assume-yes install python3 python3-dev python-is-python3 build-essential cmake unzip
+        run: sudo apt-get update -y && sudo apt-get --assume-yes install python3 python3-dev python-is-python3 build-essential cmake unzip zip
 
       - name: cosmocc toolchain
         run: >
@@ -170,6 +170,19 @@ jobs:
 
       - name: copy executable
         run: cp release-cosmopolitan/bhex bhex.exe
+
+      - name: package portable build
+        run: zip -r -9 bhex_portable.zip bhex.exe templates models -i bhex.exe '*.bhe' '*.bin'
+
+      - name: verify portable build
+        run: python3 scripts/check_portable.py bhex_portable.zip
+
+      - name: upload portable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-portable
+          path: bhex_portable.zip
+          retention-days: 7
 
       - name: upload build artifacts
         uses: actions/upload-artifact@v4
@@ -204,4 +217,4 @@ jobs:
       - uses: actions/download-artifact@v4
       - uses: ncipollo/release-action@v1
         with:
-          artifacts: "build-*/bhex-*,build-cosmopolitan/bhex.exe"
+          artifacts: "build-*/bhex-*,build-cosmopolitan/bhex.exe,build-portable/bhex_portable.zip"
