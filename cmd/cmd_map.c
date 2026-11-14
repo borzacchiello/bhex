@@ -12,7 +12,6 @@
 #include <histogram.h>
 #include <entropy.h>
 #include <display.h>
-#include <unicode.h>
 #include <string.h>
 #include <color.h>
 #include <alloc.h>
@@ -51,19 +50,18 @@ typedef enum MapKind {
 
 // A cell is drawn as one character in the colour of its kind
 typedef struct KindStyle {
-    const char* glyph_unicode;
-    const char* glyph_ascii;
+    const char* glyph;
     Color       color;
     const char* label;
 } KindStyle;
 
 // clang-format off
 static const KindStyle kind_styles[MAP_KIND_COUNT] = {
-    [MAP_ZERO]  = {"·", ".", COLOR_MAP_ZERO,  "zeroes"},
-    [MAP_FF]    = {"▓", "F", COLOR_MAP_FF,    "0xff"},
-    [MAP_TEXT]  = {"▒", "A", COLOR_MAP_TEXT,  "text"},
-    [MAP_HIGH]  = {"█", "#", COLOR_MAP_HIGH,  "high entropy"},
-    [MAP_MIXED] = {"░", ":", COLOR_MAP_MIXED, "mixed"},
+    [MAP_ZERO]  = {".", COLOR_MAP_ZERO,  "zeroes"},
+    [MAP_FF]    = {"F", COLOR_MAP_FF,    "0xff"},
+    [MAP_TEXT]  = {"A", COLOR_MAP_TEXT,  "text"},
+    [MAP_HIGH]  = {"#", COLOR_MAP_HIGH,  "high entropy"},
+    [MAP_MIXED] = {":", COLOR_MAP_MIXED, "mixed"},
 };
 // clang-format on
 
@@ -219,8 +217,7 @@ static int mapcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
                 display_printf("%s", color_str(s->color));
                 curr = s->color;
             }
-            display_printf("%s", unicode_enabled() ? s->glyph_unicode
-                                                   : s->glyph_ascii);
+            display_printf("%s", s->glyph);
         }
         display_printf("%s\n", color_str(COLOR_RESET));
     }
@@ -230,7 +227,7 @@ static int mapcmd_exec(void* obj, FileBuffer* fb, ParsedCommand* pc)
     for (u32_t k = 0; k < MAP_KIND_COUNT; ++k) {
         const KindStyle* s = &kind_styles[k];
         display_printf("  %s%s%s %s", color_str(s->color),
-                       unicode_enabled() ? s->glyph_unicode : s->glyph_ascii,
+                       s->glyph,
                        color_str(COLOR_RESET), s->label);
     }
     display_printf("\n  %llu byte%s per cell, %llu cells\n", cell_size,
