@@ -30,7 +30,12 @@ set(CMAKE_C_STANDARD 99)
 add_compile_options(
     "$<$<CONFIG:Release>:-ffunction-sections>"
     "$<$<CONFIG:Release>:-fdata-sections>")
-add_link_options("$<$<CONFIG:Release>:-Wl,--gc-sections>")
+if (APPLE)
+    # Apple's linker uses -dead_strip instead of GNU ld's --gc-sections.
+    add_link_options("$<$<CONFIG:Release>:-Wl,-dead_strip>")
+else()
+    add_link_options("$<$<CONFIG:Release>:-Wl,--gc-sections>")
+endif()
 
 include_directories("${CMAKE_SOURCE_DIR}/common")
 include_directories("${CMAKE_SOURCE_DIR}/common/ml")
